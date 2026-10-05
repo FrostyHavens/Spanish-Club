@@ -5,6 +5,7 @@ A 16-bit-style educational game for kids aged about 8 to 12 who are learning Spa
 It uses the same hand-drawn-in-code engine as *Embers of Aldmere*: pixel tiles, chibi map sprites, anime portraits and the FM-synth music.
 
 ## Play
+- **Play online: https://frostyhavens.github.io/Spanish-Club/** (updates automatically when `main` changes).
 - Open `dist/club-de-espanol.html` in any modern browser. It's a single file and works offline.
 - Or open `index.html`, which loads the scripts from `src/`. Use this one when editing.
 
