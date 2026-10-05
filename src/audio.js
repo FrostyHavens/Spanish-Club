@@ -4,7 +4,7 @@
   const A = G.audio = {
     ctx: null, master: null, musicGain: null, sfxGain: null, muted: false,
     song: null, songName: null, events: [], nextIdx: 0, startTime: 0, loopLen: 0, loopCount: 0,
-    musicVol: 0.55, sfxVol: 0.6,
+    musicVol: 0.56, sfxVol: 0.6,
   };
   A.unlock = function () {
     if (A.ctx) { if (A.ctx.state === 'suspended') A.ctx.resume(); return; }
@@ -21,7 +21,18 @@
     A.noise = buf;
     if (A.pending) { const p = A.pending; A.pending = null; A.play(p); }
   };
-  A.toggleMute = function () { A.muted = !A.muted; if (A.master) A.master.gain.value = A.muted ? 0 : 0.8; };
+  A.toggleMute = function () { A.muted = !A.muted; if (A.master) A.master.gain.value = A.muted ? 0 : 0.8; if (A.muted) try { speechSynthesis.cancel(); } catch (e) { } };
+
+  // ---------- Volume levels 0..10 (music, sound effects, voice), kept per device, not per save ----------
+  const PREF_KEY = 'spanishclub_prefs';
+  G.prefs = Object.assign({ music: 7, sfx: 7, voice: 10 }, G.store.get(PREF_KEY) || {});
+  A.applyVolumes = function () {
+    A.musicVol = G.prefs.music / 10 * 0.8; A.sfxVol = G.prefs.sfx / 10 * 0.85;
+    if (A.musicGain) A.musicGain.gain.value = A.musicVol;
+    if (A.sfxGain) A.sfxGain.gain.value = A.sfxVol;
+  };
+  A.setVolume = function (kind, level) { G.prefs[kind] = Math.max(0, Math.min(10, level)); A.applyVolumes(); G.store.set(PREF_KEY, G.prefs); };
+  A.applyVolumes();
 
   // ---------- Instruments ----------
   // fm: ratio (mod:carrier), idx (mod depth), idxEnd, a/d/s/r envelope, wave for carrier

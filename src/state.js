@@ -14,7 +14,7 @@
       pages: {},          // notebook pages found: id -> true
       quests: {},         // id -> 'active' | 'done'
       stars: 0,
-      opts: { english: false, voice: true },
+      opts: { english: false },
     };
   };
 

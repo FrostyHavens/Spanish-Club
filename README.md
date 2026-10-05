@@ -28,6 +28,7 @@ On phones and tablets, on-screen buttons appear.
 - **Requests in pictures.** People who need something show it in a thought bubble (🍎🍎🍎 🍌🍌, a red ball, a letter going to the bakery). New errands appear as a picture card, and *Misiones* is all pictures. Doors have picture signs.
 - **Wordless start.** The game opens on a sunrise, and the controls are shown as pictures.
 - **Spoken Spanish.** Lines and words are read aloud with a North American voice when the device has one (Mexico first, then the US, then other Latin American voices). Press **C** to hear the current line again. *Opciones → Elegir voz* picks a different voice.
+- **Separate volumes.** *Opciones* has sliders (0–10) for **Música**, **Sonidos** and **Voz**. Use left/right to adjust; Voz at 0 turns speech off. They're saved on the device, separately from game saves. M still mutes everything.
 - **Repaso.** After the party, Profesora Luna offers a replayable review that focuses on words you've seen but not yet learned.
 
 ## Content (version 1)

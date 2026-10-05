@@ -387,7 +387,7 @@ G.store = {
   const A = G.audio = {
     ctx: null, master: null, musicGain: null, sfxGain: null, muted: false,
     song: null, songName: null, events: [], nextIdx: 0, startTime: 0, loopLen: 0, loopCount: 0,
-    musicVol: 0.55, sfxVol: 0.6,
+    musicVol: 0.56, sfxVol: 0.6,
   };
   A.unlock = function () {
     if (A.ctx) { if (A.ctx.state === 'suspended') A.ctx.resume(); return; }
@@ -404,7 +404,18 @@ G.store = {
     A.noise = buf;
     if (A.pending) { const p = A.pending; A.pending = null; A.play(p); }
   };
-  A.toggleMute = function () { A.muted = !A.muted; if (A.master) A.master.gain.value = A.muted ? 0 : 0.8; };
+  A.toggleMute = function () { A.muted = !A.muted; if (A.master) A.master.gain.value = A.muted ? 0 : 0.8; if (A.muted) try { speechSynthesis.cancel(); } catch (e) { } };
+
+  // ---------- Volume levels 0..10 (music, sound effects, voice), kept per device, not per save ----------
+  const PREF_KEY = 'spanishclub_prefs';
+  G.prefs = Object.assign({ music: 7, sfx: 7, voice: 10 }, G.store.get(PREF_KEY) || {});
+  A.applyVolumes = function () {
+    A.musicVol = G.prefs.music / 10 * 0.8; A.sfxVol = G.prefs.sfx / 10 * 0.85;
+    if (A.musicGain) A.musicGain.gain.value = A.musicVol;
+    if (A.sfxGain) A.sfxGain.gain.value = A.sfxVol;
+  };
+  A.setVolume = function (kind, level) { G.prefs[kind] = Math.max(0, Math.min(10, level)); A.applyVolumes(); G.store.set(PREF_KEY, G.prefs); };
+  A.applyVolumes();
 
   // ---------- Instruments ----------
   // fm: ratio (mod:carrier), idx (mod depth), idxEnd, a/d/s/r envelope, wave for carrier
@@ -1238,11 +1249,11 @@ G.store = {
   };
   G.speak = function (text) {
     try {
-      if (!G.state || !G.state.opts || !G.state.opts.voice || G.audio.muted) return;
+      if (!G.prefs.voice || G.audio.muted) return;
       const ss = window.speechSynthesis; if (!ss) return;
       ss.cancel();
       const clean = G.plain(text).replace(/[\u0001-\u0005«»]/g, '');
-      const u = new SpeechSynthesisUtterance(clean); u.lang = 'es-MX'; u.rate = 0.85;
+      const u = new SpeechSynthesisUtterance(clean); u.lang = 'es-MX'; u.rate = 0.85; u.volume = G.prefs.voice / 10;
       const v = G.currentVoice(); if (v) { u.voice = v; u.lang = v.lang.replace('_', '-'); }
       ss.speak(u);
     } catch (e) { }
@@ -5554,7 +5565,7 @@ G.store = {
       pages: {},          // notebook pages found: id -> true
       quests: {},         // id -> 'active' | 'done'
       stars: 0,
-      opts: { english: false, voice: true },
+      opts: { english: false },
     };
   };
 
@@ -5920,30 +5931,76 @@ G.store = {
   G.questLog = function () { const w = new G.Wait(); G.push(new QuestLog(w)); return w; };
 
   // ---------- Opciones (mostly for grown-ups) ----------
-  G.options = function* () {
-    let start = 0;
-    while (true) {
-      const o = G.state.opts, yes = v => v ? 'Sí' : 'No';
+  // Up/down picks a row; left/right moves a volume slider (0..10); A changes the other rows.
+  class Options {
+    constructor(w) { this.transparent = true; this.w = w; this.t = 0; this.i = 0; }
+    rows() {
       const voices = G.spanishVoices(), cur = G.currentVoice();
-      const r = yield G.menu([
-        { label: 'Voz en español', right: yes(o.voice), en: 'Read Spanish aloud' },
-        { label: 'Elegir voz', right: voices.length ? (voices.indexOf(cur) + 1) + '/' + voices.length : '-', disabled: !voices.length,
+      return [
+        { label: 'Música', vol: 'music', icon: 'music', en: 'Music volume' },
+        { label: 'Sonidos', vol: 'sfx', icon: 'sound', en: 'Sound effects volume' },
+        { label: 'Voz', vol: 'voice', icon: 'voice', en: 'Speaking volume (0 = no voice)' },
+        { label: 'Elegir voz', right: voices.length ? (voiceIndex(voices, cur) + 1) + '/' + voices.length : '-',
           en: cur ? 'Change the voice. Now: ' + cur.name + ' (' + cur.lang + ')' : 'No Spanish voice found on this device' },
-        { label: 'Música y sonido', right: yes(!G.audio.muted), en: 'Music and sound effects' },
-        { label: 'Inglés (padres)', right: yes(o.english), en: 'Show English translations (for parents and teachers)' },
-      ], { title: 'OPCIONES', start, w: 190 });
-      if (r.result < 0) return;
-      start = r.result;
-      if (r.result === 0) { o.voice = !o.voice; if (o.voice) G.speak('¡Hola! Hoy es tu primer día.'); else try { speechSynthesis.cancel(); } catch (e) { } }
-      else if (r.result === 1) {
-        const next = voices[(voices.indexOf(cur) + 1) % voices.length];
-        o.voiceName = next.name; o.voice = true;
-        G.speak('¡Hola! Hoy es tu primer día en el Club de Español.');
-      }
-      else if (r.result === 2) G.audio.toggleMute();
-      else o.english = !o.english;
+        { label: 'Inglés (padres)', right: G.state.opts.english ? 'Sí' : 'No', en: 'Show English translations (for parents and teachers)' },
+      ];
     }
-  };
+    sample(kind) {
+      if (kind === 'sfx') G.audio.sfx('coin');
+      else if (kind === 'voice') G.speak('¡Hola!');
+    }
+    update() {
+      this.t++;
+      const rows = this.rows(), r = rows[this.i];
+      const d = G.input.repDir(14, 5);
+      if (d === 'up' || d === 'down') { this.i = (this.i + (d === 'up' ? -1 : 1) + rows.length) % rows.length; G.audio.sfx('cursor'); }
+      if (r.vol && (d === 'left' || d === 'right')) {
+        const before = G.prefs[r.vol];
+        G.audio.setVolume(r.vol, before + (d === 'left' ? -1 : 1));
+        if (G.prefs[r.vol] !== before) this.sample(r.vol);
+      }
+      if (G.input.p('A')) {
+        if (this.i === 3) {
+          const voices = G.spanishVoices(), cur = G.currentVoice();
+          if (!voices.length) { G.audio.sfx('error'); return; }
+          G.state.opts.voiceName = voices[(voiceIndex(voices, cur) + 1) % voices.length].name;
+          if (!G.prefs.voice) G.audio.setVolume('voice', 7);
+          G.speak('¡Hola! Hoy es tu primer día en el Club de Español.');
+        } else if (this.i === 4) { G.state.opts.english = !G.state.opts.english; G.audio.sfx('ok'); }
+      }
+      if (G.input.p('B')) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); }
+    }
+    draw(ctx) {
+      const rows = this.rows(), W = 220, H = rows.length * 18 + 28, x = (G.W - W) / 2, y = 40;
+      G.win(ctx, x, y, W, H);
+      G.text(ctx, 'OPCIONES', x + 9, y + 8, '#f8e060');
+      rows.forEach((r, k) => {
+        const yy = y + 24 + k * 18, sel = k === this.i;
+        if (sel && (this.t >> 3) % 4 !== 3) G.text(ctx, '\u0002', x + 8, yy, '#f8e060');
+        if (r.icon) volIcon(ctx, r.icon, x + 18, yy - 1, r.vol && !G.prefs[r.vol]);
+        G.text(ctx, r.label, x + (r.icon ? 32 : 18), yy, sel ? '#f8e060' : '#ffffff');
+        if (r.vol) {
+          const v = G.prefs[r.vol], bx = x + 100;
+          if (sel) G.text(ctx, '<', bx - 8, yy, '#f8e060');
+          for (let s = 0; s < 10; s++) { ctx.fillStyle = s < v ? (sel ? '#f8d030' : '#c8d0f0') : '#303a78'; ctx.fillRect(bx + s * 9, yy + 6 - Math.floor(s / 2), 7, 2 + Math.floor(s / 2)); }
+          if (sel) G.text(ctx, '>', bx + 92, yy, '#f8e060');
+          G.textR(ctx, String(v), x + W - 10, yy, v ? '#ffffff' : '#7078a0');
+        } else G.textR(ctx, r.right, x + W - 10, yy, '#ffffff');
+      });
+      const cur = rows[this.i];
+      if (G.enVisible()) G.enBox(ctx, cur.en, y + H + 2, true);
+    }
+  }
+  // browsers may hand back new voice objects on each call, so match by name
+  const voiceIndex = (voices, cur) => cur ? voices.findIndex(v => v.name === cur.name) : -1;
+  // tiny speaker / note icons for the volume rows (crossed out at 0)
+  function volIcon(ctx, kind, x, y, off) {
+    ctx.fillStyle = off ? '#7078a0' : '#f8e060';
+    if (kind === 'music') { ctx.fillRect(x + 6, y, 1, 7); ctx.fillRect(x + 7, y, 3, 1); ctx.fillRect(x + 9, y, 1, 6); ctx.fillRect(x + 4, y + 6, 3, 2); ctx.fillRect(x + 7, y + 5, 3, 2); }
+    else { ctx.fillRect(x + 1, y + 2, 2, 4); ctx.fillRect(x + 3, y + 1, 1, 6); ctx.fillRect(x + 4, y, 1, 8); if (kind === 'voice') { ctx.fillRect(x + 7, y + 2, 1, 4); ctx.fillRect(x + 9, y + 1, 1, 6); } else { ctx.fillRect(x + 7, y + 3, 1, 2); } }
+    if (off) { ctx.fillStyle = '#e04040'; for (let i = 0; i < 9; i++) ctx.fillRect(x + i, y + 8 - i, 1, 1); }
+  }
+  G.options = function* () { const w = new G.Wait(); G.push(new Options(w)); yield w; };
 })();
 
 </script>

@@ -150,11 +150,11 @@
   };
   G.speak = function (text) {
     try {
-      if (!G.state || !G.state.opts || !G.state.opts.voice || G.audio.muted) return;
+      if (!G.prefs.voice || G.audio.muted) return;
       const ss = window.speechSynthesis; if (!ss) return;
       ss.cancel();
       const clean = G.plain(text).replace(/[\u0001-\u0005«»]/g, '');
-      const u = new SpeechSynthesisUtterance(clean); u.lang = 'es-MX'; u.rate = 0.85;
+      const u = new SpeechSynthesisUtterance(clean); u.lang = 'es-MX'; u.rate = 0.85; u.volume = G.prefs.voice / 10;
       const v = G.currentVoice(); if (v) { u.voice = v; u.lang = v.lang.replace('_', '-'); }
       ss.speak(u);
     } catch (e) { }
