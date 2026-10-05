@@ -59,9 +59,10 @@
       G.st.newGame();
       const sc = new Blank(); G.replace(sc);
       sc.tasks.add((function* () {
-        G.audio.play('story');
         G.fade.a = 0;
-        yield G.story.sunrise();
+        const r = yield G.creator();
+        if (!r.result) { G.toTitle(); return; }
+        G.state.look = r.result;
         const f = G.goto('casa', 4, 4, 'up');
         f.tasks.add((function* () { yield 40; f.locked = true; yield* G.story.mamaIntro(); f.locked = false; })());
       })());

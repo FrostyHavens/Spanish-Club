@@ -75,11 +75,27 @@
   };
   D.questOrder = ['saludos', 'mercado', 'pelota', 'carta', 'fiesta'];
 
-  // ---------- Player ----------
-  D.player = {
-    name: 'Alex',
-    map: { body: 'halfling', skin: '#f0c8a0', hair: '#5a3418', hairStyle: 'short', outfit: '#e05a30', trim: '#f8e060', eyes: '#3a2a20' },
-    portrait: { body: 'halfling', skin: '#f0c8a0', hair: '#5a3418', hairStyle: 'short', eyes: '#3a2a20', outfit: '#e05a30', trim: '#f8e060', age: 'young', face: 'round', bg: '#c06030' },
+  // ---------- Player (chosen in the character creator at the start of a new game) ----------
+  D.player = { name: 'Alex' };
+  D.looks = {
+    genders: ['nino', 'nina'],
+    skins: ['#f8d8c0', '#f0c8a0', '#d8a078', '#a87050', '#7a4a30'],
+    styles: ['short', 'spiky', 'curly', 'long', 'ponytail', 'braid'],
+    hairs: ['#201010', '#5a3418', '#a05a28', '#e0b050', '#c84020'],
+    outfits: ['#e05a30', '#3a7ad0', '#40a848', '#e060a0', '#8a50c8', '#f0c020'],
+  };
+  D.defaultLook = g => g === 'nina'
+    ? { gender: 'nina', skin: '#f0c8a0', style: 'ponytail', hair: '#5a3418', outfit: '#e060a0' }
+    : { gender: 'nino', skin: '#f0c8a0', style: 'short', hair: '#5a3418', outfit: '#e05a30' };
+  // map sprite + portrait specs for a look
+  D.playerSpec = function (look) {
+    look = look || D.defaultLook('nino');
+    const girl = look.gender === 'nina';
+    const base = { body: 'halfling', skin: look.skin, hair: look.hair, hairStyle: look.style, outfit: look.outfit, trim: '#f8f0d0', eyes: '#3a2a20' };
+    return {
+      map: base,
+      portrait: Object.assign({}, base, { age: 'young', face: 'round', lashes: girl, bg: '#' + [1, 3, 5].map(i => Math.round(parseInt(look.outfit.substr(i, 2), 16) * 0.55).toString(16).padStart(2, '0')).join('') }),
+    };
   };
 
   // ---------- Townsfolk (map sprite + dialogue portrait) ----------

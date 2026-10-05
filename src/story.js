@@ -1,4 +1,4 @@
-// ===== Story scenes: wordless sunrise, Mamá's first lesson, the club party, the diploma (original) =====
+// ===== Story scenes: Mamá's first lesson, the club party, the diploma (original) =====
 'use strict';
 (function () {
   const F = () => G.state.flags, S = G.st;
@@ -6,24 +6,6 @@
   const ST = G.story = {};
   function* say(who, ...pages) { yield G.say(pages, { portrait: G.portraitOf(who), name: G.nameOf(who) }); }
   const words = (...ids) => ids.map(id => ({ word: id }));
-
-  // ---------- Opening: sunrise over Villa Sol, no words ----------
-  class Sunrise {
-    constructor(w) { this.w = w; this.t = 0; }
-    update() { this.t++; if (this.t > 300 || (this.t > 20 && (G.input.p('A') || G.input.p('B')))) { G.pop(); this.w.resolve(); } }
-    draw(ctx) {
-      const k = Math.min(1, this.t / 220);
-      G.drawBattleBG(ctx, 'town', this.t);
-      // the sun climbs from behind the rooftops
-      const sy = 120 - k * 90;
-      ctx.fillStyle = 'rgba(255,220,120,0.35)'; ctx.beginPath(); ctx.arc(250, sy, 26, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#f8e060'; ctx.beginPath(); ctx.arc(250, sy, 16, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = 'rgba(20,10,60,' + (0.75 * (1 - k)).toFixed(3) + ')'; ctx.fillRect(0, 0, G.W, G.H);
-      ctx.fillStyle = 'rgba(255,140,60,' + (0.25 * Math.sin(k * Math.PI)).toFixed(3) + ')'; ctx.fillRect(0, 0, G.W, G.H);
-      if (this.t > 160) { ctx.globalAlpha = Math.min(1, (this.t - 160) / 40); G.bigText(ctx, 'Villa Sol', G.W / 2, 40, 3, '#fff8e0', '#702010'); ctx.globalAlpha = 1; }
-    }
-  }
-  ST.sunrise = function () { const w = new G.Wait(); G.push(new Sunrise(w)); return w; };
 
   // ---------- Button hints, in pictures ----------
   class KeyHint {
@@ -95,6 +77,7 @@
       G.bigText(ctx, 'DIPLOMA', G.W / 2, y + 18, 2, '#a05020', null);
       G.textC(ctx, 'Club de Español', G.W / 2, y + 34, '#604020', null);
       G.bigText(ctx, G.data.player.name, G.W / 2, y + 58, 2, '#203080', null);
+      ctx.fillStyle = '#5a3810'; ctx.fillRect(x + 15, y + 15, 54, 54); G.drawPortrait(ctx, G.st.playerSpec().portrait, x + 16, y + 16, this.t);
       G.drawIcon(ctx, 'book', G.W / 2 - 70, y + 76); G.text(ctx, String(G.st.learnedCount()), G.W / 2 - 42, y + 82, '#604020', null);
       G.text(ctx, '\u0005 ' + G.state.stars, G.W / 2 + 26, y + 82, '#c08010', null);
       ['saludos', 'mercado', 'pelota', 'carta', 'fiesta'].forEach((id, k) => G.drawBadge(ctx, id, G.W / 2 - 92 + k * 40, y + 108, this.t + k * 15));

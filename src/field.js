@@ -9,7 +9,7 @@
       this.mapId = mapId; this.def = G.maps[mapId];
       const rows = this.def.rows;
       this.map = { w: Math.max(...rows.map(r => r.length)), h: rows.length, rows, get(x, y) { if (y < 0 || y >= this.h || x < 0 || x >= this.w) return ' '; return this.rows[y][x] || ' '; } };
-      this.player = { x, y, dir: dir || 'down', ox: 0, oy: 0, moving: false, spec: D().player.map };
+      this.player = { x, y, dir: dir || 'down', ox: 0, oy: 0, moving: false, spec: G.st.playerSpec().map };
       this.npcs = [];
       (this.def.npcs || []).forEach(n => { if (!n.cond || n.cond()) this.addNpc(n); });
       this.t = 0; this.tasks = new G.Tasks(); this.cam = { x: 0, y: 0 };
@@ -223,7 +223,7 @@
   G.portraitOf = function (n) {
     if (!n) return null;
     if (n.portrait) return n.portrait;
-    if (typeof n === 'string') return n === 'player' ? D().player.portrait : D().npcs[n] ? D().npcs[n].portrait : null;
+    if (typeof n === 'string') return n === 'player' ? G.st.playerSpec().portrait : D().npcs[n] ? D().npcs[n].portrait : null;
     if (n.npc && D().npcs[n.npc]) return D().npcs[n.npc].portrait;
     return null;
   };
