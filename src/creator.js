@@ -34,6 +34,11 @@
     }
     update() {
       this.t++; this.spin++;
+      if (this.naming && this.naming.done()) { // back from the name screen: a name starts the game, null returns here
+        const r = this.naming.result; this.naming = null;
+        if (r != null) { this.name = r; G.pop(); this.w.resolve({ look: this.look, name: r }); }
+        return;
+      }
       const d = G.input.repDir(14, 6), row = ROWS[this.row];
       if (d === 'up' || d === 'down') { this.row = (this.row + (d === 'up' ? -1 : 1) + ROWS.length) % ROWS.length; G.audio.sfx('cursor'); }
       if (d === 'left' || d === 'right') {
@@ -44,7 +49,7 @@
       if (G.input.p('A')) {
         if (row !== 'done') { this.row = ROWS.length - 1; this.btn = 1; G.audio.sfx('cursor'); }
         else if (this.btn === 0) this.random();
-        else { G.audio.sfx('ok'); G.pop(); this.w.resolve(this.look); }
+        else { G.audio.sfx('ok'); this.naming = G.nameEntry(this.look, this.name); }
       }
       if (G.input.p('B')) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(null); }
     }
@@ -61,7 +66,7 @@
       ctx.imageSmoothingEnabled = false; ctx.drawImage(img, 30, 30, 72, 72);
       G.win(ctx, 36, 128, 60, 60, { alpha: 1 });
       G.drawPortrait(ctx, spec.portrait, 40, 132, this.t);
-      G.textC(ctx, G.data.player.name, 66, 196, '#f8e060');
+      G.textC(ctx, this.name || '?', 66, 196, '#f8e060');
 
       // option rows
       const x0 = 132, w = G.W - x0 - 10;
@@ -108,5 +113,75 @@
       });
     }
   }
+  // ---------- Name entry: type on a keyboard, or pick letters from the grid (touch / arrow keys) ----------
+  const GRID = [
+    'ABCDEFGHIJ'.split(''), 'KLMNÑOPQRS'.split(''), 'TUVWXYZÁÉÍ'.split(''),
+    ['Ó', 'Ú', '-', '\'', 'SP', 'DEL', 'OK'],
+  ];
+  const MAX = 10;
+  class NameEntry {
+    constructor(look, name, w) {
+      this.transparent = true; this.look = look; this.w = w; this.t = 0; this.r = 0; this.c = 0;
+      this.name = name || '';
+      G.textInput = key => this.key(key);
+    }
+    done(v) { G.textInput = null; G.pop(); this.w.resolve(v); }
+    add(ch) {
+      if (this.name.length >= MAX) { G.audio.sfx('error'); return; }
+      // first letter (and the first after a space or dash) is a capital, the rest lowercase
+      const cap = !this.name || /[ -]$/.test(this.name);
+      this.name += cap ? ch.toUpperCase() : ch.toLowerCase();
+      G.audio.sfx('cursor');
+    }
+    back() { if (this.name) { this.name = this.name.slice(0, -1); G.audio.sfx('cancel'); } }
+    ok() { const n = this.name.trim(); G.audio.sfx('ok'); this.done(n || G.data.player.name); }
+    key(k) { // physical keyboard
+      if (k === 'Enter') this.ok();
+      else if (k === 'Backspace') this.back();
+      else if (k === ' ') { if (this.name && !/ $/.test(this.name)) this.add(' '); }
+      else if (/^[\p{L}'-]$/u.test(k)) this.add(k);
+    }
+    press(cell) {
+      if (cell === 'OK') this.ok();
+      else if (cell === 'DEL') this.back();
+      else if (cell === 'SP') { if (this.name && !/ $/.test(this.name)) this.add(' '); }
+      else this.add(cell);
+    }
+    update() {
+      this.t++;
+      const d = G.input.repDir(14, 5);
+      if (d === 'up' || d === 'down') { this.r = (this.r + (d === 'up' ? -1 : 1) + GRID.length) % GRID.length; this.c = Math.min(this.c, GRID[this.r].length - 1); G.audio.sfx('cursor'); }
+      if (d === 'left' || d === 'right') { const n = GRID[this.r].length; this.c = (this.c + (d === 'left' ? -1 : 1) + n) % n; G.audio.sfx('cursor'); }
+      if (G.input.p('A') && this.t > 5) this.press(GRID[this.r][this.c]);
+      if (G.input.p('B')) { if (this.name) this.back(); else { G.audio.sfx('cancel'); this.done(null); } }
+    }
+    draw(ctx) {
+      const W = 268, H = 196, x = (G.W - W) / 2, y = 14;
+      G.win(ctx, x, y, W, H);
+      const spec = G.data.playerSpec(this.look);
+      G.win(ctx, x + 10, y + 8, 60, 60, { alpha: 1 });
+      G.drawPortrait(ctx, spec.portrait, x + 14, y + 12, this.t);
+      G.text(ctx, '¿Cómo te llamas?', x + 82, y + 14, '#f8e060');
+      if (G.enVisible()) G.text(ctx, 'What\'s your name?', x + 82, y + 26, '#f8e8b0');
+      // the name field
+      ctx.fillStyle = '#000830'; ctx.fillRect(x + 82, y + 38, 170, 22);
+      ctx.fillStyle = '#8898e0'; ctx.fillRect(x + 82, y + 59, 170, 1);
+      G.bigText(ctx, this.name, x + 84 + G.textWidth(this.name), y + 49, 2, '#ffffff');
+      if ((this.t >> 4) % 2 === 0 && this.name.length < MAX) { ctx.fillStyle = '#f8e060'; ctx.fillRect(x + 86 + G.textWidth(this.name) * 2, y + 42, 2, 15); }
+      // letter grid
+      GRID.forEach((row, r) => row.forEach((cell, c) => {
+        const wide = cell.length > 1, cx = x + 14 + (r === 3 ? [0, 24, 48, 72, 96, 140, 196][c] : c * 24), cy = y + 80 + r * 26;
+        const cw = wide ? (cell === 'SP' ? 40 : 52) : 20, sel = r === this.r && c === this.c;
+        G.win(ctx, cx, cy, cw, 22, sel ? { fill1: '#3a56c8', fill2: '#1c2c8c' } : { alpha: 0.75 });
+        const col = sel ? '#f8e060' : '#ffffff';
+        if (cell === 'SP') { ctx.fillStyle = col; ctx.fillRect(cx + 10, cy + 13, 20, 2); ctx.fillRect(cx + 10, cy + 10, 1, 4); ctx.fillRect(cx + 29, cy + 10, 1, 4); }
+        else if (cell === 'DEL') { G.textC(ctx, '<', cx + 14, cy + 7, col); ctx.fillStyle = col; ctx.fillRect(cx + 18, cy + 10, 16, 2); }
+        else if (cell === 'OK') G.drawIcon16(ctx, 'si', cx + 18, cy + 3);
+        else G.textC(ctx, cell, cx + 10, cy + 7, col);
+      }));
+    }
+  }
+  G.nameEntry = function (look, name) { const w = new G.Wait(); G.push(new NameEntry(look, name, w)); return w; };
+
   G.creator = function () { const w = new G.Wait(); G.push(new Creator(w)); return w; };
 })();

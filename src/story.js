@@ -28,14 +28,14 @@
 
   // ---------- Mamá: the very first words ----------
   ST.mamaIntro = function* () {
-    yield* say('mama', T('¡[hola], Alex!', 'Hello, Alex!'));
+    yield* say('mama', T('¡[hola], {name}! ¡Qué guap{o/a}!', 'Hello, {name}! Don\'t you look nice!'));
     yield* G.ask({ prompt: '¡[hola]!', en: 'Mom says hello. Say it back!', layout: 'cards', who: 'mama', choices: words('manzana', 'hola', 'pelota'), answer: 1, learn: 'hola' });
     yield* G.ask({ prompt: '¡[buenosdias]!', en: 'Good morning! (the sun is up)', layout: 'cards', who: 'mama', choices: words('buenosdias', 'uvas', 'carta'), answer: 0, learn: 'buenosdias' });
     yield* say('mama', T('¡Para ti!', 'For you! (a notebook)'));
     yield* G.findPage('saludos');
     yield ST.keyHint();
     yield* say('mama', T('La [escuela]. ¡Vamos!', 'The school. Off you go!'));
-    yield* G.ask({ prompt: '¡[adios], Alex!', en: 'Goodbye, Alex!', layout: 'list', who: 'mama', choices: words('hola', 'adios', 'gracias'), answer: 1, learn: 'adios' });
+    yield* G.ask({ prompt: '¡[adios], {name}!', en: 'Goodbye, {name}!', layout: 'list', who: 'mama', choices: words('hola', 'adios', 'gracias'), answer: 1, learn: 'adios' });
     F().intro = true;
   };
 
@@ -53,9 +53,9 @@
 
   // ---------- La fiesta: a review game, then the diploma ----------
   ST.fiesta = function* () {
-    yield* say('luna', T('¡Alex! ¡Muy bien! ¡Fiesta!', 'Alex! Well done! Party time!'), T('¿...? ¡[uno], [dos], [tres], [cuatro], [cinco]!', 'A game first: five questions!'));
+    yield* say('luna', T('¡{name}! ¡Muy bien! ¡Fiesta!', '{name}! Well done! Party time!'), T('¿List{o/a}? ¡[uno], [dos], [tres], [cuatro], [cinco]!', 'Ready? A game first: five questions!'));
     yield* ST.review(5);
-    yield* say('luna', T('¡Bravo, Alex!', 'Bravo, Alex!'));
+    yield* say('luna', T('¡Bravo, {name}!', 'Bravo, {name}!'));
     S.finishQuest('fiesta');
     yield G.badge('fiesta');
     G.audio.play('victory');
@@ -76,7 +76,7 @@
       ctx.strokeStyle = '#c09040'; ctx.strokeRect(x + 4.5, y + 4.5, w - 9, h - 9);
       G.bigText(ctx, 'DIPLOMA', G.W / 2, y + 18, 2, '#a05020', null);
       G.textC(ctx, 'Club de Español', G.W / 2, y + 34, '#604020', null);
-      G.bigText(ctx, G.data.player.name, G.W / 2, y + 58, 2, '#203080', null);
+      G.bigText(ctx, G.st.playerName(), G.W / 2, y + 58, 2, '#203080', null);
       ctx.fillStyle = '#5a3810'; ctx.fillRect(x + 15, y + 15, 54, 54); G.drawPortrait(ctx, G.st.playerSpec().portrait, x + 16, y + 16, this.t);
       G.drawIcon(ctx, 'book', G.W / 2 - 70, y + 76); G.text(ctx, String(G.st.learnedCount()), G.W / 2 - 42, y + 82, '#604020', null);
       G.text(ctx, '\u0005 ' + G.state.stars, G.W / 2 + 26, y + 82, '#c08010', null);

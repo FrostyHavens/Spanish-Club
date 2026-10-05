@@ -69,11 +69,11 @@
   // ---------- Errand 1: Saludos (recall: these words were met at home and at school) ----------
   function* greet(who) {
     if (!S.active('saludos') || F()['sal_' + who]) {
-      yield* say(who, { gomez: T('¡[hola], Alex!', 'Hi, Alex!'), lucia: T('¡[hola]! ¿[comoestas]?', 'Hi! How are you?'), nico: T('¡[hola]! ¡Al [parque]!', 'Hi! To the park!') }[who]);
+      yield* say(who, { gomez: T('¡[hola], {name}!', 'Hi, {name}!'), lucia: T('¡[hola]! ¿[comoestas]?', 'Hi! How are you?'), nico: T('¡[hola]! ¡Al [parque]!', 'Hi! To the park!') }[who]);
       return;
     }
     if (who === 'gomez') {
-      yield* ask('gomez', '¡[buenosdias], Alex!', 'Good morning, Alex!', words('adios', 'buenosdias', 'no'), 1, 'buenosdias');
+      yield* ask('gomez', '¡[buenosdias], {name}!', 'Good morning, {name}!', words('adios', 'buenosdias', 'no'), 1, 'buenosdias');
     } else if (who === 'lucia') {
       yield* ask('lucia', '¡[hola]! ¿[comoestas]?', 'Hi! How are you?', words('bien', 'adios', 'gracias'), 0, ['comoestas', 'bien']);
       yield* say('lucia', T('¡[bien]!', 'Good!'));
@@ -109,13 +109,13 @@
     }
     yield* ask('pepe', 'Tú: [tres] [manzana:manzanas] y [dos] [platano:plátanos]...', 'You: three apples and two bananas...', words('no', 'porfavor', 'adios'), 1, 'porfavor');
     yield* ask('pepe', '¡Aquí tienes!', 'Here you go!', words('gracias', 'hola', 'no'), 0, 'gracias', { show: 'manzana' });
-    yield* say('pepe', T('¡De nada! ¡Y [uvas] para ti! ¡[adios]!', 'You\'re welcome! And grapes for you! Goodbye!'));
+    yield* say('pepe', T('¡De nada, amig{o/a}! ¡Y [uvas] para ti! ¡[adios]!', 'You\'re welcome, friend! And grapes for you! Goodbye!'));
     F().compra = true;
   }
   function* rosaTalk() {
     if (!townOpen()) { yield* say('rosa', T('¡[hola]! Mi [casa].', 'Hello! My house.')); return; }
     if (!S.quest('mercado')) {
-      yield* say('rosa', T('¡[hola], Alex! Mi [casa].', 'Hello, Alex! My house.'),
+      yield* say('rosa', T('¡[hola], {name}! Mi [casa].', 'Hello, {name}! My house.'),
         T('[tres] [manzana:manzanas] y [dos] [platano:plátanos], ¿[porfavor]?', 'Three apples and two bananas, please?'));
       yield* newQuest('mercado');
       return;
@@ -125,13 +125,13 @@
     yield* say('rosa', T('¡La fruta!', 'The fruit!'));
     const c = G.wordChoices('dos', G.data.numberWords, 3, { text: true });
     yield* G.ask({ prompt: '¿Cuántos [platano:plátanos]?', en: 'How many bananas?', show: 'platano', choices: c.choices, answer: c.answer, layout: 'list', learn: 'dos', who: 'rosa' });
-    yield* say('rosa', T('¡[si]! [dos]. ¡[gracias], Alex!', 'Yes! Two. Thank you, Alex!'));
+    yield* say('rosa', T('¡[si]! [dos]. ¡Qué list{o/a}! ¡[gracias], {name}!', 'Yes! Two. How clever! Thank you, {name}!'));
     yield* finishQuest('mercado');
   }
 
   // ---------- Errand 3: La pelota roja (colors, through sí/no) ----------
   function* sofiaTalk() {
-    if (!townOpen()) { yield* say('sofia', T('¡[hola]!', 'Hi!')); return; }
+    if (!townOpen()) { yield* say('sofia', T('¡[hola]! ¿Eres nuev{o/a}?', 'Hi! Are you new?')); return; }
     if (!S.quest('pelota')) {
       yield* say('sofia', T('¡Ay! Mi [pelota]... Mi [pelota] [rojo:roja].', 'Oh no! My ball... My red ball.'));
       yield* newQuest('pelota');
@@ -164,11 +164,11 @@
       yield* newQuest('carta');
       return;
     }
-    if (S.done('carta')) { yield* say('tomas', T('¡[gracias], Alex!', 'Thanks, Alex!')); return; }
+    if (S.done('carta')) { yield* say('tomas', T('¡[gracias], {name}!', 'Thanks, {name}!')); return; }
     if (!F().cartaDada) { yield* say('tomas', T('La [carta]: ¡la [panaderia]!', 'The letter: the bakery!')); return; }
     const c = G.wordChoices('panaderia', ['panaderia', 'biblioteca', 'parque'], 3);
     yield* G.ask({ prompt: '¿La [carta]?', en: 'The letter? Where did it go?', show: 'carta', choices: c.choices, answer: c.answer, layout: 'cards', learn: ['panaderia', 'carta'], who: 'tomas' });
-    yield* say('tomas', T('¡[si]! ¡[gracias]!', 'Yes! Thank you!'));
+    yield* say('tomas', T('¡[si]! ¡Eres un{/a} gran carter{o/a}! ¡[gracias]!', 'Yes! You\'re a great mail carrier! Thank you!'));
     yield* finishQuest('carta');
   }
 
@@ -182,14 +182,14 @@
     exits: [Object.assign(exitAt('casa', 'casaDoor'), {
       run: function* () {
         if (F().intro) return true;
-        yield* say('mama', T('¡Alex!', 'Alex!')); G.field.player.dir = 'up'; return false;
+        yield* say('mama', T('¡{name}!', '{name}!')); G.field.player.dir = 'up'; return false;
       } })],
     npcs: [
       { id: 'mama', npc: 'mama', x: P('casa', 'mama')[0], y: P('casa', 'mama')[1], dir: 'down', fixed: true,
         alert: () => !F().intro,
         talk: function* () {
           if (!F().intro) { yield* G.story.mamaIntro(); return; }
-          if (S.done('fiesta')) yield* say('mama', T('¡Alex! ¡Muy bien!', 'Alex! Well done!'));
+          if (S.done('fiesta')) yield* say('mama', T('¡{name}! ¡Muy bien!', '{name}! Well done!'));
           else yield* say('mama', T('La [escuela]. ¡Vamos!', 'The school. Off you go!'));
         } },
     ],
@@ -204,13 +204,13 @@
         alert: () => !S.quest('saludos') || (S.active('saludos') && greeted() === 3) || (allBadges() && !S.done('fiesta')),
         talk: function* () { yield* lunaTalk(); } },
       { id: 'kid1', npc: 'nico', x: 3, y: 5, dir: 'up', cond: () => S.done('fiesta'), talk: [T('¡Fiesta!', 'Party!')] },
-      { id: 'kid2', npc: 'lucia', x: 9, y: 5, dir: 'up', cond: () => S.done('fiesta'), talk: [T('¡Muy bien, Alex!', 'Well done, Alex!')] },
+      { id: 'kid2', npc: 'lucia', x: 9, y: 5, dir: 'up', cond: () => S.done('fiesta'), talk: [T('¡Muy bien, {name}!', 'Well done, {name}!')] },
       { id: 'kid3', npc: 'sofia', x: 9, y: 7, dir: 'up', cond: () => S.done('fiesta'), talk: [T('¡Mi [pelota] [rojo:roja]!', 'My red ball!')] },
     ],
   };
   function* lunaTalk() {
     if (!S.quest('saludos')) {
-      yield* say('luna', T('¡[hola]! Soy Luna. ¡La [escuela]!', 'Hello! I\'m Luna. The school!'));
+      yield* say('luna', T('¡[hola]! Soy Luna. ¡Bienvenid{o/a} a la [escuela]!', 'Hello! I\'m Luna. Welcome to the school!'));
       yield* ask('luna', '¿[comoestas]?', 'How are you?', words('manzana', 'bien', 'adios'), 1, ['comoestas', 'bien']);
       yield* say('luna', T('¡[bien]!', 'Good!'));
       yield* ask('luna', '¡Para ti!', 'For you! (she gives you a gold star)', words('gracias', 'no', 'hola'), 0, 'gracias', { show: 'sol' });
@@ -220,7 +220,7 @@
     }
     if (S.active('saludos')) {
       if (greeted() < 3) { yield* say('luna', T('[hola]: [uno], [dos], [tres] amigos.', 'Hello: one, two, three friends.')); return; }
-      yield* say('luna', T('¡[tres]! ¡Muy bien!', 'Three! Very good!'));
+      yield* say('luna', T('¡[tres]! ¡Muy bien! ¡Eres muy simpátic{o/a}!', 'Three! Very good! You\'re very friendly!'));
       yield* finishQuest('saludos');
       return;
     }
@@ -228,8 +228,8 @@
     if (!S.done('fiesta')) { yield* G.story.fiesta(); return; }
     // after the party: a replayable review that fills in the notebook
     const left = Object.keys(G.data.words).filter(id => !S.knows(id)).length;
-    if (!left) { yield* say('luna', T('¡[hola], Alex! ¡Todo el cuaderno!', 'Hi, Alex! You learned the whole notebook!')); return; }
-    yield* say('luna', T('¡[hola], Alex!', 'Hi, Alex!'));
+    if (!left) { yield* say('luna', T('¡[hola], {name}! ¡Todo el cuaderno!', 'Hi, {name}! You learned the whole notebook!')); return; }
+    yield* say('luna', T('¡[hola], {name}!', 'Hi, {name}!'));
     const r = yield G.choose({ prompt: '¿Repaso?', en: 'Review some words?', show: 'pagina', layout: 'cards', choices: [{ word: 'si' }, { word: 'no' }], cancel: true });
     if (r.result !== 0) { yield* say('luna', T('¡[adios]!', 'Goodbye!')); return; }
     yield* G.story.review(5);

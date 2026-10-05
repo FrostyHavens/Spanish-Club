@@ -54,6 +54,10 @@ const KEYMAP = {
   KeyM: 'M'
 };
 window.addEventListener('keydown', e => {
+  // while typing a name, printable keys, Backspace and Enter go to the text field instead of the buttons
+  if (G.textInput && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Enter')) {
+    e.preventDefault(); G.audio && G.audio.unlock(); G.textInput(e.key); return;
+  }
   const k = KEYMAP[e.code]; if (!k) return;
   e.preventDefault();
   if (!G.keys[k]) { G.pressed[k] = true; G.repeatT[k] = 0; }
@@ -1114,6 +1118,15 @@ G.store = {
     lines.forEach((l, i) => G.text(ctx, l, 22, yy + 6 + i * 11, '#f8e8b0'));
   };
 
+  // ---------- Player name & gendered Spanish ----------
+  // {name} becomes the player's name; {boy form/girl form} picks by the chosen character:
+  // '¡Bienvenid{o/a}!' -> '¡Bienvenido!' or '¡Bienvenida!'
+  G.fill = function (s) {
+    if (s == null || !G.st) return s;
+    const girl = G.st.isGirl();
+    return String(s).replace(/\{name\}/g, G.st.playerName()).replace(/\{([^{}\/]*)\/([^{}]*)\}/g, (m, a, b) => girl ? b : a);
+  };
+
   // ---------- Rich text: words grow from pictures ----------
   // In dialogue, [id] or [id:shown form] marks a vocabulary word. A word the player hasn't learned yet
   // is drawn as its picture plus the word in blue; once learned, the picture drops away and the word is gold.
@@ -1175,7 +1188,7 @@ G.store = {
   class TextBox {
     constructor(pages, opts, w) {
       this.transparent = true; this.opts = opts || {}; this.w = w;
-      this.pages = (Array.isArray(pages) ? pages : [pages]).map(p => typeof p === 'object' ? { t: String(p.t), en: p.en } : { t: String(p) });
+      this.pages = (Array.isArray(pages) ? pages : [pages]).map(p => typeof p === 'object' ? { t: G.fill(String(p.t)), en: G.fill(p.en) } : { t: G.fill(String(p)) });
       this.pi = 0; this.setPage();
     }
     setPage() {
@@ -1252,7 +1265,7 @@ G.store = {
       if (!G.prefs.voice || G.audio.muted) return;
       const ss = window.speechSynthesis; if (!ss) return;
       ss.cancel();
-      const clean = G.plain(text).replace(/[\u0001-\u0005«»]/g, '');
+      const clean = G.plain(G.fill(text)).replace(/[\u0001-\u0005«»]/g, '');
       const u = new SpeechSynthesisUtterance(clean); u.lang = 'es-MX'; u.rate = 0.85; u.volume = G.prefs.voice / 10;
       const v = G.currentVoice(); if (v) { u.voice = v; u.lang = v.lang.replace('_', '-'); }
       ss.speak(u);
@@ -5583,10 +5596,13 @@ G.store = {
       stars: 0,
       opts: { english: false },
       look: null,         // the player's avatar, from the character creator
+      name: null,         // the player's name, typed after the creator
     };
   };
 
   S.playerSpec = () => D().playerSpec(G.state && G.state.look);
+  S.playerName = () => (G.state && G.state.name) || D().player.name;
+  S.isGirl = () => !!(G.state && G.state.look && G.state.look.gender === 'nina');
 
   // ---------- Words: unseen -> seen (met in a sentence or on a page) -> learned (used correctly) ----------
   const rec = id => G.state.words[id] || (G.state.words[id] = { learned: false, right: 0, wrong: 0 });
@@ -5686,6 +5702,7 @@ G.store = {
   }
   class Choice {
     constructor(opts, w) {
+      opts = Object.assign({}, opts, { prompt: G.fill(opts.prompt), en: G.fill(opts.en), choices: opts.choices.map(c => c.label ? Object.assign(c, { label: G.fill(c.label) }) : c) });
       this.transparent = true; this.o = opts; this.w = w; this.t = 0; this.i = 0; this.shake = 0;
       this.ch = opts.choices; this.cards = opts.layout === 'cards';
       while (this.ch[this.i] && this.ch[this.i].off) this.i++;
@@ -5841,7 +5858,7 @@ G.store = {
   G.goalWidth = goal => goal.reduce((w, g) => w + (g === '>' ? 18 : g[1] > 1 ? g[1] * 12 + 8 : 18), 0);
 
   G.nameOf = function (who) {
-    if (who === 'player') return D().player.name;
+    if (who === 'player') return S().playerName();
     return D().npcs[who] ? D().npcs[who].name : null;
   };
 })();
@@ -5884,6 +5901,11 @@ G.store = {
     }
     update() {
       this.t++; this.spin++;
+      if (this.naming && this.naming.done()) { // back from the name screen: a name starts the game, null returns here
+        const r = this.naming.result; this.naming = null;
+        if (r != null) { this.name = r; G.pop(); this.w.resolve({ look: this.look, name: r }); }
+        return;
+      }
       const d = G.input.repDir(14, 6), row = ROWS[this.row];
       if (d === 'up' || d === 'down') { this.row = (this.row + (d === 'up' ? -1 : 1) + ROWS.length) % ROWS.length; G.audio.sfx('cursor'); }
       if (d === 'left' || d === 'right') {
@@ -5894,7 +5916,7 @@ G.store = {
       if (G.input.p('A')) {
         if (row !== 'done') { this.row = ROWS.length - 1; this.btn = 1; G.audio.sfx('cursor'); }
         else if (this.btn === 0) this.random();
-        else { G.audio.sfx('ok'); G.pop(); this.w.resolve(this.look); }
+        else { G.audio.sfx('ok'); this.naming = G.nameEntry(this.look, this.name); }
       }
       if (G.input.p('B')) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(null); }
     }
@@ -5911,7 +5933,7 @@ G.store = {
       ctx.imageSmoothingEnabled = false; ctx.drawImage(img, 30, 30, 72, 72);
       G.win(ctx, 36, 128, 60, 60, { alpha: 1 });
       G.drawPortrait(ctx, spec.portrait, 40, 132, this.t);
-      G.textC(ctx, G.data.player.name, 66, 196, '#f8e060');
+      G.textC(ctx, this.name || '?', 66, 196, '#f8e060');
 
       // option rows
       const x0 = 132, w = G.W - x0 - 10;
@@ -5958,6 +5980,76 @@ G.store = {
       });
     }
   }
+  // ---------- Name entry: type on a keyboard, or pick letters from the grid (touch / arrow keys) ----------
+  const GRID = [
+    'ABCDEFGHIJ'.split(''), 'KLMNÑOPQRS'.split(''), 'TUVWXYZÁÉÍ'.split(''),
+    ['Ó', 'Ú', '-', '\'', 'SP', 'DEL', 'OK'],
+  ];
+  const MAX = 10;
+  class NameEntry {
+    constructor(look, name, w) {
+      this.transparent = true; this.look = look; this.w = w; this.t = 0; this.r = 0; this.c = 0;
+      this.name = name || '';
+      G.textInput = key => this.key(key);
+    }
+    done(v) { G.textInput = null; G.pop(); this.w.resolve(v); }
+    add(ch) {
+      if (this.name.length >= MAX) { G.audio.sfx('error'); return; }
+      // first letter (and the first after a space or dash) is a capital, the rest lowercase
+      const cap = !this.name || /[ -]$/.test(this.name);
+      this.name += cap ? ch.toUpperCase() : ch.toLowerCase();
+      G.audio.sfx('cursor');
+    }
+    back() { if (this.name) { this.name = this.name.slice(0, -1); G.audio.sfx('cancel'); } }
+    ok() { const n = this.name.trim(); G.audio.sfx('ok'); this.done(n || G.data.player.name); }
+    key(k) { // physical keyboard
+      if (k === 'Enter') this.ok();
+      else if (k === 'Backspace') this.back();
+      else if (k === ' ') { if (this.name && !/ $/.test(this.name)) this.add(' '); }
+      else if (/^[\p{L}'-]$/u.test(k)) this.add(k);
+    }
+    press(cell) {
+      if (cell === 'OK') this.ok();
+      else if (cell === 'DEL') this.back();
+      else if (cell === 'SP') { if (this.name && !/ $/.test(this.name)) this.add(' '); }
+      else this.add(cell);
+    }
+    update() {
+      this.t++;
+      const d = G.input.repDir(14, 5);
+      if (d === 'up' || d === 'down') { this.r = (this.r + (d === 'up' ? -1 : 1) + GRID.length) % GRID.length; this.c = Math.min(this.c, GRID[this.r].length - 1); G.audio.sfx('cursor'); }
+      if (d === 'left' || d === 'right') { const n = GRID[this.r].length; this.c = (this.c + (d === 'left' ? -1 : 1) + n) % n; G.audio.sfx('cursor'); }
+      if (G.input.p('A') && this.t > 5) this.press(GRID[this.r][this.c]);
+      if (G.input.p('B')) { if (this.name) this.back(); else { G.audio.sfx('cancel'); this.done(null); } }
+    }
+    draw(ctx) {
+      const W = 268, H = 196, x = (G.W - W) / 2, y = 14;
+      G.win(ctx, x, y, W, H);
+      const spec = G.data.playerSpec(this.look);
+      G.win(ctx, x + 10, y + 8, 60, 60, { alpha: 1 });
+      G.drawPortrait(ctx, spec.portrait, x + 14, y + 12, this.t);
+      G.text(ctx, '¿Cómo te llamas?', x + 82, y + 14, '#f8e060');
+      if (G.enVisible()) G.text(ctx, 'What\'s your name?', x + 82, y + 26, '#f8e8b0');
+      // the name field
+      ctx.fillStyle = '#000830'; ctx.fillRect(x + 82, y + 38, 170, 22);
+      ctx.fillStyle = '#8898e0'; ctx.fillRect(x + 82, y + 59, 170, 1);
+      G.bigText(ctx, this.name, x + 84 + G.textWidth(this.name), y + 49, 2, '#ffffff');
+      if ((this.t >> 4) % 2 === 0 && this.name.length < MAX) { ctx.fillStyle = '#f8e060'; ctx.fillRect(x + 86 + G.textWidth(this.name) * 2, y + 42, 2, 15); }
+      // letter grid
+      GRID.forEach((row, r) => row.forEach((cell, c) => {
+        const wide = cell.length > 1, cx = x + 14 + (r === 3 ? [0, 24, 48, 72, 96, 140, 196][c] : c * 24), cy = y + 80 + r * 26;
+        const cw = wide ? (cell === 'SP' ? 40 : 52) : 20, sel = r === this.r && c === this.c;
+        G.win(ctx, cx, cy, cw, 22, sel ? { fill1: '#3a56c8', fill2: '#1c2c8c' } : { alpha: 0.75 });
+        const col = sel ? '#f8e060' : '#ffffff';
+        if (cell === 'SP') { ctx.fillStyle = col; ctx.fillRect(cx + 10, cy + 13, 20, 2); ctx.fillRect(cx + 10, cy + 10, 1, 4); ctx.fillRect(cx + 29, cy + 10, 1, 4); }
+        else if (cell === 'DEL') { G.textC(ctx, '<', cx + 14, cy + 7, col); ctx.fillStyle = col; ctx.fillRect(cx + 18, cy + 10, 16, 2); }
+        else if (cell === 'OK') G.drawIcon16(ctx, 'si', cx + 18, cy + 3);
+        else G.textC(ctx, cell, cx + 10, cy + 7, col);
+      }));
+    }
+  }
+  G.nameEntry = function (look, name) { const w = new G.Wait(); G.push(new NameEntry(look, name, w)); return w; };
+
   G.creator = function () { const w = new G.Wait(); G.push(new Creator(w)); return w; };
 })();
 
@@ -6463,11 +6555,11 @@ G.MAPDATA = {
   // ---------- Errand 1: Saludos (recall: these words were met at home and at school) ----------
   function* greet(who) {
     if (!S.active('saludos') || F()['sal_' + who]) {
-      yield* say(who, { gomez: T('¡[hola], Alex!', 'Hi, Alex!'), lucia: T('¡[hola]! ¿[comoestas]?', 'Hi! How are you?'), nico: T('¡[hola]! ¡Al [parque]!', 'Hi! To the park!') }[who]);
+      yield* say(who, { gomez: T('¡[hola], {name}!', 'Hi, {name}!'), lucia: T('¡[hola]! ¿[comoestas]?', 'Hi! How are you?'), nico: T('¡[hola]! ¡Al [parque]!', 'Hi! To the park!') }[who]);
       return;
     }
     if (who === 'gomez') {
-      yield* ask('gomez', '¡[buenosdias], Alex!', 'Good morning, Alex!', words('adios', 'buenosdias', 'no'), 1, 'buenosdias');
+      yield* ask('gomez', '¡[buenosdias], {name}!', 'Good morning, {name}!', words('adios', 'buenosdias', 'no'), 1, 'buenosdias');
     } else if (who === 'lucia') {
       yield* ask('lucia', '¡[hola]! ¿[comoestas]?', 'Hi! How are you?', words('bien', 'adios', 'gracias'), 0, ['comoestas', 'bien']);
       yield* say('lucia', T('¡[bien]!', 'Good!'));
@@ -6503,13 +6595,13 @@ G.MAPDATA = {
     }
     yield* ask('pepe', 'Tú: [tres] [manzana:manzanas] y [dos] [platano:plátanos]...', 'You: three apples and two bananas...', words('no', 'porfavor', 'adios'), 1, 'porfavor');
     yield* ask('pepe', '¡Aquí tienes!', 'Here you go!', words('gracias', 'hola', 'no'), 0, 'gracias', { show: 'manzana' });
-    yield* say('pepe', T('¡De nada! ¡Y [uvas] para ti! ¡[adios]!', 'You\'re welcome! And grapes for you! Goodbye!'));
+    yield* say('pepe', T('¡De nada, amig{o/a}! ¡Y [uvas] para ti! ¡[adios]!', 'You\'re welcome, friend! And grapes for you! Goodbye!'));
     F().compra = true;
   }
   function* rosaTalk() {
     if (!townOpen()) { yield* say('rosa', T('¡[hola]! Mi [casa].', 'Hello! My house.')); return; }
     if (!S.quest('mercado')) {
-      yield* say('rosa', T('¡[hola], Alex! Mi [casa].', 'Hello, Alex! My house.'),
+      yield* say('rosa', T('¡[hola], {name}! Mi [casa].', 'Hello, {name}! My house.'),
         T('[tres] [manzana:manzanas] y [dos] [platano:plátanos], ¿[porfavor]?', 'Three apples and two bananas, please?'));
       yield* newQuest('mercado');
       return;
@@ -6519,13 +6611,13 @@ G.MAPDATA = {
     yield* say('rosa', T('¡La fruta!', 'The fruit!'));
     const c = G.wordChoices('dos', G.data.numberWords, 3, { text: true });
     yield* G.ask({ prompt: '¿Cuántos [platano:plátanos]?', en: 'How many bananas?', show: 'platano', choices: c.choices, answer: c.answer, layout: 'list', learn: 'dos', who: 'rosa' });
-    yield* say('rosa', T('¡[si]! [dos]. ¡[gracias], Alex!', 'Yes! Two. Thank you, Alex!'));
+    yield* say('rosa', T('¡[si]! [dos]. ¡Qué list{o/a}! ¡[gracias], {name}!', 'Yes! Two. How clever! Thank you, {name}!'));
     yield* finishQuest('mercado');
   }
 
   // ---------- Errand 3: La pelota roja (colors, through sí/no) ----------
   function* sofiaTalk() {
-    if (!townOpen()) { yield* say('sofia', T('¡[hola]!', 'Hi!')); return; }
+    if (!townOpen()) { yield* say('sofia', T('¡[hola]! ¿Eres nuev{o/a}?', 'Hi! Are you new?')); return; }
     if (!S.quest('pelota')) {
       yield* say('sofia', T('¡Ay! Mi [pelota]... Mi [pelota] [rojo:roja].', 'Oh no! My ball... My red ball.'));
       yield* newQuest('pelota');
@@ -6558,11 +6650,11 @@ G.MAPDATA = {
       yield* newQuest('carta');
       return;
     }
-    if (S.done('carta')) { yield* say('tomas', T('¡[gracias], Alex!', 'Thanks, Alex!')); return; }
+    if (S.done('carta')) { yield* say('tomas', T('¡[gracias], {name}!', 'Thanks, {name}!')); return; }
     if (!F().cartaDada) { yield* say('tomas', T('La [carta]: ¡la [panaderia]!', 'The letter: the bakery!')); return; }
     const c = G.wordChoices('panaderia', ['panaderia', 'biblioteca', 'parque'], 3);
     yield* G.ask({ prompt: '¿La [carta]?', en: 'The letter? Where did it go?', show: 'carta', choices: c.choices, answer: c.answer, layout: 'cards', learn: ['panaderia', 'carta'], who: 'tomas' });
-    yield* say('tomas', T('¡[si]! ¡[gracias]!', 'Yes! Thank you!'));
+    yield* say('tomas', T('¡[si]! ¡Eres un{/a} gran carter{o/a}! ¡[gracias]!', 'Yes! You\'re a great mail carrier! Thank you!'));
     yield* finishQuest('carta');
   }
 
@@ -6576,14 +6668,14 @@ G.MAPDATA = {
     exits: [Object.assign(exitAt('casa', 'casaDoor'), {
       run: function* () {
         if (F().intro) return true;
-        yield* say('mama', T('¡Alex!', 'Alex!')); G.field.player.dir = 'up'; return false;
+        yield* say('mama', T('¡{name}!', '{name}!')); G.field.player.dir = 'up'; return false;
       } })],
     npcs: [
       { id: 'mama', npc: 'mama', x: P('casa', 'mama')[0], y: P('casa', 'mama')[1], dir: 'down', fixed: true,
         alert: () => !F().intro,
         talk: function* () {
           if (!F().intro) { yield* G.story.mamaIntro(); return; }
-          if (S.done('fiesta')) yield* say('mama', T('¡Alex! ¡Muy bien!', 'Alex! Well done!'));
+          if (S.done('fiesta')) yield* say('mama', T('¡{name}! ¡Muy bien!', '{name}! Well done!'));
           else yield* say('mama', T('La [escuela]. ¡Vamos!', 'The school. Off you go!'));
         } },
     ],
@@ -6598,13 +6690,13 @@ G.MAPDATA = {
         alert: () => !S.quest('saludos') || (S.active('saludos') && greeted() === 3) || (allBadges() && !S.done('fiesta')),
         talk: function* () { yield* lunaTalk(); } },
       { id: 'kid1', npc: 'nico', x: 3, y: 5, dir: 'up', cond: () => S.done('fiesta'), talk: [T('¡Fiesta!', 'Party!')] },
-      { id: 'kid2', npc: 'lucia', x: 9, y: 5, dir: 'up', cond: () => S.done('fiesta'), talk: [T('¡Muy bien, Alex!', 'Well done, Alex!')] },
+      { id: 'kid2', npc: 'lucia', x: 9, y: 5, dir: 'up', cond: () => S.done('fiesta'), talk: [T('¡Muy bien, {name}!', 'Well done, {name}!')] },
       { id: 'kid3', npc: 'sofia', x: 9, y: 7, dir: 'up', cond: () => S.done('fiesta'), talk: [T('¡Mi [pelota] [rojo:roja]!', 'My red ball!')] },
     ],
   };
   function* lunaTalk() {
     if (!S.quest('saludos')) {
-      yield* say('luna', T('¡[hola]! Soy Luna. ¡La [escuela]!', 'Hello! I\'m Luna. The school!'));
+      yield* say('luna', T('¡[hola]! Soy Luna. ¡Bienvenid{o/a} a la [escuela]!', 'Hello! I\'m Luna. Welcome to the school!'));
       yield* ask('luna', '¿[comoestas]?', 'How are you?', words('manzana', 'bien', 'adios'), 1, ['comoestas', 'bien']);
       yield* say('luna', T('¡[bien]!', 'Good!'));
       yield* ask('luna', '¡Para ti!', 'For you! (she gives you a gold star)', words('gracias', 'no', 'hola'), 0, 'gracias', { show: 'sol' });
@@ -6614,7 +6706,7 @@ G.MAPDATA = {
     }
     if (S.active('saludos')) {
       if (greeted() < 3) { yield* say('luna', T('[hola]: [uno], [dos], [tres] amigos.', 'Hello: one, two, three friends.')); return; }
-      yield* say('luna', T('¡[tres]! ¡Muy bien!', 'Three! Very good!'));
+      yield* say('luna', T('¡[tres]! ¡Muy bien! ¡Eres muy simpátic{o/a}!', 'Three! Very good! You\'re very friendly!'));
       yield* finishQuest('saludos');
       return;
     }
@@ -6622,8 +6714,8 @@ G.MAPDATA = {
     if (!S.done('fiesta')) { yield* G.story.fiesta(); return; }
     // after the party: a replayable review that fills in the notebook
     const left = Object.keys(G.data.words).filter(id => !S.knows(id)).length;
-    if (!left) { yield* say('luna', T('¡[hola], Alex! ¡Todo el cuaderno!', 'Hi, Alex! You learned the whole notebook!')); return; }
-    yield* say('luna', T('¡[hola], Alex!', 'Hi, Alex!'));
+    if (!left) { yield* say('luna', T('¡[hola], {name}! ¡Todo el cuaderno!', 'Hi, {name}! You learned the whole notebook!')); return; }
+    yield* say('luna', T('¡[hola], {name}!', 'Hi, {name}!'));
     const r = yield G.choose({ prompt: '¿Repaso?', en: 'Review some words?', show: 'pagina', layout: 'cards', choices: [{ word: 'si' }, { word: 'no' }], cancel: true });
     if (r.result !== 0) { yield* say('luna', T('¡[adios]!', 'Goodbye!')); return; }
     yield* G.story.review(5);
@@ -6706,14 +6798,14 @@ G.MAPDATA = {
 
   // ---------- Mamá: the very first words ----------
   ST.mamaIntro = function* () {
-    yield* say('mama', T('¡[hola], Alex!', 'Hello, Alex!'));
+    yield* say('mama', T('¡[hola], {name}! ¡Qué guap{o/a}!', 'Hello, {name}! Don\'t you look nice!'));
     yield* G.ask({ prompt: '¡[hola]!', en: 'Mom says hello. Say it back!', layout: 'cards', who: 'mama', choices: words('manzana', 'hola', 'pelota'), answer: 1, learn: 'hola' });
     yield* G.ask({ prompt: '¡[buenosdias]!', en: 'Good morning! (the sun is up)', layout: 'cards', who: 'mama', choices: words('buenosdias', 'uvas', 'carta'), answer: 0, learn: 'buenosdias' });
     yield* say('mama', T('¡Para ti!', 'For you! (a notebook)'));
     yield* G.findPage('saludos');
     yield ST.keyHint();
     yield* say('mama', T('La [escuela]. ¡Vamos!', 'The school. Off you go!'));
-    yield* G.ask({ prompt: '¡[adios], Alex!', en: 'Goodbye, Alex!', layout: 'list', who: 'mama', choices: words('hola', 'adios', 'gracias'), answer: 1, learn: 'adios' });
+    yield* G.ask({ prompt: '¡[adios], {name}!', en: 'Goodbye, {name}!', layout: 'list', who: 'mama', choices: words('hola', 'adios', 'gracias'), answer: 1, learn: 'adios' });
     F().intro = true;
   };
 
@@ -6731,9 +6823,9 @@ G.MAPDATA = {
 
   // ---------- La fiesta: a review game, then the diploma ----------
   ST.fiesta = function* () {
-    yield* say('luna', T('¡Alex! ¡Muy bien! ¡Fiesta!', 'Alex! Well done! Party time!'), T('¿...? ¡[uno], [dos], [tres], [cuatro], [cinco]!', 'A game first: five questions!'));
+    yield* say('luna', T('¡{name}! ¡Muy bien! ¡Fiesta!', '{name}! Well done! Party time!'), T('¿List{o/a}? ¡[uno], [dos], [tres], [cuatro], [cinco]!', 'Ready? A game first: five questions!'));
     yield* ST.review(5);
-    yield* say('luna', T('¡Bravo, Alex!', 'Bravo, Alex!'));
+    yield* say('luna', T('¡Bravo, {name}!', 'Bravo, {name}!'));
     S.finishQuest('fiesta');
     yield G.badge('fiesta');
     G.audio.play('victory');
@@ -6754,7 +6846,7 @@ G.MAPDATA = {
       ctx.strokeStyle = '#c09040'; ctx.strokeRect(x + 4.5, y + 4.5, w - 9, h - 9);
       G.bigText(ctx, 'DIPLOMA', G.W / 2, y + 18, 2, '#a05020', null);
       G.textC(ctx, 'Club de Español', G.W / 2, y + 34, '#604020', null);
-      G.bigText(ctx, G.data.player.name, G.W / 2, y + 58, 2, '#203080', null);
+      G.bigText(ctx, G.st.playerName(), G.W / 2, y + 58, 2, '#203080', null);
       ctx.fillStyle = '#5a3810'; ctx.fillRect(x + 15, y + 15, 54, 54); G.drawPortrait(ctx, G.st.playerSpec().portrait, x + 16, y + 16, this.t);
       G.drawIcon(ctx, 'book', G.W / 2 - 70, y + 76); G.text(ctx, String(G.st.learnedCount()), G.W / 2 - 42, y + 82, '#604020', null);
       G.text(ctx, '\u0005 ' + G.state.stars, G.W / 2 + 26, y + 82, '#c08010', null);
@@ -6833,7 +6925,7 @@ G.MAPDATA = {
         G.fade.a = 0;
         const r = yield G.creator();
         if (!r.result) { G.toTitle(); return; }
-        G.state.look = r.result;
+        G.state.look = r.result.look; G.state.name = r.result.name;
         const f = G.goto('casa', 4, 4, 'up');
         f.tasks.add((function* () { yield 40; f.locked = true; yield* G.story.mamaIntro(); f.locked = false; })());
       })());

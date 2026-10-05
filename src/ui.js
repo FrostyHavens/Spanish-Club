@@ -15,6 +15,15 @@
     lines.forEach((l, i) => G.text(ctx, l, 22, yy + 6 + i * 11, '#f8e8b0'));
   };
 
+  // ---------- Player name & gendered Spanish ----------
+  // {name} becomes the player's name; {boy form/girl form} picks by the chosen character:
+  // '¡Bienvenid{o/a}!' -> '¡Bienvenido!' or '¡Bienvenida!'
+  G.fill = function (s) {
+    if (s == null || !G.st) return s;
+    const girl = G.st.isGirl();
+    return String(s).replace(/\{name\}/g, G.st.playerName()).replace(/\{([^{}\/]*)\/([^{}]*)\}/g, (m, a, b) => girl ? b : a);
+  };
+
   // ---------- Rich text: words grow from pictures ----------
   // In dialogue, [id] or [id:shown form] marks a vocabulary word. A word the player hasn't learned yet
   // is drawn as its picture plus the word in blue; once learned, the picture drops away and the word is gold.
@@ -76,7 +85,7 @@
   class TextBox {
     constructor(pages, opts, w) {
       this.transparent = true; this.opts = opts || {}; this.w = w;
-      this.pages = (Array.isArray(pages) ? pages : [pages]).map(p => typeof p === 'object' ? { t: String(p.t), en: p.en } : { t: String(p) });
+      this.pages = (Array.isArray(pages) ? pages : [pages]).map(p => typeof p === 'object' ? { t: G.fill(String(p.t)), en: G.fill(p.en) } : { t: G.fill(String(p)) });
       this.pi = 0; this.setPage();
     }
     setPage() {
@@ -153,7 +162,7 @@
       if (!G.prefs.voice || G.audio.muted) return;
       const ss = window.speechSynthesis; if (!ss) return;
       ss.cancel();
-      const clean = G.plain(text).replace(/[\u0001-\u0005«»]/g, '');
+      const clean = G.plain(G.fill(text)).replace(/[\u0001-\u0005«»]/g, '');
       const u = new SpeechSynthesisUtterance(clean); u.lang = 'es-MX'; u.rate = 0.85; u.volume = G.prefs.voice / 10;
       const v = G.currentVoice(); if (v) { u.voice = v; u.lang = v.lang.replace('_', '-'); }
       ss.speak(u);

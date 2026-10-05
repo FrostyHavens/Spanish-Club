@@ -14,6 +14,7 @@ Write dialogue as `T('Spanish', 'English')`. The English only shows with the par
 - Keep it to a few words. Let pictures and actions carry the meaning.
 - Mark vocabulary words with `[id]`, or `[id:shown form]` for a plural or other form: `'[tres] [manzana:manzanas], ¿[porfavor]?'`. An unlearned word draws its picture beside it in blue; a learned word is gold.
 - Plain words (grammar, names) are fine. They're understood from context.
+- Write `{name}` for the player's name and `{boy form/girl form}` for words that change with the character's gender: `'¡Bienvenid{o/a}, {name}!'`, `'Eres un{/a} gran carter{o/a}.'` These work in dialogue, questions and the English text.
 
 ## Teaching = asking
 A word is learned by **using** it, never by being told. Inside a talk script (a generator in `src/maps.js`):
@@ -45,5 +46,5 @@ Edit `tools/mapgen.py` and run `python3 tools/mapgen.py` to regenerate `src/mapd
 ## Language checklist
 - Use Mexican / Latin American Spanish: *presiona* (not *pulsa*), *ustedes* (not *vosotros*), *carro* (not *coche*), *jugo* (not *zumo*), *computadora* (not *ordenador*).
 - Keep sentences short and in the present tense.
-- The player, Alex, has no stated gender. Avoid adjectives that would assign one (for example, use "¡Te damos la bienvenida!" instead of "¡Bienvenido!"), or show both forms ("¿Listo? ¿Lista?").
+- The player picks boy or girl, so adjectives about the player should use `{o/a}`, never a fixed form.
 - Make every new word appear in a question soon after it's taught.

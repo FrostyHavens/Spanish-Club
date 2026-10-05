@@ -62,7 +62,7 @@
         G.fade.a = 0;
         const r = yield G.creator();
         if (!r.result) { G.toTitle(); return; }
-        G.state.look = r.result;
+        G.state.look = r.result.look; G.state.name = r.result.name;
         const f = G.goto('casa', 4, 4, 'up');
         f.tasks.add((function* () { yield 40; f.locked = true; yield* G.story.mamaIntro(); f.locked = false; })());
       })());

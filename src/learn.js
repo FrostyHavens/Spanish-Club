@@ -58,6 +58,7 @@
   }
   class Choice {
     constructor(opts, w) {
+      opts = Object.assign({}, opts, { prompt: G.fill(opts.prompt), en: G.fill(opts.en), choices: opts.choices.map(c => c.label ? Object.assign(c, { label: G.fill(c.label) }) : c) });
       this.transparent = true; this.o = opts; this.w = w; this.t = 0; this.i = 0; this.shake = 0;
       this.ch = opts.choices; this.cards = opts.layout === 'cards';
       while (this.ch[this.i] && this.ch[this.i].off) this.i++;
@@ -213,7 +214,7 @@
   G.goalWidth = goal => goal.reduce((w, g) => w + (g === '>' ? 18 : g[1] > 1 ? g[1] * 12 + 8 : 18), 0);
 
   G.nameOf = function (who) {
-    if (who === 'player') return D().player.name;
+    if (who === 'player') return S().playerName();
     return D().npcs[who] ? D().npcs[who].name : null;
   };
 })();

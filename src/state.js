@@ -16,10 +16,13 @@
       stars: 0,
       opts: { english: false },
       look: null,         // the player's avatar, from the character creator
+      name: null,         // the player's name, typed after the creator
     };
   };
 
   S.playerSpec = () => D().playerSpec(G.state && G.state.look);
+  S.playerName = () => (G.state && G.state.name) || D().player.name;
+  S.isGirl = () => !!(G.state && G.state.look && G.state.look.gender === 'nina');
 
   // ---------- Words: unseen -> seen (met in a sentence or on a page) -> learned (used correctly) ----------
   const rec = id => G.state.words[id] || (G.state.words[id] = { learned: false, right: 0, wrong: 0 });

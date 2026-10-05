@@ -38,6 +38,10 @@ const KEYMAP = {
   KeyM: 'M'
 };
 window.addEventListener('keydown', e => {
+  // while typing a name, printable keys, Backspace and Enter go to the text field instead of the buttons
+  if (G.textInput && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Enter')) {
+    e.preventDefault(); G.audio && G.audio.unlock(); G.textInput(e.key); return;
+  }
   const k = KEYMAP[e.code]; if (!k) return;
   e.preventDefault();
   if (!G.keys[k]) { G.pressed[k] = true; G.repeatT[k] = 0; }
