@@ -146,7 +146,7 @@
       yield G.teach(['rojo', 'azul', 'verde', 'amarillo']);
       yield* say('sofia', T('Busca en los arbustos, por favor. ¡Mi pelota es roja!', 'Please look in the bushes. My ball is red!'));
       yield* newQuest('pelota');
-      yield G.say(T('Ponte delante de un arbusto y pulsa A para buscar.', 'Stand in front of a bush and press A to search.'), { noVoice: true });
+      yield G.say(T('Párate frente a un arbusto y presiona A para buscar.', 'Stand in front of a bush and press A to search.'), { noVoice: true });
       return;
     }
     if (S.done('pelota')) { yield* say('sofia', T('¡Me encanta mi pelota roja! ¡Gracias, Alex!', 'I love my red ball! Thanks, Alex!')); return; }

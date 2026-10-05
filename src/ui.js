@@ -84,14 +84,36 @@
   G.say = function (pages, opts) { const w = new Wait(); G.push(new TextBox(pages, opts, w)); return w; };
 
   // ---------- Spoken Spanish (browser speech synthesis; silently skipped if unavailable) ----------
+  // North American Spanish: prefer Mexico, then the US, then other Latin American voices.
+  // Spain (es-ES) is used only if it is the only Spanish voice installed.
+  const VOICE_PREF = ['es-MX', 'es-US', 'es-419', 'es-CO', 'es-GT', 'es-CR', 'es-PR', 'es-CU', 'es-DO', 'es-PA', 'es-SV', 'es-HN', 'es-NI', 'es-VE', 'es-PE', 'es-EC', 'es-CL', 'es-AR', 'es-UY', 'es-PY', 'es-BO'];
+  const VOICE_NAMES = /paulina|juan|sabina|raul|dalia|jorge|renata|ximena|monica|mexic|latin|estados unidos|united states/i;
+  let voice = null, voiceLang = 'es-MX';
+  function pickVoice() {
+    const ss = window.speechSynthesis; if (!ss) return;
+    const all = (ss.getVoices() || []).filter(v => /^es([-_]|$)/i.test(v.lang));
+    if (!all.length) return;
+    const score = v => {
+      const lang = v.lang.replace('_', '-');
+      let i = VOICE_PREF.findIndex(l => l.toLowerCase() === lang.toLowerCase());
+      if (i < 0) i = /^es-ES$/i.test(lang) ? 100 : (VOICE_NAMES.test(v.name) ? 1.5 : 50);
+      if (/natural|neural|premium|enhanced|google/i.test(v.name)) i -= 0.5; // nicer-sounding voices first
+      return i;
+    };
+    voice = all.slice().sort((a, b) => score(a) - score(b))[0];
+    voiceLang = voice.lang.replace('_', '-');
+  }
+  try { if (window.speechSynthesis) { pickVoice(); speechSynthesis.addEventListener('voiceschanged', pickVoice); } } catch (e) { }
+  G.voiceName = () => voice ? voice.name + ' (' + voiceLang + ')' : null;
   G.speak = function (text) {
     try {
       if (!G.state || !G.state.opts || !G.state.opts.voice || G.audio.muted) return;
       const ss = window.speechSynthesis; if (!ss) return;
       ss.cancel();
-      const clean = String(text).replace(/[\u0001-\u0004]/g, '');
-      const u = new SpeechSynthesisUtterance(clean); u.lang = 'es-ES'; u.rate = 0.85;
-      const v = (ss.getVoices() || []).find(v => /^es(-|_|$)/i.test(v.lang)); if (v) u.voice = v;
+      if (!voice) pickVoice();
+      const clean = String(text).replace(/[\u0001-\u0005«»]/g, '');
+      const u = new SpeechSynthesisUtterance(clean); u.rate = 0.85;
+      u.lang = voiceLang; if (voice) u.voice = voice;
       ss.speak(u);
     } catch (e) { }
   };

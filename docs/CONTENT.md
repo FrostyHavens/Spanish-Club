@@ -31,6 +31,7 @@ Write dialogue as `T('Spanish', 'English')`. Players see the Spanish and hold C 
 Edit `tools/mapgen.py` and run `python3 tools/mapgen.py` to regenerate `src/mapdata.js`. Tile codes are listed in `G.TERRAIN` in `src/tiles.js`. Doors (`D`, `K`) become exits in `src/maps.js`.
 
 ## Language checklist
+- Use Mexican / Latin American Spanish: *presiona* (not *pulsa*), *ustedes* (not *vosotros*), *carro* (not *coche*), *jugo* (not *zumo*), *computadora* (not *ordenador*).
 - Keep sentences short and in the present tense.
 - The player, Alex, has no stated gender. Avoid adjectives that would assign one (for example, use "¡Te damos la bienvenida!" instead of "¡Bienvenido!"), or show both forms ("¿Listo? ¿Lista?").
 - Make every new word appear in a question soon after it's taught.

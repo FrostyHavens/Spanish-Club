@@ -103,7 +103,7 @@
       const o = G.state.opts, yes = v => v ? 'Sí' : 'No';
       const r = yield G.menu([
         { label: 'Inglés siempre', right: yes(o.english), en: 'Always show English translations' },
-        { label: 'Voz en español', right: yes(o.voice), en: 'Read Spanish aloud (if your browser has a Spanish voice)' },
+        { label: 'Voz en español', right: yes(o.voice), en: 'Read Spanish aloud. Voice: ' + (G.voiceName() || 'none found on this device') },
         { label: 'Música y sonido', right: yes(!G.audio.muted), en: 'Music and sound effects' },
       ], { title: 'OPCIONES', start, w: 190 });
       if (r.result < 0) return;

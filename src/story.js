@@ -38,7 +38,7 @@
     ['', ''],
     ['En Villa Sol, todos hablan español.', 'In Villa Sol, everyone speaks Spanish.'],
     ['¿No entiendes? ¡No pasa nada!', 'Don\'t understand? No problem!'],
-    ['Mantén pulsada la C para ver el inglés.', 'Hold down C to see the English.'],
+    ['Mantén presionada la C para ver el inglés.', 'Hold down C to see the English.'],
   ];
 
   // ---------- Mamá: first morning ----------
@@ -47,7 +47,7 @@
     yield G.teach('buenosdias');
     yield* say('mama', T('Hoy es tu primer día en el Club de Español. ¡Qué emoción!', 'Today is your first day at the Spanish Club. How exciting!'),
       T('La Profesora Luna te espera en la escuela. La escuela está al norte de la plaza.', 'Profesora Luna is waiting for you at the school. The school is north of the square.'),
-      T('Recuerda: mantén pulsada la C para ver el inglés. Pulsa X para abrir el menú y ver tu cuaderno.', 'Remember: hold C to see the English. Press X to open the menu and see your notebook.'));
+      T('Recuerda: mantén presionada la C para ver el inglés. Presiona X para abrir el menú y ver tu cuaderno.', 'Remember: hold C to see the English. Press X to open the menu and see your notebook.'));
     yield* say('mama', T('¡Adiós, Alex! ¡Que te diviertas!', 'Goodbye, Alex! Have fun!'));
     yield G.teach('adios');
     yield* G.ask({ prompt: 'Mamá dice: «¡Adiós!» ¿Qué dices tú?', en: 'Mom says "Goodbye!" What do you say?', who: 'mama', layout: 'list',
