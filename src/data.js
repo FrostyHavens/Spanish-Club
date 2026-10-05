@@ -23,6 +23,8 @@
     bien: { es: 'bien', en: 'well / fine', topic: 'saludos', icon: 'bien' },
     gracias: { es: 'gracias', en: 'thank you', topic: 'saludos', icon: 'gracias' },
     porfavor: { es: 'por favor', en: 'please', topic: 'saludos', icon: 'porfavor' },
+    si: { es: 'sí', en: 'yes', topic: 'saludos', icon: 'si' },
+    no: { es: 'no', en: 'no', topic: 'saludos', icon: 'no' },
 
     uno: { es: 'uno', en: 'one', topic: 'numeros', icon: 'dado', n: 1 },
     dos: { es: 'dos', en: 'two', topic: 'numeros', icon: 'dado', n: 2 },
@@ -40,6 +42,7 @@
     azul: { es: 'azul', en: 'blue', topic: 'colores', icon: 'color', col: '#3068e0' },
     verde: { es: 'verde', en: 'green', topic: 'colores', icon: 'color', col: '#38b040' },
     amarillo: { es: 'amarillo / amarilla', en: 'yellow', topic: 'colores', icon: 'color', col: '#f8d030' },
+    pelota: { es: 'la pelota', en: 'the ball', topic: 'colores', icon: 'pelota', col: '#e03028' },
 
     casa: { es: 'la casa', en: 'the house', topic: 'pueblo', icon: 'casa' },
     escuela: { es: 'la escuela', en: 'the school', topic: 'pueblo', icon: 'escuela' },
@@ -50,18 +53,25 @@
   };
   D.numberWords = ['uno', 'dos', 'tres', 'cuatro', 'cinco'];
 
-  // ---------- Errands (shown in the Misiones menu) ----------
+  // ---------- Notebook pages (found around town, like a game manual) ----------
+  // Each page pictures one topic. Finding a page marks its words as seen.
+  D.pages = {
+    saludos: { topic: 'saludos', words: ['hola', 'buenosdias', 'adios', 'comoestas', 'bien', 'gracias', 'porfavor', 'si', 'no'] },
+    numeros: { topic: 'numeros', words: ['uno', 'dos', 'tres', 'cuatro', 'cinco'] },
+    comida: { topic: 'comida', words: ['manzana', 'platano', 'naranja', 'uvas', 'pan'] },
+    colores: { topic: 'colores', words: ['rojo', 'azul', 'verde', 'amarillo', 'pelota'] },
+    pueblo: { topic: 'pueblo', words: ['casa', 'escuela', 'parque', 'panaderia', 'biblioteca', 'carta'] },
+  };
+  D.pageOrder = ['saludos', 'numeros', 'comida', 'colores', 'pueblo'];
+
+  // ---------- Errands ----------
+  // goal: what the Misiones screen pictures — [word, count] pairs, '>' draws an arrow ("take this there").
   D.quests = {
-    saludos: { name: 'Saludos', en: 'Greetings', giver: 'Profesora Luna',
-      goal: 'Saluda a tres personas del pueblo.', goalEn: 'Greet three people in town.' },
-    mercado: { name: 'El mercado', en: 'The market', giver: 'Abuela Rosa',
-      goal: 'Compra tres manzanas y dos plátanos.', goalEn: 'Buy three apples and two bananas.' },
-    pelota: { name: 'La pelota roja', en: 'The red ball', giver: 'Sofía',
-      goal: 'Busca la pelota roja en el parque.', goalEn: 'Find the red ball in the park.' },
-    carta: { name: 'La carta', en: 'The letter', giver: 'Tomás',
-      goal: 'Lleva la carta a la panadería.', goalEn: 'Take the letter to the bakery.' },
-    fiesta: { name: 'La fiesta', en: 'The party', giver: 'Profesora Luna',
-      goal: 'Ve a la fiesta en la escuela.', goalEn: 'Go to the party at the school.' },
+    saludos: { name: 'Saludos', en: 'Greetings: say hello to three people', giver: 'luna', goal: [['hola', 3]] },
+    mercado: { name: 'El mercado', en: 'The market: three apples and two bananas', giver: 'rosa', goal: [['manzana', 3], ['platano', 2]] },
+    pelota: { name: 'La pelota roja', en: 'The red ball: find Sofía\'s ball', giver: 'sofia', goal: [['pelota', 1]] },
+    carta: { name: 'La carta', en: 'The letter: take it to the bakery', giver: 'tomas', goal: [['carta', 1], '>', ['panaderia', 1]] },
+    fiesta: { name: 'La fiesta', en: 'The party at the school', giver: 'luna', goal: [['escuela', 1]] },
   };
   D.questOrder = ['saludos', 'mercado', 'pelota', 'carta', 'fiesta'];
 

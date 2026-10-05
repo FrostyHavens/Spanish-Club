@@ -5,10 +5,9 @@
   class Wait { constructor() { this.fin = false; this.result = undefined; } done() { return this.fin; } resolve(v) { this.result = v; this.fin = true; } }
   G.Wait = Wait;
 
-  // ---------- English help ----------
-  // Spanish first: hold C (or turn on "Inglés: siempre" in Opciones) to see the English.
-  G.enVisible = () => G.input.h('C') || !!(G.state && G.state.opts && G.state.opts.english);
-  G.enHint = function (ctx, x, y) { G.text(ctx, 'C', x, y, '#f8e060'); G.text(ctx, 'inglés', x + 8, y, '#9098c8'); };
+  // ---------- English (parents' option only) ----------
+  // The game teaches like Tunic: no translations by default. Opciones > Inglés turns on an English strip.
+  G.enVisible = () => !!(G.state && G.state.opts && G.state.opts.english);
   G.enBox = function (ctx, en, y, top) { // translation strip above (or below) a window
     const lines = G.wrap(en, G.W - 40); const h = lines.length * 11 + 10;
     const yy = top ? y : y - h - 2;
@@ -16,9 +15,64 @@
     lines.forEach((l, i) => G.text(ctx, l, 22, yy + 6 + i * 11, '#f8e8b0'));
   };
 
+  // ---------- Rich text: words grow from pictures ----------
+  // In dialogue, [id] or [id:shown form] marks a vocabulary word. A word the player hasn't learned yet
+  // is drawn as its picture plus the word in blue; once learned, the picture drops away and the word is gold.
+  const TOK = /\[([a-z0-9]+)(?::([^\]]+))?\]/g;
+  const COL = { text: '#ffffff', seen: '#a8d8ff', known: '#f8d860' };
+  G.baseForm = id => { const w = G.data.words[id]; return w ? w.es.split(' / ')[0].replace(/^(el|la|los|las) /, '') : id; };
+  G.richIds = s => { const out = []; String(s).replace(TOK, (m, id) => { out.push(id); return m; }); return out; };
+  G.plain = s => String(s).replace(TOK, (m, id, shown) => shown || G.baseForm(id));
+  function items(s) { // -> [{text, id?, gap}]  gap: a space precedes this item (wrapping happens only at gaps)
+    const out = []; let gap = false, last = 0, m;
+    const text = t => { for (const part of t.split(/(\s+)/)) { if (!part) continue; if (/^\s+$/.test(part)) { gap = true; continue; } out.push({ text: part, gap }); gap = false; } };
+    TOK.lastIndex = 0;
+    while ((m = TOK.exec(s))) { text(s.slice(last, m.index)); out.push({ text: m[2] || G.baseForm(m[1]), id: m[1], gap }); gap = false; last = TOK.lastIndex; }
+    text(s.slice(last));
+    return out;
+  }
+  const known = id => G.st && G.st.knows(id);
+  const itemW = it => G.textWidth(it.text) + (it.id && !known(it.id) ? 18 : 0);
+  G.richLayout = function (s, maxW) {
+    const lines = [{ items: [], w: 0 }];
+    for (const p of String(s).split('\n')) {
+      if (lines[lines.length - 1].items.length) lines.push({ items: [], w: 0 });
+      // chunks: runs of items with no space between them wrap together
+      const its = items(p), chunks = [];
+      its.forEach(it => { if (it.gap || !chunks.length) chunks.push([it]); else chunks[chunks.length - 1].push(it); });
+      for (const ch of chunks) {
+        const cw = ch.reduce((a, it) => a + itemW(it), 0);
+        let L = lines[lines.length - 1];
+        const sp = L.items.length ? 4 : 0;
+        if (L.items.length && L.w + sp + cw > maxW) { L = { items: [], w: 0 }; lines.push(L); }
+        ch.forEach((it, k) => { it.sp = k === 0 && L.items.length ? 4 : 0; L.items.push(it); L.w += it.sp + itemW(it); });
+      }
+    }
+    lines.forEach(L => { L.chars = L.items.reduce((a, it) => a + it.text.length + (it.id ? 1 : 0), 0); });
+    return lines;
+  };
+  // draw lines[from..from+n) ; chars limits the typewriter reveal; returns nothing
+  G.richDraw = function (ctx, lines, x, y, o = {}) {
+    const lh = o.lineH || 16, from = o.from || 0, n = o.n || lines.length;
+    let chars = o.chars == null ? 1e9 : o.chars;
+    for (let i = from; i < Math.min(lines.length, from + n); i++) {
+      const L = lines[i]; let cx = o.center ? Math.round(x - L.w / 2) : x; const cy = y + (i - from) * lh;
+      for (const it of L.items) {
+        if (chars <= 0) return;
+        cx += it.sp;
+        if (it.id) {
+          const k = known(it.id);
+          if (!k) { G.drawIcon16(ctx, G.data.words[it.id] || it.id, cx, cy); cx += 18; chars--; }
+          const t = it.text.slice(0, Math.max(0, chars)); G.text(ctx, t, cx, cy + 5, k ? COL.known : COL.seen);
+        } else G.text(ctx, it.text.slice(0, Math.max(0, chars)), cx, cy + 5, o.color || COL.text);
+        chars -= it.text.length; cx += G.textWidth(it.text);
+      }
+    }
+  };
+
   // ---------- Dialogue ----------
-  // G.say(pages, {name, portrait, pos:'bottom'|'top', auto, silent}) -> Wait
-  // A page is a string or {t: 'Spanish text', en: 'English help'}.
+  // G.say(pages, {name, portrait, pos:'bottom'|'top', auto, silent, noVoice}) -> Wait
+  // A page is a string or {t: 'Spanish text with [words]', en: 'English (parents option)'}.
   class TextBox {
     constructor(pages, opts, w) {
       this.transparent = true; this.opts = opts || {}; this.w = w;
@@ -28,20 +82,21 @@
     setPage() {
       const hasP = !!this.opts.portrait;
       this.boxX = hasP ? 70 : 8; this.boxW = G.W - this.boxX - 8;
-      this.lines = G.wrap(this.pages[this.pi].t, this.boxW - 18);
-      this.shown = 0; this.total = this.lines.join('').length; this.scroll = 0; this.t = 0;
+      const t = this.pages[this.pi].t;
+      G.richIds(t).forEach(id => G.st && G.st.see(id));
+      this.lines = G.richLayout(t, this.boxW - 18);
+      this.shown = 0; this.scroll = 0; this.t = 0;
       this.spoke = !!this.opts.noVoice;
     }
+    chars(a, b) { return this.lines.slice(a, b).reduce((s, L) => s + L.chars, 0); }
     update() {
       this.t++;
-      if (!this.spoke) { this.spoke = true; G.speak(this.pages[this.pi].t); }
-      const maxLines = 3;
-      const visibleChars = this.lines.slice(this.scroll, this.scroll + maxLines).join('').length;
-      const prevChars = this.lines.slice(0, this.scroll).join('').length;
-      const target = prevChars + visibleChars;
+      if (!this.spoke) { this.spoke = true; G.speak(G.plain(this.pages[this.pi].t)); }
+      if (G.input.p('C')) G.speak(G.plain(this.pages[this.pi].t));
+      const target = this.chars(0, this.scroll + 3);
       if (this.shown < target) {
         const sp = G.input.h('A') || G.input.h('B') ? 4 : 1;
-        for (let k = 0; k < sp && this.shown < target; k++) { this.shown++; }
+        this.shown = Math.min(target, this.shown + sp);
         if (this.t % 3 === 0 && !this.opts.silent) G.audio.sfx('text');
         if ((G.input.p('A') || G.input.p('B')) && this.t > 4) this.shown = target;
         return;
@@ -57,7 +112,7 @@
     }
     draw(ctx) {
       const top = this.opts.pos === 'top';
-      const h = 50, y = top ? 6 : G.H - h - 6;
+      const h = 60, y = top ? 6 : G.H - h - 6;
       if (this.opts.portrait) {
         const py = top ? 6 : G.H - 60 - 6;
         G.win(ctx, 6, py, 60, 60);
@@ -66,41 +121,41 @@
       G.win(ctx, this.boxX, y, this.boxW, h);
       const name = this.opts.name;
       if (name) { const nw = G.textWidth(name) + 14; G.win(ctx, this.boxX + 6, y - 13, nw, 16); G.text(ctx, name, this.boxX + 13, y - 9, '#f8e060'); }
-      let chars = this.shown - this.lines.slice(0, this.scroll).join('').length;
-      for (let i = 0; i < 3; i++) {
-        const ln = this.lines[this.scroll + i]; if (ln === undefined) break;
-        const part = ln.slice(0, Math.max(0, chars)); chars -= ln.length;
-        G.text(ctx, part, this.boxX + 9, y + 9 + i * 12);
-      }
-      const done = this.shown >= this.lines.slice(0, this.scroll + 3).join('').length;
+      G.richDraw(ctx, this.lines, this.boxX + 9, y + 6, { from: this.scroll, n: 3, chars: this.shown - this.chars(0, this.scroll) });
+      const done = this.shown >= this.chars(0, this.scroll + 3);
       if (done && !this.opts.auto && (this.t >> 4) % 2 === 0) G.text(ctx, '\u0001', this.boxX + this.boxW - 14, y + h - 12, '#f8e060');
       const en = this.pages[this.pi].en;
-      if (en) {
-        if (G.enVisible()) G.enBox(ctx, en, top ? y + h + 2 : y - (name ? 14 : 0) - (this.opts.portrait ? 0 : 0), top);
-        else G.enHint(ctx, this.boxX + this.boxW - 50, y + 3);
-      }
+      if (en && G.enVisible()) G.enBox(ctx, en, top ? y + h + 2 : y - (name ? 14 : 0), top);
     }
   }
   G.say = function (pages, opts) { const w = new Wait(); G.push(new TextBox(pages, opts, w)); return w; };
 
   // ---------- Spoken Spanish (browser speech synthesis; silently skipped if unavailable) ----------
-  // Default: the first Spanish voice the device lists. Players can pick another in Opciones
-  // (voices differ a lot between devices, so we let a person choose by ear).
+  // Default: a North American voice (Mexico, then the US, then other Latin American), Spain only as a
+  // last resort. Opciones > Elegir voz lets a person pick any Spanish voice by ear; that choice wins.
+  const VOICE_PREF = ['es-MX', 'es-US', 'es-419', 'es-CO', 'es-GT', 'es-CR', 'es-PR', 'es-CU', 'es-DO', 'es-PA', 'es-SV', 'es-HN', 'es-NI', 'es-VE', 'es-PE', 'es-EC', 'es-CL', 'es-AR', 'es-UY', 'es-PY', 'es-BO'];
   G.spanishVoices = function () {
     try { return (window.speechSynthesis.getVoices() || []).filter(v => /^es([-_]|$)/i.test(v.lang)); } catch (e) { return []; }
   };
+  function rank(v) {
+    const lang = v.lang.replace('_', '-').toLowerCase();
+    let i = VOICE_PREF.findIndex(l => l.toLowerCase() === lang);
+    if (i < 0) i = lang === 'es-es' ? 100 : 50;
+    if (/natural|neural|premium|enhanced|google/i.test(v.name)) i -= 0.5; // nicer-sounding voices first
+    return i;
+  }
   G.currentVoice = function () {
     const all = G.spanishVoices(), want = G.state && G.state.opts && G.state.opts.voiceName;
-    return all.find(v => v.name === want) || all[0] || null;
+    return all.find(v => v.name === want) || all.slice().sort((a, b) => rank(a) - rank(b))[0] || null;
   };
   G.speak = function (text) {
     try {
       if (!G.state || !G.state.opts || !G.state.opts.voice || G.audio.muted) return;
       const ss = window.speechSynthesis; if (!ss) return;
       ss.cancel();
-      const clean = String(text).replace(/[\u0001-\u0005«»]/g, '');
-      const u = new SpeechSynthesisUtterance(clean); u.lang = 'es-ES'; u.rate = 0.85;
-      const v = G.currentVoice(); if (v) { u.voice = v; u.lang = v.lang; }
+      const clean = G.plain(text).replace(/[\u0001-\u0005«»]/g, '');
+      const u = new SpeechSynthesisUtterance(clean); u.lang = 'es-MX'; u.rate = 0.85;
+      const v = G.currentVoice(); if (v) { u.voice = v; u.lang = v.lang.replace('_', '-'); }
       ss.speak(u);
     } catch (e) { }
   };
@@ -151,7 +206,6 @@
       if (this.top + this.rows < this.items.length) G.textC(ctx, '\u0001', this.x + this.wd / 2, this.y + this.ht - 8, '#f8e060');
       const cur = this.items[this.i];
       if (cur && cur.en && G.enVisible()) G.enBox(ctx, cur.en, this.y);
-      else if (this.items.some(it => it.en)) G.enHint(ctx, this.x + this.wd - 48, this.y + this.ht + 2);
       if (this.opts.help) {
         const hs = this.opts.help(this.i); if (hs) { const lines = G.wrap(hs, G.W - 34); const hh = lines.length * 11 + 12; G.win(ctx, 8, G.H - hh - 6, G.W - 16, hh); lines.forEach((l, k) => G.text(ctx, l, 17, G.H - hh + 1 + k * 11)); }
       }

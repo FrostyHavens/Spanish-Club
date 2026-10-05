@@ -1,39 +1,40 @@
-// ===== Game state: learned words, stars, errands, flags, save/load =====
+// ===== Game state: what the player has seen and learned, errands, flags, save/load =====
 'use strict';
 (function () {
   const D = () => G.data;
   const S = G.st = {};
-  const SAVE_KEY = 'spanishclub_save';
+  const SAVE_KEY = 'spanishclub_save2';
 
   S.newGame = function () {
     G.state = {
       flags: {}, searched: {}, playTime: 0,
       loc: { map: 'casa', x: 4, y: 4, dir: 'down' },
-      // words: id -> {seen: times practiced, right: first-try correct answers, wrong}
+      // words: id -> {learned, right: first-try correct answers, wrong}. Present = seen at least once.
       words: {},
-      // quests: id -> 'active' | 'done'
-      quests: {},
+      pages: {},          // notebook pages found: id -> true
+      quests: {},         // id -> 'active' | 'done'
       stars: 0,
       opts: { english: false, voice: true },
     };
   };
 
-  // ---------- Words ----------
-  S.knows = id => !!G.state.words[id];
-  S.learn = function (id) {
-    if (G.state.words[id]) return false;
-    G.state.words[id] = { seen: 0, right: 0, wrong: 0 };
-    return true;
-  };
+  // ---------- Words: unseen -> seen (met in a sentence or on a page) -> learned (used correctly) ----------
+  const rec = id => G.state.words[id] || (G.state.words[id] = { learned: false, right: 0, wrong: 0 });
+  S.see = id => { if (D().words[id]) rec(id); };
+  S.seen = id => !!G.state.words[id];
+  S.knows = id => !!(G.state.words[id] && G.state.words[id].learned);
+  S.learn = function (id) { const w = rec(id); if (w.learned) return false; w.learned = true; return true; };
   S.practiced = function (id, firstTry) {
-    const w = G.state.words[id] || (G.state.words[id] = { seen: 0, right: 0, wrong: 0 });
-    w.seen++;
+    const w = rec(id);
     if (firstTry) { w.right++; G.state.stars++; } else w.wrong++;
   };
   // 0..3 stars per word, from first-try answers
   S.wordStars = id => { const w = G.state.words[id]; return w ? Math.min(3, w.right) : 0; };
-  S.learnedIn = topic => Object.keys(D().words).filter(id => D().words[id].topic === topic && S.knows(id));
-  S.learnedCount = () => Object.keys(G.state.words).length;
+  S.learnedCount = () => Object.keys(G.state.words).filter(S.knows).length;
+
+  // ---------- Notebook pages ----------
+  S.findPage = id => { const fresh = !G.state.pages[id]; G.state.pages[id] = true; (D().pages[id].words || []).forEach(S.see); return fresh; };
+  S.hasPage = id => !!G.state.pages[id];
 
   // ---------- Errands ----------
   S.quest = id => G.state.quests[id];
@@ -41,7 +42,6 @@
   S.finishQuest = id => { G.state.quests[id] = 'done'; };
   S.done = id => G.state.quests[id] === 'done';
   S.active = id => G.state.quests[id] === 'active';
-  S.badges = () => ['saludos', 'mercado', 'pelota', 'carta'].filter(S.done);
 
   // ---------- Save / load ----------
   S.save = function () { G.state.savedAt = Date.now(); return G.store.set(SAVE_KEY, G.state); };

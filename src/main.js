@@ -61,7 +61,7 @@
       sc.tasks.add((function* () {
         G.audio.play('story');
         G.fade.a = 0;
-        yield G.story.crawl(G.story.opening);
+        yield G.story.sunrise();
         const f = G.goto('casa', 4, 4, 'up');
         f.tasks.add((function* () { yield 40; f.locked = true; yield* G.story.mamaIntro(); f.locked = false; })());
       })());
@@ -83,10 +83,9 @@
           G.text(ctx, o.l, G.W / 2 - 36, 128 + i * 13, o.d ? '#6068a0' : '#fff');
           if (i === this.i && (this.t >> 3) % 4 !== 3) G.text(ctx, '\u0002', G.W / 2 - 46, 128 + i * 13, '#f8e060');
         });
-        if (G.input.h('C')) G.enBox(ctx, this.opts[this.i].en, 120 + 18 + this.opts.length * 13, true);
       }
       G.textC(ctx, 'Un juego para aprender español', G.W / 2, G.H - 22, '#fff8e0');
-      G.textC(ctx, 'Z: OK   X: menú   C: inglés   M: sonido', G.W / 2, G.H - 11, '#f8e8c0');
+      G.textC(ctx, 'Z: OK   X: menú   C: escuchar   M: sonido', G.W / 2, G.H - 11, '#f8e8c0');
     }
   }
   class Controls {
@@ -96,9 +95,9 @@
       G.win(ctx, 16, 16, G.W - 32, G.H - 32);
       const L = [['CONTROLES  /  CONTROLS', '#f8e060'], ['', ''],
         ['Flechas / WASD', 'caminar, elegir  -  walk, choose'], ['Z, Espacio, Enter', 'hablar, buscar, OK  -  talk, search, OK'],
-        ['X, Esc', 'menú, volver  -  menu, back'], ['C (mantener)', 'ver el inglés  -  hold to see English'], ['M', 'sonido  -  sound on/off'], ['', ''],
-        ['Habla con todos. Busca el signo «!».', ''], ['Talk to everyone. Look for the "!" sign.', ''],
-        ['¿Te equivocas? ¡No pasa nada! Inténtalo otra vez.', ''], ['Wrong answer? No problem! Try again.', '']];
+        ['X, Esc', 'menú, volver  -  menu, back'], ['C', 'escuchar otra vez  -  hear it again'], ['M', 'sonido  -  sound on/off'], ['', ''],
+        ['Words start as pictures. Use a word right', ''], ['and it turns gold: you learned it!', ''],
+        ['Find the notebook pages hidden in town.', ''], ['English for grown-ups: Opciones > Inglés.', '']];
       L.forEach(([a, b], i) => {
         G.text(ctx, a, 28, 26 + i * 13, b ? '#f8e060' : (i === 0 ? '#f8e060' : (i % 2 ? '#c8d0f0' : '#ffffff')));
         if (b) G.text(ctx, b, 120, 26 + i * 13, '#ffffff');

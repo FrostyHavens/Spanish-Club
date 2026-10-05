@@ -14,36 +14,37 @@ It uses the same hand-drawn-in-code engine as *Embers of Aldmere*: pixel tiles, 
 | Arrows / WASD | walk, choose |
 | Z / Enter / Space | talk, search, OK |
 | X / Esc | menu, back |
-| **C (hold)** | **show the English translation** |
+| C | hear the line again |
 | M | sound on/off |
 
 On phones and tablets, on-screen buttons appear.
 
-## How it teaches
-- **Mostly Spanish.** All dialogue, questions and answers are in Spanish. Holding **C** shows the English for whatever is on screen. *Opciones → Inglés siempre* keeps the English always visible, for younger players.
-- **New-word cards.** Each new word pops up with a big picture, the Spanish word (nouns include *el/la*) and a small English gloss.
-- **Pictures over translation.** Many questions show pictures, like "¿Cuál es la manzana?", or dice faces for numbers, so kids link the word to the meaning rather than to English.
-- **Gentle retries.** A wrong answer gets "¡Casi! Inténtalo otra vez." and that choice is greyed out, so every question can be finished. Getting it right on the first try earns a ★.
-- **Cuaderno (notebook).** Every word you've learned, by topic, with its picture, English, and up to three stars. Press A on a word to hear it.
-- **Spoken Spanish.** If the device has a Spanish voice, lines and words are read aloud. It uses the first Spanish voice the device lists. *Opciones → Elegir voz* cycles through every Spanish voice on the device and says a sample line, so you can pick the accent you like (the choice is saved). You can turn speech off there too.
-- **Latin American wording.** The text uses Mexican/Latin American Spanish (for example *presiona*, not *pulsa*).
-- **"!" bubbles** float over anyone who has something for you, so kids always know where to go next.
+## How it teaches (like *Tunic*: you start knowing almost nothing)
+- **No translations.** Characters speak short, simple Spanish. Meaning comes from pictures, context and what people do. (Grown-ups can turn on English in *Opciones → Inglés (padres)*.)
+- **Words grow from pictures.** A vocabulary word you haven't learned yet appears as its picture next to the Spanish, shown in blue: 🍎 *manzana*. Once you've used it correctly, the picture drops away and the word turns **gold**. Sentences get more readable as you learn.
+- **Learning by doing.** Seeing a word only marks it as *seen*. It counts as *learned* when you use it: answering Mamá's "¡Hola!", telling Don Pepe which fruit you want, or saying "sí" or "no" when someone holds up a picture. Then a "¡Palabra nueva!" card celebrates it.
+- **Gentle mistakes.** A wrong choice shakes and greys out, with no lecture, so every question can be finished. Getting it right on the first try earns a ★.
+- **A notebook you fill in.** The Cuaderno starts empty. Its five picture pages are hidden around town (look for the sparkle) and handed out by people. Each word shows `? ? ?` until it's seen, blue once seen, and gold with stars once learned.
+- **Requests in pictures.** People who need something show it in a thought bubble (🍎🍎🍎 🍌🍌, a red ball, a letter going to the bakery). New errands appear as a picture card, and *Misiones* is all pictures. Doors have picture signs.
+- **Wordless start.** The game opens on a sunrise, and the controls are shown as pictures.
+- **Spoken Spanish.** Lines and words are read aloud with a North American voice when the device has one (Mexico first, then the US, then other Latin American voices). Press **C** to hear the current line again. *Opciones → Elegir voz* picks a different voice.
+- **Repaso.** After the party, Profesora Luna offers a replayable review that focuses on words you've seen but not yet learned.
 
 ## Content (version 1)
-| Errand | Who | Teaches |
+| Errand | Who | Words used |
 | --- | --- | --- |
-| Intro | Mamá | buenos días, adiós |
-| Saludos: greet 3 people | Profesora Luna | hola, ¿cómo estás?, bien, gracias, la escuela |
-| El mercado: 3 apples and 2 bananas | Abuela Rosa, Don Pepe | uno–cinco, la manzana, el plátano, la naranja, las uvas, por favor, la casa |
-| La pelota roja: find the red ball | Sofía | rojo, azul, verde, amarillo, el parque |
-| La carta: deliver a letter | Tomás, Marta, Inés | la carta, la panadería, el pan, la biblioteca |
-| La fiesta: 5-question review and a diploma | Profesora Luna | review |
+| Morning at home | Mamá | hola, buenos días, adiós, plus the *Saludos* page |
+| Saludos: greet 3 people | Profesora Luna, Sr. Gómez, Lucía, Nico | ¿cómo estás?, bien, gracias |
+| El mercado: 3 apples and 2 bananas | Abuela Rosa, Don Pepe | sí, no, manzana, plátano, tres, dos, por favor |
+| La pelota roja: find the red ball | Sofía | rojo (through sí/no), pelota, azul |
+| La carta: deliver a letter | Tomás, Marta, Inés | carta, panadería, pan |
+| La fiesta: review game and diploma | Profesora Luna | words seen but not yet learned |
 
-That's 27 words in 5 topics, with 5 badges and a diploma at the end. Progress is saved in the browser (*menu → Guardar*).
+That's 30 words in 5 topics, with 5 notebook pages, 5 badges and a diploma. Progress is saved in the browser (*menu → Guardar*).
 
 ## Project layout
 - **Engine (shared with Embers of Aldmere):** `src/core.js`, `src/gfx.js` (bitmap font, with Spanish letters added), `src/ui.js` (dialogue with English help, menus), `src/audio.js`, `src/music.js`, `src/tiles.js`, `src/sprites.js`
-- **Learning:** `src/data.js` (vocabulary, topics, errands, characters), `src/icons.js` (word pictures), `src/learn.js` (word cards, picture choices, retries, badges), `src/state.js` (progress, save)
+- **Learning:** `src/data.js` (vocabulary, notebook pages, errands, characters), `src/icons.js` (word pictures), `src/learn.js` (picture questions, learning by doing, word cards, errand cards, badges), `src/state.js` (seen/learned words, pages, save). Picture-words in dialogue are drawn by the rich text in `src/ui.js`.
 - **Game:** `src/field.js` (exploring), `src/menus.js` (Cuaderno, Misiones, Guardar, Opciones), `src/maps.js` (townsfolk and errands), `src/story.js` (opening, party, diploma), `src/main.js` (title)
 - **Maps:** `tools/mapgen.py` generates `src/mapdata.js`
 - **Build:** `python3 tools/build.py` rebuilds the single-file `dist/` version

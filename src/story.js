@@ -1,76 +1,80 @@
-// ===== Story scenes: opening, Mamá's intro, the club party, the diploma (original) =====
+// ===== Story scenes: wordless sunrise, Mamá's first lesson, the club party, the diploma (original) =====
 'use strict';
 (function () {
   const F = () => G.state.flags, S = G.st;
   const T = (t, en) => ({ t, en });
   const ST = G.story = {};
   function* say(who, ...pages) { yield G.say(pages, { portrait: G.portraitOf(who), name: G.nameOf(who) }); }
+  const words = (...ids) => ids.map(id => ({ word: id }));
 
-  // ---------- Opening: bilingual scroll over a sunny sky ----------
-  class Crawl {
-    constructor(lines, w) { this.lines = lines; this.w = w; this.t = 0; this.y = G.H + 10; this.clouds = Array.from({ length: 6 }, (_, i) => [G.r(G.W), 20 + i * 22, 0.1 + G.rand() * 0.2]); }
-    update() {
-      this.t++; this.y -= G.input.h('A') ? 1.4 : 0.4;
-      const end = this.y + this.lines.length * 24;
-      if (end < -10 || G.input.p('B')) { G.pop(); this.w.resolve(); }
-    }
+  // ---------- Opening: sunrise over Villa Sol, no words ----------
+  class Sunrise {
+    constructor(w) { this.w = w; this.t = 0; }
+    update() { this.t++; if (this.t > 300 || (this.t > 20 && (G.input.p('A') || G.input.p('B')))) { G.pop(); this.w.resolve(); } }
     draw(ctx) {
-      const g = ctx.createLinearGradient(0, 0, 0, G.H); g.addColorStop(0, '#3a88e0'); g.addColorStop(1, '#a8d8f8'); ctx.fillStyle = g; ctx.fillRect(0, 0, G.W, G.H);
-      ctx.fillStyle = '#f8e060'; ctx.beginPath(); ctx.arc(G.W - 40, 36, 16 + Math.sin(this.t / 30), 0, Math.PI * 2); ctx.fill();
-      this.clouds.forEach(c => { c[0] = (c[0] + c[2]) % (G.W + 60); ctx.fillStyle = 'rgba(255,255,255,0.85)'; const x = c[0] - 30; ctx.fillRect(x, c[1], 40, 8); ctx.fillRect(x + 8, c[1] - 5, 20, 6); });
-      ctx.fillStyle = 'rgba(10,20,60,0.45)'; ctx.fillRect(20, 0, G.W - 40, G.H);
-      this.lines.forEach(([es, en], i) => {
-        const y = Math.round(this.y + i * 24); if (y < -20 || y > G.H + 4) return;
-        G.textC(ctx, es, G.W / 2, y, i === 0 ? '#f8e060' : '#ffffff');
-        if (en) G.textC(ctx, en, G.W / 2, y + 10, '#b8c8f0');
-      });
-      G.textR(ctx, 'B: saltar', G.W - 4, G.H - 10, '#e0e8ff');
+      const k = Math.min(1, this.t / 220);
+      G.drawBattleBG(ctx, 'town', this.t);
+      // the sun climbs from behind the rooftops
+      const sy = 120 - k * 90;
+      ctx.fillStyle = 'rgba(255,220,120,0.35)'; ctx.beginPath(); ctx.arc(250, sy, 26, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#f8e060'; ctx.beginPath(); ctx.arc(250, sy, 16, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(20,10,60,' + (0.75 * (1 - k)).toFixed(3) + ')'; ctx.fillRect(0, 0, G.W, G.H);
+      ctx.fillStyle = 'rgba(255,140,60,' + (0.25 * Math.sin(k * Math.PI)).toFixed(3) + ')'; ctx.fillRect(0, 0, G.W, G.H);
+      if (this.t > 160) { ctx.globalAlpha = Math.min(1, (this.t - 160) / 40); G.bigText(ctx, 'Villa Sol', G.W / 2, 40, 3, '#fff8e0', '#702010'); ctx.globalAlpha = 1; }
     }
   }
-  ST.crawl = function (lines) { const w = new G.Wait(); G.push(new Crawl(lines, w)); return w; };
-  ST.opening = [
-    ['CLUB DE ESPAÑOL', 'SPANISH CLUB'],
-    ['', ''],
-    ['Villa Sol es un pueblo pequeño y bonito.', 'Villa Sol is a small, pretty town.'],
-    ['Alex y su familia viven aquí.', 'Alex and their family live here.'],
-    ['Hoy es un día especial:', 'Today is a special day:'],
-    ['¡el primer día en el Club de Español!', 'the first day at the Spanish Club!'],
-    ['', ''],
-    ['En Villa Sol, todos hablan español.', 'In Villa Sol, everyone speaks Spanish.'],
-    ['¿No entiendes? ¡No pasa nada!', 'Don\'t understand? No problem!'],
-    ['Mantén presionada la C para ver el inglés.', 'Hold down C to see the English.'],
-  ];
+  ST.sunrise = function () { const w = new G.Wait(); G.push(new Sunrise(w)); return w; };
 
-  // ---------- Mamá: first morning ----------
+  // ---------- Button hints, in pictures ----------
+  class KeyHint {
+    constructor(w) { this.transparent = true; this.w = w; this.t = 0; }
+    update() { this.t++; if (this.t > 30 && (G.input.p('A') || G.input.p('B'))) { G.pop(); this.w.resolve(); } }
+    key(ctx, k, x, y) { G.win(ctx, x, y, 22, 20, { fill1: '#e8e8f0', fill2: '#b8b8c8', alpha: 1 }); G.textC(ctx, k, x + 11, y + 6, '#202040', null); }
+    draw(ctx) {
+      const x = G.W / 2 - 70, y = 40;
+      G.win(ctx, x, y, 140, 104);
+      const touch = !!document.getElementById('tcpad');
+      this.key(ctx, touch ? 'A' : 'Z', x + 14, y + 10); G.drawIcon16(ctx, 'pregunta', x + 44, y + 12); G.drawIcon16(ctx, 'si', x + 64, y + 12);
+      this.key(ctx, touch ? 'B' : 'X', x + 14, y + 40); G.drawIcon(ctx, 'book', x + 42, y + 40); G.drawIcon(ctx, 'quest', x + 68, y + 40);
+      this.key(ctx, 'C', x + 14, y + 70); // C: hear it again
+      ctx.fillStyle = '#f8e060'; ctx.fillRect(x + 46, y + 76, 4, 8); ctx.fillRect(x + 50, y + 73, 2, 14); ctx.fillRect(x + 52, y + 71, 2, 18);
+      for (let i = 0; i < 3; i++) { ctx.fillRect(x + 58 + i * 4, y + 78 - i * 2, 1, 4 + i * 4); }
+      if ((this.t >> 4) % 2 === 0) G.text(ctx, '\u0001', x + 124, y + 90, '#f8e060');
+    }
+  }
+  ST.keyHint = function () { const w = new G.Wait(); G.push(new KeyHint(w)); return w; };
+
+  // ---------- Mamá: the very first words ----------
   ST.mamaIntro = function* () {
-    yield* say('mama', T('¡Buenos días, Alex!', 'Good morning, Alex!'));
-    yield G.teach('buenosdias');
-    yield* say('mama', T('Hoy es tu primer día en el Club de Español. ¡Qué emoción!', 'Today is your first day at the Spanish Club. How exciting!'),
-      T('La Profesora Luna te espera en la escuela. La escuela está al norte de la plaza.', 'Profesora Luna is waiting for you at the school. The school is north of the square.'),
-      T('Recuerda: mantén presionada la C para ver el inglés. Presiona X para abrir el menú y ver tu cuaderno.', 'Remember: hold C to see the English. Press X to open the menu and see your notebook.'));
-    yield* say('mama', T('¡Adiós, Alex! ¡Que te diviertas!', 'Goodbye, Alex! Have fun!'));
-    yield G.teach('adios');
-    yield* G.ask({ prompt: 'Mamá dice: «¡Adiós!» ¿Qué dices tú?', en: 'Mom says "Goodbye!" What do you say?', who: 'mama', layout: 'list',
-      choices: [{ label: '¡Adiós, mamá!', en: 'Goodbye, Mom!' }, { label: 'Uvas.', en: 'Grapes.' }, { label: 'Cinco.', en: 'Five.' }], answer: 0, word: 'adios' });
+    yield* say('mama', T('¡[hola], Alex!', 'Hello, Alex!'));
+    yield* G.ask({ prompt: '¡[hola]!', en: 'Mom says hello. Say it back!', layout: 'cards', who: 'mama', choices: words('manzana', 'hola', 'pelota'), answer: 1, learn: 'hola' });
+    yield* G.ask({ prompt: '¡[buenosdias]!', en: 'Good morning! (the sun is up)', layout: 'cards', who: 'mama', choices: words('buenosdias', 'uvas', 'carta'), answer: 0, learn: 'buenosdias' });
+    yield* say('mama', T('¡Para ti!', 'For you! (a notebook)'));
+    yield* G.findPage('saludos');
+    yield ST.keyHint();
+    yield* say('mama', T('La [escuela]. ¡Vamos!', 'The school. Off you go!'));
+    yield* G.ask({ prompt: '¡[adios], Alex!', en: 'Goodbye, Alex!', layout: 'list', who: 'mama', choices: words('hola', 'adios', 'gracias'), answer: 1, learn: 'adios' });
     F().intro = true;
   };
 
-  // ---------- La fiesta: a friendly review quiz, then the diploma ----------
-  ST.fiesta = function* () {
-    yield* say('luna', T('¡Alex! ¡Ayudaste a todo el pueblo! ¡Es la hora de la fiesta del club!', 'Alex! You helped the whole town! It\'s time for the club party!'),
-      T('Pero primero... ¡un juego! Cinco preguntas. ¿Lista? ¿Listo? ¡Vamos!', 'But first... a game! Five questions. Ready? Let\'s go!'));
-    const W = G.data.words, known = Object.keys(G.state.words).filter(id => W[id]);
-    const picks = known.slice().sort(() => G.rand() - 0.5).slice(0, 5);
-    let firsts = 0;
-    for (let i = 0; i < picks.length; i++) {
-      const id = picks[i], topic = W[id].topic;
-      let pool = known.filter(k => W[k].topic === topic);
-      if (pool.length < 3) pool = known;
-      const c = G.wordChoices(id, pool, 3, { noIcon: true, label: k => W[k].es.split(' / ')[0] });
-      if (yield* G.ask({ prompt: 'Pregunta ' + (i + 1) + ': ¿Qué es?', en: 'Question ' + (i + 1) + ': What is it?', show: W[id], choices: c.choices, answer: c.answer, layout: 'list', word: id, who: 'luna' })) firsts++;
+  // ---------- Review: words seen but not yet learned come first ----------
+  ST.review = function* (n = 5) {
+    const Wd = G.data.words, seen = Object.keys(G.state.words).filter(id => Wd[id]);
+    const shuffle = a => a.sort(() => G.rand() - 0.5);
+    const picks = shuffle(seen.filter(id => !S.knows(id))).concat(shuffle(seen.filter(S.knows))).slice(0, n);
+    for (const id of picks) {
+      let pool = seen.filter(k => Wd[k].topic === Wd[id].topic); if (pool.length < 3) pool = seen;
+      const c = G.wordChoices(id, pool, 3, { text: true });
+      yield* G.ask({ prompt: '¿...?', en: 'What is it?', show: Wd[id], choices: c.choices, answer: c.answer, layout: 'list', learn: id, who: 'luna' });
     }
-    yield* say('luna', firsts >= 4 ? T('¡Increíble! ¡Eres una estrella!', 'Incredible! You\'re a star!') : T('¡Muy bien! ¡Aprendes muy rápido!', 'Very good! You learn very fast!'));
-    G.st.finishQuest('fiesta');
+  };
+
+  // ---------- La fiesta: a review game, then the diploma ----------
+  ST.fiesta = function* () {
+    yield* say('luna', T('¡Alex! ¡Muy bien! ¡Fiesta!', 'Alex! Well done! Party time!'), T('¿...? ¡[uno], [dos], [tres], [cuatro], [cinco]!', 'A game first: five questions!'));
+    yield* ST.review(5);
+    yield* say('luna', T('¡Bravo, Alex!', 'Bravo, Alex!'));
+    S.finishQuest('fiesta');
     yield G.badge('fiesta');
     G.audio.play('victory');
     yield ST.diploma();
@@ -89,14 +93,14 @@
       ctx.fillStyle = '#f8f0d0'; ctx.fillRect(x, y, w, h);
       ctx.strokeStyle = '#c09040'; ctx.strokeRect(x + 4.5, y + 4.5, w - 9, h - 9);
       G.bigText(ctx, 'DIPLOMA', G.W / 2, y + 18, 2, '#a05020', null);
-      G.textC(ctx, 'Club de Español de Villa Sol', G.W / 2, y + 34, '#604020', null);
+      G.textC(ctx, 'Club de Español', G.W / 2, y + 34, '#604020', null);
       G.bigText(ctx, G.data.player.name, G.W / 2, y + 58, 2, '#203080', null);
-      G.textC(ctx, 'habla un poco de español. ¡Felicidades!', G.W / 2, y + 74, '#302018', null);
-      G.textC(ctx, 'Palabras: ' + G.st.learnedCount() + '     \u0005 ' + G.state.stars, G.W / 2, y + 90, '#604020', null);
+      G.drawIcon(ctx, 'book', G.W / 2 - 70, y + 76); G.text(ctx, String(G.st.learnedCount()), G.W / 2 - 42, y + 82, '#604020', null);
+      G.text(ctx, '\u0005 ' + G.state.stars, G.W / 2 + 26, y + 82, '#c08010', null);
       ['saludos', 'mercado', 'pelota', 'carta', 'fiesta'].forEach((id, k) => G.drawBadge(ctx, id, G.W / 2 - 92 + k * 40, y + 108, this.t + k * 15));
-      G.textC(ctx, 'Profesora Luna', G.W / 2 + 50, y + h - 24, '#203080', null);
+      G.textC(ctx, 'Luna', G.W / 2 + 50, y + h - 24, '#203080', null);
       ctx.fillStyle = '#806040'; ctx.fillRect(G.W / 2 + 14, y + h - 14, 72, 1);
-      if (G.enVisible()) G.textC(ctx, 'Diploma: ' + G.data.player.name + ' speaks a little Spanish. Congratulations!', G.W / 2, y + h - 40, '#a07030', null);
+      if (G.enVisible()) G.textC(ctx, 'Words learned and stars earned', G.W / 2, y + 96, '#a07030', null);
     }
   }
   ST.diploma = function () { const w = new G.Wait(); G.push(new Diploma(w)); return w; };

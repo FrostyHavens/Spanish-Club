@@ -26,7 +26,7 @@
     removeNpc(id) { this.npcs = this.npcs.filter(n => n.id !== id); }
     onEnter() {
       G.audio.play(this.def.music || 'town');
-      if (this.def.name && !this.noBanner) { this.banner = { text: this.def.name, t: 150 }; }
+      if (this.def.name && !this.noBanner) { this.banner = { text: this.def.name, icon: this.def.icon, t: 150 }; if (this.def.icon) G.st.see(this.def.icon); }
       if (this.def.onEnter) this.tasks.add(this.def.onEnter(this));
     }
     // ---------- walkability ----------
@@ -115,6 +115,8 @@
     }
     *search(fx, fy) {
       if (fx === undefined) [fx, fy] = this.facing();
+      const pg = (this.def.pages || {})[key(fx, fy)];
+      if (pg && !G.st.hasPage(pg)) { yield* G.findPage(pg); return; }
       const k = this.mapId + ':' + key(fx, fy);
       const s = (this.def.searches || {})[key(fx, fy)];
       if (s) {
@@ -125,7 +127,7 @@
         if (s.run) yield* s.run(this);
         return;
       }
-      yield G.say({ t: 'Alex mira... No hay nada especial.', en: 'Alex looks around... Nothing special.' });
+      yield G.say({ t: '...', en: 'Nothing here.' }, { noVoice: true });
     }
     // ---------- NPC wandering ----------
     *npcAI() {
@@ -164,6 +166,17 @@
         if (x < 0 || y < 0 || x >= this.map.w || y >= this.map.h) continue;
         G.drawTile(ctx, this.map, x, y, x * T - cx, y * T - cy, this.t);
       }
+      for (const sg of this.def.signs || []) { // picture signs over doors
+        const sx = sg.x * T - cx + 4, sy = sg.y * T - cy - 12;
+        ctx.fillStyle = '#5a3818'; ctx.fillRect(sx + 3, sy - 3, 1, 3); ctx.fillRect(sx + 12, sy - 3, 1, 3);
+        ctx.fillStyle = '#3a2008'; ctx.fillRect(sx - 1, sy - 1, 18, 18); ctx.fillStyle = '#f4ecd8'; ctx.fillRect(sx, sy, 16, 16);
+        G.drawIcon16(ctx, sg.icon, sx, sy);
+      }
+      for (const k in this.def.pages || {}) { // a hidden notebook page twinkles
+        if (G.st.hasPage(this.def.pages[k])) continue;
+        const [px, py] = k.split(',').map(Number), ph = (this.t + px * 7) % 60;
+        if (ph < 30) { const sx = px * T - cx + 12, sy = py * T - cy + 8 - (ph >> 3); ctx.fillStyle = '#ffffff'; ctx.fillRect(sx - 2, sy, 5, 1); ctx.fillRect(sx, sy - 2, 1, 5); ctx.fillStyle = '#f8e060'; ctx.fillRect(sx, sy, 1, 1); }
+      }
       const ents = this.npcs.filter(n => n.spec && !n.hidden).concat([this.player]).sort((a, b) => (a.y * T + a.oy) - (b.y * T + b.oy));
       for (const e of ents) {
         const moving = e.moving || e.ox || e.oy;
@@ -173,19 +186,39 @@
       }
       // "!" bubbles over people who have something for the player (kids always know where to go next)
       for (const e of ents) {
-        if (!e.alert || !e.alert()) continue;
-        const bx = Math.round(e.x * T + e.ox - cx) + 7, by = Math.round(e.y * T + e.oy - cy) - 16 + Math.round(Math.sin(this.t / 8) * 2);
-        G.win(ctx, bx, by, 11, 13, { fill1: '#f8f0c0', fill2: '#f8d860', alpha: 1 });
-        G.text(ctx, '!', bx + 4, by + 3, '#c02020', null);
+        const al = e.alert && e.alert(); if (!al) continue;
+        // a thought bubble with a picture of what they want (or "!" when it's just "come talk")
+        const bob = Math.round(Math.sin(this.t / 8) * 2), ex = Math.round(e.x * T + e.ox - cx), ey = Math.round(e.y * T + e.oy - cy);
+        if (al === true) {
+          G.win(ctx, ex + 7, ey - 16 + bob, 11, 13, { fill1: '#f8f0c0', fill2: '#f8d860', alpha: 1 });
+          G.text(ctx, '!', ex + 11, ey - 13 + bob, '#c02020', null);
+        } else {
+          const goal = Array.isArray(al) ? al : [[al, 1]];
+          const gw = G.goalWidth(goal);
+          const bw = gw + 8, bx = ex + 12 - bw / 2, by = ey - 26 + bob;
+          G.win(ctx, bx, by, bw, 22, { fill1: '#ffffff', fill2: '#e8e8f0', alpha: 1 });
+          ctx.fillStyle = '#ffffff'; ctx.fillRect(ex + 10, by + 21, 3, 2); ctx.fillRect(ex + 11, by + 23, 1, 1);
+          G.drawGoal(ctx, goal, bx + 4, by + 3);
+        }
       }
       if (this.banner && this.banner.t > 0) {
-        const a = Math.min(1, this.banner.t / 30);
-        ctx.globalAlpha = a; const w = G.textWidth(this.banner.text) + 30;
-        G.win(ctx, (G.W - w) / 2, 10, w, 22); G.textC(ctx, this.banner.text, G.W / 2, 17, '#f8e060'); ctx.globalAlpha = 1;
+        const a = Math.min(1, this.banner.t / 30), ic = this.banner.icon;
+        ctx.globalAlpha = a; const w = G.textWidth(this.banner.text) + 30 + (ic ? 20 : 0);
+        G.win(ctx, (G.W - w) / 2, 8, w, 26);
+        if (ic) G.drawIcon16(ctx, ic, (G.W - w) / 2 + 12, 13);
+        G.textC(ctx, this.banner.text, G.W / 2 + (ic ? 10 : 0), 17, '#f8e060'); ctx.globalAlpha = 1;
       }
     }
   }
   G.Field = Field;
+  // found a notebook page: open the notebook right at it
+  G.findPage = function* (id) {
+    G.audio.jingle('item');
+    G.st.findPage(id);
+    G.toast('\u0005 ¡Una página! \u0005', 90);
+    yield 30;
+    yield G.notebook(id);
+  };
   G.maps = {};
   G.portraitOf = function (n) {
     if (!n) return null;

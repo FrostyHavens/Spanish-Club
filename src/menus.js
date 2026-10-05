@@ -1,4 +1,4 @@
-// ===== Field menu: Cuaderno (notebook), Misiones (errands), Guardar (save), Opciones =====
+// ===== Field menu: Cuaderno (found pages), Misiones (picture goals), Guardar, Opciones =====
 'use strict';
 (function () {
   const D = () => G.data, S = () => G.st;
@@ -14,111 +14,114 @@
       if (op === 'up') yield G.notebook();
       else if (op === 'left') yield G.questLog();
       else if (op === 'right') {
-        yield G.say({ t: '¿Quieres guardar tu progreso?', en: 'Do you want to save your progress?' }, { noVoice: true });
-        const r = yield G.confirm();
-        if (r.result === 0) { const ok = S().save(); G.audio.sfx(ok ? 'item' : 'error'); yield G.say(ok ? { t: '¡Guardado!', en: 'Saved!' } : { t: 'No se pudo guardar.', en: 'Could not save (browser storage is blocked).' }); }
+        const r = yield G.choose({ prompt: '¿Guardar?', en: 'Save the game?', show: 'save', layout: 'cards', choices: [{ word: 'si' }, { word: 'no' }], cancel: true });
+        if (r.result === 0) { const ok = S().save(); G.audio.sfx(ok ? 'item' : 'error'); G.toast(ok ? '\u0005 ¡Guardado! \u0005' : '¡Error!', 80); }
       } else if (op === 'down') yield* G.options();
     }
   };
 
-  // ---------- Cuaderno: words by topic, with pictures, stars and English ----------
+  // ---------- Cuaderno: one page per topic, found around town ----------
   class Notebook {
-    constructor(w) { G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; this.ti = 0; this.wi = 0; }
-    topic() { return D().topicOrder[this.ti]; }
-    all() { const tp = this.topic(); return Object.keys(D().words).filter(id => D().words[id].topic === tp); }
+    constructor(w, start) { G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; this.pi = Math.max(0, D().pageOrder.indexOf(start)); this.wi = 0; }
+    page() { return D().pageOrder[this.pi]; }
+    words() { return D().pages[this.page()].words; }
     update() {
       this.t++;
-      const d = G.input.repDir(14, 5), ids = this.all();
-      if (d === 'left' || d === 'right') { this.ti = (this.ti + (d === 'left' ? -1 : 1) + D().topicOrder.length) % D().topicOrder.length; this.wi = 0; G.audio.sfx('cursor'); }
-      if (d === 'up' || d === 'down') { this.wi = (this.wi + (d === 'up' ? -1 : 1) + ids.length) % ids.length; G.audio.sfx('cursor'); }
-      if (G.input.p('A')) { const id = ids[this.wi]; if (S().knows(id)) G.speak(D().words[id].es.split(' / ')[0]); else G.audio.sfx('error'); }
-      if (G.input.p('B')) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); }
+      const d = G.input.repDir(14, 5), found = S().hasPage(this.page()), n = this.words().length;
+      if (G.input.p('B')) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); return; }
+      // left/right moves within the page's 3-column grid, and past its edge turns the page
+      if (d === 'left' || d === 'right') {
+        const col = this.wi % 3, dx = d === 'left' ? -1 : 1;
+        if (found && col + dx >= 0 && col + dx < 3 && this.wi + dx < n) { this.wi += dx; G.audio.sfx('cursor'); }
+        else { this.pi = (this.pi + dx + D().pageOrder.length) % D().pageOrder.length; this.wi = 0; G.audio.sfx('select'); return; }
+      }
+      if (found && (d === 'up' || d === 'down')) { const k = this.wi + (d === 'up' ? -3 : 3); if (k >= 0 && k < n) { this.wi = k; G.audio.sfx('cursor'); } }
+      if (found && (G.input.p('A') || G.input.p('C'))) { const id = this.words()[this.wi]; if (S().seen(id)) G.speak(G.baseForm(id)); }
     }
     draw(ctx) {
       G.win(ctx, 6, 6, G.W - 12, G.H - 12, { fill1: '#f4ecd8', fill2: '#e0d4b8', alpha: 1 });
-      const tp = D().topics[this.topic()], ids = this.all(), known = ids.filter(S().knows).length;
-      // tab strip
-      ctx.fillStyle = '#7a4a20'; ctx.fillRect(14, 30, G.W - 28, 1);
-      G.text(ctx, '<', 16, 14, '#7a4a20', null); G.textR(ctx, '>', G.W - 16, 14, '#7a4a20', null);
-      G.textC(ctx, 'CUADERNO', G.W / 2, 11, '#a05020', null);
-      G.textC(ctx, tp.name + '  (' + known + '/' + ids.length + ')', G.W / 2, 20, '#302018', null);
-      // word rows
-      ids.forEach((id, k) => {
-        const wd = D().words[id], y = 36 + k * 22, sel = k === this.wi, kn = S().knows(id);
-        if (sel) { ctx.fillStyle = '#f8e0a0'; ctx.fillRect(14, y - 2, G.W - 28, 21); }
-        if (kn) {
-          G.drawIcon16(ctx, wd, 20, y);
-          G.text(ctx, wd.es, 42, y + 1, '#202040', null);
-          G.text(ctx, wd.en, 42, y + 10, '#8a7a60', null);
-          const st = S().wordStars(id);
-          for (let s = 0; s < 3; s++) G.text(ctx, STAR, G.W - 46 + s * 8, y + 5, s < st ? '#e0a010' : '#c8bca0', null);
-        } else {
-          ctx.fillStyle = '#d8ccb0'; ctx.fillRect(20, y, 16, 16);
-          G.text(ctx, '?', 26, y + 4, '#a89878', null);
-          G.text(ctx, '. . . . .', 42, y + 5, '#b8a888', null);
-        }
+      const pid = this.page(), found = S().hasPage(pid);
+      G.text(ctx, '<', 14, 12, '#7a4a20', null); G.textR(ctx, '>', G.W - 14, 12, '#7a4a20', null);
+      // page dots
+      D().pageOrder.forEach((p, k) => {
+        const x = G.W / 2 - 34 + k * 14;
+        ctx.fillStyle = k === this.pi ? '#a05020' : S().hasPage(p) ? '#c8a070' : '#e8dcc0';
+        ctx.fillRect(x, 11, 8, 6); ctx.fillStyle = '#7a4a20'; ctx.fillRect(x, 17, 8, 1);
       });
-      G.text(ctx, 'A', 14, G.H - 18, '#a05020', null); G.text(ctx, 'escuchar', 22, G.H - 18, '#806040', null);
-      G.textR(ctx, STAR + ' ' + G.state.stars, G.W - 14, G.H - 18, '#c08010', null);
+      if (!found) {
+        ctx.globalAlpha = 0.35; G.drawIcon16(ctx, 'pagina', G.W / 2 - 24, 64, 3); ctx.globalAlpha = 1;
+        G.bigText(ctx, '?', G.W / 2, 140, 3, '#a08060', null);
+        return;
+      }
+      const tp = D().topics[D().pages[pid].topic];
+      G.textC(ctx, tp.name, G.W / 2, 24, '#a05020', null);
+      if (G.enVisible()) G.textR(ctx, tp.en, G.W - 16, 24, '#a09070', null);
+      this.words().forEach((id, k) => {
+        const cx = 22 + (k % 3) * 96, cy = 36 + Math.floor(k / 3) * 58, sel = k === this.wi;
+        const wd = D().words[id], seen = S().seen(id), kn = S().knows(id);
+        if (sel) { ctx.fillStyle = '#f8e0a0'; ctx.fillRect(cx - 4, cy - 2, 92, 56); }
+        G.drawIcon16(ctx, wd, cx + 26, cy, 2);
+        if (seen) G.textC(ctx, wd.es.split(' / ')[0], cx + 42, cy + 35, kn ? '#a06008' : '#2860a8', null);
+        else G.textC(ctx, '? ? ?', cx + 42, cy + 35, '#b8a888', null);
+        if (G.enVisible()) G.textC(ctx, wd.en, cx + 42, cy + 45, '#a09070', null);
+        else if (kn) { const st = S().wordStars(id); for (let s = 0; s < 3; s++) G.text(ctx, STAR, cx + 30 + s * 8, cy + 45, s < st ? '#e0a010' : '#d8ccb0', null); }
+      });
     }
   }
-  G.notebook = function () { const w = new G.Wait(); G.push(new Notebook(w)); return w; };
+  G.notebook = function (start) { const w = new G.Wait(); G.push(new Notebook(w, start)); return w; };
 
-  // ---------- Misiones: errands + badges ----------
+  // ---------- Misiones: who asked, and what they want (pictures only) ----------
   class QuestLog {
     constructor(w) { G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; }
     update() { this.t++; if (G.input.p('A') || G.input.p('B')) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); } }
     draw(ctx) {
       G.win(ctx, 6, 6, G.W - 12, G.H - 12);
-      G.textC(ctx, 'MISIONES', G.W / 2, 12, '#f8e060');
+      G.drawIcon(ctx, 'quest', G.W / 2 - 12, 8);
       const list = D().questOrder.filter(id => S().quest(id));
-      if (!list.length) G.textC(ctx, 'Todavía no tienes misiones.', G.W / 2, 60, '#a0a8d0');
-      let y = 28;
-      list.forEach(id => {
-        const q = D().quests[id], done = S().done(id);
-        G.text(ctx, done ? '\u0005' : '\u0002', 16, y, done ? '#f8d030' : '#ffffff');
-        G.text(ctx, q.name, 26, y, done ? '#a0a8d0' : '#ffffff');
-        G.textR(ctx, done ? '¡Hecho!' : q.giver, G.W - 16, y, done ? '#80e080' : '#9098c8');
-        if (!done) {
-          G.text(ctx, G.enVisible() ? q.goalEn : q.goal, 26, y + 11, G.enVisible() ? '#f8e8b0' : '#c8d0f0');
-          y += 11;
-        }
-        y += 15;
+      if (!list.length) G.bigText(ctx, '?', G.W / 2, 80, 3, '#404878');
+      list.forEach((id, k) => {
+        const q = D().quests[id], done = S().done(id), y = 34 + k * 30;
+        ctx.fillStyle = '#0a1040'; ctx.fillRect(14, y - 2, G.W - 28, 26);
+        ctx.globalAlpha = done ? 0.5 : 1;
+        ctx.drawImage(G.unitSprite(D().npcs[q.giver].map, 'down', (this.t >> 5) & 1), 18, y);
+        G.drawIcon16(ctx, 'flecha', 46, y + 4);
+        G.drawGoal(ctx, q.goal, 68, y + 4);
+        ctx.globalAlpha = 1;
+        if (done) G.drawIcon16(ctx, 'si', G.W - 36, y + 4);
+        if (G.enVisible()) G.textR(ctx, q.en, G.W - 40, y + 9, '#f8e8b0');
       });
-      G.text(ctx, 'INSIGNIAS', 16, G.H - 50, '#f8e060');
       ['saludos', 'mercado', 'pelota', 'carta', 'fiesta'].forEach((id, k) => {
-        const x = 20 + k * 40, yy = G.H - 38;
+        const x = G.W / 2 - 88 + k * 40, yy = G.H - 34;
         if (S().done(id)) G.drawBadge(ctx, id, x, yy, this.t + k * 18);
         else { ctx.fillStyle = '#0a1040'; ctx.beginPath(); ctx.arc(x + 8, yy + 8, 10, 0, Math.PI * 2); ctx.fill(); G.textC(ctx, '?', x + 8, yy + 4, '#404878'); }
       });
-      G.enHint(ctx, G.W - 56, G.H - 20);
     }
   }
   G.questLog = function () { const w = new G.Wait(); G.push(new QuestLog(w)); return w; };
 
-  // ---------- Opciones ----------
+  // ---------- Opciones (mostly for grown-ups) ----------
   G.options = function* () {
     let start = 0;
     while (true) {
       const o = G.state.opts, yes = v => v ? 'Sí' : 'No';
       const voices = G.spanishVoices(), cur = G.currentVoice();
       const r = yield G.menu([
-        { label: 'Inglés siempre', right: yes(o.english), en: 'Always show English translations' },
         { label: 'Voz en español', right: yes(o.voice), en: 'Read Spanish aloud' },
         { label: 'Elegir voz', right: voices.length ? (voices.indexOf(cur) + 1) + '/' + voices.length : '-', disabled: !voices.length,
           en: cur ? 'Change the voice. Now: ' + cur.name + ' (' + cur.lang + ')' : 'No Spanish voice found on this device' },
         { label: 'Música y sonido', right: yes(!G.audio.muted), en: 'Music and sound effects' },
+        { label: 'Inglés (padres)', right: yes(o.english), en: 'Show English translations (for parents and teachers)' },
       ], { title: 'OPCIONES', start, w: 190 });
       if (r.result < 0) return;
       start = r.result;
-      if (r.result === 0) o.english = !o.english;
-      else if (r.result === 1) { o.voice = !o.voice; if (o.voice) G.speak('¡Hola! Hoy es tu primer día.'); else try { speechSynthesis.cancel(); } catch (e) { } }
-      else if (r.result === 2) {
+      if (r.result === 0) { o.voice = !o.voice; if (o.voice) G.speak('¡Hola! Hoy es tu primer día.'); else try { speechSynthesis.cancel(); } catch (e) { } }
+      else if (r.result === 1) {
         const next = voices[(voices.indexOf(cur) + 1) % voices.length];
         o.voiceName = next.name; o.voice = true;
         G.speak('¡Hola! Hoy es tu primer día en el Club de Español.');
       }
-      else G.audio.toggleMute();
+      else if (r.result === 2) G.audio.toggleMute();
+      else o.english = !o.english;
     }
   };
 })();
