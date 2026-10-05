@@ -101,15 +101,23 @@
     let start = 0;
     while (true) {
       const o = G.state.opts, yes = v => v ? 'Sí' : 'No';
+      const voices = G.spanishVoices(), cur = G.currentVoice();
       const r = yield G.menu([
         { label: 'Inglés siempre', right: yes(o.english), en: 'Always show English translations' },
-        { label: 'Voz en español', right: yes(o.voice), en: 'Read Spanish aloud. Voice: ' + (G.voiceName() || 'none found on this device') },
+        { label: 'Voz en español', right: yes(o.voice), en: 'Read Spanish aloud' },
+        { label: 'Elegir voz', right: voices.length ? (voices.indexOf(cur) + 1) + '/' + voices.length : '-', disabled: !voices.length,
+          en: cur ? 'Change the voice. Now: ' + cur.name + ' (' + cur.lang + ')' : 'No Spanish voice found on this device' },
         { label: 'Música y sonido', right: yes(!G.audio.muted), en: 'Music and sound effects' },
       ], { title: 'OPCIONES', start, w: 190 });
       if (r.result < 0) return;
       start = r.result;
       if (r.result === 0) o.english = !o.english;
-      else if (r.result === 1) { o.voice = !o.voice; if (o.voice) G.speak('¡Hola!'); else try { speechSynthesis.cancel(); } catch (e) { } }
+      else if (r.result === 1) { o.voice = !o.voice; if (o.voice) G.speak('¡Hola! Hoy es tu primer día.'); else try { speechSynthesis.cancel(); } catch (e) { } }
+      else if (r.result === 2) {
+        const next = voices[(voices.indexOf(cur) + 1) % voices.length];
+        o.voiceName = next.name; o.voice = true;
+        G.speak('¡Hola! Hoy es tu primer día en el Club de Español.');
+      }
       else G.audio.toggleMute();
     }
   };

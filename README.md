@@ -25,7 +25,7 @@ On phones and tablets, on-screen buttons appear.
 - **Pictures over translation.** Many questions show pictures, like "¿Cuál es la manzana?", or dice faces for numbers, so kids link the word to the meaning rather than to English.
 - **Gentle retries.** A wrong answer gets "¡Casi! Inténtalo otra vez." and that choice is greyed out, so every question can be finished. Getting it right on the first try earns a ★.
 - **Cuaderno (notebook).** Every word you've learned, by topic, with its picture, English, and up to three stars. Press A on a word to hear it.
-- **Spoken Spanish (North American).** If the device has a Spanish voice, lines and words are read aloud. The game picks a Mexican voice first, then US Spanish, then other Latin American voices, and uses Spain's only if nothing else is installed. *Opciones* shows which voice is in use; you can turn speech off there.
+- **Spoken Spanish.** If the device has a Spanish voice, lines and words are read aloud. It uses the first Spanish voice the device lists. *Opciones → Elegir voz* cycles through every Spanish voice on the device and says a sample line, so you can pick the accent you like (the choice is saved). You can turn speech off there too.
 - **Latin American wording.** The text uses Mexican/Latin American Spanish (for example *presiona*, not *pulsa*).
 - **"!" bubbles** float over anyone who has something for you, so kids always know where to go next.
 
