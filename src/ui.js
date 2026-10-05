@@ -157,17 +157,45 @@
     const all = G.spanishVoices(), want = G.state && G.state.opts && G.state.opts.voiceName;
     return all.find(v => v.name === want) || all.slice().sort((a, b) => rank(a) - rank(b))[0] || null;
   };
+  // Mobile browsers need extra care:
+  //  - iOS Safari / Android Chrome only allow speech after it has been started inside a real tap or key
+  //    press, so the first touch "primes" it with a silent utterance (G.primeSpeech, called from core.js);
+  //  - cancel() immediately followed by speak() often drops the new line, so we wait a moment after cancelling;
+  //  - speech can get stuck "paused", so we resume() first; and we keep a reference to the current
+  //    utterance so it isn't garbage-collected mid-sentence.
+  // G.voiceStatus says what happened last (shown in Opciones) to help track down device problems.
+  let current = null, primed = false, timer = null, lastCancel = -1e9;
+  G.voiceStatus = '';
+  G.primeSpeech = function () {
+    if (primed) return;
+    try {
+      const ss = window.speechSynthesis; if (!ss) { G.voiceStatus = 'no speech'; return; }
+      primed = true;
+      const u = new SpeechSynthesisUtterance(' '); u.volume = 0; u.lang = 'es-MX';
+      ss.resume(); ss.speak(u);
+      ss.getVoices(); // starts loading the voice list on Android
+    } catch (e) { }
+  };
   G.speak = function (text) {
     try {
       if (!G.prefs.voice || G.audio.muted) return;
-      const ss = window.speechSynthesis; if (!ss) return;
-      ss.cancel();
-      const clean = G.plain(G.fill(text)).replace(/[\u0001-\u0005«»]/g, '');
+      const ss = window.speechSynthesis; if (!ss) { G.voiceStatus = 'no speech'; return; }
+      const clean = G.plain(G.fill(text)).replace(/[\u0001-\u0005«»]/g, '').trim();
+      if (!clean || clean === '...' || clean === '. . .') return;
       const u = new SpeechSynthesisUtterance(clean); u.lang = 'es-MX'; u.rate = 0.85; u.volume = G.prefs.voice / 10;
       const v = G.currentVoice(); if (v) { u.voice = v; u.lang = v.lang.replace('_', '-'); }
-      ss.speak(u);
-    } catch (e) { }
+      u.onstart = () => { G.voiceStatus = 'ok'; };
+      u.onerror = e => { if (e.error !== 'interrupted' && e.error !== 'canceled') G.voiceStatus = e.error || 'error'; };
+      current = u;
+      clearTimeout(timer);
+      const go = () => { if (current !== u) return; try { ss.resume(); ss.speak(u); } catch (e) { G.voiceStatus = 'error'; } };
+      const now = performance.now();
+      if (ss.speaking || ss.pending) { ss.cancel(); lastCancel = now; }
+      const wait = lastCancel + 90 - now; // never speak within ~90ms of a cancel
+      if (wait > 0) timer = setTimeout(go, wait); else go();
+    } catch (e) { G.voiceStatus = 'error'; }
   };
+
 
   // ---------- List menu ----------
   // items: [{label, right?, disabled?, color?}] or strings. opts: {x,y,w,title,cols,onMove(i),maxRows,cancel:true,help(i)->str}

@@ -46,12 +46,13 @@ window.addEventListener('keydown', e => {
   e.preventDefault();
   if (!G.keys[k]) { G.pressed[k] = true; G.repeatT[k] = 0; }
   G.keys[k] = true;
-  G.audio && G.audio.unlock();
+  G.audio && G.audio.unlock(); G.primeSpeech && G.primeSpeech();
 });
 window.addEventListener('keyup', e => { const k = KEYMAP[e.code]; if (k) { G.keys[k] = false; } });
 window.addEventListener('blur', () => { G.keys = {}; });
 // touch/mouse -> unlock audio
-window.addEventListener('pointerdown', () => G.audio && G.audio.unlock());
+window.addEventListener('pointerdown', () => { G.audio && G.audio.unlock(); G.primeSpeech && G.primeSpeech(); });
+window.addEventListener('touchend', () => { G.primeSpeech && G.primeSpeech(); });
 
 G.input = {
   // edge-triggered
@@ -187,7 +188,7 @@ G.store = {
   const btns = document.createElement('div'); btns.id = 'tcbtn'; btns.className = 'tc';
   [['C', 'C'], ['B', 'B'], ['A', 'A']].forEach(([k, t]) => { const b = document.createElement('button'); b.textContent = t; b.dataset.k = k; if (k === 'A') b.style.marginBottom = '30px'; btns.appendChild(b); });
   document.body.appendChild(pad); document.body.appendChild(btns);
-  const down = k => { if (!G.keys[k]) { G.pressed[k] = true; G.repeatT[k] = 0; } G.keys[k] = true; G.audio && G.audio.unlock(); };
+  const down = k => { if (!G.keys[k]) { G.pressed[k] = true; G.repeatT[k] = 0; } G.keys[k] = true; G.audio && G.audio.unlock(); G.primeSpeech && G.primeSpeech(); };
   const up = k => { G.keys[k] = false; };
   [pad, btns].forEach(el => {
     el.addEventListener('pointerdown', e => { const k = e.target.dataset && e.target.dataset.k; if (!k) return; e.preventDefault(); e.target.classList.add('on'); down(k); e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId); });

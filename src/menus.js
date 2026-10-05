@@ -156,8 +156,13 @@
           G.textR(ctx, String(v), x + W - 10, yy, v ? '#ffffff' : '#7078a0');
         } else G.textR(ctx, r.right, x + W - 10, yy, '#ffffff');
       });
+      // voice status line: which voice is speaking, or why not
+      const v = G.currentVoice(), st = G.voiceStatus;
+      const line = !window.speechSynthesis ? 'Voz: no disponible en este navegador' : !v ? 'Voz: (ninguna voz en español)' : 'Voz: ' + v.name + ' (' + v.lang + ')' + (st && st !== 'ok' ? '  ! ' + st : '');
+      G.win(ctx, x, y + H + 2, W, 18, { alpha: 0.9 });
+      G.text(ctx, line.length > 44 ? line.slice(0, 42) + '..' : line, x + 8, y + H + 7, st && st !== 'ok' ? '#ff9080' : '#a8b0d8');
       const cur = rows[this.i];
-      if (G.enVisible()) G.enBox(ctx, cur.en, y + H + 2, true);
+      if (G.enVisible()) G.enBox(ctx, cur.en, y + H + 22, true);
     }
   }
   // browsers may hand back new voice objects on each call, so match by name
