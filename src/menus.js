@@ -133,6 +133,7 @@
           const voices = G.spanishVoices(), cur = G.currentVoice();
           if (!voices.length) { G.audio.sfx('error'); return; }
           G.state.opts.voiceName = voices[(voiceIndex(voices, cur) + 1) % voices.length].name;
+          G.audio.setPref('voiceMode', 0);
           if (!G.prefs.voice) G.audio.setVolume('voice', 7);
           G.speak('¡Hola! Hoy es tu primer día en el Club de Español.');
         } else if (this.i === 4) { G.state.opts.english = !G.state.opts.english; G.audio.sfx('ok'); }
@@ -158,7 +159,9 @@
       });
       // voice status line: which voice is speaking, or why not
       const v = G.currentVoice(), st = G.voiceStatus;
-      const line = !window.speechSynthesis ? 'Voz: no disponible en este navegador' : !v ? 'Voz: (ninguna voz en español)' : 'Voz: ' + v.name + ' (' + v.lang + ')' + (st && st !== 'ok' ? '  ! ' + st : '');
+      const mode = G.prefs.voiceMode || 0, nv = G.spanishVoices().length;
+      const who = !v ? '(ninguna voz en español)' : mode === 0 ? v.name + ' (' + v.lang + ')' : 'predeterminada (' + v.lang + ')' + (mode === 2 ? ' + pausa' : '');
+      const line = !window.speechSynthesis ? 'Voz: no disponible en este navegador' : 'Voz: ' + who + ' [' + nv + ']' + (st && st !== 'ok' ? ' ! ' + st : '');
       G.win(ctx, x, y + H + 2, W, 18, { alpha: 0.9 });
       G.text(ctx, line.length > 44 ? line.slice(0, 42) + '..' : line, x + 8, y + H + 7, st && st !== 'ok' ? '#ff9080' : '#a8b0d8');
       const cur = rows[this.i];

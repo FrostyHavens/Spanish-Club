@@ -32,6 +32,7 @@
     if (A.sfxGain) A.sfxGain.gain.value = A.sfxVol;
   };
   A.setVolume = function (kind, level) { G.prefs[kind] = Math.max(0, Math.min(10, level)); A.applyVolumes(); G.store.set(PREF_KEY, G.prefs); };
+  A.setPref = function (k, v) { G.prefs[k] = v; G.store.set(PREF_KEY, G.prefs); };
   A.applyVolumes();
 
   // ---------- Instruments ----------

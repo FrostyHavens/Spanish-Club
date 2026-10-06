@@ -163,8 +163,13 @@
   //  - cancel() immediately followed by speak() often drops the new line, so we wait a moment after cancelling;
   //  - speech can get stuck "paused", so we resume() first; and we keep a reference to the current
   //    utterance so it isn't garbage-collected mid-sentence.
+  // Some phones (seen on iPhone) stay silent with no error: a listed voice that isn't really installed, or
+  // speech muted while Web Audio music plays. So each line is watched: if it hasn't started after a moment,
+  // we retry one step down this ladder and remember the step that works on this device (G.prefs.voiceMode):
+  //   0 = the chosen voice   1 = no voice set (the system's default Spanish)   2 = 1 + pause the music while speaking
   // G.voiceStatus says what happened last (shown in Opciones) to help track down device problems.
-  let current = null, primed = false, timer = null, lastCancel = -1e9;
+  const MODES = 3;
+  let current = null, primed = false, timer = null, watch = null, lastCancel = -1e9, pausedMusic = false;
   G.voiceStatus = '';
   G.primeSpeech = function () {
     if (primed) return;
@@ -176,25 +181,54 @@
       ss.getVoices(); // starts loading the voice list on Android
     } catch (e) { }
   };
+  function musicBack() { if (pausedMusic) { pausedMusic = false; try { G.audio.ctx && G.audio.ctx.resume(); } catch (e) { } } }
+  function attempt(clean, mode, tries) {
+    const ss = window.speechSynthesis;
+    const u = new SpeechSynthesisUtterance(clean); u.rate = 0.85; u.volume = G.prefs.voice / 10;
+    const v = mode === 0 ? G.currentVoice() : null;
+    if (v) { u.voice = v; u.lang = v.lang.replace('_', '-'); } else u.lang = (G.currentVoice() || { lang: 'es-MX' }).lang.replace('_', '-');
+    let started = false;
+    u.onstart = () => {
+      started = true; G.voiceStatus = 'ok';
+      if (G.prefs.voiceMode !== mode) G.audio.setPref && G.audio.setPref('voiceMode', mode);
+    };
+    u.onend = () => { if (current === u) musicBack(); };
+    u.onerror = e => { if (e.error !== 'interrupted' && e.error !== 'canceled') G.voiceStatus = e.error || 'error'; if (current === u) musicBack(); };
+    current = u;
+    const go = () => {
+      if (current !== u) return;
+      try {
+        if (mode === 2 && G.audio.ctx && G.audio.ctx.state === 'running') { pausedMusic = true; G.audio.ctx.suspend(); }
+        ss.resume(); ss.speak(u);
+      } catch (e) { G.voiceStatus = 'error'; }
+      // silent-failure watchdog: no start after 1.5s -> try the next mode
+      clearTimeout(watch);
+      watch = setTimeout(() => {
+        if (current !== u || started || ss.speaking) return;
+        musicBack();
+        if (tries + 1 >= MODES) { G.voiceStatus = 'silent'; return; }
+        G.voiceStatus = 'retry ' + ((mode + 1) % MODES);
+        ss.cancel(); lastCancel = performance.now();
+        setTimeout(() => { if (current === u) attempt(clean, (mode + 1) % MODES, tries + 1); }, 120);
+      }, 1500);
+    };
+    const now = performance.now();
+    if (ss.speaking || ss.pending) { ss.cancel(); lastCancel = now; }
+    const wait = lastCancel + 90 - now; // never speak within ~90ms of a cancel
+    clearTimeout(timer);
+    if (wait > 0) timer = setTimeout(go, wait); else go();
+  }
   G.speak = function (text) {
     try {
       if (!G.prefs.voice || G.audio.muted) return;
       const ss = window.speechSynthesis; if (!ss) { G.voiceStatus = 'no speech'; return; }
       const clean = G.plain(G.fill(text)).replace(/[\u0001-\u0005«»]/g, '').trim();
       if (!clean || clean === '...' || clean === '. . .') return;
-      const u = new SpeechSynthesisUtterance(clean); u.lang = 'es-MX'; u.rate = 0.85; u.volume = G.prefs.voice / 10;
-      const v = G.currentVoice(); if (v) { u.voice = v; u.lang = v.lang.replace('_', '-'); }
-      u.onstart = () => { G.voiceStatus = 'ok'; };
-      u.onerror = e => { if (e.error !== 'interrupted' && e.error !== 'canceled') G.voiceStatus = e.error || 'error'; };
-      current = u;
-      clearTimeout(timer);
-      const go = () => { if (current !== u) return; try { ss.resume(); ss.speak(u); } catch (e) { G.voiceStatus = 'error'; } };
-      const now = performance.now();
-      if (ss.speaking || ss.pending) { ss.cancel(); lastCancel = now; }
-      const wait = lastCancel + 90 - now; // never speak within ~90ms of a cancel
-      if (wait > 0) timer = setTimeout(go, wait); else go();
+      musicBack();
+      attempt(clean, Math.min(MODES - 1, G.prefs.voiceMode || 0), 0);
     } catch (e) { G.voiceStatus = 'error'; }
   };
+
 
 
   // ---------- List menu ----------
