@@ -66,6 +66,7 @@
       ctx.fillStyle = '#5a3810'; ctx.fillRect(x + 15, y + 15, 54, 54); G.drawPortrait(ctx, G.st.playerSpec().portrait, x + 16, y + 16, this.t);
       G.drawIcon(ctx, 'book', G.W / 2 - 70, y + 76); G.text(ctx, String(G.st.learnedCount()), G.W / 2 - 42, y + 82, '#604020', null);
       G.text(ctx, '\u0005 ' + G.state.stars, G.W / 2 + 26, y + 82, '#c08010', null);
+      const said = G.st.micStars(); if (said) { G.mic.glyph(ctx, G.W / 2 + 62, y + 81, '#2a8a9a'); G.text(ctx, String(said), G.W / 2 + 72, y + 82, '#2a8a9a', null); } // speaking stars
       ['saludos', 'mercado', 'pelota', 'carta', 'fiesta'].forEach((id, k) => G.drawBadge(ctx, id, G.W / 2 - 92 + k * 40, y + 108, this.t + k * 15));
       G.textC(ctx, 'Luna', G.W / 2 + 50, y + h - 24, '#203080', null);
       ctx.fillStyle = '#806040'; ctx.fillRect(G.W / 2 + 14, y + h - 14, 72, 1);

@@ -3,8 +3,8 @@
 // it closes; it also works with yield* G.micTest() in a generator. Tap a word: the game says it. Tap the big mic and
 // say the word: every guess the recognizer made is shown with its confidence and match score, then PASS / CLOSE / MISS
 // (G.speech.match). Then the game speaks again and asks whether that was heard (on some iPhones the voice goes quiet
-// after the mic). Every try is kept in localStorage 'spanishclub_mictest' (the last 200): Copy and Clear are at the
-// bottom. Grown-ups only, so the labels are English. Keys: arrows pick a word, C says it, Z listens, X closes.
+// after the mic). Every try is kept in localStorage 'spanishclub_mictest' (the last 200): Copy (Share where there's a
+// share sheet) and Clear are at the bottom. Grown-ups only, so the labels are English. Keys: arrows pick a word, C says it, Z listens, X closes.
 'use strict';
 (function () {
   const LOG_KEY = 'spanishclub_mictest', LOG_MAX = 200;
@@ -182,11 +182,22 @@
     }
     answer(h) { log.update(this.entry.id, { heard: h }); this.mode = 'ready'; G.audio.sfx(h == null ? 'cancel' : 'ok'); if (h != null) this.notice(h ? 'Thanks! Voice OK after the mic' : 'Noted: voice lost after the mic'); }
 
-    // ---------- Copy (inside the tap when possible: Safari only lets a tap copy) ----------
+    // ---------- Copy (inside the tap when possible: Safari only lets a tap copy or share) ----------
+    // The share sheet when there is one (iPad: Messages, Mail, Notes, Copy...), else the clipboard, else a text box.
     copy() {
       const now = performance.now(); if (now - this.lastCopy < 500) return; this.lastCopy = now;
       const n = log.all().length; if (!n) { this.notice('Nothing to copy yet'); G.audio.sfx('error'); return; }
       const txt = log.text();
+      try {
+        if (navigator.share) {
+          navigator.share({ title: 'Club de Español mic test', text: txt }).then(() => { this.notice('Shared ' + n + (n === 1 ? ' try' : ' tries')); G.audio.sfx('ok'); },
+            e => { if (!(e && e.name === 'AbortError')) this.clip(txt, n); }); // closed the sheet: nothing to do
+          return;
+        }
+      } catch (e) { }
+      this.clip(txt, n);
+    }
+    clip(txt, n) {
       try {
         const cb = navigator.clipboard;
         if (cb && cb.writeText) { cb.writeText(txt).then(() => { this.notice('Copied ' + n + (n === 1 ? ' try' : ' tries')); G.audio.sfx('ok'); }, () => this.showText(txt, 'Copying was blocked. Select the text below and copy it.')); return; }
@@ -221,7 +232,7 @@
       this.drawMic(ctx);
       this.drawPanel(ctx);
       // bottom bar: copy, clear, and how it has gone so far
-      textBtn(ctx, this.copyRect(), 'Copy log');
+      textBtn(ctx, this.copyRect(), navigator.share ? 'Share log' : 'Copy log');
       textBtn(ctx, this.clearRect(), this.clearT > 0 ? 'Sure?' : 'Clear', { fill: this.clearT > 0 ? '#902838' : null });
       const st = log.stats();
       const line = this.noteT > 0 ? this.note : st.n ? st.n + (st.n === 1 ? ' try  ' : ' tries  ') + st.pass + ' pass' + (st.asked ? '  voice ' + st.heard + '/' + st.asked : '') : 'No tries yet';

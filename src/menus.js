@@ -147,6 +147,10 @@
         else G.textC(ctx, '? ? ?', cx + 42, cy + 35, '#b8a888', null);
         if (G.enVisible()) G.textC(ctx, wd.en, cx + 42, cy + 45, '#a09070', null);
         else if (kn) { const st = S().wordStars(id); for (let s = 0; s < 3; s++) G.text(ctx, STAR, cx + 30 + s * 8, cy + 45, s < st ? '#e0a010' : '#d8ccb0', null); }
+        if (seen && S().saidCount(id)) { // said out loud (the mic): a little mic with a sound wave
+          G.mic.glyph(ctx, cx + 72, cy + 2, '#2a8a9a');
+          ctx.fillStyle = '#2a8a9a'; ctx.fillRect(cx + 81, cy + 2, 1, 1); ctx.fillRect(cx + 82, cy + 3, 1, 3); ctx.fillRect(cx + 81, cy + 6, 1, 1);
+        }
       });
     }
   }
@@ -183,10 +187,11 @@
   G.questLog = function () { const w = new G.Wait(); G.push(new QuestLog(w)); return w; };
 
   // ---------- Grown-ups menu (behind the held gear; English labels) ----------
-  // Volumes, voice, English help, on-screen buttons, microphone test, controls, back to title. Nothing to save by
-  // hand: volumes, the voice, English help and the D-pad are kept per device (G.prefs), and the game saves itself.
+  // Volumes, voice, English help, on-screen buttons, speaking (the kids' mic), microphone test, controls, back to
+  // title. Nothing to save by hand: volumes, the voice, English help, the D-pad and speaking are kept per device
+  // (G.prefs), and the game saves itself.
   // Up/down picks a row, left/right moves a volume, A changes the others; tap a row, tap or drag along a volume bar.
-  const ROW_H = 19, BAR = 168, CELL = 12; // volume bars: 10 cells from x = BAR; the speaker just left of it = 0
+  const ROW_H = 17, BAR = 168, CELL = 12; // volume bars: 10 cells from x = BAR; the speaker just left of it = 0
   class GrownUps {
     constructor(w, o) { this.transparent = true; this.w = w; this.o = o || {}; this.t = 0; this.i = 0; this.drag = null; this.tick = 0; }
     rows() {
@@ -198,6 +203,8 @@
         { id: 'pick', label: 'Choose voice', right: voices.length ? (voiceIndex(voices, cur) + 1) + ' / ' + voices.length : 'none found', off: !voices.length, help: voiceLine() },
         { id: 'english', label: 'English help', on: G.enVisible(), help: 'Shows English under the Spanish (for grown-ups).' },
         { id: 'dpad', label: 'On-screen buttons', on: !!G.prefs.dpad, help: 'Arrows and A B C on the screen. Taps work without.' },
+        G.speech.supported() ? { id: 'speak', label: 'Speaking (mic)', on: G.prefs.mic !== false && !G.mic.blocked, help: G.mic.blocked ? 'The mic was blocked. Try the Microphone test.' : 'Say answers out loud for bonus stars. Taps always work.' }
+          : { id: 'speak', label: 'Speaking (mic)', right: 'not available', off: true, help: 'No speech recognition here. iPad: Safari + Dictation on.' },
         { id: 'mic', label: 'Microphone test', right: mic ? '>' : 'not available', off: !mic, help: mic ? 'Does speech recognition hear Spanish words?' : 'The microphone test is not in this version.' },
         { id: 'help', label: 'Controls and tips', right: '>', help: 'The keys, and how the game teaches.' },
       ];
@@ -247,6 +254,10 @@
       } else if (r.id === 'english') {
         const on = !G.state.opts.english; G.state.opts.english = on; G.audio.setPref('english', on); G.audio.sfx('ok'); S().autosave();
       } else if (r.id === 'dpad') { G.setDpad(!G.prefs.dpad); G.audio.sfx('ok'); }
+      else if (r.id === 'speak') {
+        if (r.off) { G.audio.sfx('error'); return; }
+        G.audio.setPref('mic', !r.on); G.mic.blocked = false; G.audio.sfx('ok');
+      }
       else if (r.id === 'mic') {
         if (r.off) { G.audio.sfx('error'); return; }
         G.audio.sfx('ok'); try { G.micTest(); } catch (e) { console.warn(e); }
@@ -260,18 +271,18 @@
       G.textR(ctx, 'Progress saves by itself', G.W - 40, 14, '#8890c0');
       G.closeBtn(ctx, ...this.closeXY());
       rows.forEach((r, k) => {
-        const R = this.rowRect(k), y = R.y + 6, sel = k === this.i, col = r.off ? '#7078a0' : sel ? '#f8e060' : '#ffffff', xr = R.x + R.w - 4;
+        const R = this.rowRect(k), y = R.y + 5, sel = k === this.i, col = r.off ? '#7078a0' : sel ? '#f8e060' : '#ffffff', xr = R.x + R.w - 4;
         if (sel) { ctx.fillStyle = 'rgba(248,224,96,0.13)'; ctx.fillRect(R.x + 2, R.y + 1, R.w - 4, R.h - 2); }
         else { ctx.fillStyle = 'rgba(136,152,224,0.22)'; ctx.fillRect(R.x + 14, R.y + R.h - 1, R.w - 28, 1); }
         if (sel && (this.t >> 3) % 4 !== 3) G.text(ctx, '\u0002', R.x + 4, y, '#f8e060');
         G.text(ctx, r.label, R.x + 14, y, col);
         if (r.vol) {
           const v = G.prefs[r.vol];
-          volIcon(ctx, r.vol === 'sfx' ? 'sound' : r.vol, BAR - 15, R.y + 5, !v);
-          for (let s = 0; s < 10; s++) { const h = 4 + s; ctx.fillStyle = s < v ? (sel ? '#f8d030' : '#c8d0f0') : '#303a78'; ctx.fillRect(BAR + s * CELL + 1, R.y + 16 - h, CELL - 2, h); }
+          volIcon(ctx, r.vol === 'sfx' ? 'sound' : r.vol, BAR - 15, R.y + 4, !v);
+          for (let s = 0; s < 10; s++) { const h = 3 + s; ctx.fillStyle = s < v ? (sel ? '#f8d030' : '#c8d0f0') : '#303a78'; ctx.fillRect(BAR + s * CELL + 1, R.y + 15 - h, CELL - 2, h); }
           G.textR(ctx, String(v), xr, y, v ? '#ffffff' : '#7078a0');
         } else if (r.on != null) { // a switch
-          const sx = xr - 26, sy = R.y + 4;
+          const sx = xr - 26, sy = R.y + 3;
           ctx.fillStyle = '#000010'; ctx.fillRect(sx - 1, sy - 1, 28, 13);
           ctx.fillStyle = r.on ? '#40a848' : '#404870'; ctx.fillRect(sx, sy, 26, 11);
           ctx.fillStyle = '#f0f0ff'; ctx.fillRect(r.on ? sx + 15 : sx + 1, sy + 1, 10, 9);

@@ -29,6 +29,8 @@ yield* G.siNo('¿[perro]?', true, { show: 'perro' });   // a sí/no question abo
 ```
 Choice options are `{ word: id }`, drawn as picture plus blue word until learned. Add `text: true` to show only the word (a recall test) or `pic: true` to show only the picture.
 
+**Speaking.** Every `G.ask` question whose answer is a `{ word }` gets the kids' mic button automatically (when the grown-ups' *Speaking (mic)* switch is on and the browser can listen). What the child says is matched against every choice: its `label` if it has one, plus every form in the word's `es` (`'rojo / roja'`, with or without the article). So keep the choices of one question sounding different from each other (*tres* / *dos* is fine; two words that differ by one sound in a short word are not). Add `noMic: true` to a question to leave the mic off, e.g. when the answer is a picture with no word to say. Plain `G.choose` menus (no `answer`) never get a mic.
+
 Use a word in a sentence or on a notebook page first (that marks it *seen*), then ask about it soon after.
 
 ## A notebook page

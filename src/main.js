@@ -229,7 +229,7 @@
       G.closeBtn(ctx, G.W - 30, 8);
       const L = [['CONTROLES  /  CONTROLS', ''], ['', ''],
         ['Flechas / WASD', 'caminar, elegir - walk, choose'], ['Z / Enter', 'hablar, OK - talk, OK'],
-        ['X / Esc', 'menú, volver - menu, back'], ['C', 'escuchar otra vez - hear it again'], ['M', 'sonido - sound on/off'], ['', ''],
+        ['X / Esc', 'menú, volver - menu, back'], ['C', 'escuchar otra vez - hear it again'], ['M', 'sonido - sound on/off'], ['V', 'el micrófono - say it (mic)'], ['', ''],
         ['Words start as pictures. Use a word right', ''], ['and it turns gold: you learned it!', ''],
         ['Find the notebook pages hidden in town.', ''], ['Progress saves itself. Grown-ups: hold the gear.', '']];
       L.forEach(([a, b], i) => {

@@ -35,7 +35,7 @@ const KEYMAP = {
   KeyZ: 'A', Space: 'A', Enter: 'A', KeyJ: 'A',
   KeyX: 'B', Escape: 'B', Backspace: 'B', KeyK: 'B',
   KeyC: 'C', ShiftLeft: 'C', ShiftRight: 'C', KeyL: 'C',
-  KeyM: 'M'
+  KeyM: 'M', KeyV: 'V'
 };
 window.addEventListener('keydown', e => {
   // while typing a name, printable keys, Backspace and Enter go to the text field instead of the buttons
@@ -53,7 +53,7 @@ window.addEventListener('blur', () => { G.keys = {}; G.input.ptr.down = false; }
 
 // ---------- Pointer (touch / mouse / pen), in game pixels ----------
 // Input API, shared by every scene (keyboard and taps run side by side; a scene checks both):
-//   G.input.p(k) h(k) rep(k) dir() repDir()  keys / D-pad: 'up' 'down' 'left' 'right' 'A' 'B' 'C' 'M'
+//   G.input.p(k) h(k) rep(k) dir() repDir()  keys / D-pad: 'up' 'down' 'left' 'right' 'A' 'B' 'C' 'M', 'V' (the mic)
 //   G.input.keyHeld(k)    frames key k has been held down (0 = up), for press-and-hold on the keyboard
 //   G.input.tap()         {x, y} of a tap released this frame (short press, little movement), else null.
 //                         Only presses on the game picture count (not the black margins), the newest finger wins,

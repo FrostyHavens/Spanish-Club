@@ -13,7 +13,8 @@
     return {
       flags: {}, searched: {}, playTime: 0,
       loc: { map: 'casa', x: 4, y: 4, dir: 'down' },
-      // words: id -> {learned, right: first-try correct answers, wrong}. Present = seen at least once.
+      // words: id -> {learned, right: first-try correct answers, wrong, said: times said out loud (mic.js; older
+      // saves don't have it)}. Present = seen at least once.
       words: {},
       pages: {},          // notebook pages found: id -> true
       quests: {},         // id -> 'active' | 'done'
@@ -46,6 +47,10 @@
     if (firstTry) { w.right++; G.state.stars++; } else w.wrong++;
     S.autosave();
   };
+  // said out loud with the mic (mic.js): a bonus star, counted in stars; S.micStars() is the speaking stars so far
+  S.said = function (id) { const w = rec(id); w.said = (w.said | 0) + 1; G.state.stars++; S.autosave(); };
+  S.saidCount = id => (G.state.words[id] && G.state.words[id].said) | 0;
+  S.micStars = (s = G.state) => Object.keys(s.words).reduce((n, id) => n + ((s.words[id] && s.words[id].said) | 0), 0);
   // 0..3 stars per word, from first-try answers
   S.wordStars = id => { const w = G.state.words[id]; return w ? Math.min(3, w.right) : 0; };
   S.learnedCount = () => Object.keys(G.state.words).filter(S.knows).length;

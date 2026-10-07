@@ -8,9 +8,10 @@
 //                               The Wait also has .phase ('starting' 'listening' 'speech' 'done'), .stop() (finish now,
 //                               keeping what was heard) and .abort(). G.speech.stop() / .abort() act on the current one.
 // G.speech.match(target, alts)  -> {pass, score 0..1, heard (the transcript that scored best), i (its index)}. Pure.
-// G.speech.gestureTap(zone, fn, {key})  runs fn(event) INSIDE the input event when a tap lands in zone() (a game-px
-//                               rect, or null when not armed), or when an A key (Z / Space / Enter) goes down while key()
-//                               is true. Returns {off()}. Start listening from fn, not from a scene's update():
+// G.speech.gestureTap(zone, fn, {key, codes})  runs fn(event) INSIDE the input event when a tap lands in zone() (a
+//                               game-px rect, or null when not armed), or when an A key (Z / Space / Enter; or the key
+//                               codes listed, e.g. ['KeyV']) goes down while key() is true. Returns {off()}. Start
+//                               listening from fn, not from a scene's update():
 //
 // Why gestureTap: on iPad / iPhone Safari (webkitSpeechRecognition, iOS 14.5+, needs Siri & Dictation turned on),
 // start() only works inside a user gesture, like speech and audio. The game reads taps in update() on the next
@@ -196,10 +197,10 @@
   const inR = (x, y, r) => !!r && x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
   function gameXY(cx, cy) { const b = G.canvas.getBoundingClientRect(); return [(cx - b.left) * G.W / b.width, (cy - b.top) * G.H / b.height]; }
   function press(cx, cy, id, touch) { const [x, y] = gameXY(cx, cy); return { x, y, id, touch, t: now(), ready: G.input.ready() }; }
-  function fire(e, x, y, d) { // x == null: an A key; else a tap that went down at d and lifted at x, y
+  function fire(e, x, y, d, code) { // x == null: a key (code); else a tap that went down at d and lifted at x, y
     for (let i = zones.length - 1; i >= 0; i--) { // newest first
       const z = zones[i]; let hit = false;
-      try { const r = x == null ? null : z.zone(); hit = x == null ? !!(z.key && z.key()) : inR(x, y, r) && inR(d.x, d.y, r); } catch (er) { }
+      try { const r = x == null ? null : z.zone(); hit = x == null ? (z.codes || A_KEYS).includes(code) && !!(z.key && z.key()) : inR(x, y, r) && inR(d.x, d.y, r); } catch (er) { }
       if (hit) { try { z.fn(e); } catch (er) { console.error(er); } return true; }
     }
     return false;
@@ -224,10 +225,10 @@
       if (e.pointerType === 'touch') return;
       after(down && !down.touch && e.pointerId === down.id ? lift(e, e.clientX, e.clientY) : false);
     }, o);
-    W.addEventListener('keydown', e => { after(!e.repeat && !G.textInput && A_KEYS.includes(e.code) && fire(e)); }, o);
+    W.addEventListener('keydown', e => { after(!e.repeat && !G.textInput && fire(e, null, null, null, e.code)); }, o);
   }
   S.gestureTap = function (zone, fn, opts) {
-    const z = { zone: zone || (() => null), fn, key: opts && opts.key };
+    const z = { zone: zone || (() => null), fn, key: opts && opts.key, codes: opts && opts.codes };
     zones.push(z); hook();
     return { off() { const i = zones.indexOf(z); if (i >= 0) zones.splice(i, 1); } };
   };

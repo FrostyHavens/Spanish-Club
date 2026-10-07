@@ -19,13 +19,13 @@
   // ---------- the session: since the game was started or opened, or since this morning ----------
   function newDay() {
     const W = G.state.words;
-    base = { state: G.state, learned: new Set(Object.keys(W).filter(id => W[id] && W[id].learned)), stars: G.state.stars | 0 };
+    base = { state: G.state, learned: new Set(Object.keys(W).filter(id => W[id] && W[id].learned)), stars: G.state.stars | 0, said: G.st.micStars() };
     today = []; G.sessionTime = 0; glow = 0;
   }
   DY.sunsetAt = () => (G.debug && G.debug.sunsetAt != null ? G.debug.sunsetAt : DY.SUNSET_AT);
   DY.over = () => !!(G.state && G.state.flags.intro) && G.sessionTime >= DY.sunsetAt();
-  // words learned today (in the order they were learned) and stars earned today
-  DY.today = () => base && base.state === G.state ? { words: today.slice(), stars: Math.max(0, (G.state.stars | 0) - base.stars) } : { words: [], stars: 0 };
+  // words learned today (in the order they were learned), stars earned today and how many of them were speaking stars
+  DY.today = () => base && base.state === G.state ? { words: today.slice(), stars: Math.max(0, (G.state.stars | 0) - base.stars), said: Math.max(0, (G.st.micStars()) - base.said) } : { words: [], stars: 0, said: 0 };
   // core.js, every frame: the clock runs while a game is on (a map is in the scene stack, maybe under a talk)
   DY.step = function () {
     const f = G.field;
@@ -126,7 +126,7 @@
   class TodayCard {
     constructor(w) {
       G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; this.sel = -1; this.shown = 0; this.wait = 0; this.popT = [];
-      const d = DY.today(); this.words = d.words; this.stars = d.stars; this.starsShown = 0; this.starT = [];
+      const d = DY.today(); this.words = d.words; this.stars = d.stars; this.said = Math.min(d.said, d.stars); this.starsShown = 0; this.starT = [];
       const n = this.words.length, big = n <= 10;
       this.L = { big, s: big ? 32 : 16, step: big ? 44 : 24, per: big ? 5 : 10, gap: big ? 12 : 8, rows: Math.ceil(n / (big ? 5 : 10)) };
     }
@@ -195,10 +195,14 @@
       else if (!this.words.length) G.bigText(ctx, G.fill('¡Muy bien, {name}!'), G.W / 2, ly, 2, '#f8d860');
       // the stars earned today, popping in one by one (past ten: one star and the number)
       const sy = ly + 30, ns = this.nStars();
-      if (this.stars > 10 && this.starsShown) { star(ctx, G.W / 2 - 22, sy, 9); G.bigText(ctx, String(this.stars), G.W / 2 + 12, sy - 7, 2, '#f8d030'); }
-      else for (let i = 0; i < this.starsShown; i++) {
-        const a = (this.t - this.starT[i]) / 8, sc = a >= 1 ? 1 : a < 0.6 ? a / 0.6 * 1.3 : 1.3 - (a - 0.6) / 0.4 * 0.3;
-        if (sc > 0.1) star(ctx, G.W / 2 - (ns - 1) * 10 + i * 20, sy, 8 * sc);
+      // (speaking stars, said out loud with the mic, come last, with sound waves: past ten, a mic and their number)
+      if (this.stars > 10 && this.starsShown) {
+        star(ctx, G.W / 2 - 22 - (this.said ? 18 : 0), sy, 9); G.bigText(ctx, String(this.stars), G.W / 2 + 12 - (this.said ? 18 : 0), sy - 7, 2, '#f8d030');
+        if (this.said) { G.mic.glyph(ctx, G.W / 2 + 26, sy - 4, '#70e0ff'); G.text(ctx, String(this.said), G.W / 2 + 36, sy - 3, '#a8f0ff'); }
+      } else for (let i = 0; i < this.starsShown; i++) {
+        const a = (this.t - this.starT[i]) / 8, sc = a >= 1 ? 1 : a < 0.6 ? a / 0.6 * 1.3 : 1.3 - (a - 0.6) / 0.4 * 0.3, sx = G.W / 2 - (ns - 1) * 10 + i * 20;
+        if (sc > 0.1) star(ctx, sx, sy, 8 * sc);
+        if (sc > 0.1 && i >= ns - this.said) G.mic.waves(ctx, sx, sy, 8 * sc + 1, '#70e0ff', 1, 0);
       }
       if (this.revealed() && this.wait >= 20 && (this.t >> 4) % 2 === 0) G.text(ctx, '\u0001', b.x + b.w - 16, y + b.h - 13, '#f8e060');
     }

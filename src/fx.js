@@ -3,8 +3,10 @@
 // draws it after all the scenes, unshaken. A fixed pool of particles: nothing is allocated frame to frame.
 //   G.fx.ripple(x, y)                  a small ring where a tap landed (every counted tap gets one, with a soft click)
 //   G.fx.burst(x, y)                   a right answer: a gold ring and little stars shooting out
-//   G.fx.flyStar(x, y, delay)          a first-try star: pops out at x, y, flies up to the top right (left of the
-//                                      corner buttons) and adds itself to the star counter that shows there for a moment
+//   G.fx.flyStar(x, y, delay, mic)     a first-try star: pops out at x, y, flies up to the top right (left of the
+//                                      corner buttons) and adds itself to the star counter that shows there for a moment.
+//                                      mic: a speaking star (mic.js), with sound waves and its own landing sound
+//   G.fx.ring(x, y, r, color, life)    one dotted ring that grows to r and fades
 //   G.fx.confetti(x, y, dir, n)        a party popper at x, y shooting up and out (dir -1 left, 1 right, 0 both ways)
 //   G.fx.twinkle(x, y)                 one 4-point sparkle
 //   G.fx.say(text, x, y, color, big)   words that pop up, rise and fade ("¡Casi!", "¡Muy bien!")
@@ -70,6 +72,7 @@
 
   // ---------- making effects ----------
   function ring(x, y, r, col, life) { const p = spawn(RING, x, y, life); p.s = r; p.c = col; return p; }
+  FX.ring = ring;
   FX.ripple = (x, y) => ring(x, y, 9, '#ffffff', 15);
   FX.burst = function (x, y) {
     ring(x, y, 22, '#f8e060', 18);
@@ -82,7 +85,7 @@
       p.vx = Math.cos(a) * v; p.vy = Math.sin(a) * v; p.drag = 0.9; p.c = i & 1 ? '#ffffff' : '#fff0a0'; p.s = 1 + (i % 3 === 0);
     }
   };
-  FX.flyStar = function (x, y, delay = 0) { const p = spawn(FLY, x, y, FLY_POP + FLY_GO); p.x0 = x; p.y0 = y; p.t = -delay; return p; };
+  FX.flyStar = function (x, y, delay = 0, mic = false) { const p = spawn(FLY, x, y, FLY_POP + FLY_GO); p.x0 = x; p.y0 = y; p.t = -delay; p.s = mic ? 2 : 1; return p; };
   FX.confetti = function (x, y, dir = 0, n = 24) {
     for (let i = 0; i < n; i++) {
       const d = dir || (i & 1 ? 1 : -1), a = -Math.PI / 2 + d * (0.2 + rnd() * 0.75), v = 2.6 + rnd() * 2.4;
@@ -122,14 +125,14 @@
     p.x = (1 - e) * (1 - e) * sx + 2 * (1 - e) * e * cx + e * e * tx;
     p.y = (1 - e) * (1 - e) * sy + 2 * (1 - e) * e * cy + e * e * ty;
   }
-  function land() {
+  function land(p) {
     counter.vis = 110; counter.pop = 10; counter.top = G.top();
-    G.audio.sfx('star');
+    G.audio.sfx(p.s === 2 ? 'micland' : 'star');
     for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, p = spawn(SPARK, TX, TY, 14); p.vx = Math.cos(a) * 1.6; p.vy = Math.sin(a) * 1.6; p.drag = 0.85; p.c = '#fff8c0'; }
   }
   function move(p) {
     p.t++;
-    if (p.t >= p.life) { if (p.k === FLY) land(); p.on = false; return; }
+    if (p.t >= p.life) { if (p.k === FLY) land(p); p.on = false; return; }
     if (p.t <= 0) return; // still waiting (a delayed star)
     if (p.k === FLY) {
       flyPos(p);
@@ -203,6 +206,7 @@
         const img = sprites().big, sc = p.t < FLY_POP ? ease(Math.min(1, p.t / 8)) * 1.25 : 1.25 - 0.4 * (p.t - FLY_POP) / FLY_GO;
         const w = Math.max(1, Math.round(img.width * sc)), h = Math.max(1, Math.round(img.height * sc));
         ctx.globalAlpha = 1; ctx.drawImage(img, Math.round(x - w / 2), Math.round(y - h / 2), w, h);
+        if (p.s === 2 && G.mic) G.mic.waves(ctx, x, y, w / 2 + 2, '#70e0ff', 2, p.t); // a speaking star: sound waves
         break;
       }
     }

@@ -8,10 +8,24 @@
 
   // ---------- "¡Palabra nueva!" card: the reward for using a word correctly ----------
   // A big moment: the room dims, rays turn, the card springs open (overshooting a little), confetti pops from its
-  // corners, the picture bounces and sparkles, and the word is spoken.
+  // corners, the picture bounces and sparkles, and the word is spoken. With the mic on (mic.js), a mic beside the
+  // picture lets the child say the new word for a speaking star (once per word); a tap anywhere else still goes on.
   class WordCard {
-    constructor(ids, w) { G.toastT = 0; this.transparent = true; this.ids = ids; this.i = 0; this.w = w; this.t = 0; this.open(); }
-    open() { this.t = 0; G.speak(G.baseForm(this.ids[this.i])); }
+    constructor(ids, w) {
+      G.toastT = 0; this.transparent = true; this.ids = ids; this.i = 0; this.w = w; this.t = 0;
+      this.mic = G.mic && G.mic.on() ? new G.MicBtn(this, { rect: () => this.micRect(), ready: () => this.t >= 20, heard: a => this.heard(a), again: () => G.speak(G.baseForm(this.ids[this.i])) }) : null;
+      this.open();
+    }
+    onEnter() { if (this.mic) this.mic.arm(); }
+    onExit() { if (this.mic) this.mic.off(); }
+    open() { this.t = 0; if (this.mic) this.mic.reset(); G.speak(G.baseForm(this.ids[this.i])); }
+    micRect() { const b = this.box(); return { x: b.x + 14, y: b.y + 36, w: 36, h: 36 }; } // left of the picture
+    heard(alts) {
+      if (!G.speech.match(this.word().es, alts).pass) { this.mic.miss(); return; }
+      const r = this.micRect(); this.mic.win();
+      G.mic.award(this.ids[this.i], r.x + r.w / 2, r.y + r.h / 2);
+      G.fx.say('¡Bien dicho!', G.W / 2, this.box().y + 126, '#a8f0ff', true); // under the word
+    }
     word() { return D().words[this.ids[this.i]]; }
     box() { return { x: (G.W - 200) / 2, y: 24, w: 200, h: 140 }; }
     spk() { return [(G.W + 200) / 2 - 26, 30]; }
@@ -21,6 +35,7 @@
       if (this.t === 1) { G.audio.sfx('pop'); G.fx.confetti(b.x + 8, b.y + b.h - 8, -1, 20); G.fx.confetti(b.x + b.w - 8, b.y + b.h - 8, 1, 20); }
       if (this.t > 16 && this.t % 11 === 0) G.fx.twinkle(G.W / 2 + (Math.random() < 0.5 ? -1 : 1) * (24 + Math.random() * 14), b.y + 24 + Math.random() * 50);
       if (this.t < 20) return;
+      if (this.mic && this.mic.update()) return;
       if (G.input.p('C') || G.speakerHit(...this.spk())) { G.speak(G.baseForm(this.ids[this.i])); return; }
       if (G.input.p('A') || G.input.p('B') || G.input.tap()) {
         G.audio.sfx('ok');
@@ -56,6 +71,7 @@
       ctx.restore();
       if (this.t >= 20) G.moreArrow(ctx, x + b.w - 17, y + b.h - 12, this.t);
       if (u >= 1) G.speakerBtn(ctx, ...this.spk());
+      if (this.mic && this.t >= 20) this.mic.draw(ctx);
     }
   }
   // Mark words learned; celebrates the ones that are new. Yieldable.
@@ -73,7 +89,10 @@
   // label (shown form), pic: true (picture only), text: true (word only), or a free {label, icon}.
   // With opts.answer, the right pick pops (a star burst and a chime); the Wait resolves at once and the screen
   // closes itself a moment later. With opts.onWrong too (G.ask), a wrong pick wobbles and greys out in place
-  // and the question stays up; opts.onRight(rect, x, y) hears about the right pick (x, y: just above it).
+  // and the question stays up; opts.onRight(rect, x, y, spoken) hears about the right pick (x, y: just above it).
+  // Speaking (mic.js): in a G.ask question whose answer is a word, a mic button sits at the bottom right (unless
+  // opts.noMic). What the child says is matched against EVERY choice's spoken form: the right one counts as picking it
+  // plus a speaking star; a wrong one is just like tapping it; nothing heard or no match: "¡Otra vez!", no penalty.
   function view(c) {
     const W = D().words[c.word];
     if (!W) return { label: c.label, icon: c.icon, col: '#ffffff' };
@@ -87,11 +106,20 @@
       opts = Object.assign({}, opts, { prompt: G.fill(opts.prompt), en: G.fill(opts.en), choices: opts.choices.map(c => c.label ? Object.assign(c, { label: G.fill(c.label) }) : c) });
       this.transparent = true; this.o = opts; this.w = w; this.t = 0; this.i = 0; this.won = null; this.miss = null;
       this.ch = opts.choices; this.cards = opts.layout === 'cards';
+      const word = opts.answer != null && opts.onWrong && !opts.noMic && this.ch[opts.answer] && this.ch[opts.answer].word;
+      this.mic = word && G.mic && G.mic.on() ? new G.MicBtn(this, { rect: () => this.micRect(), ready: () => !this.won && this.t > 8 && (!this.miss || this.miss.t > 8), heard: a => this.heard(a) }) : null;
       while (this.ch[this.i] && this.ch[this.i].off) this.i++;
       G.richIds(opts.prompt || '').forEach(id => S().see(id));
       this.ch.forEach(c => c.word && S().see(c.word));
       this.lines = G.richLayout(opts.prompt || '', G.W - 96); // room for the speaker (and back) buttons
       if (!opts.noVoice) G.speak(G.plain(opts.prompt || ''));
+    }
+    onEnter() { if (this.mic) this.mic.arm(); }
+    onExit() { if (this.mic) this.mic.off(); }
+    micRect() { return { x: G.W - 42, y: G.H - 62, w: 36, h: 36 }; } // the cards and the list keep clear of it (rects)
+    heard(alts) { // what the mic heard, against every choice
+      const k = G.mic.best(this.ch.map(G.mic.target), alts, this.o.answer);
+      if (k < 0 || this.ch[k].off) this.mic.miss(); else this.pick(k, true);
     }
     move(d) {
       const n = this.ch.length; let k = this.i;
@@ -102,25 +130,27 @@
     rects() {
       const vs = this.ch.map(view);
       if (this.cards) {
-        const n = this.ch.length, cw = 58, gap = 12, tw = n * cw + (n - 1) * gap, x0 = (G.W - tw) / 2, y0 = G.H - 92;
+        const n = this.ch.length, cw = 58, gap = this.mic && n > 3 ? 6 : 12, tw = n * cw + (n - 1) * gap, y0 = G.H - 92;
+        const x0 = this.mic ? Math.min((G.W - tw) / 2, G.W - 54 - tw) : (G.W - tw) / 2; // (left of the mic)
         return vs.map((v, k) => ({ x: x0 + k * (cw + gap), y: y0, w: cw, h: v.label ? 78 : 62 }));
       }
       const wd = Math.max(...vs.map(v => (v.label ? G.textWidth(v.label) : 0) + (v.icon ? 20 : 0))) + 34;
-      const h = this.ch.length * 20 + 8, x = (G.W - wd) / 2, y = G.H - h - 10;
+      const h = this.ch.length * 20 + 8, x = this.mic ? Math.min((G.W - wd) / 2, G.W - 50 - wd) : (G.W - wd) / 2, y = G.H - h - 10;
       return vs.map((v, k) => ({ x, y: y + 4 + k * 20, w: wd, h: 20 }));
     }
     spk() { return [G.W - 38, 12]; }
     backXY() { return [18, 12]; }
-    pick(k) {
+    pick(k, spoken) {
       const o = this.o, c = this.ch[k], R = this.rects(), r = R[k];
       if (c.off) { G.audio.sfx('boop'); return; }
       this.i = k;
       if (o.answer == null || (k !== o.answer && !o.onWrong)) { G.pop(); this.w.resolve(k); return; }
       const x = r.x + r.w / 2, y = (this.cards ? r.y : R[0].y - 4) - 12; // just above the card (or the list)
       if (k === o.answer) { // resolved now; the scene stays up for the pop, then closes itself (see update)
-        this.won = { k, t: 0 }; this.w.resolve(k);
+        this.won = { k, t: 0, spoken: !!spoken }; this.w.resolve(k);
         G.audio.sfx('chime'); G.fx.burst(this.cards ? x : r.x + r.w - 14, r.y + r.h / 2);
-        if (o.onRight) o.onRight(r, x, y);
+        if (o.onRight) o.onRight(r, x, y, !!spoken);
+        if (spoken) { const m = this.micRect(); this.mic.win(); G.mic.award(c.word, m.x + m.w / 2, m.y + m.h / 2); } // a speaking star
         return;
       }
       c.off = true; this.miss = { k, t: 0 };
@@ -131,7 +161,8 @@
     }
     update() {
       this.t++; if (this.miss) this.miss.t++;
-      if (this.won) { if (++this.won.t >= 24) G.pop(); return; } // the right card's moment; already answered
+      if (this.won) { if (this.mic) { this.mic.t++; if (this.mic.pop) this.mic.pop--; } if (++this.won.t >= (this.won.spoken ? 40 : 24)) G.pop(); return; } // the right card's moment; already answered
+      if (this.mic && this.mic.update()) return;
       const calm = !this.miss || this.miss.t > 8; // no answering again mid-wobble
       const d = G.input.repDir(14, 6);
       if (d === (this.cards ? 'left' : 'up')) this.move(-1);
@@ -169,7 +200,7 @@
           const s = mine ? (wt < 5 ? 1 + 0.24 * wt / 5 : 1.24 - 0.12 * Math.min(1, (wt - 5) / 7)) : 1; // the right card pops
           ctx.save();
           if (s !== 1) { const px = x + cw / 2, py = y0 + h / 2; ctx.translate(px, py); ctx.scale(s, s); ctx.translate(-px, -py); }
-          if (mine) { ctx.fillStyle = (wt >> 2) & 1 ? '#fff8c0' : '#f8d040'; ctx.fillRect(x - 2, y0 - 1, cw + 4, h + 2); ctx.fillRect(x - 1, y0 - 2, cw + 2, h + 4); }
+          if (mine) { ctx.fillStyle = (wt >> 2) & 1 ? (won.spoken ? '#d8f8ff' : '#fff8c0') : (won.spoken ? '#70e0ff' : '#f8d040'); ctx.fillRect(x - 2, y0 - 1, cw + 4, h + 2); ctx.fillRect(x - 1, y0 - 2, cw + 2, h + 4); }
           G.win(ctx, x, y0 - bob, cw, h, c.off ? { fill1: '#5c6074', fill2: '#363a4c' } : sel ? { fill1: '#3a56c8', fill2: '#1c2c8c' } : {}); // (leaves globalAlpha at 1)
           ctx.globalAlpha = c.off ? 1 - 0.5 * grey(k) : 1;
           G.drawIcon16(ctx, v.icon || D().words[c.word] || c.icon, x + cw / 2 - 16, y0 + 12 - bob, 2, sel && !c.off ? 'sel' : 'card');
@@ -184,7 +215,7 @@
         this.ch.forEach((c, k) => {
           const v = vs[k], yy = y + 6 + k * 20, sel = k === this.i, mine = won && won.k === k, dx = wob(k);
           const hop = mine && wt < 10 ? Math.round(Math.sin(wt / 10 * Math.PI) * 3) : 0;
-          if (mine) { ctx.fillStyle = (wt >> 2) & 1 ? '#fff8c0' : '#f8d040'; ctx.fillRect(x + 4, yy - 3, wd - 8, 22); ctx.fillStyle = '#3a56c8'; ctx.fillRect(x + 5, yy - 2, wd - 10, 20); } // a gold-rimmed row
+          if (mine) { ctx.fillStyle = (wt >> 2) & 1 ? (won.spoken ? '#d8f8ff' : '#fff8c0') : (won.spoken ? '#70e0ff' : '#f8d040'); ctx.fillRect(x + 4, yy - 3, wd - 8, 22); ctx.fillStyle = '#3a56c8'; ctx.fillRect(x + 5, yy - 2, wd - 10, 20); } // a gold-rimmed row
           ctx.globalAlpha = (c.off ? 1 - 0.7 * grey(k) : 1) * (1 - back(k));
           let tx = x + 18 + dx;
           if (v.icon) { G.drawIcon16(ctx, v.icon, tx, yy - hop); tx += 20; }
@@ -193,6 +224,7 @@
           if (sel && !won && (this.t >> 3) % 4 !== 3) G.text(ctx, '\u0002', x + 8, yy + 5, '#f8e060');
         });
       }
+      if (this.mic && (!won || won.spoken)) this.mic.draw(ctx);
     }
   }
   G.choose = function (opts) { const w = new G.Wait(); const s = new Choice(opts, w); w.scene = s; G.push(s); return w; };
@@ -201,6 +233,8 @@
   // q: {prompt, en, show, choices, answer: index, layout, learn: word ids learned by getting it right, who}
   // Wrong picks wobble and grey out with a soft boop (no lecture) while the question stays up, so every
   // question can be finished. The right pick pops with praise; on the first try a star flies to the corner.
+  // Saying the right answer out loud (the mic, mic.js) answers too, and earns a speaking star on top.
+  // q.noMic: no mic on this question (say, when saying the answer would only be reading it out).
   // Returns true if right on the first try (worth a star).
   const PRAISE = ['¡Muy bien!', '¡Excelente!', '¡Perfecto!', '¡Fantástico!', '¡Bravo!'];
   G.ask = function* (q) {
@@ -210,8 +244,8 @@
     const r = yield G.choose(Object.assign({}, q, {
       choices: ch,
       onWrong() { tries++; G.fx.shake = 4; },
-      onRight(rect, x, y) {
-        G.fx.say(PRAISE[G.r(PRAISE.length)], x, y, '#f8e060', true);
+      onRight(rect, x, y, spoken) {
+        G.fx.say(spoken ? '¡Bien dicho!' : PRAISE[G.r(PRAISE.length)], x, y, spoken ? '#a8f0ff' : '#f8e060', true);
         if (!tries) ids.forEach((id, n) => G.fx.flyStar(rect.x + rect.w / 2, rect.y + rect.h / 2, n * 10)); // a star per word, as practiced() counts them
       },
     }));

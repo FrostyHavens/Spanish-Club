@@ -232,7 +232,7 @@ async function grownUpsTitle(browser) {
     await hold(g, gear, 130);
     await scene(g, 'GrownUps', 'the grown-ups menu');
     await g.frames(4); await g.shot('grownups_title');
-    check('adults: held 2 s on the title it opens, without Back to title', await g.ev(() => G.top().rows().every(r => r.id !== 'title') && G.top().rows().length === 8));
+    check('adults: held 2 s on the title it opens, without Back to title', await g.ev(() => G.top().rows().every(r => r.id !== 'title') && G.top().rows().length === 9));
 
     const bar = async (id, cell) => { const k = await rowOf(g, id); return g.ev(([k, c]) => { const r = G.top().rowRect(k); return [168 + (c - 1) * 12 + 6, r.y + 10]; }, [k, cell]); };
     await g.tap(...await bar('music', 4));
