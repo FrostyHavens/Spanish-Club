@@ -260,6 +260,12 @@
       case 'item': sfxNotes([[79, 0, 0.08], [83, 0.08, 0.08], [86, 0.16, 0.08], [91, 0.24, 0.2]], 'square', 0.08); break;
       case 'chest': noiseHit(0.1, 600, 0.3); break;
       case 'select': sfxNotes([[91, 0, 0.05]], 'bell', 0.08); break;
+      // juice (fx.js, learn.js): short and soft, for little ears
+      case 'tap': sweep(1700, 1100, 0.03, 'sine', 0.05); break;                                  // every tap
+      case 'chime': sfxNotes([[84, 0, 0.08], [88, 0.06, 0.08], [91, 0.12, 0.08], [96, 0.18, 0.32]], 'bell', 0.09); sfxNotes([[96, 0.18, 0.04], [100, 0.24, 0.12]], 'square', 0.025); break; // right answer, rising
+      case 'boop': sfxNotes([[67, 0, 0.09], [62, 0.1, 0.16]], 'flute', 0.14); break;             // not that one (gentle)
+      case 'star': sfxNotes([[96, 0, 0.04], [103, 0.05, 0.22]], 'bell', 0.07); break;           // a star lands in the corner
+      case 'pop': sweep(260, 820, 0.09, 'sine', 0.12); noiseHit(0.06, 3000, 0.08, 'bandpass'); break; // a card springs open
     }
   };
 })();

@@ -195,6 +195,7 @@ G.frame = 0;
 function step() {
   G.frame++;
   const s = G.top();
+  if (G.fx.step) G.fx.step(); // the particle layer (fx.js): sees this frame's tap before a scene can eat it
   if (s) s.update();
   // fade
   const f = G.fade;
@@ -217,6 +218,7 @@ function draw() {
   while (start > 0 && G.scenes[start].transparent) start--;
   for (let i = Math.max(0, start); i < G.scenes.length; i++) G.scenes[i].draw(ctx);
   ctx.restore();
+  if (G.fx.draw) G.fx.draw(ctx); // particles above every scene (fx.js)
   if (G.fx.flash > 0) { ctx.globalAlpha = Math.min(1, G.fx.flash / 6); ctx.fillStyle = G.fx.flashColor; ctx.fillRect(0, 0, G.W, G.H); ctx.globalAlpha = 1; }
   if (G.fade.a > 0) { ctx.globalAlpha = G.fade.a; ctx.fillStyle = G.fade.color; ctx.fillRect(0, 0, G.W, G.H); ctx.globalAlpha = 1; }
   if (G.toastT > 0 && G.win) { const w = G.textWidth(G.toastMsg) + 20; ctx.globalAlpha = Math.min(1, G.toastT / 15); G.win(ctx, (G.W - w) / 2, 40, w, 20); G.textC(ctx, G.toastMsg, G.W / 2, 46, '#f8e060'); ctx.globalAlpha = 1; }
@@ -721,6 +723,12 @@ G.store = {
       case 'item': sfxNotes([[79, 0, 0.08], [83, 0.08, 0.08], [86, 0.16, 0.08], [91, 0.24, 0.2]], 'square', 0.08); break;
       case 'chest': noiseHit(0.1, 600, 0.3); break;
       case 'select': sfxNotes([[91, 0, 0.05]], 'bell', 0.08); break;
+      // juice (fx.js, learn.js): short and soft, for little ears
+      case 'tap': sweep(1700, 1100, 0.03, 'sine', 0.05); break;                                  // every tap
+      case 'chime': sfxNotes([[84, 0, 0.08], [88, 0.06, 0.08], [91, 0.12, 0.08], [96, 0.18, 0.32]], 'bell', 0.09); sfxNotes([[96, 0.18, 0.04], [100, 0.24, 0.12]], 'square', 0.025); break; // right answer, rising
+      case 'boop': sfxNotes([[67, 0, 0.09], [62, 0.1, 0.16]], 'flute', 0.14); break;             // not that one (gentle)
+      case 'star': sfxNotes([[96, 0, 0.04], [103, 0.05, 0.22]], 'bell', 0.07); break;           // a star lands in the corner
+      case 'pop': sweep(260, 820, 0.09, 'sine', 0.12); noiseHit(0.06, 3000, 0.08, 'bandpass'); break; // a card springs open
     }
   };
 })();
@@ -1285,10 +1293,10 @@ G.store = {
       if (G.input.p('C')) G.speak(G.plain(this.pages[this.pi].t));
       const go = G.input.p('A') || G.input.p('B') || !!G.input.tap(); // a tap anywhere = A
       const target = this.chars(0, this.scroll + 3);
-      if (this.shown < target) {
-        const sp = G.input.h('A') || G.input.h('B') ? 4 : 1;
+      if (this.shown < target) { // the typewriter: 2 letters a frame (4 with A held); a tap shows the rest, the next tap goes on
+        const sp = G.input.h('A') || G.input.h('B') ? 4 : 2;
         this.shown = Math.min(target, this.shown + sp);
-        if (this.t % 3 === 0 && !this.opts.silent) G.audio.sfx('text');
+        if (this.t % 4 === 0 && !this.opts.silent) G.audio.sfx('text');
         if (go && this.t > 4) this.shown = target;
         return;
       }
@@ -1314,13 +1322,19 @@ G.store = {
       if (name) { const nw = G.textWidth(name) + 14; G.win(ctx, this.boxX + 6, y - 13, nw, 16); G.text(ctx, name, this.boxX + 13, y - 9, '#f8e060'); }
       G.richDraw(ctx, this.lines, this.boxX + 9, y + 6, { from: this.scroll, n: 3, chars: this.shown - this.chars(0, this.scroll) });
       const done = this.shown >= this.chars(0, this.scroll + 3);
-      if (done && !this.opts.auto && (this.t >> 4) % 2 === 0) G.text(ctx, '\u0001', this.boxX + this.boxW - 14, y + h - 12, '#f8e060');
+      if (done && !this.opts.auto) G.moreArrow(ctx, this.boxX + this.boxW - 16, y + h - 11, this.t);
       if (!this.opts.noVoice) G.speakerBtn(ctx, ...this.spk());
       const en = this.pages[this.pi].en;
       if (en && G.enVisible()) G.enBox(ctx, en, top ? y + h + 2 : y - (name ? 14 : 0), top);
     }
   }
   G.say = function (pages, opts) { const w = new Wait(); G.push(new TextBox(pages, opts, w)); return w; };
+  // the bouncing "go on" arrow at the end of a page or card (tap, or A)
+  G.moreArrow = function (ctx, x, y, t) {
+    y -= Math.round(Math.abs(Math.sin(t / 9)) * 3);
+    ctx.fillStyle = '#10102a'; for (let i = 0; i < 4; i++) ctx.fillRect(x + i + 1, y + i + 1, 7 - 2 * i, 1);
+    for (let i = 0; i < 4; i++) { ctx.fillStyle = i ? '#f8e060' : '#fff8c0'; ctx.fillRect(x + i, y + i, 7 - 2 * i, 1); }
+  };
 
   // ---------- Spoken Spanish (browser speech synthesis; silently skipped if unavailable) ----------
   // Default: a North American voice (Mexico, then the US, then other Latin American), Spain only as a
@@ -1591,6 +1605,239 @@ G.store = {
   G.speakerBtn = (ctx, x, y) => G.iconBtn(ctx, 'speaker', x, y);
   G.speakerHit = (x, y) => G.btnHit(x, y);
 
+})();
+
+</script>
+<script>/* src/fx.js */
+// ===== Juice: a particle layer drawn above every scene (tap ripples, star bursts, confetti, flying stars, dust) =====
+// core.js steps it before the top scene's update (so it sees every counted tap, even one the scene then eats) and
+// draws it after all the scenes, unshaken. A fixed pool of particles: nothing is allocated frame to frame.
+//   G.fx.ripple(x, y)                  a small ring where a tap landed (every counted tap gets one, with a soft click)
+//   G.fx.burst(x, y)                   a right answer: a gold ring and little stars shooting out
+//   G.fx.flyStar(x, y, delay)          a first-try star: pops out at x, y, flies to the top-right corner and adds
+//                                      itself to the star counter that shows there for a moment
+//   G.fx.confetti(x, y, dir, n)        a party popper at x, y shooting up and out (dir -1 left, 1 right, 0 both ways)
+//   G.fx.twinkle(x, y)                 one 4-point sparkle
+//   G.fx.say(text, x, y, color, big)   words that pop up, rise and fade ("¡Casi!", "¡Muy bien!")
+//   G.fx.walk(field, player, dir)      field.js calls it before each player step: a dust puff when starting to walk
+//   G.fx.live(kind)                    how many particles are alive (of a kind: 'ring' 'star' 'fly' ...), for tests
+//   G.fx.clear()
+// Coordinates are game pixels (320x224). Dust is pinned to the map, so it stays put while the camera moves.
+// Randomness comes from Math.random, never G.rand, so effects don't change the game's own dice.
+'use strict';
+(function () {
+  const FX = G.fx; // core.js made {shake, flash, flashColor}; the particle layer joins it
+  const MAX = 200;
+  const KINDS = ['', 'ring', 'star', 'spark', 'confetti', 'twinkle', 'fly', 'dust', 'words'];
+  const RING = 1, STAR = 2, SPARK = 3, CONF = 4, TWINK = 5, FLY = 6, DUST = 7, WORDS = 8;
+  const LAYER = [0, 1, 1, 1, 0, 1, 2, 0, 2]; // dust and confetti under the bursts; words and the flying star on top
+  const CONFETTI = ['#f8e060', '#f06080', '#60c0f0', '#70e070', '#ffffff', '#c080f0'];
+  const FLY_POP = 12, FLY_GO = 28;              // a flying star hangs where it was won, then flies (frames)
+  const pool = [];
+  for (let i = 0; i < MAX; i++) pool.push({ on: false, k: 0, x: 0, y: 0, vx: 0, vy: 0, g: 0, drag: 1, t: 0, life: 0, c: '#ffffff', s: 1, ph: 0, x0: 0, y0: 0, img: null, map: null });
+  let next = 0, lastWalk = -99;
+  const counter = { vis: 0, pop: 0, top: null, n: -1, str: '' }; // the star counter in the top-right corner
+  const rnd = Math.random;
+  const ease = u => { const c = 1.70158, v = u - 1; return 1 + (c + 1) * v * v * v + c * v * v; }; // overshoots a little
+  FX.easeBack = ease;
+
+  function spawn(k, x, y, life) {
+    let p = null;
+    for (let n = 0; n < MAX && !p; n++) { const q = pool[next]; next = (next + 1) % MAX; if (!q.on) p = q; }
+    if (!p) for (let n = 0; n < MAX && !p; n++) { const q = pool[next]; next = (next + 1) % MAX; if (q.k !== FLY) p = q; } // full: recycle one (never a flying star)
+    if (!p) p = pool[0];
+    p.on = true; p.k = k; p.x = x; p.y = y; p.vx = 0; p.vy = 0; p.g = 0; p.drag = 1; p.t = 0; p.life = life;
+    p.c = '#ffffff'; p.s = 1; p.ph = rnd() * 100; p.img = null; p.map = null;
+    return p;
+  }
+
+  // ---------- pixel art (built once) ----------
+  let SPR = null;
+  function sprites() {
+    if (SPR) return SPR;
+    const outlined = (rows, pal, key) => { // 1 px dark outline all around
+      const src = G.sprite('fx_' + key, rows, pal), dark = G.tinted(src, '#40200a', 'fx_' + key);
+      return G.cached('fx_o_' + key, src.width + 2, src.height + 2, c => { for (const [dx, dy] of [[0, 1], [2, 1], [1, 0], [1, 2]]) c.drawImage(dark, dx, dy); c.drawImage(src, 1, 1); });
+    };
+    const gold = { y: '#f8d040', w: '#fff8d0', o: '#e89820' };
+    SPR = {
+      big: outlined(['.....w.....', '....wyy....', '....wyy....', 'wwwwwyyyyyo', '.oyyyyyyyo.', '..oyyyyyo..', '...yyyyy...', '..yyyoyyy..', '..yyo.oyy..', '.yyo...oyy.', '.oo.....oo.'], gold, 'big'),
+      small: outlined(['..w..', '.wyy.', 'wyyyo', '.yyo.', '.y.o.'], gold, 'small'),
+    };
+    return SPR;
+  }
+  const words = new Map(); // floating words, pre-drawn once each (outlined so they read over anything)
+  function wordImg(text, col, big) {
+    const key = text + '|' + col + (big ? '|b' : '');
+    if (words.has(key)) return words.get(key);
+    const w = G.textWidth(text) + 2, sc = big ? 2 : 1;
+    const t = G.makeCanvas(w, 10); G.text(t.getContext('2d'), text, 0, 1, col, null);
+    const d = G.makeCanvas(w, 10), dx = d.getContext('2d'); dx.drawImage(t, 0, 0); dx.globalCompositeOperation = 'source-in'; dx.fillStyle = '#10102a'; dx.fillRect(0, 0, w, 10);
+    const c = G.makeCanvas(w * sc + 2, 10 * sc + 2), x = c.getContext('2d'); x.imageSmoothingEnabled = false;
+    for (const [ox, oy] of [[0, 1], [2, 1], [1, 0], [1, 2], [2, 2]]) x.drawImage(d, ox, oy, w * sc, 10 * sc);
+    x.drawImage(t, 1, 1, w * sc, 10 * sc);
+    words.set(key, c); return c;
+  }
+
+  // ---------- making effects ----------
+  function ring(x, y, r, col, life) { const p = spawn(RING, x, y, life); p.s = r; p.c = col; return p; }
+  FX.ripple = (x, y) => ring(x, y, 9, '#ffffff', 15);
+  FX.burst = function (x, y) {
+    ring(x, y, 22, '#f8e060', 18);
+    for (let i = 0; i < 10; i++) {
+      const a = (i + rnd() * 0.5) / 10 * Math.PI * 2, v = 2 + rnd() * 1.6, p = spawn(STAR, x, y, 26 + (rnd() * 10 | 0));
+      p.vx = Math.cos(a) * v; p.vy = Math.sin(a) * v - 0.5; p.drag = 0.89; p.g = 0.05;
+    }
+    for (let i = 0; i < 10; i++) {
+      const a = rnd() * Math.PI * 2, v = 0.8 + rnd() * 2.2, p = spawn(SPARK, x, y, 16 + (rnd() * 10 | 0));
+      p.vx = Math.cos(a) * v; p.vy = Math.sin(a) * v; p.drag = 0.9; p.c = i & 1 ? '#ffffff' : '#fff0a0'; p.s = 1 + (i % 3 === 0);
+    }
+  };
+  FX.flyStar = function (x, y, delay = 0) { const p = spawn(FLY, x, y, FLY_POP + FLY_GO); p.x0 = x; p.y0 = y; p.t = -delay; return p; };
+  FX.confetti = function (x, y, dir = 0, n = 24) {
+    for (let i = 0; i < n; i++) {
+      const d = dir || (i & 1 ? 1 : -1), a = -Math.PI / 2 + d * (0.2 + rnd() * 0.75), v = 2.6 + rnd() * 2.4;
+      const p = spawn(CONF, x, y, 100 + (rnd() * 50 | 0));
+      p.vx = Math.cos(a) * v; p.vy = Math.sin(a) * v; p.drag = 0.95; p.g = 0.07; p.c = CONFETTI[i % CONFETTI.length];
+    }
+  };
+  FX.twinkle = (x, y) => { const p = spawn(TWINK, x, y, 22); p.s = 3; return p; };
+  FX.say = function (text, x, y, col = '#ffffff', big = false) { // one at a time: older words fade out quickly
+    for (let i = 0; i < MAX; i++) { const q = pool[i]; if (q.on && q.k === WORDS) q.life = Math.min(q.life, Math.max(q.t + 4, Math.ceil((q.t + 1) / 0.7))); }
+    const img = wordImg(text, col, big), hw = img.width / 2;
+    const p = spawn(WORDS, G.clamp(x, hw + 2, G.W - hw - 2), y, big ? 36 : 44);
+    p.img = img; p.vy = -1.1; p.drag = 0.9; return p;
+  };
+  FX.walk = function (f, pl, dir) {
+    const [dx, dy] = G.DIRS[dir];
+    if (f.blocked(pl.x + dx, pl.y + dy, pl)) return; // walking into a wall isn't walking
+    const start = G.frame - lastWalk > 14; lastWalk = G.frame;
+    if (!start) return;
+    const T = G.TILE, fx = pl.x * T + T / 2 - dx * 6, fy = pl.y * T + T - 5 - dy * 4;
+    for (let i = 0; i < 5; i++) {
+      const p = spawn(DUST, fx + (rnd() - 0.5) * 10, fy + (rnd() - 0.5) * 3, 14 + (rnd() * 8 | 0));
+      p.map = f; p.vx = -dx * (0.3 + rnd() * 0.4) + (rnd() - 0.5) * 0.7; p.vy = -0.2 - rnd() * 0.3 - dy * 0.3; p.drag = 0.9; p.s = 1 + (rnd() * 2 | 0);
+    }
+  };
+  FX.live = kind => { const k = kind ? KINDS.indexOf(kind) : 0; let n = 0; for (let i = 0; i < MAX; i++) if (pool[i].on && (!k || pool[i].k === k)) n++; return n; };
+  FX.counterShown = () => counter.vis > 0;
+  FX.clear = function () { for (let i = 0; i < MAX; i++) pool[i].on = false; counter.vis = 0; };
+
+  // ---------- stepping (core.js, before the top scene's update) ----------
+  const TX = G.W - 14, TY = 12; // where flying stars land: the star in the counter
+  function flyPos(p) {
+    if (p.t < FLY_POP) { p.x = p.x0; p.y = p.y0 - p.t * 0.6; return; }
+    const u = (p.t - FLY_POP) / FLY_GO, e = u * u * (3 - 2 * u), tx = TX, ty = TY;
+    const sx = p.x0, sy = p.y0 - FLY_POP * 0.6, cx = sx - 20, cy = ty - 10; // up first, then a swoop into the corner
+    p.x = (1 - e) * (1 - e) * sx + 2 * (1 - e) * e * cx + e * e * tx;
+    p.y = (1 - e) * (1 - e) * sy + 2 * (1 - e) * e * cy + e * e * ty;
+  }
+  function land() {
+    counter.vis = 110; counter.pop = 10; counter.top = G.top();
+    G.audio.sfx('star');
+    for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, p = spawn(SPARK, TX, TY, 14); p.vx = Math.cos(a) * 1.6; p.vy = Math.sin(a) * 1.6; p.drag = 0.85; p.c = '#fff8c0'; }
+  }
+  function move(p) {
+    p.t++;
+    if (p.t >= p.life) { if (p.k === FLY) land(); p.on = false; return; }
+    if (p.t <= 0) return; // still waiting (a delayed star)
+    if (p.k === FLY) {
+      flyPos(p);
+      if (p.t > FLY_POP && p.t % 3 === 0) { const s = spawn(SPARK, p.x + (rnd() - 0.5) * 4, p.y + (rnd() - 0.5) * 4, 12); s.c = '#fff0a0'; s.vy = 0.3; }
+      return;
+    }
+    p.vx *= p.drag; p.vy = p.vy * p.drag + p.g; p.x += p.vx; p.y += p.vy;
+    if (p.k === CONF) p.x += Math.sin(p.t * 0.12 + p.ph) * 0.4;
+  }
+  FX.step = function () {
+    const tp = G.input.tap();
+    if (tp) { FX.ripple(tp.x, tp.y); G.audio.sfx('tap'); }
+    for (let i = 0; i < MAX; i++) if (pool[i].on) move(pool[i]);
+    if (counter.pop > 0) counter.pop--;
+    if (counter.vis > 0) { // fades early once the screen moves on, and soon once the map is free (its menu button lives there)
+      counter.vis--;
+      const top = G.top(), f = G.field;
+      if (top !== counter.top) counter.vis = Math.min(counter.vis, 12);
+      else if (f && top === f && !f.locked) counter.vis = Math.min(counter.vis, 45);
+    }
+  };
+
+  // ---------- drawing (core.js, after every scene) ----------
+  function dot(ctx, x, y) { ctx.fillRect(x, y, 1, 1); }
+  function drawP(ctx, p) {
+    const u = p.t / p.life;
+    let x = p.x, y = p.y;
+    if (p.map) { if (p.map !== G.field) { p.on = false; return; } x -= Math.round(p.map.cam.x); y -= Math.round(p.map.cam.y); }
+    switch (p.k) {
+      case RING: { // a dotted ring that grows and fades
+        const r = 2 + (p.s - 2) * (1 - (1 - u) * (1 - u)), n = Math.max(10, Math.round(r * 3)), a = 1 - u * u;
+        for (let pass = 0; pass < 2; pass++) {
+          ctx.globalAlpha = pass ? a : a * 0.5; ctx.fillStyle = pass ? p.c : '#10102a';
+          for (let i = 0; i < n; i++) { const t = i / n * Math.PI * 2; dot(ctx, Math.round(x + Math.cos(t) * r) + 1 - pass, Math.round(y + Math.sin(t) * r) + 1 - pass); }
+        }
+        if (p.t < 4) { ctx.globalAlpha = 1; ctx.fillStyle = p.c; ctx.fillRect(Math.round(x) - 1, Math.round(y) - 1, 3, 3); }
+        break;
+      }
+      case STAR: {
+        if (u > 0.7 && (p.t & 2)) break; // blink out
+        const img = sprites().small; ctx.globalAlpha = 1; ctx.drawImage(img, Math.round(x - img.width / 2), Math.round(y - img.height / 2));
+        break;
+      }
+      case SPARK: ctx.globalAlpha = 1 - u * u; ctx.fillStyle = p.c; ctx.fillRect(Math.round(x), Math.round(y), p.s, p.s); break;
+      case CONF: {
+        const h = 1 + Math.round(Math.abs(Math.sin(p.t * 0.25 + p.ph)) * 2); // it tumbles
+        ctx.globalAlpha = u > 0.8 ? (1 - u) * 5 : 1; ctx.fillStyle = p.c; ctx.fillRect(Math.round(x), Math.round(y), 2, h);
+        break;
+      }
+      case TWINK: {
+        const a = Math.round(Math.sin(u * Math.PI) * p.s), X = Math.round(x), Y = Math.round(y);
+        ctx.globalAlpha = 1; ctx.fillStyle = '#fff0a0';
+        if (a > 0) { ctx.fillRect(X - a, Y, a * 2 + 1, 1); ctx.fillRect(X, Y - a, 1, a * 2 + 1); }
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(X, Y, 1, 1);
+        break;
+      }
+      case DUST: {
+        const s = p.s + Math.round(u * 2);
+        ctx.globalAlpha = 0.85 * (1 - u); ctx.fillStyle = '#f4ecd8';
+        ctx.fillRect(Math.round(x - s), Math.round(y - s + 1), s * 2, s * 2 - 2); ctx.fillRect(Math.round(x - s + 1), Math.round(y - s), s * 2 - 2, s * 2);
+        break;
+      }
+      case WORDS: {
+        const img = p.img, sc = p.t < 8 ? 0.5 + 0.5 * ease(p.t / 8) : 1, w = Math.round(img.width * sc), h = Math.round(img.height * sc);
+        ctx.globalAlpha = u > 0.7 ? (1 - u) / 0.3 : 1;
+        ctx.drawImage(img, Math.round(x - w / 2), Math.round(y - h / 2), w, h);
+        break;
+      }
+      case FLY: {
+        if (p.t <= 0) break;
+        const img = sprites().big, sc = p.t < FLY_POP ? ease(Math.min(1, p.t / 8)) * 1.25 : 1.25 - 0.4 * (p.t - FLY_POP) / FLY_GO;
+        const w = Math.max(1, Math.round(img.width * sc)), h = Math.max(1, Math.round(img.height * sc));
+        ctx.globalAlpha = 1; ctx.drawImage(img, Math.round(x - w / 2), Math.round(y - h / 2), w, h);
+        break;
+      }
+    }
+  }
+  function drawCounter(ctx) {
+    let n = G.state ? G.state.stars : 0;
+    for (let i = 0; i < MAX; i++) if (pool[i].on && pool[i].k === FLY) n--; // stars still on their way
+    n = Math.max(0, n);
+    if (n !== counter.n) { counter.n = n; counter.str = String(n); }
+    const img = sprites().big, tw = G.textWidth(counter.str), w = tw + img.width + 12, h = 18, x = G.W - 3 - w, y = 3;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, counter.vis / 12);
+    if (counter.pop > 0) { const s = 1 + 0.3 * counter.pop / 10, cx = TX, cy = y + h / 2; ctx.translate(cx, cy); ctx.scale(s, s); ctx.translate(-cx, -cy); }
+    ctx.fillStyle = '#000010'; ctx.fillRect(x + 1, y, w - 2, h); ctx.fillRect(x, y + 1, w, h - 2);
+    ctx.fillStyle = '#f0d060'; ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+    ctx.fillStyle = '#1c2c8c'; ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+    G.text(ctx, counter.str, x + 5, y + 6, '#f8e060');
+    ctx.drawImage(img, TX - (img.width >> 1), TY - (img.height >> 1));
+    ctx.restore();
+  }
+  FX.draw = function (ctx) {
+    for (let L = 0; L < 3; L++) for (let i = 0; i < MAX; i++) { const p = pool[i]; if (p.on && LAYER[p.k] === L) drawP(ctx, p); }
+    ctx.globalAlpha = 1;
+    if (counter.vis > 0) drawCounter(ctx);
+  };
 })();
 
 </script>
@@ -5846,13 +6093,19 @@ G.store = {
   const STAR = '\u0005';
 
   // ---------- "¡Palabra nueva!" card: the reward for using a word correctly ----------
+  // A big moment: the room dims, rays turn, the card springs open (overshooting a little), confetti pops from its
+  // corners, the picture bounces and sparkles, and the word is spoken.
   class WordCard {
     constructor(ids, w) { G.toastT = 0; this.transparent = true; this.ids = ids; this.i = 0; this.w = w; this.t = 0; this.open(); }
     open() { this.t = 0; G.speak(G.baseForm(this.ids[this.i])); }
     word() { return D().words[this.ids[this.i]]; }
+    box() { return { x: (G.W - 200) / 2, y: 24, w: 200, h: 140 }; }
     spk() { return [(G.W + 200) / 2 - 26, 30]; }
     update() {
       this.t++;
+      const b = this.box();
+      if (this.t === 1) { G.audio.sfx('pop'); G.fx.confetti(b.x + 8, b.y + b.h - 8, -1, 20); G.fx.confetti(b.x + b.w - 8, b.y + b.h - 8, 1, 20); }
+      if (this.t > 16 && this.t % 11 === 0) G.fx.twinkle(G.W / 2 + (Math.random() < 0.5 ? -1 : 1) * (24 + Math.random() * 14), b.y + 24 + Math.random() * 50);
       if (this.t < 20) return;
       if (G.input.p('C') || G.speakerHit(...this.spk())) { G.speak(G.baseForm(this.ids[this.i])); return; }
       if (G.input.p('A') || G.input.p('B') || G.input.tap()) {
@@ -5862,18 +6115,33 @@ G.store = {
       }
     }
     draw(ctx) {
-      const wd = this.word(), pop = Math.min(1, this.t / 10);
-      const W = 200, H = 140, x = (G.W - W) / 2, y = 24 + (1 - pop) * 30;
-      ctx.globalAlpha = pop;
-      G.win(ctx, x, y, W, H);
-      G.textC(ctx, '¡' + STAR + ' Palabra nueva ' + STAR + '!', G.W / 2, y + 9, '#f8e060');
-      const bob = Math.round(Math.sin(this.t / 12) * 2);
-      G.drawIcon16(ctx, wd, G.W / 2 - 24, y + 26 + bob, 3, 'card');
-      G.bigText(ctx, wd.es, G.W / 2, y + 92, 2, '#f8d860');
-      if (G.enVisible()) G.textC(ctx, wd.en, G.W / 2, y + 112, '#a8b0d8');
-      if (this.t >= 20 && (this.t >> 4) % 2 === 0) G.text(ctx, '\u0001', x + W - 16, y + H - 13, '#f8e060');
-      ctx.globalAlpha = 1;
-      if (pop >= 1) G.speakerBtn(ctx, ...this.spk());
+      const wd = this.word(), b = this.box(), x = b.x, y = b.y, cx = G.W / 2, cy = y + b.h / 2;
+      const u = Math.min(1, this.t / 16), s = 0.3 + 0.7 * G.fx.easeBack(u), first = this.i === 0;
+      // the room dims and soft rays turn behind the card (kept up between words)
+      const a = first ? Math.min(1, this.t / 8) : 1;
+      ctx.globalAlpha = 0.45 * a; ctx.fillStyle = '#080c28'; ctx.fillRect(0, 0, G.W, G.H); ctx.globalAlpha = 1;
+      ctx.save(); ctx.globalAlpha = 0.12 * a; ctx.fillStyle = '#f8c838'; ctx.translate(cx, cy); ctx.rotate(G.frame / 300);
+      ctx.beginPath();
+      for (let k = 0; k < 12; k++) { const a0 = k / 12 * Math.PI * 2, a1 = a0 + Math.PI / 14; ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a0) * 300, Math.sin(a0) * 300); ctx.lineTo(Math.cos(a1) * 300, Math.sin(a1) * 300); ctx.closePath(); }
+      ctx.fill(); ctx.restore();
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, this.t / 4);
+      if (s !== 1) { ctx.translate(cx, cy); ctx.scale(s, s); ctx.translate(-cx, -cy); }
+      G.win(ctx, x, y, b.w, b.h);
+      G.textC(ctx, '¡' + STAR + ' Palabra nueva ' + STAR + '!', cx, y + 9, '#f8e060');
+      // the picture hops, squashing a little as it lands, over a shadow that shrinks as it rises
+      const ph = this.t > 16 ? ((this.t - 16) % 34) / 34 : 0, hop = Math.round(Math.sin(ph * Math.PI) * 7), sq = this.t > 16 && hop === 0 ? 1 : 0;
+      const pw = 48 + sq * 4, pht = 48 - sq * 3, px = cx - pw / 2, py = y + 26 + (48 - pht) - hop;
+      ctx.fillStyle = 'rgba(0,0,16,0.35)'; ctx.fillRect(cx - 22 + hop, y + 79, 44 - hop * 2, 2);
+      ctx.fillStyle = '#000010'; ctx.fillRect(px - 3, py - 3, pw + 6, pht + 6);
+      ctx.fillStyle = '#8898e0'; ctx.fillRect(px - 2, py - 2, pw + 4, pht + 4);
+      ctx.fillStyle = '#f4ecd8'; ctx.fillRect(px - 1, py - 1, pw + 2, pht + 2);
+      ctx.imageSmoothingEnabled = false; ctx.drawImage(G.icon(wd), px, py, pw, pht);
+      G.bigText(ctx, wd.es, cx, y + 92, 2, '#f8d860');
+      if (G.enVisible()) G.textC(ctx, wd.en, cx, y + 112, '#a8b0d8');
+      ctx.restore();
+      if (this.t >= 20) G.moreArrow(ctx, x + b.w - 17, y + b.h - 12, this.t);
+      if (u >= 1) G.speakerBtn(ctx, ...this.spk());
     }
   }
   // Mark words learned; celebrates the ones that are new. Yieldable.
@@ -5889,6 +6157,9 @@ G.store = {
   // opts: {prompt (rich text), en, show: picture above, choices, layout: 'cards'|'list'}
   // A choice is {word: id} (drawn as picture+blue word until learned, then gold word), optionally with
   // label (shown form), pic: true (picture only), text: true (word only), or a free {label, icon}.
+  // With opts.answer, the right pick pops (a star burst and a chime); the Wait resolves at once and the screen
+  // closes itself a moment later. With opts.onWrong too (G.ask), a wrong pick wobbles and greys out in place
+  // and the question stays up; opts.onRight(rect, x, y) hears about the right pick (x, y: just above it).
   function view(c) {
     const W = D().words[c.word];
     if (!W) return { label: c.label, icon: c.icon, col: '#ffffff' };
@@ -5900,7 +6171,7 @@ G.store = {
   class Choice {
     constructor(opts, w) {
       opts = Object.assign({}, opts, { prompt: G.fill(opts.prompt), en: G.fill(opts.en), choices: opts.choices.map(c => c.label ? Object.assign(c, { label: G.fill(c.label) }) : c) });
-      this.transparent = true; this.o = opts; this.w = w; this.t = 0; this.i = 0; this.shake = 0;
+      this.transparent = true; this.o = opts; this.w = w; this.t = 0; this.i = 0; this.won = null; this.miss = null;
       this.ch = opts.choices; this.cards = opts.layout === 'cards';
       while (this.ch[this.i] && this.ch[this.i].off) this.i++;
       G.richIds(opts.prompt || '').forEach(id => S().see(id));
@@ -5926,8 +6197,28 @@ G.store = {
     }
     spk() { return [G.W - 38, 12]; }
     backXY() { return [18, 12]; }
+    pick(k) {
+      const o = this.o, c = this.ch[k], R = this.rects(), r = R[k];
+      if (c.off) { G.audio.sfx('boop'); return; }
+      this.i = k;
+      if (o.answer == null || (k !== o.answer && !o.onWrong)) { G.pop(); this.w.resolve(k); return; }
+      const x = r.x + r.w / 2, y = (this.cards ? r.y : R[0].y - 4) - 12; // just above the card (or the list)
+      if (k === o.answer) { // resolved now; the scene stays up for the pop, then closes itself (see update)
+        this.won = { k, t: 0 }; this.w.resolve(k);
+        G.audio.sfx('chime'); G.fx.burst(this.cards ? x : r.x + r.w - 14, r.y + r.h / 2);
+        if (o.onRight) o.onRight(r, x, y);
+        return;
+      }
+      c.off = true; this.miss = { k, t: 0 };
+      G.audio.sfx('boop'); G.fx.say('¡Casi!', this.cards ? x : r.x + r.w + 18, this.cards ? y + 4 : r.y + 8, '#ffd8a8');
+      o.onWrong(k);
+      const n = this.ch.length; // the cursor moves off the greyed card, quietly
+      for (let s = 1; s < n; s++) if (!this.ch[(k + s) % n].off) { this.i = (k + s) % n; break; }
+    }
     update() {
-      this.t++; if (this.shake > 0) this.shake--;
+      this.t++; if (this.miss) this.miss.t++;
+      if (this.won) { if (++this.won.t >= 24) G.pop(); return; } // the right card's moment; already answered
+      const calm = !this.miss || this.miss.t > 8; // no answering again mid-wobble
       const d = G.input.repDir(14, 6);
       if (d === (this.cards ? 'left' : 'up')) this.move(-1);
       if (d === (this.cards ? 'right' : 'down')) this.move(1);
@@ -5936,11 +6227,10 @@ G.store = {
         if (this.o.cancel && G.btnHit(...this.backXY())) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(-1); return; }
         const pad = this.cards ? 6 : 0;
         const k = this.rects().findIndex(r => G.tapIn(r.x - pad, r.y - pad, r.w + pad * 2, r.h + pad));
-        if (k >= 0 && this.ch[k].off) G.audio.sfx('error');
-        else if (k >= 0) { this.i = k; G.pop(); this.w.resolve(k); }
+        if (k >= 0 && calm) this.pick(k);
         return;
       }
-      if (G.input.p('A') && this.t > 8) { G.pop(); this.w.resolve(this.i); }
+      if (G.input.p('A') && this.t > 8 && calm) { this.pick(this.i); return; }
       if (G.input.p('B') && this.o.cancel) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(-1); }
     }
     draw(ctx) {
@@ -5952,31 +6242,41 @@ G.store = {
       if (o.show) G.drawIcon16(ctx, o.show, G.W / 2 - 24, top + 8, 3, 'card');
       G.richDraw(ctx, this.lines, G.W / 2, top + 5 + (o.show ? 58 : 0), { center: true });
       if (o.en && G.enVisible()) G.enBox(ctx, o.en, top + ph + 1, true);
-      const sx = this.shake ? (this.shake % 4 < 2 ? 2 : -2) : 0;
-      const vs = this.ch.map(view), R = this.rects();
+      const vs = this.ch.map(view), R = this.rects(), won = this.won, wt = won ? won.t : 0;
+      const wob = k => { const m = this.miss; return m && m.k === k && m.t < 16 ? Math.round(Math.sin(m.t * 1.7) * 3 * (1 - m.t / 16)) : 0; }; // a wrong pick wobbles
+      const grey = k => { const m = this.miss; return m && m.k === k && m.t < 8 ? m.t / 8 : 1; }; // ...and greys out quickly (0..1)
+      const back = k => won && won.k !== k ? Math.min(0.6, wt / 10) : 0; // when the right one pops, the rest step back
+      ctx.globalAlpha = 1;
       if (this.cards) {
         const cw = 58, y0 = R[0].y;
         this.ch.forEach((c, k) => {
-          const v = vs[k], x = R[k].x, sel = k === this.i;
-          const bob = sel ? Math.round(Math.sin(this.t / 6) * 1.5) : 0;
-          ctx.globalAlpha = c.off ? 0.3 : 1;
-          G.win(ctx, x, y0 - bob, cw, R[k].h, sel ? { fill1: '#3a56c8', fill2: '#1c2c8c' } : {});
-          G.drawIcon16(ctx, v.icon || D().words[c.word] || c.icon, x + cw / 2 - 16, y0 + 12 - bob, 2, sel ? 'sel' : 'card');
-          if (v.label) G.textC(ctx, v.label, x + cw / 2, y0 + 56 - bob, v.col);
-          ctx.globalAlpha = 1;
-          if (sel && (this.t >> 3) % 4 !== 3) G.textC(ctx, '\u0001', x + cw / 2, y0 - 10 - bob, '#f8e060');
+          const v = vs[k], x = R[k].x + wob(k), h = R[k].h, sel = k === this.i, mine = won && won.k === k;
+          const bob = sel && !won ? Math.round(Math.sin(this.t / 6) * 1.5) : 0;
+          const s = mine ? (wt < 5 ? 1 + 0.24 * wt / 5 : 1.24 - 0.12 * Math.min(1, (wt - 5) / 7)) : 1; // the right card pops
+          ctx.save();
+          if (s !== 1) { const px = x + cw / 2, py = y0 + h / 2; ctx.translate(px, py); ctx.scale(s, s); ctx.translate(-px, -py); }
+          if (mine) { ctx.fillStyle = (wt >> 2) & 1 ? '#fff8c0' : '#f8d040'; ctx.fillRect(x - 2, y0 - 1, cw + 4, h + 2); ctx.fillRect(x - 1, y0 - 2, cw + 2, h + 4); }
+          G.win(ctx, x, y0 - bob, cw, h, c.off ? { fill1: '#5c6074', fill2: '#363a4c' } : sel ? { fill1: '#3a56c8', fill2: '#1c2c8c' } : {}); // (leaves globalAlpha at 1)
+          ctx.globalAlpha = c.off ? 1 - 0.5 * grey(k) : 1;
+          G.drawIcon16(ctx, v.icon || D().words[c.word] || c.icon, x + cw / 2 - 16, y0 + 12 - bob, 2, sel && !c.off ? 'sel' : 'card');
+          if (v.label) G.textC(ctx, v.label, x + cw / 2, y0 + 56 - bob, c.off ? '#a8acb8' : v.col);
+          const d = back(k); if (d) { ctx.globalAlpha = d; ctx.fillStyle = '#080c28'; ctx.fillRect(x + 1, y0 - bob + 1, cw - 2, h - 2); }
+          ctx.restore();
+          if (sel && !won && (this.t >> 3) % 4 !== 3) G.textC(ctx, '\u0001', x + cw / 2, y0 - 10 - bob, '#f8e060');
         });
       } else {
-        const wd = R[0].w, h = this.ch.length * 20 + 8, x = R[0].x + sx, y = R[0].y - 4;
+        const wd = R[0].w, h = this.ch.length * 20 + 8, x = R[0].x, y = R[0].y - 4;
         G.win(ctx, x, y, wd, h);
         this.ch.forEach((c, k) => {
-          const v = vs[k], yy = y + 6 + k * 20, sel = k === this.i;
-          ctx.globalAlpha = c.off ? 0.3 : 1;
-          let tx = x + 18;
-          if (v.icon) { G.drawIcon16(ctx, v.icon, tx, yy); tx += 20; }
-          if (v.label) G.text(ctx, v.label, tx, yy + 5, sel && v.col === '#ffffff' ? '#f8e060' : v.col);
+          const v = vs[k], yy = y + 6 + k * 20, sel = k === this.i, mine = won && won.k === k, dx = wob(k);
+          const hop = mine && wt < 10 ? Math.round(Math.sin(wt / 10 * Math.PI) * 3) : 0;
+          if (mine) { ctx.fillStyle = (wt >> 2) & 1 ? '#fff8c0' : '#f8d040'; ctx.fillRect(x + 4, yy - 3, wd - 8, 22); ctx.fillStyle = '#3a56c8'; ctx.fillRect(x + 5, yy - 2, wd - 10, 20); } // a gold-rimmed row
+          ctx.globalAlpha = (c.off ? 1 - 0.7 * grey(k) : 1) * (1 - back(k));
+          let tx = x + 18 + dx;
+          if (v.icon) { G.drawIcon16(ctx, v.icon, tx, yy - hop); tx += 20; }
+          if (v.label) G.text(ctx, v.label, tx, yy + 5 - hop, sel && v.col === '#ffffff' ? '#f8e060' : v.col);
           ctx.globalAlpha = 1;
-          if (sel && (this.t >> 3) % 4 !== 3) G.text(ctx, '\u0002', x + 8, yy + 5, '#f8e060');
+          if (sel && !won && (this.t >> 3) % 4 !== 3) G.text(ctx, '\u0002', x + 8, yy + 5, '#f8e060');
         });
       }
     }
@@ -5985,26 +6285,26 @@ G.store = {
 
   // ---------- Ask until right ----------
   // q: {prompt, en, show, choices, answer: index, layout, learn: word ids learned by getting it right, who}
-  // Wrong picks shake and grey out (no lecture), so every question can be finished.
+  // Wrong picks wobble and grey out with a soft boop (no lecture) while the question stays up, so every
+  // question can be finished. The right pick pops with praise; on the first try a star flies to the corner.
   // Returns true if right on the first try (worth a star).
   const PRAISE = ['¡Muy bien!', '¡Excelente!', '¡Perfecto!', '¡Fantástico!', '¡Bravo!'];
   G.ask = function* (q) {
     const ch = q.choices.map(c => Object.assign({}, c));
-    let tries = 0;
-    while (true) {
-      const r = yield G.choose(Object.assign({}, q, { choices: ch, noVoice: tries > 0 }));
-      const k = r.result;
-      if (k === q.answer) break;
-      tries++;
-      G.audio.sfx('error'); G.fx.shake = 6; G.toast('¡Casi!', 50);
-      ch[k].off = true;
-    }
-    const first = tries === 0;
     const ids = q.learn ? (Array.isArray(q.learn) ? q.learn : [q.learn]) : [];
+    let tries = 0;
+    const r = yield G.choose(Object.assign({}, q, {
+      choices: ch,
+      onWrong() { tries++; G.fx.shake = 4; },
+      onRight(rect, x, y) {
+        G.fx.say(PRAISE[G.r(PRAISE.length)], x, y, '#f8e060', true);
+        if (!tries) ids.forEach((id, n) => G.fx.flyStar(rect.x + rect.w / 2, rect.y + rect.h / 2, n * 10)); // a star per word, as practiced() counts them
+      },
+    }));
+    if (r.result !== q.answer) return false; // closed without answering (a question with a way out)
+    const first = tries === 0;
     ids.forEach(id => S().practiced(id, first));
-    G.audio.sfx(first ? 'item' : 'ok');
-    G.toast(first ? STAR + ' ' + PRAISE[G.r(PRAISE.length)] + ' ' + STAR : PRAISE[G.r(PRAISE.length)], 70);
-    yield 20;
+    yield 10;
     yield G.learnWords(ids);
     return first;
   };
@@ -6022,7 +6322,11 @@ G.store = {
   // ---------- Badge award ----------
   class BadgeCard {
     constructor(q, w) { G.toastT = 0; this.transparent = true; this.q = q; this.w = w; this.t = 0; }
-    update() { this.t++; if (this.t > 40 && (G.input.p('A') || G.input.p('B') || G.input.tap())) { G.pop(); this.w.resolve(); } }
+    update() {
+      this.t++;
+      if (this.t === 1) { G.fx.confetti(G.W / 2 - 96, 140, -1, 18); G.fx.confetti(G.W / 2 + 96, 140, 1, 18); } // a party for a finished errand
+      if (this.t > 40 && (G.input.p('A') || G.input.p('B') || G.input.tap())) { G.pop(); this.w.resolve(); }
+    }
     draw(ctx) {
       const q = D().quests[this.q], W = 200, H = 100, x = (G.W - W) / 2, y = 44;
       G.win(ctx, x, y, W, H, { fill1: '#7a4a10', fill2: '#3a2008' });
@@ -6611,6 +6915,7 @@ G.store = {
           if (p.dir !== d && !G.input.h(d + 'Moved')) { p.dir = d; }
           const [dx, dy] = G.DIRS[d];
           const ex = this.exitAt(p.x + dx, p.y + dy);
+          if (G.fx.walk) G.fx.walk(this, p, d); // a dust puff when starting to walk (fx.js)
           const moved = yield* this.step(p, d, 3);
           if (moved) {
             this.stepCount++;
@@ -6777,8 +7082,8 @@ G.store = {
       for (const e of ents) {
         const moving = e.moving || e.ox || e.oy;
         const fr = moving ? Math.floor(this.t / 6) % 2 : Math.floor((this.t + (e.x || 0) * 13) / 24) % 2;
-        const img = G.unitSprite(e.spec, e.dir, fr);
-        ctx.drawImage(img, Math.round(e.x * T + e.ox - cx), Math.round(e.y * T + e.oy - cy - 3));
+        const img = G.unitSprite(e.spec, e.dir, fr), bob = Math.abs(e.ox + e.oy) >= 6 && Math.abs(e.ox + e.oy) <= 18 ? 1 : 0; // a hop mid-step
+        ctx.drawImage(img, Math.round(e.x * T + e.ox - cx), Math.round(e.y * T + e.oy - cy - 3) - bob);
       }
       // "!" bubbles over people who have something for the player (kids always know where to go next)
       for (const e of ents) {

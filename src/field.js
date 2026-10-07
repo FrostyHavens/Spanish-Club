@@ -92,6 +92,7 @@
           if (p.dir !== d && !G.input.h(d + 'Moved')) { p.dir = d; }
           const [dx, dy] = G.DIRS[d];
           const ex = this.exitAt(p.x + dx, p.y + dy);
+          if (G.fx.walk) G.fx.walk(this, p, d); // a dust puff when starting to walk (fx.js)
           const moved = yield* this.step(p, d, 3);
           if (moved) {
             this.stepCount++;
@@ -258,8 +259,8 @@
       for (const e of ents) {
         const moving = e.moving || e.ox || e.oy;
         const fr = moving ? Math.floor(this.t / 6) % 2 : Math.floor((this.t + (e.x || 0) * 13) / 24) % 2;
-        const img = G.unitSprite(e.spec, e.dir, fr);
-        ctx.drawImage(img, Math.round(e.x * T + e.ox - cx), Math.round(e.y * T + e.oy - cy - 3));
+        const img = G.unitSprite(e.spec, e.dir, fr), bob = Math.abs(e.ox + e.oy) >= 6 && Math.abs(e.ox + e.oy) <= 18 ? 1 : 0; // a hop mid-step
+        ctx.drawImage(img, Math.round(e.x * T + e.ox - cx), Math.round(e.y * T + e.oy - cy - 3) - bob);
       }
       // "!" bubbles over people who have something for the player (kids always know where to go next)
       for (const e of ents) {
