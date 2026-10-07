@@ -48,7 +48,7 @@
     text() { // plain text for pasting into a message
       const a = log.all(), info = G.speech.info(), v = G.currentVoice && G.currentVoice(), st = log.stats();
       const L = ['Club de Español mic test: ' + a.length + ' tries (copied ' + stamp(Date.now()) + ')',
-        'Device: ' + info.device + ' | API: ' + (info.api || 'none') + ' | voice: ' + (v ? v.name + ' (' + v.lang + ')' : 'none') + ', mode ' + (G.prefs.voiceMode || 0),
+        'Device: ' + info.device + ' | API: ' + (info.api || 'none') + ' | voice: ' + (v ? v.name + ' (' + v.lang + ')' : 'none') + ', mode ' + (G.voiceMode || 0),
         'Browser: ' + navigator.userAgent,
         'Summary: ' + st.pass + ' pass, ' + st.close + ' close, ' + st.miss + ' miss, ' + st.err + ' errors; voice heard after the mic ' + st.heard + ' of ' + st.asked, ''];
       a.forEach((e, i) => L.push(['#' + (i + 1), stamp(e.at), e.word, e.verdict, (e.score || 0).toFixed(2), e.ms + 'ms', 'started in ' + e.start,

@@ -127,7 +127,7 @@
   }
   function unquiet() {
     const A = G.audio; if (A && A.master && ducked != null) A.master.gain.value = A.muted ? 0 : ducked;
-    ducked = null; wakeAudio();
+    ducked = null; wakeAudio(); G.micEndedAt = performance.now();
     try { W.speechSynthesis && W.speechSynthesis.resume(); } catch (e) { }
     afterMic = true; // the next tap or key wakes the audio and re-primes speech, inside that gesture
   }

@@ -248,7 +248,7 @@
         const voices = G.spanishVoices(), cur = G.currentVoice();
         if (!voices.length) { G.audio.sfx('error'); return; }
         const name = voices[(voiceIndex(voices, cur) + 1) % voices.length].name;
-        G.state.opts.voiceName = name; G.audio.setPref('voiceName', name); G.audio.setPref('voiceMode', 0);
+        G.state.opts.voiceName = name; G.audio.setPref('voiceName', name); G.voiceMode = 0;
         if (!G.prefs.voice) G.audio.setVolume('voice', 7);
         G.speak('¡Hola! Hoy es tu primer día en el Club de Español.'); S().autosave();
       } else if (r.id === 'english') {
@@ -298,8 +298,8 @@
   // which voice is speaking, or why not (helps track down speech problems on a device)
   function voiceLine() {
     if (!window.speechSynthesis) return 'Voice: not available in this browser';
-    const v = G.currentVoice(), st = G.voiceStatus, mode = G.prefs.voiceMode || 0, nv = G.spanishVoices().length;
-    const who = !v ? '(no Spanish voice)' : mode === 0 ? v.name + ' (' + v.lang + ')' : 'default (' + v.lang + ')' + (mode === 2 ? ' + pause' : '');
+    const v = G.currentVoice(), st = G.voiceStatus, mode = G.voiceMode || 0, nv = G.spanishVoices().length;
+    const who = !v ? '(no Spanish voice)' : v.name + ' (' + v.lang + ')' + (mode === 1 ? ' + pause' : mode === 2 ? ' > backup voice' : '');
     return 'Voice: ' + who + ' [' + nv + ']' + (st && st !== 'ok' ? ' ! ' + st : '');
   }
   // browsers may hand back new voice objects on each call, so match by name

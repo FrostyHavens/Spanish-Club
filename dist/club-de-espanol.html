@@ -1369,10 +1369,15 @@ G.store = {
   //    utterance so it isn't garbage-collected mid-sentence.
   // Some phones (seen on iPhone) stay silent with no error: a listed voice that isn't really installed, or
   // speech muted while Web Audio music plays. So each line is watched: if it hasn't started after a moment,
-  // we retry one step down this ladder and remember the step that works on this device (G.prefs.voiceMode):
-  //   0 = the chosen voice   1 = no voice set (the system's default Spanish)   2 = 1 + pause the music while speaking
+  // we retry one step down this ladder and keep the step that works for the rest of this visit (G.voiceMode):
+  //   0 = the chosen voice   1 = 0 + pause the music while speaking   2 = another Spanish voice + pause the music
+  // Every step names a Spanish voice: with no voice set, iPadOS 15 Safari reads the Spanish with its English
+  // voice. The step isn't saved on the device: right after the mic, iOS is slow to hand the audio back, and a
+  // late start there used to step down for good. Lines started soon after the mic get longer to begin.
   // G.voiceStatus says what happened last (shown in Opciones) to help track down device problems.
   const MODES = 3;
+  G.voiceMode = 0;
+  if (G.prefs.voiceMode) G.audio.setPref('voiceMode', 0); // drop a step remembered by older versions
   let current = null, primed = false, timer = null, watch = null, lastCancel = -1e9, pausedMusic = false;
   G.voiceStatus = '';
   G.primeSpeech = function () {
@@ -1389,12 +1394,13 @@ G.store = {
   function attempt(clean, mode, tries) {
     const ss = window.speechSynthesis;
     const u = new SpeechSynthesisUtterance(clean); u.rate = 0.85; u.volume = G.prefs.voice / 10;
-    const v = mode === 0 ? G.currentVoice() : null;
-    if (v) { u.voice = v; u.lang = v.lang.replace('_', '-'); } else u.lang = (G.currentVoice() || { lang: 'es-MX' }).lang.replace('_', '-');
+    const cur = G.currentVoice(), alt = mode === 2 && G.spanishVoices().filter(o => !cur || o.name !== cur.name).sort((a, b) => rank(a) - rank(b))[0];
+    const v = alt || cur;
+    if (v) { u.voice = v; u.lang = v.lang.replace('_', '-'); } else u.lang = 'es-MX';
     let started = false;
     u.onstart = () => {
-      started = true; G.voiceStatus = 'ok';
-      if (G.prefs.voiceMode !== mode) G.audio.setPref && G.audio.setPref('voiceMode', mode);
+      started = true; if (current !== u) return; // a line that was given up on
+      G.voiceStatus = 'ok'; G.voiceMode = mode;
     };
     u.onend = () => { if (current === u) musicBack(); };
     u.onerror = e => { if (e.error !== 'interrupted' && e.error !== 'canceled') G.voiceStatus = e.error || 'error'; if (current === u) musicBack(); };
@@ -1402,11 +1408,12 @@ G.store = {
     const go = () => {
       if (current !== u) return;
       try {
-        if (mode === 2 && G.audio.ctx && G.audio.ctx.state === 'running') { pausedMusic = true; G.audio.ctx.suspend(); }
+        if (mode > 0 && G.audio.ctx && G.audio.ctx.state === 'running') { pausedMusic = true; G.audio.ctx.suspend(); }
         ss.resume(); ss.speak(u);
       } catch (e) { G.voiceStatus = 'error'; }
-      // silent-failure watchdog: no start after 1.5s -> try the next mode
+      // silent-failure watchdog: no start after 1.5s (4s soon after the mic) -> try the next mode
       clearTimeout(watch);
+      const patience = performance.now() - (G.micEndedAt || -1e9) < 8000 ? 4000 : 1500;
       watch = setTimeout(() => {
         if (current !== u || started || ss.speaking) return;
         musicBack();
@@ -1414,7 +1421,7 @@ G.store = {
         G.voiceStatus = 'retry ' + ((mode + 1) % MODES);
         ss.cancel(); lastCancel = performance.now();
         setTimeout(() => { if (current === u) attempt(clean, (mode + 1) % MODES, tries + 1); }, 120);
-      }, 1500);
+      }, patience);
     };
     const now = performance.now();
     if (ss.speaking || ss.pending) { ss.cancel(); lastCancel = now; }
@@ -1429,7 +1436,7 @@ G.store = {
       const clean = G.plain(G.fill(text)).replace(/[\u0001-\u0005«»]/g, '').trim();
       if (!clean || clean === '...' || clean === '. . .') return;
       musicBack();
-      attempt(clean, Math.min(MODES - 1, G.prefs.voiceMode || 0), 0);
+      attempt(clean, Math.min(MODES - 1, G.voiceMode), 0);
     } catch (e) { G.voiceStatus = 'error'; }
   };
   // stop talking now, and drop a line still waiting to start or to be retried (speech.js calls it before listening)
@@ -1984,7 +1991,7 @@ G.store = {
   }
   function unquiet() {
     const A = G.audio; if (A && A.master && ducked != null) A.master.gain.value = A.muted ? 0 : ducked;
-    ducked = null; wakeAudio();
+    ducked = null; wakeAudio(); G.micEndedAt = performance.now();
     try { W.speechSynthesis && W.speechSynthesis.resume(); } catch (e) { }
     afterMic = true; // the next tap or key wakes the audio and re-primes speech, inside that gesture
   }
@@ -7398,7 +7405,7 @@ G.store = {
         const voices = G.spanishVoices(), cur = G.currentVoice();
         if (!voices.length) { G.audio.sfx('error'); return; }
         const name = voices[(voiceIndex(voices, cur) + 1) % voices.length].name;
-        G.state.opts.voiceName = name; G.audio.setPref('voiceName', name); G.audio.setPref('voiceMode', 0);
+        G.state.opts.voiceName = name; G.audio.setPref('voiceName', name); G.voiceMode = 0;
         if (!G.prefs.voice) G.audio.setVolume('voice', 7);
         G.speak('¡Hola! Hoy es tu primer día en el Club de Español.'); S().autosave();
       } else if (r.id === 'english') {
@@ -7448,8 +7455,8 @@ G.store = {
   // which voice is speaking, or why not (helps track down speech problems on a device)
   function voiceLine() {
     if (!window.speechSynthesis) return 'Voice: not available in this browser';
-    const v = G.currentVoice(), st = G.voiceStatus, mode = G.prefs.voiceMode || 0, nv = G.spanishVoices().length;
-    const who = !v ? '(no Spanish voice)' : mode === 0 ? v.name + ' (' + v.lang + ')' : 'default (' + v.lang + ')' + (mode === 2 ? ' + pause' : '');
+    const v = G.currentVoice(), st = G.voiceStatus, mode = G.voiceMode || 0, nv = G.spanishVoices().length;
+    const who = !v ? '(no Spanish voice)' : v.name + ' (' + v.lang + ')' + (mode === 1 ? ' + pause' : mode === 2 ? ' > backup voice' : '');
     return 'Voice: ' + who + ' [' + nv + ']' + (st && st !== 'ok' ? ' ! ' + st : '');
   }
   // browsers may hand back new voice objects on each call, so match by name
@@ -7515,7 +7522,7 @@ G.store = {
     text() { // plain text for pasting into a message
       const a = log.all(), info = G.speech.info(), v = G.currentVoice && G.currentVoice(), st = log.stats();
       const L = ['Club de Español mic test: ' + a.length + ' tries (copied ' + stamp(Date.now()) + ')',
-        'Device: ' + info.device + ' | API: ' + (info.api || 'none') + ' | voice: ' + (v ? v.name + ' (' + v.lang + ')' : 'none') + ', mode ' + (G.prefs.voiceMode || 0),
+        'Device: ' + info.device + ' | API: ' + (info.api || 'none') + ' | voice: ' + (v ? v.name + ' (' + v.lang + ')' : 'none') + ', mode ' + (G.voiceMode || 0),
         'Browser: ' + navigator.userAgent,
         'Summary: ' + st.pass + ' pass, ' + st.close + ' close, ' + st.miss + ' miss, ' + st.err + ' errors; voice heard after the mic ' + st.heard + ' of ' + st.asked, ''];
       a.forEach((e, i) => L.push(['#' + (i + 1), stamp(e.at), e.word, e.verdict, (e.score || 0).toFixed(2), e.ms + 'ms', 'started in ' + e.start,
