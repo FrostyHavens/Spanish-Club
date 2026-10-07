@@ -219,11 +219,12 @@ function draw() {
   while (start > 0 && G.scenes[start].transparent) start--;
   for (let i = Math.max(0, start); i < G.scenes.length; i++) G.scenes[i].draw(ctx);
   ctx.restore();
-  if (G.fx.draw) G.fx.draw(ctx); // particles above every scene (fx.js)
+  // above the scenes, bottom to top: flash, toast, the hint hand (hint.js), particles (fx.js); a fade covers it all
   if (G.fx.flash > 0) { ctx.globalAlpha = Math.min(1, G.fx.flash / 6); ctx.fillStyle = G.fx.flashColor; ctx.fillRect(0, 0, G.W, G.H); ctx.globalAlpha = 1; }
-  if (G.fade.a > 0) { ctx.globalAlpha = G.fade.a; ctx.fillStyle = G.fade.color; ctx.fillRect(0, 0, G.W, G.H); ctx.globalAlpha = 1; }
   if (G.toastT > 0 && G.win) { const w = G.textWidth(G.toastMsg) + 20; ctx.globalAlpha = Math.min(1, G.toastT / 15); G.win(ctx, (G.W - w) / 2, 40, w, 20); G.textC(ctx, G.toastMsg, G.W / 2, 46, '#f8e060'); ctx.globalAlpha = 1; }
-  if (G.hint) G.hint.draw(ctx); // the tapping hand, the keyboard strip (hint.js)
+  if (G.hint) G.hint.draw(ctx); // the tapping hand, the keyboard strip
+  if (G.fx.draw) G.fx.draw(ctx); // ripples, bursts, confetti, flying stars (unshaken)
+  if (G.fade.a > 0) { ctx.globalAlpha = G.fade.a; ctx.fillStyle = G.fade.color; ctx.fillRect(0, 0, G.W, G.H); ctx.globalAlpha = 1; }
 }
 G.toast = (msg, t = 90) => { G.toastMsg = msg; G.toastT = t; };
 G.step = step; G.drawFrame = draw;
@@ -1618,8 +1619,8 @@ G.store = {
 // draws it after all the scenes, unshaken. A fixed pool of particles: nothing is allocated frame to frame.
 //   G.fx.ripple(x, y)                  a small ring where a tap landed (every counted tap gets one, with a soft click)
 //   G.fx.burst(x, y)                   a right answer: a gold ring and little stars shooting out
-//   G.fx.flyStar(x, y, delay)          a first-try star: pops out at x, y, flies to the top-right corner and adds
-//                                      itself to the star counter that shows there for a moment
+//   G.fx.flyStar(x, y, delay)          a first-try star: pops out at x, y, flies up to the top right (left of the
+//                                      corner buttons) and adds itself to the star counter that shows there for a moment
 //   G.fx.confetti(x, y, dir, n)        a party popper at x, y shooting up and out (dir -1 left, 1 right, 0 both ways)
 //   G.fx.twinkle(x, y)                 one 4-point sparkle
 //   G.fx.say(text, x, y, color, big)   words that pop up, rise and fade ("¡Casi!", "¡Muy bien!")
@@ -1728,7 +1729,8 @@ G.store = {
   FX.clear = function () { for (let i = 0; i < MAX; i++) pool[i].on = false; counter.vis = 0; };
 
   // ---------- stepping (core.js, before the top scene's update) ----------
-  const TX = G.W - 14, TY = 12; // where flying stars land: the star in the counter
+  const CR = G.W - 42;              // the counter's right edge: clear of the top-right buttons (the map's menu, a question's speaker)
+  const TX = CR - 11, TY = 12;      // where flying stars land: the star in the counter
   function flyPos(p) {
     if (p.t < FLY_POP) { p.x = p.x0; p.y = p.y0 - p.t * 0.6; return; }
     const u = (p.t - FLY_POP) / FLY_GO, e = u * u * (3 - 2 * u), tx = TX, ty = TY;
@@ -1758,7 +1760,7 @@ G.store = {
     if (tp) { FX.ripple(tp.x, tp.y); G.audio.sfx('tap'); }
     for (let i = 0; i < MAX; i++) if (pool[i].on) move(pool[i]);
     if (counter.pop > 0) counter.pop--;
-    if (counter.vis > 0) { // fades early once the screen moves on, and soon once the map is free (its menu button lives there)
+    if (counter.vis > 0) { // fades early once the screen moves on, and soon once the map is free to walk
       counter.vis--;
       const top = G.top(), f = G.field;
       if (top !== counter.top) counter.vis = Math.min(counter.vis, 12);
@@ -1826,7 +1828,7 @@ G.store = {
     for (let i = 0; i < MAX; i++) if (pool[i].on && pool[i].k === FLY) n--; // stars still on their way
     n = Math.max(0, n);
     if (n !== counter.n) { counter.n = n; counter.str = String(n); }
-    const img = sprites().big, tw = G.textWidth(counter.str), w = tw + img.width + 12, h = 18, x = G.W - 3 - w, y = 3;
+    const img = sprites().big, tw = G.textWidth(counter.str), w = tw + img.width + 12, h = 18, x = CR - w, y = 3;
     ctx.save();
     ctx.globalAlpha = Math.min(1, counter.vis / 12);
     if (counter.pop > 0) { const s = 1 + 0.3 * counter.pop / 10, cx = TX, cy = y + h / 2; ctx.translate(cx, cy); ctx.scale(s, s); ctx.translate(-cx, -cy); }
@@ -7863,6 +7865,7 @@ G.store = {
           G.drawGoal(ctx, goal, bx + 4, by + 3);
         }
       }
+      if (this.banner && G.top() !== this) this.banner.t = Math.min(this.banner.t, 0); // a talk or a card opened over the map: the name has done its job
       if (this.banner && this.banner.t > 0) {
         const a = Math.min(1, this.banner.t / 30), ic = this.banner.icon;
         ctx.globalAlpha = a; const w = G.textWidth(this.banner.text) + 30 + (ic ? 20 : 0);

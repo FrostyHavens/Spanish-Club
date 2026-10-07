@@ -60,7 +60,9 @@ async function critters(browser) {
     await g.until(() => G.field.amb.birds.some(b => b.st === 'land'), null, 'a bird to come back');
     await g.frames(40); await g.shot('birds_land');
     await g.until(() => G.field.amb.birds.every(b => b.st === 'ground' || b.st === 'away'), null, 'the birds to land', 10000);
-    check('critters: birds come back and land away from you', gone.length && await g.ev(gone => { const f = G.field, p = f.player; return gone.every(i => { const b = f.amb.birds[i]; return b.st === 'ground' && Math.abs(Math.floor(b.x / 24) - p.x) + Math.abs(Math.floor(b.y / 24) - p.y) >= 4; }); }, gone), JSON.stringify(gone));
+    // (a walker like Tomás can scare one off again on its way down, so only the ones that landed are checked)
+    const back = await g.ev(gone => { const f = G.field, p = f.player, on = gone.filter(i => f.amb.birds[i].st === 'ground'); return { on, ok: on.every(i => { const b = f.amb.birds[i]; return Math.abs(Math.floor(b.x / 24) - p.x) + Math.abs(Math.floor(b.y / 24) - p.y) >= 4; }) }; }, gone);
+    check('critters: birds come back and land away from you', gone.length && back.on.length && back.ok, JSON.stringify({ gone, back }));
 
     // a tap on a butterfly sends it to another flower
     const fly = await g.ev(() => {

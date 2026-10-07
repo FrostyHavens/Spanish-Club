@@ -285,6 +285,7 @@
           G.drawGoal(ctx, goal, bx + 4, by + 3);
         }
       }
+      if (this.banner && G.top() !== this) this.banner.t = Math.min(this.banner.t, 0); // a talk or a card opened over the map: the name has done its job
       if (this.banner && this.banner.t > 0) {
         const a = Math.min(1, this.banner.t / 30), ic = this.banner.icon;
         ctx.globalAlpha = a; const w = G.textWidth(this.banner.text) + 30 + (ic ? 20 : 0);

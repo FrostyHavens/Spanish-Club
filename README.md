@@ -22,7 +22,7 @@ On phones and tablets, just tap: tap a spot to walk there, tap people to talk to
 
 **Saving is automatic.** The game saves by itself all the time (new words, pages, errands, every finished conversation, a new map, every 15 seconds and when the tablet goes to sleep). Tap the title to play: the first time it goes straight to making a character; after that *¿Quién juega?* shows three save slots (face, name, words learned, stars). Tap a card to continue, or *+ Nuevo* to start another child's game. To delete a slot, hold its little trash can for 3 seconds, then choose ✓.
 
-**Grown-ups menu:** hold the gear for 2 seconds (in the menu, or on the title; on a keyboard, move onto it and hold Z). It has Music / Sounds / Voice volume, Choose voice, English help, on-screen buttons (a D-pad with A/B/C), a microphone test, controls and tips, and Back to title.
+**Grown-ups menu:** hold the gear for 2 seconds (in the map's menu next to Cuaderno and Misiones, or on the title; a ring fills while you hold; on a keyboard, move onto it and hold Z). It has Music / Sounds / Voice volume, Choose voice, English help, on-screen buttons (a D-pad with A/B/C, off unless you turn it on; remembered per device), a microphone test (tap a word, tap the mic, say it, and see everything the device heard and whether it would pass), controls and tips, and Back to title. There is no Save button: saving is automatic.
 
 ## How it teaches (like *Tunic*: you start knowing almost nothing)
 - **No translations.** Characters speak short, simple Spanish. Meaning comes from pictures, context and what people do. (Grown-ups can turn on *English help* in the grown-ups menu.)
@@ -60,7 +60,7 @@ That's 30 words in 5 topics, with 5 notebook pages, 5 badges and a diploma. Prog
 - **Maps:** `tools/mapgen.py` generates `src/mapdata.js`
 - **Hints and the day:** `src/hint.js` (the tapping hand, the key strip), `src/day.js` (the session clock, the sunset, the evening at home and the *Hoy* card); `tools/test-hints-day.js` tests both
 - **Build:** `python3 tools/build.py` rebuilds the single-file `dist/` version
-- **Smoke test:** `NODE_PATH=$(npm root -g) node tools/smoke.js [screenshot dir]` plays the opening with taps on an iPad-sized touch screen and with the keyboard on a desktop (needs Playwright with Chromium installed globally). `tools/test-saves.js` tests save slots, autosave and the grown-ups menu; `sh tools/test-all.sh` runs every test
+- **Smoke test:** `NODE_PATH=$(npm root -g) node tools/smoke.js [screenshot dir]` plays the opening with taps on an iPad-sized touch screen and with the keyboard on a desktop (needs Playwright with Chromium installed globally). `tools/test-saves.js` tests save slots, autosave and the grown-ups menu, `tools/test-fx.js` the particles and answer pops, `tools/test-ambient.js` the living town, and `tools/test-playthrough.js` plays the whole game with taps (new game to diploma, with a reload in the middle and an evening at home); `NODE_PATH=$(npm root -g) sh tools/test-all.sh [screenshot dir]` runs every test
 - **Speech test:** `NODE_PATH=$(npm root -g) node tools/test-speech.js [screenshot dir]` checks the word matching in plain Node and drives the mic test with a fake recognizer
 
 See `docs/CONTENT.md` for how to add words, characters and errands.

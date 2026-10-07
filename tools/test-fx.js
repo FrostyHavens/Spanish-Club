@@ -27,8 +27,11 @@ async function touchRun(browser) {
   try {
     await start(g);
     // a tap: ripple + soft click, and starting to walk puffs dust
+    await g.ev(() => { window.__sfx.length = 0; });
     await g.tapTile(10, 21);
     check('fx: a tap leaves a ripple and a soft click', await g.ev(() => G.fx.live('ring') > 0) && await heard(g, 'tap'));
+    await g.frames(3);
+    check('fx: ...exactly once (one ring, one click)', await g.ev(() => G.fx.live('ring') === 1 && window.__sfx.filter(n => n === 'tap').length === 1), await g.ev(() => JSON.stringify([G.fx.live('ring'), window.__sfx])));
     await g.until(() => G.fx.live('dust') > 0, null, 'a dust puff', 3000);
     check('fx: starting to walk puffs dust', true);
     await still(g, 'ripple_dust');
