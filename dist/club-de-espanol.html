@@ -1412,6 +1412,8 @@ G.store = {
       attempt(clean, Math.min(MODES - 1, G.prefs.voiceMode || 0), 0);
     } catch (e) { G.voiceStatus = 'error'; }
   };
+  // stop talking now, and drop a line still waiting to start or to be retried (speech.js calls it before listening)
+  G.hush = function () { current = null; clearTimeout(timer); clearTimeout(watch); musicBack(); lastCancel = performance.now(); try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) { } };
 
 
 
@@ -1591,6 +1593,243 @@ G.store = {
   G.speakerBtn = (ctx, x, y) => G.iconBtn(ctx, 'speaker', x, y);
   G.speakerHit = (x, y) => G.btnHit(x, y);
 
+})();
+
+</script>
+<script>/* src/speech.js */
+// ===== Speech recognition: listen once in Spanish, and check what was heard against a word =====
+// G.speech.supported()          the browser has SpeechRecognition / webkitSpeechRecognition
+// G.speech.listen(o) -> G.Wait  o: {lang: 'es-MX', alts: 5, timeout: 8000 ms}; single shot, no interim results.
+//                               Resolves {ok, alternatives: [{transcript, confidence}], error, ms, during}; never throws.
+//                               error: 'unsupported' 'not-allowed' 'service-not-allowed' 'no-speech' 'no-match' 'network'
+//                               'aborted' 'audio-capture' 'language-not-supported' 'timeout' 'busy' 'start-failed' ...
+//                               during: the input event it was started in ('touchend' 'pointerup' 'keydown'), else 'frame'.
+//                               The Wait also has .phase ('starting' 'listening' 'speech' 'done'), .stop() (finish now,
+//                               keeping what was heard) and .abort(). G.speech.stop() / .abort() act on the current one.
+// G.speech.match(target, alts)  -> {pass, score 0..1, heard (the transcript that scored best), i (its index)}. Pure.
+// G.speech.gestureTap(zone, fn, {key})  runs fn(event) INSIDE the input event when a tap lands in zone() (a game-px
+//                               rect, or null when not armed), or when an A key (Z / Space / Enter) goes down while key()
+//                               is true. Returns {off()}. Start listening from fn, not from a scene's update():
+//
+// Why gestureTap: on iPad / iPhone Safari (webkitSpeechRecognition, iOS 14.5+, needs Siri & Dictation turned on),
+// start() only works inside a user gesture, like speech and audio. The game reads taps in update() on the next
+// animation frame, after the touch event is over, so a start() there can fail with 'not-allowed' (or do nothing).
+// gestureTap applies the game's tap rule (moved < 12 px, lifted within 0.8 s, began on the picture after the scene's
+// grace time) to the raw touchend / mouse pointerup / keydown and calls fn right there. The same tap still reaches the
+// scene as a normal G.input.tap() on the next frame, so the scene picks up what fn started (see src/mictest.js).
+// Desktop Chrome doesn't need this but doesn't mind; a scene can still call listen() from update() as a fallback.
+//
+// Sharing the audio with the game's voice and music (iOS has one audio session; the mic switches it to recording):
+// before listening, speech synthesis is stopped (G.hush also drops a line still waiting to start or to retry) and
+// the music is turned down to 0 so the mic doesn't hear it; afterwards the music comes back, the AudioContext is
+// resumed (iOS can leave it 'interrupted'), speech synthesis is resumed, and the next tap or key resumes the audio
+// again and re-primes speech with a silent line, inside that gesture. The mic test asks a grown-up whether the voice
+// was still heard after the mic, a known iPhone problem.
+// Also seen on iOS: the first start() on a page asks for the mic (Safari may ask again on later visits, every time
+// for a file:// page), and confidence often comes back as 0 (the mic test shows '-').
+// iOS doesn't always honour single-shot listening, so: after a final result we stop(); after an interim result and
+// 1.2 s with nothing new we stop(); at the timeout we stop(); and if 'end' never comes we resolve anyway.
+'use strict';
+(function () {
+  const W = typeof window !== 'undefined' ? window : {};
+  const S = G.speech = {};
+  const now = () => (W.performance ? W.performance.now() : Date.now());
+
+  // ---------- Matching what was heard ----------
+  // Learner-friendly: lowercase, no accents, no ¿¡ or punctuation, digits as words ("3" = tres); then sounds a
+  // beginner (and a recognizer) mixes up are folded together: v=b, z/ce/ci=s, ll=y, silent h (not ch), ñ=n,
+  // qu/c(a,o,u)=k, rr=r. Score = 1 - levenshtein / longer length, over the whole transcript and over every run of
+  // words up to the target's length + 1 (so "la manzana" contains "manzana", and "porfavor" is "por favor").
+  // A target can list forms: 'rojo / roja', and 'la manzana' also counts as 'manzana'. Best alternative wins.
+  // PASS at 0.75. The first plan was 0.6, but then 'banana' passes for 'manzana' (0.71). Checked in
+  // tools/test-speech.js: every listed must-pass scores >= 0.85 ('gracia' 0.86, 'buenas días' 0.9, the rest fold to
+  // 1.0) and every must-fail <= 0.71. In short words one wrong sound is a MISS: 'dos'/'tos' is 0.67.
+  S.PASS = 0.75; S.CLOSE = 0.5;
+  const NUM = ['cero', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'];
+  S.norm = s => String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ').trim().split(' ').map(w => NUM[+w] && /^\d+$/.test(w) ? NUM[+w] : w).join(' ');
+  S.fold = w => w.replace(/ch/g, '\u0001').replace(/h/g, '').replace(/ll/g, 'y').replace(/v/g, 'b').replace(/qu/g, 'k')
+    .replace(/c(?=[eiy])/g, 's').replace(/z/g, 's').replace(/c/g, 'k').replace(/rr/g, 'r').replace(/\u0001/g, 'ch');
+  S.lev = function (a, b) {
+    if (a === b) return 0; if (!a.length) return b.length; if (!b.length) return a.length;
+    let prev = Array.from({ length: b.length + 1 }, (v, j) => j);
+    for (let i = 1; i <= a.length; i++) {
+      const cur = [i];
+      for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = cur;
+    }
+    return prev[b.length];
+  };
+  const sim = (a, b) => a && b ? 1 - S.lev(a, b) / Math.max(a.length, b.length) : 0;
+  const words = s => { const n = S.norm(s); return n ? n.split(' ').map(S.fold) : []; };
+  function forms(target) { // 'la manzana' -> [['la','mansana'], ['mansana']]
+    const out = [];
+    String(target == null ? '' : target).split('/').forEach(f => {
+      const w = words(f); if (!w.length) return;
+      out.push(w);
+      if (w.length > 1 && /^(el|la|los|las|un|una|unos|unas)$/.test(w[0])) out.push(w.slice(1));
+    });
+    return out;
+  }
+  // score of one transcript against the target (0..1)
+  S.score = function (target, transcript) {
+    const fs = forms(target), ws = words(transcript); let best = 0;
+    for (const f of fs) {
+      const t = f.join('');
+      for (let len = 1; len <= Math.min(ws.length, f.length + 1); len++)
+        for (let k = 0; k + len <= ws.length; k++) best = Math.max(best, sim(t, ws.slice(k, k + len).join('')));
+      if (ws.length) best = Math.max(best, sim(t, ws.join('')));
+    }
+    return best;
+  };
+  // alternatives: [{transcript, confidence}] or strings (or one string)
+  S.match = function (target, alternatives) {
+    const list = alternatives == null ? [] : Array.isArray(alternatives) ? alternatives : [alternatives];
+    let best = { pass: false, score: 0, heard: '', i: -1 };
+    list.forEach((a, i) => {
+      const tr = a && typeof a === 'object' ? a.transcript : a, sc = S.score(target, tr);
+      if (best.i < 0 || sc > best.score) best = { pass: false, score: sc, heard: String(tr).trim(), i };
+    });
+    best.pass = best.score >= S.PASS;
+    return best;
+  };
+  S.grade = score => score >= S.PASS ? 'PASS' : score >= S.CLOSE ? 'CLOSE' : 'MISS';
+
+  // ---------- What this browser has ----------
+  const SR = () => W.SpeechRecognition || W.webkitSpeechRecognition || null;
+  S.supported = () => !!SR();
+  S.device = function () { // short: 'iPad Safari 17.4', 'Mac Chrome 128'
+    const nav = W.navigator || {}, ua = nav.userAgent || '';
+    const os = /iPad/.test(ua) || (/Macintosh/.test(ua) && nav.maxTouchPoints > 1) ? 'iPad' : /iPhone|iPod/.test(ua) ? 'iPhone'
+      : /Android/.test(ua) ? 'Android' : /CrOS/.test(ua) ? 'ChromeOS' : /Mac OS X/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : /Linux/.test(ua) ? 'Linux' : '?';
+    const NAME = { CriOS: 'Chrome', FxiOS: 'Firefox', EdgiOS: 'Edge', Edg: 'Edge', EdgA: 'Edge', OPR: 'Opera', SamsungBrowser: 'Samsung' };
+    let m = /(CriOS|FxiOS|EdgiOS|EdgA|Edg|OPR|SamsungBrowser|Firefox|Chrome)\/(\d+)/.exec(ua), br;
+    if (m) br = (NAME[m[1]] || m[1]) + ' ' + m[2];
+    else if ((m = /Version\/([\d.]+).*Safari/.exec(ua))) br = 'Safari ' + m[1];
+    else br = /Safari/.test(ua) ? 'Safari' : '?';
+    const ios = /OS (\d+)_(\d+)[_ ]/.exec(ua);
+    return os + (ios && /iP/.test(os) ? ' ' + ios[1] + '.' + ios[2] : '') + ' ' + br;
+  };
+  S.info = () => ({ api: W.SpeechRecognition ? 'SpeechRecognition' : W.webkitSpeechRecognition ? 'webkitSpeechRecognition' : null, device: S.device() });
+
+  // ---------- Sharing the audio (see the notes at the top) ----------
+  let ducked = null, afterMic = false;
+  function quiet() {
+    try { if (G.hush) G.hush(); else if (W.speechSynthesis) W.speechSynthesis.cancel(); } catch (e) { }
+    const A = G.audio; if (A && A.master && ducked == null) { ducked = A.master.gain.value || 0.8; A.master.gain.value = 0; }
+    afterMic = false;
+  }
+  function wakeAudio() {
+    const ac = G.audio && G.audio.ctx;
+    try { if (ac && ac.state !== 'running' && ac.state !== 'closed') { const p = ac.resume(); if (p && p.catch) p.catch(() => { }); } } catch (e) { }
+  }
+  function unquiet() {
+    const A = G.audio; if (A && A.master && ducked != null) A.master.gain.value = A.muted ? 0 : ducked;
+    ducked = null; wakeAudio();
+    try { W.speechSynthesis && W.speechSynthesis.resume(); } catch (e) { }
+    afterMic = true; // the next tap or key wakes the audio and re-primes speech, inside that gesture
+  }
+  function reprime() {
+    try {
+      const ss = W.speechSynthesis; if (!ss || ss.speaking || ss.pending) return;
+      const u = new W.SpeechSynthesisUtterance(' '); u.volume = 0; u.lang = 'es-MX'; ss.resume(); ss.speak(u);
+    } catch (e) { }
+  }
+
+  // ---------- Listening ----------
+  let sess = null; // the Wait of the recognition in progress
+  S.listening = () => !!sess;
+  S.stop = () => { if (sess) sess.stop(); };
+  S.abort = () => { if (sess) sess.abort(); };
+  S.listen = function (o) {
+    o = Object.assign({ lang: 'es-MX', alts: 5, timeout: 8000 }, o || {});
+    const w = new G.Wait(), t0 = now(), Rec = SR();
+    w.phase = 'starting'; w.during = (W.event && W.event.type) || 'frame';
+    let rec = null, got = null, err = null, heard = false, timedOut = false, tm = null, hush = null, endT = null;
+    const finish = r => {
+      if (w.fin) return;
+      clearTimeout(tm); clearTimeout(hush); clearTimeout(endT);
+      if (sess === w) { sess = null; unquiet(); }
+      w.phase = 'done';
+      w.resolve({ ok: !!r.ok, alternatives: r.alternatives || [], error: r.ok ? null : (r.error || 'error'), ms: Math.round(now() - t0), during: w.during });
+    };
+    const result = () => got ? { ok: true, alternatives: got } : { error: err || (timedOut ? 'timeout' : heard ? 'no-match' : 'no-speech') };
+    const settle = ms => { clearTimeout(endT); endT = setTimeout(() => { try { rec && rec.abort(); } catch (e) { } finish(result()); }, ms); };
+    w.stop = () => { if (w.fin) return; try { rec && rec.stop(); } catch (e) { } settle(1500); };
+    w.abort = () => { if (w.fin) return; try { rec && rec.abort(); } catch (e) { } err = err || 'aborted'; finish(result()); };
+    if (!Rec) { finish({ error: 'unsupported' }); return w; }
+    hook(); if (sess) sess.abort();
+    sess = w; quiet();
+    try {
+      rec = new Rec();
+      rec.lang = o.lang; rec.maxAlternatives = o.alts; rec.interimResults = false; rec.continuous = false;
+      rec.onstart = rec.onaudiostart = () => { if (w.phase === 'starting') w.phase = 'listening'; };
+      rec.onspeechstart = () => { heard = true; w.phase = 'speech'; };
+      rec.onresult = e => {
+        const rs = e && e.results; if (!rs || !rs.length) return;
+        const r = rs[rs.length - 1], alts = [];
+        for (let i = 0; i < r.length; i++) if (r[i] && r[i].transcript != null) alts.push({ transcript: String(r[i].transcript).trim(), confidence: +r[i].confidence || 0 });
+        if (alts.some(a => a.transcript)) { got = alts; heard = true; }
+        clearTimeout(hush);
+        if (r.isFinal === false) hush = setTimeout(() => w.stop(), 1200); // iOS: interim results and no end
+        else w.stop();
+      };
+      rec.onnomatch = () => { err = err || 'no-match'; };
+      rec.onerror = e => { err = (e && e.error) || 'error'; settle(1500); };
+      rec.onend = () => finish(result());
+      rec.start();
+    } catch (e) {
+      const n = e && e.name;
+      finish({ error: n === 'NotAllowedError' ? 'not-allowed' : n === 'InvalidStateError' ? 'busy' : 'start-failed' });
+      return w;
+    }
+    tm = setTimeout(() => { timedOut = true; w.stop(); }, o.timeout);
+    return w;
+  };
+
+  // ---------- Starting things inside the real tap (see the notes at the top) ----------
+  const A_KEYS = ['KeyZ', 'Space', 'Enter', 'NumpadEnter', 'KeyJ'];
+  const TAP_MOVE = 12, TAP_MS = 800; // the same tap rule as core.js
+  const zones = [];
+  let hooked = false, down = null;
+  const inR = (x, y, r) => !!r && x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
+  function gameXY(cx, cy) { const b = G.canvas.getBoundingClientRect(); return [(cx - b.left) * G.W / b.width, (cy - b.top) * G.H / b.height]; }
+  function press(cx, cy, id, touch) { const [x, y] = gameXY(cx, cy); return { x, y, id, touch, t: now(), ready: G.input.ready() }; }
+  function fire(e, x, y, d) { // x == null: an A key; else a tap that went down at d and lifted at x, y
+    for (let i = zones.length - 1; i >= 0; i--) { // newest first
+      const z = zones[i]; let hit = false;
+      try { const r = x == null ? null : z.zone(); hit = x == null ? !!(z.key && z.key()) : inR(x, y, r) && inR(d.x, d.y, r); } catch (er) { }
+      if (hit) { try { z.fn(e); } catch (er) { console.error(er); } return true; }
+    }
+    return false;
+  }
+  function lift(e, cx, cy) {
+    const d = down, [x, y] = gameXY(cx, cy); down = null;
+    return d.ready && Math.hypot(x - d.x, y - d.y) <= TAP_MOVE && now() - d.t <= TAP_MS && fire(e, x, y, d);
+  }
+  function after(fired) { if (!fired && afterMic && !sess) { afterMic = false; wakeAudio(); reprime(); } }
+  function hook() {
+    if (hooked || !W.addEventListener) return; hooked = true;
+    const o = { capture: true, passive: true };
+    W.addEventListener('touchstart', e => { const t = e.changedTouches[e.changedTouches.length - 1]; if (e.target === G.canvas && t) down = press(t.clientX, t.clientY, t.identifier, true); }, o);
+    W.addEventListener('touchend', e => {
+      const t = down && down.touch && Array.from(e.changedTouches).find(t => t.identifier === down.id);
+      after(t ? lift(e, t.clientX, t.clientY) : false);
+    }, o);
+    W.addEventListener('touchcancel', () => { down = null; }, o);
+    // mouse and pen; a finger is handled at touchend (Safari's gesture for a touch)
+    W.addEventListener('pointerdown', e => { if (e.pointerType !== 'touch' && e.target === G.canvas && e.button === 0) down = press(e.clientX, e.clientY, e.pointerId, false); }, o);
+    W.addEventListener('pointerup', e => {
+      if (e.pointerType === 'touch') return;
+      after(down && !down.touch && e.pointerId === down.id ? lift(e, e.clientX, e.clientY) : false);
+    }, o);
+    W.addEventListener('keydown', e => { after(!e.repeat && !G.textInput && A_KEYS.includes(e.code) && fire(e)); }, o);
+  }
+  S.gestureTap = function (zone, fn, opts) {
+    const z = { zone: zone || (() => null), fn, key: opts && opts.key };
+    zones.push(z); hook();
+    return { off() { const i = zones.indexOf(z); if (i >= 0) zones.splice(i, 1); } };
+  };
 })();
 
 </script>
@@ -6705,6 +6944,328 @@ G.store = {
     else { ctx.fillRect(x + 1, y + 2, 2, 4); ctx.fillRect(x + 3, y + 1, 1, 6); ctx.fillRect(x + 4, y, 1, 8); if (kind === 'voice') { ctx.fillRect(x + 7, y + 2, 1, 4); ctx.fillRect(x + 9, y + 1, 1, 6); } else { ctx.fillRect(x + 7, y + 3, 1, 2); } }
     if (off) { ctx.fillStyle = '#e04040'; for (let i = 0; i < 9; i++) ctx.fillRect(x + i, y + 8 - i, 1, 1); }
   }
+})();
+
+</script>
+<script>/* src/mictest.js */
+// ===== Mic test (for grown-ups): does speech recognition work on this device, and is the voice heard after it? =====
+// G.micTest() opens it over whatever is on screen (the grown-ups menu calls it) and returns a G.Wait that resolves when
+// it closes; it also works with yield* G.micTest() in a generator. Tap a word: the game says it. Tap the big mic and
+// say the word: every guess the recognizer made is shown with its confidence and match score, then PASS / CLOSE / MISS
+// (G.speech.match). Then the game speaks again and asks whether that was heard (on some iPhones the voice goes quiet
+// after the mic). Every try is kept in localStorage 'spanishclub_mictest' (the last 200): Copy and Clear are at the
+// bottom. Grown-ups only, so the labels are English. Keys: arrows pick a word, C says it, Z listens, X closes.
+'use strict';
+(function () {
+  const LOG_KEY = 'spanishclub_mictest', LOG_MAX = 200;
+  const WORDS = ['manzana', 'platano', 'hola', 'adios', 'gracias', 'porfavor', 'buenosdias', 'tres', 'dos', 'rojo', 'azul', 'si'];
+  const COL = { PASS: '#70e070', CLOSE: '#f8c040', MISS: '#ff7860', ERROR: '#ff7860', dim: '#a8b0d8', yel: '#f8e060' };
+  const AFTER = { PASS: '¡Muy bien!', CLOSE: '¡Casi!', MISS: 'Otra vez.', ERROR: 'Otra vez.' }; // said after the mic
+  const OPTS = { lang: 'es-MX', alts: 5, timeout: 8000 };
+  const HELP = {
+    'not-allowed': 'The mic is blocked for this page. Safari: aA > Website Settings > Microphone > Allow. Chrome: the icon left of the address > Microphone.',
+    'service-not-allowed': 'Dictation is off. iPad: Settings > General > Keyboard > Enable Dictation. Screen Time can also block Siri & Dictation.',
+    'no-speech': 'Nothing was heard. Tap the mic, then say the word right away, close to the device.',
+    'no-match': 'Something was heard, but no words came back. Try again, a little louder.',
+    'network': 'Network error. Chrome sends the sound to Google to understand it, so it needs the internet.',
+    'audio-capture': 'No microphone found, or another app is using it.',
+    'aborted': 'Stopped before anything was heard.',
+    'timeout': 'Nothing came back in time. Try again, a little louder.',
+    'language-not-supported': 'This device can\'t listen in Spanish (es-MX). On iPad, add Spanish (Mexico) as a dictation language.',
+    'busy': 'The mic was still busy. Wait a second and try again.',
+    'start-failed': 'The mic could not start. Tap the mic button itself.',
+  };
+  const NO_API = ['Speech recognition is not available here.', 'iPad / iPhone: use Safari, iOS 14.5+.', 'Settings > General > Keyboard >', '   Enable Dictation: on.', 'Screen Time: allow Siri & Dictation.', 'Computer: Chrome, Edge or Safari.'];
+  // the mic opened (so it's worth asking whether the voice still works afterwards)
+  const opened = r => r.ok || ['no-speech', 'no-match', 'aborted', 'timeout', 'network'].includes(r.error);
+
+  // ---------- The log ----------
+  const p2 = n => String(n).padStart(2, '0');
+  const stamp = ms => { const d = new Date(ms); return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()) + ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes()) + ':' + p2(d.getSeconds()); };
+  let ver = 0, memo = null; // stats are drawn every frame: worked out again only after a change
+  const save = a => { G.store.set(LOG_KEY, a); ver++; };
+  const log = {
+    all() { const a = G.store.get(LOG_KEY); return Array.isArray(a) ? a : []; },
+    add(e) { const a = log.all(); a.push(e); a.splice(0, Math.max(0, a.length - LOG_MAX)); save(a); return e; },
+    update(id, patch) { const a = log.all(), e = a.find(e => e.id === id); if (e) { Object.assign(e, patch); save(a); } },
+    clear() { G.store.del(LOG_KEY); ver++; },
+    stats() {
+      if (memo && memo.ver === ver) return memo.s;
+      const a = log.all(), n = v => a.filter(e => e.verdict === v).length, asked = a.filter(e => e.heard != null);
+      memo = { ver, s: { n: a.length, pass: n('PASS'), close: n('CLOSE'), miss: n('MISS'), err: n('ERROR'), asked: asked.length, heard: asked.filter(e => e.heard).length } };
+      return memo.s;
+    },
+    text() { // plain text for pasting into a message
+      const a = log.all(), info = G.speech.info(), v = G.currentVoice && G.currentVoice(), st = log.stats();
+      const L = ['Club de Español mic test: ' + a.length + ' tries (copied ' + stamp(Date.now()) + ')',
+        'Device: ' + info.device + ' | API: ' + (info.api || 'none') + ' | voice: ' + (v ? v.name + ' (' + v.lang + ')' : 'none') + ', mode ' + (G.prefs.voiceMode || 0),
+        'Browser: ' + navigator.userAgent,
+        'Summary: ' + st.pass + ' pass, ' + st.close + ' close, ' + st.miss + ' miss, ' + st.err + ' errors; voice heard after the mic ' + st.heard + ' of ' + st.asked, ''];
+      a.forEach((e, i) => L.push(['#' + (i + 1), stamp(e.at), e.word, e.verdict, (e.score || 0).toFixed(2), e.ms + 'ms', 'started in ' + e.start,
+        'voice after: ' + (e.heard == null ? '-' : e.heard ? 'heard' : 'NOT heard') + (e.tts ? ' (' + e.tts + ')' : ''),
+        e.error ? 'error ' + e.error : '', (e.alts || []).map(([t, c]) => '"' + t + '" ' + c).join(', ')].filter(Boolean).join(' | ')));
+      return L.join('\n');
+    },
+  };
+
+  // a small button like G.iconBtn, with a text label
+  function textBtn(ctx, r, label, o = {}) {
+    const on = o.sel || G.input.holding(r.x, r.y, r.w, r.h) > 0;
+    ctx.fillStyle = '#000010'; ctx.fillRect(r.x + 1, r.y, r.w - 2, r.h); ctx.fillRect(r.x, r.y + 1, r.w, r.h - 2);
+    ctx.fillStyle = on ? '#f0d060' : '#8898e0'; ctx.fillRect(r.x + 1, r.y + 1, r.w - 2, r.h - 2);
+    ctx.fillStyle = on ? '#304cc0' : (o.fill || '#1c2c8c'); ctx.fillRect(r.x + 2, r.y + 2, r.w - 4, r.h - 4);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(r.x + 2, r.y + 2, r.w - 4, 3);
+    G.textC(ctx, label, r.x + r.w / 2, r.y + (r.h >> 1) - 3, o.col || '#ffffff');
+  }
+  function micGlyph(ctx, cx, cy, col) { // capsule, holder, stem, base
+    ctx.fillStyle = col;
+    ctx.fillRect(cx - 4, cy - 12, 8, 13); ctx.fillRect(cx - 3, cy - 13, 6, 15);
+    ctx.fillRect(cx - 8, cy - 4, 2, 5); ctx.fillRect(cx + 6, cy - 4, 2, 5); ctx.fillRect(cx - 7, cy + 1, 2, 2); ctx.fillRect(cx + 5, cy + 1, 2, 2); ctx.fillRect(cx - 5, cy + 3, 10, 2);
+    ctx.fillRect(cx - 1, cy + 5, 2, 4); ctx.fillRect(cx - 5, cy + 9, 10, 2);
+  }
+  const disc = (ctx, x, y, r, c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); };
+  const fit = (s, w) => { s = String(s); if (G.textWidth(s) <= w) return s; while (s && G.textWidth(s + '..') > w) s = s.slice(0, -1); return s + '..'; };
+
+  class MicTest {
+    constructor(w) {
+      this.w = w; this.t = 0; this.wi = 0; this.mode = 'ready'; // ready | listening | after | ask
+      this.res = null; this.listen = null; this.started = null; this.note = ''; this.noteT = 0; this.clearT = 0; this.lastCopy = -1e9;
+      this.info = G.speech.info(); this.ok = G.speech.supported();
+      this.lastV = {}; log.all().forEach(e => { this.lastV[e.word] = e.verdict; }); // last verdict per word (a dot on its card)
+    }
+    onEnter() {
+      G.toastT = 0;
+      const top = () => G.top() === this && !this.text, ready = () => top() && this.ok && this.mode === 'ready';
+      this.zones = [ // inside the real tap / key press (see speech.js): start the mic, copy to the clipboard
+        G.speech.gestureTap(() => ready() ? this.micRect() : null, () => { this.started = this.go(); }, { key: ready }),
+        G.speech.gestureTap(() => top() && this.mode === 'ready' ? this.copyRect() : null, () => { this.copied = true; this.copy(); }),
+      ];
+    }
+    onExit() { this.zones.forEach(z => z.off()); if (this.listen) this.listen.abort(); this.hideText(); }
+    word() { return WORDS[this.wi]; }
+    sayWord() { G.speak(G.baseForm(this.word())); }
+    // tap areas (shared with draw)
+    cellRect(k) { return { x: 8 + (k % 4) * 77, y: 30 + Math.floor(k / 4) * 26, w: 74, h: 24 }; }
+    micRect() { return { x: 10, y: 112, w: 50, h: 50 }; }
+    sayXY() { return [290, 112]; }
+    copyRect() { return { x: 8, y: 200, w: 66, h: 20 }; }
+    clearRect() { return { x: 78, y: 200, w: 52, h: 20 }; }
+    askRect() { return { x: 40, y: 58, w: 240, h: 104 }; }
+    yesRect() { return { x: 58, y: 124, w: 94, h: 26 }; }
+    noRect() { return { x: 168, y: 124, w: 94, h: 26 }; }
+    askSayXY() { return [254, 64]; }
+    notice(s) { this.note = s; this.noteT = 180; } // a line in the bottom bar
+    close() { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); }
+
+    go() { this.word0 = this.word(); return G.speech.listen(OPTS); } // inside the gesture when possible
+    begin(l) { this.listen = l; this.mode = 'listening'; this.lt = 0; this.res = null; }
+    update() {
+      this.t++; if (this.noteT > 0) this.noteT--; if (this.clearT > 0) this.clearT--;
+      this.watchVoice();
+      if (this.text) { if (G.input.p('B') || G.input.p('A')) this.hideText(); return; } // the copy-by-hand panel
+      const copied = this.copied; this.copied = false;
+      if (this.started) { const l = this.started; this.started = null; this.begin(l); return; }
+      if (this.mode === 'listening') return this.updListen();
+      if (this.mode === 'after') return this.updAfter();
+      if (this.mode === 'ask') return this.updAsk();
+      // ready
+      if (G.input.p('B') || G.closeHit()) { this.close(); return; }
+      if (G.input.p('C') || G.speakerHit(...this.sayXY())) this.sayWord();
+      const pick = k => { if (k !== this.wi) { this.wi = k; this.res = null; G.audio.sfx('cursor'); } this.sayWord(); };
+      const d = G.input.repDir(14, 6), n = WORDS.length;
+      if (d) pick((this.wi + { left: -1, right: 1, up: -4, down: 4 }[d] + n) % n);
+      if (G.input.tap()) {
+        const k = WORDS.findIndex((id, k) => G.tapIn(this.cellRect(k)));
+        if (k >= 0) pick(k);
+        if (G.tapIn(this.copyRect()) && !copied) this.copy();
+        if (G.tapIn(this.clearRect())) {
+          if (this.clearT > 0) { log.clear(); this.lastV = {}; this.clearT = 0; this.notice('Log cleared'); G.audio.sfx('ok'); }
+          else { this.clearT = 150; G.audio.sfx('cursor'); }
+        }
+      }
+      if (G.tapIn(this.micRect()) || G.input.p('A')) { // the gesture didn't start it (say, the D-pad's A): try from here
+        if (!this.ok) { G.audio.sfx('error'); this.notice('No speech recognition here'); }
+        else this.begin(this.go());
+      }
+    }
+    updListen() {
+      this.lt++;
+      const l = this.listen;
+      if (l.done()) { this.finish(l.result); return; }
+      if (G.tapIn(this.micRect()) || G.input.p('A')) l.stop(); // finish now with what was heard
+      else if (G.input.p('B') || G.closeHit()) l.abort();
+    }
+    finish(r) {
+      const word = this.word0 || this.word(), target = G.data.words[word].es; // every form counts: 'rojo / roja', 'la manzana'
+      const m = r.ok ? G.speech.match(target, r.alternatives) : { pass: false, score: 0, heard: '', i: -1 };
+      const v = r.ok ? G.speech.grade(m.score) : 'ERROR';
+      this.res = { r, m, v, word, scores: r.alternatives.map(a => G.speech.score(target, a.transcript)) };
+      this.entry = log.add({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), at: Date.now(), word, verdict: v, score: +m.score.toFixed(2),
+        error: r.error, ms: r.ms, start: r.during, alts: r.alternatives.slice(0, 5).map(a => [a.transcript, +a.confidence.toFixed(2)]),
+        heard: null, tts: null, replays: 0, device: this.info.device,
+      });
+      this.lastV[word] = v; this.listen = null;
+      G.audio.sfx(v === 'PASS' ? 'item' : v === 'CLOSE' ? 'ok' : 'error');
+      const voice = G.prefs.voice > 0 && !G.audio.muted;
+      if (!voice) log.update(this.entry.id, { tts: 'voice off' });
+      this.mode = opened(r) && voice ? 'after' : 'ready'; this.at = 0;
+    }
+    updAfter() { // a moment for the audio to come back, then the game speaks and asks if it was heard
+      if (++this.at === 30) { this.spoken = AFTER[this.res.v]; G.voiceStatus = ''; G.speak(this.spoken); this.vw = { id: this.entry.id, t: 0 }; }
+      if (this.at >= 54) { this.mode = 'ask'; this.askT = 0; this.ai = 0; }
+    }
+    watchVoice() { // did speech synthesis report that the line after the mic started? (heard or not is the grown-up's answer)
+      const vw = this.vw; if (!vw) return;
+      if (G.voiceStatus === 'ok' || ++vw.t > 180) { log.update(vw.id, { tts: G.voiceStatus === 'ok' ? 'started' : 'no start' + (G.voiceStatus ? ' (' + G.voiceStatus + ')' : '') }); this.vw = null; }
+    }
+    updAsk() {
+      this.askT++;
+      if (G.input.p('C') || G.speakerHit(...this.askSayXY())) { G.input.eat(); G.speak(this.spoken); this.entry.replays++; log.update(this.entry.id, { replays: this.entry.replays }); return; }
+      const d = G.input.repDir(14, 6);
+      if (d === 'left' || d === 'right') { this.ai = 1 - this.ai; G.audio.sfx('cursor'); }
+      if (this.askT < 15) return;
+      if (G.tapIn(this.yesRect())) this.answer(true);
+      else if (G.tapIn(this.noRect())) this.answer(false);
+      else if (G.input.p('A')) this.answer(this.ai === 0);
+      else if (G.input.p('B')) this.answer(null);
+    }
+    answer(h) { log.update(this.entry.id, { heard: h }); this.mode = 'ready'; G.audio.sfx(h == null ? 'cancel' : 'ok'); if (h != null) this.notice(h ? 'Thanks! Voice OK after the mic' : 'Noted: voice lost after the mic'); }
+
+    // ---------- Copy (inside the tap when possible: Safari only lets a tap copy) ----------
+    copy() {
+      const now = performance.now(); if (now - this.lastCopy < 500) return; this.lastCopy = now;
+      const n = log.all().length; if (!n) { this.notice('Nothing to copy yet'); G.audio.sfx('error'); return; }
+      const txt = log.text();
+      try {
+        const cb = navigator.clipboard;
+        if (cb && cb.writeText) { cb.writeText(txt).then(() => { this.notice('Copied ' + n + (n === 1 ? ' try' : ' tries')); G.audio.sfx('ok'); }, () => this.showText(txt, 'Copying was blocked. Select the text below and copy it.')); return; }
+      } catch (e) { }
+      this.showText(txt, 'Select the text below and copy it.');
+    }
+    showText(txt, why) { // a real text box over the game, for copying by hand
+      this.hideText();
+      const d = this.text = document.createElement('div'); d.id = 'mictext';
+      d.style.cssText = 'position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;gap:8px;padding:12px;box-sizing:border-box;background:rgba(8,12,48,.96);color:#f0f0ff;font:15px monospace';
+      const p = document.createElement('div'); p.textContent = why;
+      const ta = document.createElement('textarea'); ta.readOnly = true; ta.value = txt;
+      ta.style.cssText = 'flex:1;width:100%;box-sizing:border-box;font:12px monospace;background:#000;color:#e8e8f8;border:2px solid #8898e0;user-select:text;-webkit-user-select:text;-webkit-touch-callout:default;touch-action:auto';
+      const b = document.createElement('button'); b.textContent = 'Done';
+      b.style.cssText = 'align-self:flex-end;font:bold 16px monospace;padding:10px 28px;border-radius:8px;border:2px solid #f0f0ff;background:#304cc0;color:#fff';
+      b.addEventListener('click', () => this.hideText());
+      d.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') this.hideText(); }); // let Ctrl/Cmd+C reach the text box
+      d.append(p, ta, b); document.body.appendChild(d);
+      try { ta.focus(); ta.setSelectionRange(0, txt.length); if (document.execCommand && document.execCommand('copy')) p.textContent = 'Copied. Here is the text too.'; } catch (e) { }
+    }
+    hideText() { if (this.text) { this.text.remove(); this.text = null; try { G.canvas.focus(); } catch (e) { } } }
+
+    // ---------- Drawing ----------
+    draw(ctx) {
+      G.win(ctx, 0, 0, G.W, G.H, { alpha: 1 });
+      G.text(ctx, 'MIC TEST', 8, 7, COL.yel); G.text(ctx, 'for grown-ups', 8 + G.textWidth('MIC TEST') + 8, 7, COL.dim);
+      G.closeBtn(ctx);
+      const api = this.info.api || 'no SpeechRecognition';
+      G.text(ctx, fit(api + '   ' + OPTS.lang + '   ' + this.info.device, 280), 8, 18, this.ok ? '#c8d0f0' : COL.MISS);
+      WORDS.forEach((id, k) => this.drawCell(ctx, k));
+      G.win(ctx, 66, 108, 248, 88);
+      this.drawMic(ctx);
+      this.drawPanel(ctx);
+      // bottom bar: copy, clear, and how it has gone so far
+      textBtn(ctx, this.copyRect(), 'Copy log');
+      textBtn(ctx, this.clearRect(), this.clearT > 0 ? 'Sure?' : 'Clear', { fill: this.clearT > 0 ? '#902838' : null });
+      const st = log.stats();
+      const line = this.noteT > 0 ? this.note : st.n ? st.n + (st.n === 1 ? ' try  ' : ' tries  ') + st.pass + ' pass' + (st.asked ? '  voice ' + st.heard + '/' + st.asked : '') : 'No tries yet';
+      G.text(ctx, fit(line, 176), 136, 206, this.noteT > 0 ? COL.yel : COL.dim);
+      if (this.mode === 'ask') this.drawAsk(ctx);
+    }
+    drawCell(ctx, k) {
+      const R = this.cellRect(k), id = WORDS[k], sel = k === this.wi, wd = G.data.words[id];
+      const on = G.input.holding(R.x, R.y, R.w, R.h) > 0 && this.mode === 'ready';
+      G.win(ctx, R.x, R.y, R.w, R.h, sel || on ? { fill1: '#3a56c8', fill2: '#1c2c8c', alpha: 1 } : { fill1: '#24308a', fill2: '#141c58', alpha: 1 });
+      if (sel) { ctx.fillStyle = COL.yel; ctx.fillRect(R.x + 2, R.y + 1, R.w - 4, 1); ctx.fillRect(R.x + 2, R.y + R.h - 2, R.w - 4, 1); ctx.fillRect(R.x + 1, R.y + 2, 1, R.h - 4); ctx.fillRect(R.x + R.w - 2, R.y + 2, 1, R.h - 4); }
+      G.drawIcon16(ctx, wd, R.x + 4, R.y + 4);
+      const label = G.baseForm(id), col = sel ? COL.yel : '#ffffff';
+      if (G.textWidth(label) <= R.w - 30) G.text(ctx, label, R.x + 23, R.y + 9, col);
+      else { const [a, ...b] = label.split(' '); G.text(ctx, a, R.x + 23, R.y + 4, col); G.text(ctx, b.join(' '), R.x + 23, R.y + 13, col); }
+      const v = this.lastV[id];
+      if (v) { ctx.fillStyle = '#000010'; ctx.fillRect(R.x + R.w - 8, R.y + 3, 5, 5); ctx.fillStyle = COL[v]; ctx.fillRect(R.x + R.w - 7, R.y + 4, 3, 3); }
+    }
+    drawMic(ctx) {
+      const r = this.micRect(), cx = r.x + r.w / 2, cy = r.y + r.h / 2, L = this.mode === 'listening';
+      const ph = L && this.listen ? this.listen.phase : '';
+      if (L) for (let i = 0; i < 3; i++) { // rings going out while it listens (green once it hears a voice)
+        const p = ((this.t + i * 20) % 60) / 60;
+        ctx.globalAlpha = (1 - p) * 0.8; ctx.strokeStyle = ph === 'speech' ? COL.PASS : COL.yel; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(cx, cy, 23 + p * 12, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      const on = this.mode === 'ready' && G.input.holding(r.x, r.y, r.w, r.h) > 0, rad = 22 + (L ? Math.round(Math.sin(this.t / 5)) : 0);
+      disc(ctx, cx, cy + 1, rad + 1, '#000010');
+      disc(ctx, cx, cy, rad, !this.ok ? '#606888' : L ? '#f08890' : on ? '#f0d060' : '#8898e0');
+      disc(ctx, cx, cy, rad - 2, !this.ok ? '#384060' : L ? '#c83040' : on ? '#304cc0' : '#2a40b0');
+      ctx.globalAlpha = 0.25; disc(ctx, cx - 5, cy - 8, 9, '#ffffff'); ctx.globalAlpha = 1;
+      micGlyph(ctx, cx + 1, cy + 1, '#000010'); micGlyph(ctx, cx, cy, this.ok ? '#f8f8ff' : '#9098b8');
+      if (!this.ok) { ctx.strokeStyle = COL.MISS; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx - 14, cy - 14); ctx.lineTo(cx + 14, cy + 14); ctx.stroke(); }
+      G.textC(ctx, L ? 'STOP' : this.ok ? 'TAP' : 'OFF', cx, r.y + r.h + 6, L ? '#ffb0b8' : COL.dim);
+      if (L) G.bar(ctx, r.x + 2, r.y + r.h + 18, r.w - 6, OPTS.timeout / 1000 * 60 - this.lt, OPTS.timeout / 1000 * 60, '#f08890');
+    }
+    drawPanel(ctx) {
+      const x = 74, R = this.res, word = R ? R.word : this.word();
+      G.text(ctx, 'Say', x, 121, COL.dim);
+      G.bigText(ctx, G.baseForm(word), x + 22 + (G.textWidth(G.baseForm(word)) + 2), 117, 2, COL.yel);
+      G.speakerBtn(ctx, ...this.sayXY());
+      const line = (s, y, c) => G.text(ctx, s, x, y, c || '#ffffff');
+      if (!this.ok) { NO_API.forEach((s, i) => line(s, 138 + i * 9, i ? '#ffffff' : COL.MISS)); return; }
+      if (this.mode === 'listening') {
+        const ph = this.listen.phase, dots = '...'.slice(0, (this.t >> 4) % 4);
+        line(ph === 'speech' ? 'Hearing you' + dots : ph === 'starting' ? 'Starting the mic' + dots : 'Listening' + dots, 140, ph === 'speech' ? COL.PASS : COL.yel);
+        line('Say "' + G.baseForm(word) + '" now.', 154);
+        line('Tap the mic to stop.', 166, COL.dim);
+        return;
+      }
+      if (!R) {
+        (G.touch ? ['1  Tap a word to hear it.', '2  Tap the mic and say it.', '3  See what the device heard.']
+          : ['1  Arrows or a click: pick a word.', '   C: hear it again.', '2  Z or the mic: say it.', '3  See what the device heard.']).forEach((s, i) => line(s, 140 + i * 12));
+        return;
+      }
+      // the verdict, then every guess: its confidence and how well it matches
+      const v = R.v, cw = G.textWidth(v) + 8;
+      ctx.fillStyle = '#000010'; ctx.fillRect(x - 1, 136, cw + 2, 11); ctx.fillStyle = COL[v]; ctx.fillRect(x, 137, cw, 9);
+      G.text(ctx, v, x + 4, 138, '#101030', null);
+      if (v === 'ERROR') {
+        G.text(ctx, R.r.error + '  ' + (R.r.ms / 1000).toFixed(1) + 's', x + cw + 6, 138, COL.MISS);
+        G.wrap(HELP[R.r.error] || 'Something went wrong.', 232).slice(0, 4).forEach((s, i) => line(s, 151 + i * 10));
+        return;
+      }
+      G.text(ctx, R.m.score.toFixed(2) + '  ' + (R.r.ms / 1000).toFixed(1) + 's', x + cw + 6, 138, COL[v]);
+      G.textR(ctx, 'conf', 266, 138, COL.dim); G.textR(ctx, 'match', 306, 138, COL.dim);
+      R.r.alternatives.slice(0, 5).forEach((a, i) => {
+        const y = 150 + i * 9, best = i === R.m.i, sc = R.scores[i];
+        G.text(ctx, fit((i + 1) + ' "' + a.transcript + '"', 150), x, y, best ? COL.yel : '#ffffff');
+        G.textR(ctx, a.confidence ? Math.round(a.confidence * 100) + '%' : '-', 266, y, COL.dim);
+        G.textR(ctx, sc.toFixed(2), 306, y, COL[G.speech.grade(sc)]);
+      });
+    }
+    drawAsk(ctx) {
+      ctx.fillStyle = 'rgba(0,0,16,0.55)'; ctx.fillRect(0, 0, G.W, G.H);
+      const b = this.askRect();
+      G.win(ctx, b.x, b.y, b.w, b.h, { alpha: 1 });
+      G.textC(ctx, 'After the mic, did you hear', G.W / 2, b.y + 10, '#ffffff');
+      G.bigText(ctx, '"' + this.spoken + '"', G.W / 2, b.y + 30, 2, COL.yel);
+      G.textC(ctx, 'the game\'s voice say this?', G.W / 2, b.y + 48, '#ffffff');
+      G.speakerBtn(ctx, ...this.askSayXY());
+      textBtn(ctx, this.yesRect(), 'Yes', { sel: !G.touch && this.ai === 0, fill: '#2a7a3a' });
+      textBtn(ctx, this.noRect(), 'No', { sel: !G.touch && this.ai === 1, fill: '#902838' });
+      if (!G.touch) G.textC(ctx, 'X: skip', G.W / 2, b.y + b.h - 10, COL.dim);
+    }
+  }
+
+  G.micTest = function () {
+    const w = new G.Wait(); G.push(new MicTest(w));
+    w[Symbol.iterator] = function* () { yield w; return w.result; }; // so yield* G.micTest() works too
+    return w;
+  };
+  G.micTest.log = log;
 })();
 
 </script>
