@@ -36,7 +36,7 @@ Add it to `D.pages` / `D.pageOrder` in `src/data.js`, then place it with `pages:
 
 ## A new errand
 1. Add it to `D.quests` and `D.questOrder` in `src/data.js`.
-2. In `src/maps.js`, give someone a talk script that calls `newQuest('id')`. Track progress in `G.state.flags`, then call `finishQuest('id')` to award the badge. Add a badge colour and icon in `BADGE_COL` / `BADGE_ICON` in `src/learn.js`.
+2. In `src/maps.js`, give someone a talk script that calls `newQuest('id')`. Track progress in `G.state.flags`, then call `finishQuest('id')` to award the badge. (No saving code needed: the game saves itself after every conversation. Code that changes `G.state` outside one, say on a timer, calls `G.st.autosave()`, or `G.st.saveNow()` to write at once.) Add a badge colour and icon in `BADGE_COL` / `BADGE_ICON` in `src/learn.js`.
 3. Give the character an `alert: () => ...` function. Return `true` for a "!" bubble, a word id to show its picture, or a goal like `[['manzana', 3]]` to show what they want.
 4. Open the errand with `newQuest('id')`, which shows the picture card for its `goal`.
 

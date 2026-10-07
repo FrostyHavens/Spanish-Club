@@ -1,24 +1,94 @@
-// ===== Field menu: Cuaderno (found pages), Misiones (picture goals), Guardar, Opciones =====
+// ===== Field menu (Cuaderno, Misiones, and the grown-ups' gear), the grown-ups menu, press-and-hold buttons =====
 'use strict';
 (function () {
   const D = () => G.data, S = () => G.st;
   const STAR = '\u0005';
 
-  G.fieldMenu = function* (field) {
-    while (true) {
-      const c = yield G.cross({
-        up: { label: 'Cuaderno', icon: 'book' }, left: { label: 'Misiones', icon: 'quest' },
-        right: { label: 'Guardar', icon: 'save' }, down: { label: 'Opciones', icon: 'gear' },
-      }, { x: G.W / 2 - 40, y: G.H / 2 + 20 });
-      const op = c.result; if (!op) return;
-      if (op === 'up') yield G.notebook();
-      else if (op === 'left') yield G.questLog();
-      else if (op === 'right') {
-        const r = yield G.choose({ prompt: '¿Guardar?', en: 'Save the game?', show: 'save', layout: 'cards', choices: [{ word: 'si' }, { word: 'no' }], cancel: true });
-        if (r.result === 0) { const ok = S().save(); G.audio.sfx(ok ? 'item' : 'error'); G.toast(ok ? '\u0005 ¡Guardado! \u0005' : '¡Error!', 80); }
-      } else if (op === 'down') yield* G.options();
+  // ---------- Press-and-hold buttons for grown-ups (the gear, the slot screen's trash can) ----------
+  // A finger held on the button, or A held while it has the keyboard focus, fills a ring; a full ring fires once,
+  // and the finger or key has to be let go before it can fire again. A quick tap only makes it wiggle.
+  G.Hold = class {
+    constructor(frames) { this.frames = frames; this.p = 0; this.armed = true; this.poke = 0; }
+    update(r, focused) { // r: the hit rect -> true on the frame the ring fills
+      if (this.poke > 0) this.poke--;
+      if (G.tapIn(r)) { this.poke = 40; G.audio.sfx('cursor'); }
+      const f = Math.max(G.input.holding(r.x, r.y, r.w, r.h), focused ? G.input.keyHeld('A') : 0);
+      if (!f) this.armed = true;
+      this.p = this.armed ? Math.min(1, f / this.frames) : 0;
+      if (this.p < 1) return false;
+      this.armed = false; this.p = 0; return true;
+    }
+    wiggle() { return this.poke ? Math.round(Math.sin(this.poke * 0.8) * 2 * this.poke / 40) : 0; }
+  };
+  // the ring around a held button (filled clockwise from the top), or a faint one after a quick tap
+  G.drawHold = function (ctx, h, cx, cy, r, col = '#f8e060') {
+    if (!h.p && h.poke < 20) return;
+    const n = Math.round(r * 1.4);
+    for (let k = 0; k < n; k++) {
+      const a = -Math.PI / 2 + (k + 0.5) / n * Math.PI * 2, x = Math.round(cx + Math.cos(a) * r) - 1, y = Math.round(cy + Math.sin(a) * r) - 1;
+      ctx.fillStyle = '#10102a'; ctx.fillRect(x - 1, y - 1, 4, 4);
+      ctx.fillStyle = (k + 1) / n <= h.p ? col : '#6070b0'; ctx.fillRect(x, y, 2, 2);
     }
   };
+
+  // ---------- The kid's menu (B, or the notebook button on the map) ----------
+  G.fieldMenu = function* (field) {
+    while (true) {
+      const r = yield G.kidMenu();
+      if (r.result === 'book') yield G.notebook();
+      else if (r.result === 'quest') yield G.questLog();
+      else return;
+    }
+  };
+  // Two big picture buttons, Cuaderno and Misiones, plus a small gear that opens the grown-ups menu only after
+  // a 2 s press-and-hold (keyboard: move onto it and hold Z). Resolves 'book', 'quest' or null.
+  const KIDS = ['book', 'quest', 'gear'];
+  class FieldMenu {
+    constructor(w) { this.transparent = true; this.w = w; this.t = 0; this.sel = 'book'; this.gear = new G.Hold(120); }
+    // tap areas (shared with draw): the 'book' and 'quest' tiles, the 'gear' (and its padded hold area), close
+    box() { return { x: 64, y: 46, w: 192, h: 132 }; }
+    rect(k) {
+      const b = this.box();
+      if (k === 'gear') return { x: b.x + b.w - 32, y: b.y + b.h - 28, w: 24, h: 20 };
+      return { x: b.x + 14 + (k === 'quest' ? 88 : 0), y: b.y + 14, w: 76, h: 82 };
+    }
+    gearHit() { const r = this.rect('gear'); return { x: r.x - 4, y: r.y - 4, w: r.w + 8, h: r.h + 8 }; }
+    closeXY() { return [G.W - 26, 6]; } // where the map's menu button was
+    pick(k) { G.audio.sfx('ok'); G.pop(); this.w.resolve(k); }
+    close() { G.audio.sfx('cancel'); G.pop(); this.w.resolve(null); }
+    update() {
+      this.t++;
+      if (this.gear.update(this.gearHit(), this.sel === 'gear')) { G.audio.sfx('ok'); G.grownUps(); return; }
+      if (G.input.tap()) {
+        if (G.closeHit(...this.closeXY())) { this.close(); return; }
+        for (const k of ['book', 'quest']) if (G.tapIn(this.rect(k))) { this.sel = k; this.pick(k); return; }
+      }
+      const d = G.input.repDir(14, 6);
+      if (d) {
+        const i = KIDS.indexOf(this.sel), n = d === 'down' ? 2 : d === 'up' ? (i === 2 ? 1 : i) : (i + (d === 'left' ? 2 : 1)) % 3;
+        if (n !== i) { this.sel = KIDS[n]; G.audio.sfx('cursor'); }
+      }
+      if (G.input.p('A') && this.sel !== 'gear') this.pick(this.sel);
+      else if (G.input.p('B')) this.close();
+    }
+    draw(ctx) {
+      const b = this.box();
+      G.win(ctx, b.x, b.y, b.w, b.h);
+      ['book', 'quest'].forEach(k => {
+        const r = this.rect(k), sel = this.sel === k, bob = sel ? Math.round(Math.sin(this.t / 6) * 1.5) : 0;
+        G.win(ctx, r.x, r.y - bob, r.w, r.h, sel ? { fill1: '#3a56c8', fill2: '#1c2c8c' } : { alpha: 0.55 });
+        const big = G.cached('kidbtn_' + k + (sel ? 1 : 0), 24, 20, c => G.drawIcon(c, k, 0, 0, sel));
+        ctx.drawImage(big, r.x + (r.w - 48) / 2, r.y + 10 - bob, 48, 40);
+        G.textC(ctx, k === 'book' ? 'Cuaderno' : 'Misiones', r.x + r.w / 2, r.y + 62 - bob, sel ? '#f8e060' : '#ffffff');
+        if (sel && (this.t >> 3) % 4 !== 3) G.textC(ctx, '\u0001', r.x + r.w / 2, r.y - 9 - bob, '#f8e060');
+      });
+      const g = this.rect('gear');
+      G.drawIcon(ctx, 'gear', g.x + this.gear.wiggle(), g.y, this.sel === 'gear');
+      G.drawHold(ctx, this.gear, g.x + 12, g.y + 10, 15);
+      G.closeBtn(ctx, ...this.closeXY());
+    }
+  }
+  G.kidMenu = function () { const w = new G.Wait(); G.push(new FieldMenu(w)); return w; };
 
   // ---------- Cuaderno: one page per topic, found around town ----------
   class Notebook {
@@ -112,85 +182,114 @@
   }
   G.questLog = function () { const w = new G.Wait(); G.push(new QuestLog(w)); return w; };
 
-  // ---------- Opciones (mostly for grown-ups) ----------
-  // Up/down picks a row; left/right moves a volume slider (0..10); A changes the other rows.
-  class Options {
-    constructor(w) { this.transparent = true; this.w = w; this.t = 0; this.i = 0; this.n = this.rows().length; }
+  // ---------- Grown-ups menu (behind the held gear; English labels) ----------
+  // Volumes, voice, English help, on-screen buttons, microphone test, controls, back to title. Nothing to save by
+  // hand: volumes, the voice, English help and the D-pad are kept per device (G.prefs), and the game saves itself.
+  // Up/down picks a row, left/right moves a volume, A changes the others; tap a row, tap or drag along a volume bar.
+  const ROW_H = 19, BAR = 168, CELL = 12; // volume bars: 10 cells from x = BAR; the speaker just left of it = 0
+  class GrownUps {
+    constructor(w, o) { this.transparent = true; this.w = w; this.o = o || {}; this.t = 0; this.i = 0; this.drag = null; this.tick = 0; }
     rows() {
-      const voices = G.spanishVoices(), cur = G.currentVoice();
-      return [
-        { label: 'Música', vol: 'music', icon: 'music', en: 'Music volume' },
-        { label: 'Sonidos', vol: 'sfx', icon: 'sound', en: 'Sound effects volume' },
-        { label: 'Voz', vol: 'voice', icon: 'voice', en: 'Speaking volume (0 = no voice)' },
-        { label: 'Elegir voz', right: voices.length ? (voiceIndex(voices, cur) + 1) + '/' + voices.length : '-',
-          en: cur ? 'Change the voice. Now: ' + cur.name + ' (' + cur.lang + ')' : 'No Spanish voice found on this device' },
-        { label: 'Inglés (padres)', right: G.state.opts.english ? 'Sí' : 'No', en: 'Show English translations (for parents and teachers)' },
+      const voices = G.spanishVoices(), cur = G.currentVoice(), mic = typeof G.micTest === 'function';
+      const R = [
+        { id: 'music', label: 'Music', vol: 'music', help: 'Music volume (0 = off).' },
+        { id: 'sfx', label: 'Sounds', vol: 'sfx', help: 'Sound effects volume (0 = off).' },
+        { id: 'voice', label: 'Voice', vol: 'voice', help: voiceLine() },
+        { id: 'pick', label: 'Choose voice', right: voices.length ? (voiceIndex(voices, cur) + 1) + ' / ' + voices.length : 'none found', off: !voices.length, help: voiceLine() },
+        { id: 'english', label: 'English help', on: G.enVisible(), help: 'Shows English under the Spanish (for grown-ups).' },
+        { id: 'dpad', label: 'On-screen buttons', on: !!G.prefs.dpad, help: 'Arrows and A B C on the screen. Taps work without.' },
+        { id: 'mic', label: 'Microphone test', right: mic ? '>' : 'not available', off: !mic, help: mic ? 'Does speech recognition hear Spanish words?' : 'The microphone test is not in this version.' },
+        { id: 'help', label: 'Controls and tips', right: '>', help: 'The keys, and how the game teaches.' },
       ];
+      if (!this.o.title) R.push({ id: 'title', label: 'Back to title', right: '>', help: 'Progress is saved automatically.' });
+      return R;
     }
-    sample(kind) {
-      if (kind === 'sfx') G.audio.sfx('coin');
-      else if (kind === 'voice') G.speak('¡Hola!');
-    }
-    vol(kind, level) { const before = G.prefs[kind]; G.audio.setVolume(kind, level); if (G.prefs[kind] !== before) this.sample(kind); }
-    // tap areas (shared with draw): row k, the volume bar's left edge (cells are 9 px; left of it = 0), close
-    box() { const W = 220, H = this.n * 18 + 28; return { x: (G.W - W) / 2, y: 40, W, H }; }
-    rowRect(k) { const b = this.box(); return { x: b.x + 4, y: b.y + 19 + k * 18, w: b.W - 8, h: 18 }; }
-    barX() { return this.box().x + 100; }
-    closeXY() { const b = this.box(); return [b.x + b.W - 16, b.y - 6]; }
+    // tap areas (shared with draw): row k, its volume bar (with the speaker = 0 and the number), close
+    rowRect(k) { return { x: 10, y: 30 + k * ROW_H, w: G.W - 20, h: ROW_H }; }
+    barRect(k) { const r = this.rowRect(k); return { x: BAR - 18, y: r.y, w: r.x + r.w - (BAR - 18), h: r.h }; }
+    level(x) { return x < BAR ? 0 : Math.min(10, Math.floor((x - BAR) / CELL) + 1); }
+    closeXY() { return [G.W - 30, 8]; }
+    vol(kind, v, sample) { const b = G.prefs[kind]; G.audio.setVolume(kind, v); const ch = G.prefs[kind] !== b; if (ch && sample) this.sample(kind); return ch; }
+    sample(kind) { if (kind === 'sfx') G.audio.sfx('coin'); else if (kind === 'voice') G.speak('¡Hola!'); }
+    close() { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); }
     update() {
       this.t++;
       const rows = this.rows();
-      if (G.input.tap()) { // tap a row to pick it (and change it); tap a volume bar to set the level
-        if (G.closeHit(...this.closeXY())) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); return; }
-        const k = rows.findIndex((r, i) => G.tapIn(this.rowRect(i))), tx = G.input.tap().x, bx = this.barX();
+      if (this.i >= rows.length) this.i = rows.length - 1;
+      // a finger on a volume bar sets it as it slides (sounds as it changes; the voice speaks when let go)
+      const dk = rows.findIndex((r, k) => { const b = this.barRect(k); return r.vol && G.input.holding(b.x, b.y, b.w, b.h); });
+      if (dk >= 0) {
+        const kind = rows[dk].vol; this.i = dk;
+        if (this.vol(kind, this.level(G.input.ptr.x), false)) { this.drag = kind; if (kind === 'sfx' && this.t - this.tick > 5) { this.tick = this.t; this.sample('sfx'); } }
+      } else if (this.drag) { if (this.drag === 'voice') this.sample('voice'); this.drag = null; }
+      const tap = G.input.tap();
+      if (tap) {
+        if (G.closeHit(...this.closeXY())) { this.close(); return; }
+        const k = rows.findIndex((r, n) => G.tapIn(this.rowRect(n)));
         if (k >= 0 && k !== this.i) { this.i = k; G.audio.sfx('cursor'); }
-        if (k >= 0 && rows[k].vol && tx >= bx - 12) this.vol(rows[k].vol, tx < bx ? 0 : Math.floor((tx - bx) / 9) + 1);
-        else if (k >= 0 && !rows[k].vol) this.act();
+        if (k >= 0 && rows[k].vol) { if (tap.x >= BAR - 18) this.vol(rows[k].vol, this.level(tap.x), true); }
+        else if (k >= 0) { this.act(rows[k]); return; }
       }
-      const r = rows[this.i], d = G.input.repDir(14, 5);
+      const d = G.input.repDir(14, 5), r = rows[this.i];
       if (d === 'up' || d === 'down') { this.i = (this.i + (d === 'up' ? -1 : 1) + rows.length) % rows.length; G.audio.sfx('cursor'); }
-      if (r.vol && (d === 'left' || d === 'right')) this.vol(r.vol, G.prefs[r.vol] + (d === 'left' ? -1 : 1));
-      if (G.input.p('A')) this.act();
-      if (G.input.p('B')) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); }
+      if (r.vol && (d === 'left' || d === 'right')) this.vol(r.vol, G.prefs[r.vol] + (d === 'left' ? -1 : 1), true);
+      if (G.input.p('A') && !r.vol) this.act(r);
+      else if (G.input.p('B')) this.close();
     }
-    act() { // A on a row
-      if (this.i === 3) {
+    act(r) { // A or a tap on a row
+      if (r.id === 'pick') {
         const voices = G.spanishVoices(), cur = G.currentVoice();
         if (!voices.length) { G.audio.sfx('error'); return; }
-        G.state.opts.voiceName = voices[(voiceIndex(voices, cur) + 1) % voices.length].name;
-        G.audio.setPref('voiceMode', 0);
+        const name = voices[(voiceIndex(voices, cur) + 1) % voices.length].name;
+        G.state.opts.voiceName = name; G.audio.setPref('voiceName', name); G.audio.setPref('voiceMode', 0);
         if (!G.prefs.voice) G.audio.setVolume('voice', 7);
-        G.speak('¡Hola! Hoy es tu primer día en el Club de Español.');
-      } else if (this.i === 4) { G.state.opts.english = !G.state.opts.english; G.audio.sfx('ok'); }
+        G.speak('¡Hola! Hoy es tu primer día en el Club de Español.'); S().autosave();
+      } else if (r.id === 'english') {
+        const on = !G.state.opts.english; G.state.opts.english = on; G.audio.setPref('english', on); G.audio.sfx('ok'); S().autosave();
+      } else if (r.id === 'dpad') { G.setDpad(!G.prefs.dpad); G.audio.sfx('ok'); }
+      else if (r.id === 'mic') {
+        if (r.off) { G.audio.sfx('error'); return; }
+        G.audio.sfx('ok'); try { G.micTest(); } catch (e) { console.warn(e); }
+      } else if (r.id === 'help') { G.audio.sfx('ok'); G.controlsHelp(); }
+      else if (r.id === 'title') { G.audio.sfx('ok'); G.toTitle(); }
     }
     draw(ctx) {
-      const rows = this.rows(), { x, y, W, H } = this.box();
-      G.win(ctx, x, y, W, H);
+      const rows = this.rows();
+      G.win(ctx, 6, 6, G.W - 12, G.H - 12);
+      G.text(ctx, 'GROWN-UPS', 16, 14, '#f8e060');
+      G.textR(ctx, 'Progress saves by itself', G.W - 40, 14, '#8890c0');
       G.closeBtn(ctx, ...this.closeXY());
-      G.text(ctx, 'OPCIONES', x + 9, y + 8, '#f8e060');
       rows.forEach((r, k) => {
-        const yy = y + 24 + k * 18, sel = k === this.i;
-        if (sel && (this.t >> 3) % 4 !== 3) G.text(ctx, '\u0002', x + 8, yy, '#f8e060');
-        if (r.icon) volIcon(ctx, r.icon, x + 18, yy - 1, r.vol && !G.prefs[r.vol]);
-        G.text(ctx, r.label, x + (r.icon ? 32 : 18), yy, sel ? '#f8e060' : '#ffffff');
+        const R = this.rowRect(k), y = R.y + 6, sel = k === this.i, col = r.off ? '#7078a0' : sel ? '#f8e060' : '#ffffff', xr = R.x + R.w - 4;
+        if (sel) { ctx.fillStyle = 'rgba(248,224,96,0.13)'; ctx.fillRect(R.x + 2, R.y + 1, R.w - 4, R.h - 2); }
+        else { ctx.fillStyle = 'rgba(136,152,224,0.22)'; ctx.fillRect(R.x + 14, R.y + R.h - 1, R.w - 28, 1); }
+        if (sel && (this.t >> 3) % 4 !== 3) G.text(ctx, '\u0002', R.x + 4, y, '#f8e060');
+        G.text(ctx, r.label, R.x + 14, y, col);
         if (r.vol) {
-          const v = G.prefs[r.vol], bx = this.barX();
-          if (sel) G.text(ctx, '<', bx - 8, yy, '#f8e060');
-          for (let s = 0; s < 10; s++) { ctx.fillStyle = s < v ? (sel ? '#f8d030' : '#c8d0f0') : '#303a78'; ctx.fillRect(bx + s * 9, yy + 6 - Math.floor(s / 2), 7, 2 + Math.floor(s / 2)); }
-          if (sel) G.text(ctx, '>', bx + 92, yy, '#f8e060');
-          G.textR(ctx, String(v), x + W - 10, yy, v ? '#ffffff' : '#7078a0');
-        } else G.textR(ctx, r.right, x + W - 10, yy, '#ffffff');
+          const v = G.prefs[r.vol];
+          volIcon(ctx, r.vol === 'sfx' ? 'sound' : r.vol, BAR - 15, R.y + 5, !v);
+          for (let s = 0; s < 10; s++) { const h = 4 + s; ctx.fillStyle = s < v ? (sel ? '#f8d030' : '#c8d0f0') : '#303a78'; ctx.fillRect(BAR + s * CELL + 1, R.y + 16 - h, CELL - 2, h); }
+          G.textR(ctx, String(v), xr, y, v ? '#ffffff' : '#7078a0');
+        } else if (r.on != null) { // a switch
+          const sx = xr - 26, sy = R.y + 4;
+          ctx.fillStyle = '#000010'; ctx.fillRect(sx - 1, sy - 1, 28, 13);
+          ctx.fillStyle = r.on ? '#40a848' : '#404870'; ctx.fillRect(sx, sy, 26, 11);
+          ctx.fillStyle = '#f0f0ff'; ctx.fillRect(r.on ? sx + 15 : sx + 1, sy + 1, 10, 9);
+          G.textR(ctx, r.on ? 'On' : 'Off', sx - 5, y, r.on ? '#80e080' : '#a8b0d8');
+        } else G.textR(ctx, r.right, xr, y, col);
       });
-      // voice status line: which voice is speaking, or why not
-      const v = G.currentVoice(), st = G.voiceStatus;
-      const mode = G.prefs.voiceMode || 0, nv = G.spanishVoices().length;
-      const who = !v ? '(ninguna voz en español)' : mode === 0 ? v.name + ' (' + v.lang + ')' : 'predeterminada (' + v.lang + ')' + (mode === 2 ? ' + pausa' : '');
-      const line = !window.speechSynthesis ? 'Voz: no disponible en este navegador' : 'Voz: ' + who + ' [' + nv + ']' + (st && st !== 'ok' ? ' ! ' + st : '');
-      G.win(ctx, x, y + H + 2, W, 18, { alpha: 0.9 });
-      G.text(ctx, line.length > 44 ? line.slice(0, 42) + '..' : line, x + 8, y + H + 7, st && st !== 'ok' ? '#ff9080' : '#a8b0d8');
-      const cur = rows[this.i];
-      if (G.enVisible()) G.enBox(ctx, cur.en, y + H + 22, true);
+      let h = rows[this.i].help || '';
+      while (h.length > 3 && G.textWidth(h) > G.W - 32) h = h.slice(0, -3) + '..';
+      G.text(ctx, h, 16, 206, '#a8b0d8');
     }
+  }
+  G.grownUps = function (o) { const w = new G.Wait(); G.push(new GrownUps(w, o)); return w; };
+  // which voice is speaking, or why not (helps track down speech problems on a device)
+  function voiceLine() {
+    if (!window.speechSynthesis) return 'Voice: not available in this browser';
+    const v = G.currentVoice(), st = G.voiceStatus, mode = G.prefs.voiceMode || 0, nv = G.spanishVoices().length;
+    const who = !v ? '(no Spanish voice)' : mode === 0 ? v.name + ' (' + v.lang + ')' : 'default (' + v.lang + ')' + (mode === 2 ? ' + pause' : '');
+    return 'Voice: ' + who + ' [' + nv + ']' + (st && st !== 'ok' ? ' ! ' + st : '');
   }
   // browsers may hand back new voice objects on each call, so match by name
   const voiceIndex = (voices, cur) => cur ? voices.findIndex(v => v.name === cur.name) : -1;
@@ -201,5 +300,4 @@
     else { ctx.fillRect(x + 1, y + 2, 2, 4); ctx.fillRect(x + 3, y + 1, 1, 6); ctx.fillRect(x + 4, y, 1, 8); if (kind === 'voice') { ctx.fillRect(x + 7, y + 2, 1, 4); ctx.fillRect(x + 9, y + 1, 1, 6); } else { ctx.fillRect(x + 7, y + 3, 1, 2); } }
     if (off) { ctx.fillStyle = '#e04040'; for (let i = 0; i < 9; i++) ctx.fillRect(x + i, y + 8 - i, 1, 1); }
   }
-  G.options = function* () { const w = new G.Wait(); G.push(new Options(w)); yield w; };
 })();
