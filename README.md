@@ -20,8 +20,12 @@ It uses the same hand-drawn-in-code engine as *Embers of Aldmere*: pixel tiles, 
 
 On phones and tablets, just tap: tap a spot to walk there, tap people to talk to them (and doors, signs or a sparkle to go or look there), tap a picture card to answer, tap the speaker to hear a line again, and the notebook button in the corner opens the menu. Every screen can be played with taps or with the keys.
 
+**Saving is automatic.** The game saves by itself all the time (new words, pages, errands, every finished conversation, a new map, every 15 seconds and when the tablet goes to sleep). Tap the title to play: the first time it goes straight to making a character; after that *¿Quién juega?* shows three save slots (face, name, words learned, stars). Tap a card to continue, or *+ Nuevo* to start another child's game. To delete a slot, hold its little trash can for 3 seconds, then choose ✓.
+
+**Grown-ups menu:** hold the gear for 2 seconds (in the menu, or on the title; on a keyboard, move onto it and hold Z). It has Music / Sounds / Voice volume, Choose voice, English help, on-screen buttons (a D-pad with A/B/C), a microphone test, controls and tips, and Back to title.
+
 ## How it teaches (like *Tunic*: you start knowing almost nothing)
-- **No translations.** Characters speak short, simple Spanish. Meaning comes from pictures, context and what people do. (Grown-ups can turn on English in *Opciones → Inglés (padres)*.)
+- **No translations.** Characters speak short, simple Spanish. Meaning comes from pictures, context and what people do. (Grown-ups can turn on *English help* in the grown-ups menu.)
 - **Words grow from pictures.** A vocabulary word you haven't learned yet appears as its picture next to the Spanish, shown in blue: 🍎 *manzana*. Once you've used it correctly, the picture drops away and the word turns **gold**. Sentences get more readable as you learn.
 - **Learning by doing.** Seeing a word only marks it as *seen*. It counts as *learned* when you use it: answering Mamá's "¡Hola!", telling Don Pepe which fruit you want, or saying "sí" or "no" when someone holds up a picture. Then a "¡Palabra nueva!" card celebrates it.
 - **Gentle mistakes.** A wrong choice shakes and greys out, with no lecture, so every question can be finished. Getting it right on the first try earns a ★.
@@ -29,8 +33,8 @@ On phones and tablets, just tap: tap a spot to walk there, tap people to talk to
 - **Requests in pictures.** People who need something show it in a thought bubble (🍎🍎🍎 🍌🍌, a red ball, a letter going to the bakery). New errands appear as a picture card, and *Misiones* is all pictures. Doors have picture signs.
 - **Make your character.** A new game starts by choosing **niño** or **niña**, then skin tone, hairstyle (6), hair color and outfit color, with a live preview of the walking sprite and portrait. A dice button picks a random look. Then **type your name** (keyboard, or the on-screen letter grid with Ñ and accents for touch screens); characters call you by it. The controls are then shown as pictures.
 - **Spanish that matches you.** Townsfolk use the boy or girl form of words for the character you chose: *¡Bienvenido!* or *¡Bienvenida!*, *¡Qué listo!* or *¡Qué lista!*, *Eres un gran cartero* or *Eres una gran cartera*.
-- **Spoken Spanish.** Lines and words are read aloud with a North American voice when the device has one (Mexico first, then the US, then other Latin American voices). Press **C** to hear the current line again. *Opciones → Elegir voz* picks a different voice.
-- **Separate volumes.** *Opciones* has sliders (0–10) for **Música**, **Sonidos** and **Voz**. Use left/right to adjust; Voz at 0 turns speech off. They're saved on the device, separately from game saves. M still mutes everything.
+- **Spoken Spanish.** Lines and words are read aloud with a North American voice when the device has one (Mexico first, then the US, then other Latin American voices). Press **C** to hear the current line again. *Choose voice* in the grown-ups menu picks a different voice.
+- **Separate volumes.** The grown-ups menu has sliders (0–10) for **Music**, **Sounds** and **Voice**: tap a level or slide a finger along it (left/right on a keyboard); Voice at 0 turns speech off. They're saved on the device, separately from game saves, like the voice, English help and on-screen buttons. M still mutes everything.
 - **Repaso.** After the party, Profesora Luna offers a replayable review that focuses on words you've seen but not yet learned.
 
 ## Content (version 1)
@@ -43,14 +47,14 @@ On phones and tablets, just tap: tap a spot to walk there, tap people to talk to
 | La carta: deliver a letter | Tomás, Marta, Inés | carta, panadería, pan |
 | La fiesta: review game and diploma | Profesora Luna | words seen but not yet learned |
 
-That's 30 words in 5 topics, with 5 notebook pages, 5 badges and a diploma. Progress is saved in the browser (*menu → Guardar*).
+That's 30 words in 5 topics, with 5 notebook pages, 5 badges and a diploma. Progress saves itself in the browser, in three save slots.
 
 ## Project layout
 - **Engine (shared with Embers of Aldmere):** `src/core.js`, `src/gfx.js` (bitmap font, with Spanish letters added), `src/ui.js` (dialogue with English help, menus), `src/audio.js`, `src/music.js`, `src/tiles.js`, `src/sprites.js`
-- **Learning:** `src/data.js` (vocabulary, notebook pages, errands, characters), `src/icons.js` (word pictures), `src/learn.js` (picture questions, learning by doing, word cards, errand cards, badges), `src/state.js` (seen/learned words, pages, save). Picture-words in dialogue are drawn by the rich text in `src/ui.js`.
-- **Game:** `src/field.js` (exploring), `src/menus.js` (Cuaderno, Misiones, Guardar, Opciones), `src/maps.js` (townsfolk and errands), `src/story.js` (opening, party, diploma), `src/main.js` (title)
+- **Learning:** `src/data.js` (vocabulary, notebook pages, errands, characters), `src/icons.js` (word pictures), `src/learn.js` (picture questions, learning by doing, word cards, errand cards, badges), `src/state.js` (seen/learned words, pages, save slots and autosave). Picture-words in dialogue are drawn by the rich text in `src/ui.js`.
+- **Game:** `src/field.js` (exploring), `src/menus.js` (Cuaderno, Misiones, the grown-ups menu), `src/maps.js` (townsfolk and errands), `src/story.js` (opening, party, diploma), `src/main.js` (title, save slots)
 - **Maps:** `tools/mapgen.py` generates `src/mapdata.js`
 - **Build:** `python3 tools/build.py` rebuilds the single-file `dist/` version
-- **Smoke test:** `NODE_PATH=$(npm root -g) node tools/smoke.js [screenshot dir]` plays the opening with taps on an iPad-sized touch screen and with the keyboard on a desktop (needs Playwright with Chromium installed globally)
+- **Smoke test:** `NODE_PATH=$(npm root -g) node tools/smoke.js [screenshot dir]` plays the opening with taps on an iPad-sized touch screen and with the keyboard on a desktop (needs Playwright with Chromium installed globally). `tools/test-saves.js` tests save slots, autosave and the grown-ups menu; `sh tools/test-all.sh` runs every test
 
 See `docs/CONTENT.md` for how to add words, characters and errands.

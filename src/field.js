@@ -226,6 +226,7 @@
       if (Math.abs(ct.x - this.cam.x) < 0.5) this.cam.x = ct.x; if (Math.abs(ct.y - this.cam.y) < 0.5) this.cam.y = ct.y;
       if (this.banner) this.banner.t--;
       G.state.playTime += 1 / 60;
+      G.st.fieldTick && G.st.fieldTick(this); // autosave: new map, after each interaction or event, every ~15 s
       if (G.input.p('M')) G.audio.toggleMute();
     }
     draw(ctx) {

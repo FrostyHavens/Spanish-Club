@@ -125,6 +125,21 @@ class Game {
   }
 }
 
+// ---------- F3 save slots: from the title into the character creator ----------
+// The title is "tap anywhere" (or Z / Enter). With no saves it opens the creator in slot 1; otherwise the slot
+// screen ("¿Quién juega?"), where this picks the first empty slot (+ Nuevo). Taps on a touch page, keys otherwise.
+Game.prototype.toCreator = async function () {
+  if (this.touch) await this.tap(160, 180); else await this.press('Enter');
+  await this.until(() => ['Creator', 'Slots'].includes(G.top().constructor.name), null, 'the creator or the slot screen');
+  if (await this.scene() === 'Slots') {
+    const k = await this.ev(() => G.top().cards.findIndex(c => !c));
+    if (k < 0) throw new Error('no empty save slot');
+    if (this.touch) await this.tapRect(await this.ev(k => G.top().cardRect(k), k));
+    else { for (let n = 0; n < 3 && await this.ev(() => G.top().i) !== k; n++) await this.press('ArrowRight'); await this.press('Enter'); }
+  }
+  await this.until(() => G.top().constructor.name === 'Creator', null, 'the character creator');
+};
+
 async function open(browser, name, touch) {
   const ctx = await browser.newContext(touch ? { viewport: { width: 1024, height: 768 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 } : { viewport: { width: 1280, height: 800 } });
   const page = await ctx.newPage();
