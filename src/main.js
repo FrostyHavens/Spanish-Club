@@ -44,9 +44,11 @@
       this.confetti.forEach(e => { e.x += e.vx + Math.sin((this.t + e.life) / 25) * 0.3; e.y += e.vy; e.life--; });
       this.confetti = this.confetti.filter(e => e.life > 0 && e.y < G.H + 5);
       if (this.t < 30) return;
-      const d = G.input.repDir(14, 6);
+      const d = G.input.repDir(14, 6), k = this.opts.findIndex((o, i) => G.tapIn(this.rowRect(i))); // tap a row = pick it
       if (d === 'up' || d === 'down') { let n = this.i; do { n = (n + (d === 'up' ? -1 : 1) + this.opts.length) % this.opts.length; } while (this.opts[n].d); this.i = n; G.audio.sfx('cursor'); }
-      if (G.input.p('A')) {
+      if (k >= 0 && this.opts[k].d) { G.audio.sfx('error'); return; }
+      if (k >= 0) this.i = k;
+      if (G.input.p('A') || k >= 0) {
         const o = this.opts[this.i]; if (o.d) { G.audio.sfx('error'); return; }
         G.audio.sfx('ok');
         if (this.i === 0) this.newGame();
@@ -64,9 +66,11 @@
         if (!r.result) { G.toTitle(); return; }
         G.state.look = r.result.look; G.state.name = r.result.name;
         const f = G.goto('casa', 4, 4, 'up');
-        f.tasks.add((function* () { yield 40; f.locked = true; yield* G.story.mamaIntro(); f.locked = false; })());
+        f.locked = true; // from the start, so a quick tap or key can't reach Mamá and start her intro a second time
+        f.tasks.add((function* () { yield 40; yield* G.story.mamaIntro(); f.locked = false; })());
       })());
     }
+    rowRect(i) { return { x: G.W / 2 - 52, y: 122 + i * 20, w: 104, h: 20 }; }
     cont() {
       if (!G.st.load()) { G.audio.sfx('error'); return; }
       const l = G.state.loc;
@@ -79,21 +83,23 @@
       const bob = Math.round(Math.sin(this.t / 40) * 2);
       ctx.drawImage(this.logo, Math.floor((G.W - 260) / 2), 24 + bob);
       if (this.t > 30) {
-        G.win(ctx, G.W / 2 - 56, 120, 112, 16 + this.opts.length * 13);
+        G.win(ctx, G.W / 2 - 56, 118, 112, 8 + this.opts.length * 20);
         this.opts.forEach((o, i) => {
-          G.text(ctx, o.l, G.W / 2 - 36, 128 + i * 13, o.d ? '#6068a0' : '#fff');
-          if (i === this.i && (this.t >> 3) % 4 !== 3) G.text(ctx, '\u0002', G.W / 2 - 46, 128 + i * 13, '#f8e060');
+          const y = this.rowRect(i).y + 6;
+          G.text(ctx, o.l, G.W / 2 - 36, y, o.d ? '#6068a0' : '#fff');
+          if (i === this.i && (this.t >> 3) % 4 !== 3) G.text(ctx, '\u0002', G.W / 2 - 46, y, '#f8e060');
         });
       }
       G.textC(ctx, 'Un juego para aprender español', G.W / 2, G.H - 22, '#fff8e0');
-      G.textC(ctx, 'Z: OK   X: menú   C: escuchar   M: sonido', G.W / 2, G.H - 11, '#f8e8c0');
+      if (!G.touch) G.textC(ctx, 'Z: OK   X: menú   C: escuchar   M: sonido', G.W / 2, G.H - 11, '#f8e8c0');
     }
   }
   class Controls {
     constructor() { this.transparent = true; }
-    update() { if (G.input.p('A') || G.input.p('B')) { G.audio.sfx('cancel'); G.pop(); } }
+    update() { if (G.input.p('A') || G.input.p('B') || G.input.tap()) { G.audio.sfx('cancel'); G.pop(); } } // a tap anywhere closes
     draw(ctx) {
       G.win(ctx, 16, 16, G.W - 32, G.H - 32);
+      G.closeBtn(ctx, G.W - 32, 10);
       const L = [['CONTROLES  /  CONTROLS', '#f8e060'], ['', ''],
         ['Flechas / WASD', 'caminar, elegir  -  walk, choose'], ['Z, Espacio, Enter', 'hablar, buscar, OK  -  talk, search, OK'],
         ['X, Esc', 'menú, volver  -  menu, back'], ['C', 'escuchar otra vez  -  hear it again'], ['M', 'sonido  -  sound on/off'], ['', ''],

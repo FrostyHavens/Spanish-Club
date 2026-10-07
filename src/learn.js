@@ -11,11 +11,12 @@
     constructor(ids, w) { G.toastT = 0; this.transparent = true; this.ids = ids; this.i = 0; this.w = w; this.t = 0; this.open(); }
     open() { this.t = 0; G.speak(G.baseForm(this.ids[this.i])); }
     word() { return D().words[this.ids[this.i]]; }
+    spk() { return [(G.W + 200) / 2 - 26, 30]; }
     update() {
       this.t++;
       if (this.t < 20) return;
-      if (G.input.p('C')) { G.speak(G.baseForm(this.ids[this.i])); return; }
-      if (G.input.p('A') || G.input.p('B')) {
+      if (G.input.p('C') || G.speakerHit(...this.spk())) { G.speak(G.baseForm(this.ids[this.i])); return; }
+      if (G.input.p('A') || G.input.p('B') || G.input.tap()) {
         G.audio.sfx('ok');
         if (++this.i >= this.ids.length) { G.pop(); this.w.resolve(); return; }
         this.open();
@@ -33,6 +34,7 @@
       if (G.enVisible()) G.textC(ctx, wd.en, G.W / 2, y + 112, '#a8b0d8');
       if (this.t >= 20 && (this.t >> 4) % 2 === 0) G.text(ctx, '\u0001', x + W - 16, y + H - 13, '#f8e060');
       ctx.globalAlpha = 1;
+      if (pop >= 1) G.speakerBtn(ctx, ...this.spk());
     }
   }
   // Mark words learned; celebrates the ones that are new. Yieldable.
@@ -64,7 +66,7 @@
       while (this.ch[this.i] && this.ch[this.i].off) this.i++;
       G.richIds(opts.prompt || '').forEach(id => S().see(id));
       this.ch.forEach(c => c.word && S().see(c.word));
-      this.lines = G.richLayout(opts.prompt || '', G.W - 44);
+      this.lines = G.richLayout(opts.prompt || '', G.W - 96); // room for the speaker (and back) buttons
       if (!opts.noVoice) G.speak(G.plain(opts.prompt || ''));
     }
     move(d) {
@@ -72,12 +74,33 @@
       for (let s = 0; s < n; s++) { k = (k + d + n) % n; if (!this.ch[k].off) break; }
       if (k !== this.i) { this.i = k; G.audio.sfx('cursor'); const v = view(this.ch[k]); if (v.label && this.ch[k].word) G.speak(v.label); }
     }
+    // tap areas: one rect per choice (picture cards or list rows), the speaker and the back button (o.cancel)
+    rects() {
+      const vs = this.ch.map(view);
+      if (this.cards) {
+        const n = this.ch.length, cw = 58, gap = 12, tw = n * cw + (n - 1) * gap, x0 = (G.W - tw) / 2, y0 = G.H - 92;
+        return vs.map((v, k) => ({ x: x0 + k * (cw + gap), y: y0, w: cw, h: v.label ? 78 : 62 }));
+      }
+      const wd = Math.max(...vs.map(v => (v.label ? G.textWidth(v.label) : 0) + (v.icon ? 20 : 0))) + 34;
+      const h = this.ch.length * 20 + 8, x = (G.W - wd) / 2, y = G.H - h - 10;
+      return vs.map((v, k) => ({ x, y: y + 4 + k * 20, w: wd, h: 20 }));
+    }
+    spk() { return [G.W - 38, 12]; }
+    backXY() { return [18, 12]; }
     update() {
       this.t++; if (this.shake > 0) this.shake--;
       const d = G.input.repDir(14, 6);
       if (d === (this.cards ? 'left' : 'up')) this.move(-1);
       if (d === (this.cards ? 'right' : 'down')) this.move(1);
-      if (G.input.p('C')) G.speak(G.plain(this.o.prompt || ''));
+      if (G.input.p('C') || (G.speakerHit(...this.spk()) && G.input.eat())) G.speak(G.plain(this.o.prompt || ''));
+      if (G.input.tap() && this.t > 8) { // tapping a card (or row) answers with it
+        if (this.o.cancel && G.btnHit(...this.backXY())) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(-1); return; }
+        const pad = this.cards ? 6 : 0;
+        const k = this.rects().findIndex(r => G.tapIn(r.x - pad, r.y - pad, r.w + pad * 2, r.h + pad));
+        if (k >= 0 && this.ch[k].off) G.audio.sfx('error');
+        else if (k >= 0) { this.i = k; G.pop(); this.w.resolve(k); }
+        return;
+      }
       if (G.input.p('A') && this.t > 8) { G.pop(); this.w.resolve(this.i); }
       if (G.input.p('B') && this.o.cancel) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(-1); }
     }
@@ -85,26 +108,27 @@
       const o = this.o, top = 8;
       const ph = this.lines.length * 16 + 10 + (o.show ? 58 : 0);
       G.win(ctx, 12, top, G.W - 24, ph);
+      G.speakerBtn(ctx, ...this.spk());
+      if (o.cancel) G.iconBtn(ctx, 'back', ...this.backXY());
       if (o.show) G.drawIcon16(ctx, o.show, G.W / 2 - 24, top + 8, 3, 'card');
       G.richDraw(ctx, this.lines, G.W / 2, top + 5 + (o.show ? 58 : 0), { center: true });
       if (o.en && G.enVisible()) G.enBox(ctx, o.en, top + ph + 1, true);
       const sx = this.shake ? (this.shake % 4 < 2 ? 2 : -2) : 0;
-      const vs = this.ch.map(view);
+      const vs = this.ch.map(view), R = this.rects();
       if (this.cards) {
-        const n = this.ch.length, cw = 58, gap = 12, tw = n * cw + (n - 1) * gap, x0 = (G.W - tw) / 2, y0 = G.H - 92;
+        const cw = 58, y0 = R[0].y;
         this.ch.forEach((c, k) => {
-          const v = vs[k], x = x0 + k * (cw + gap), sel = k === this.i;
+          const v = vs[k], x = R[k].x, sel = k === this.i;
           const bob = sel ? Math.round(Math.sin(this.t / 6) * 1.5) : 0;
           ctx.globalAlpha = c.off ? 0.3 : 1;
-          G.win(ctx, x, y0 - bob, cw, v.label ? 78 : 62, sel ? { fill1: '#3a56c8', fill2: '#1c2c8c' } : {});
+          G.win(ctx, x, y0 - bob, cw, R[k].h, sel ? { fill1: '#3a56c8', fill2: '#1c2c8c' } : {});
           G.drawIcon16(ctx, v.icon || D().words[c.word] || c.icon, x + cw / 2 - 16, y0 + 12 - bob, 2, sel ? 'sel' : 'card');
           if (v.label) G.textC(ctx, v.label, x + cw / 2, y0 + 56 - bob, v.col);
           ctx.globalAlpha = 1;
           if (sel && (this.t >> 3) % 4 !== 3) G.textC(ctx, '\u0001', x + cw / 2, y0 - 10 - bob, '#f8e060');
         });
       } else {
-        const rows = this.ch.length, wd = Math.max(...vs.map(v => (v.label ? G.textWidth(v.label) : 0) + (v.icon ? 20 : 0))) + 34;
-        const h = rows * 20 + 8, x = (G.W - wd) / 2 + sx, y = G.H - h - 10;
+        const wd = R[0].w, h = this.ch.length * 20 + 8, x = R[0].x + sx, y = R[0].y - 4;
         G.win(ctx, x, y, wd, h);
         this.ch.forEach((c, k) => {
           const v = vs[k], yy = y + 6 + k * 20, sel = k === this.i;
@@ -159,7 +183,7 @@
   // ---------- Badge award ----------
   class BadgeCard {
     constructor(q, w) { G.toastT = 0; this.transparent = true; this.q = q; this.w = w; this.t = 0; }
-    update() { this.t++; if (this.t > 40 && (G.input.p('A') || G.input.p('B'))) { G.pop(); this.w.resolve(); } }
+    update() { this.t++; if (this.t > 40 && (G.input.p('A') || G.input.p('B') || G.input.tap())) { G.pop(); this.w.resolve(); } }
     draw(ctx) {
       const q = D().quests[this.q], W = 200, H = 100, x = (G.W - W) / 2, y = 44;
       G.win(ctx, x, y, W, H, { fill1: '#7a4a10', fill2: '#3a2008' });
@@ -184,7 +208,7 @@
   // ---------- New errand card: who asked -> what they want, in pictures ----------
   class QuestCard {
     constructor(id, w) { G.toastT = 0; this.transparent = true; this.id = id; this.w = w; this.t = 0; }
-    update() { this.t++; if (this.t > 30 && (G.input.p('A') || G.input.p('B'))) { G.pop(); this.w.resolve(); } }
+    update() { this.t++; if (this.t > 30 && (G.input.p('A') || G.input.p('B') || G.input.tap())) { G.pop(); this.w.resolve(); } }
     draw(ctx) {
       const q = D().quests[this.id], gw = G.goalWidth(q.goal), W = Math.max(150, gw + 80), H = 64, x = (G.W - W) / 2, y = 50 + Math.max(0, 10 - this.t);
       G.win(ctx, x, y, W, H, { fill1: '#2a6a3a', fill2: '#103a1c' });

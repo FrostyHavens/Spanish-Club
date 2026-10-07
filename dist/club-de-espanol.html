@@ -65,16 +65,69 @@ window.addEventListener('keydown', e => {
   G.audio && G.audio.unlock(); G.primeSpeech && G.primeSpeech();
 });
 window.addEventListener('keyup', e => { const k = KEYMAP[e.code]; if (k) { G.keys[k] = false; } });
-window.addEventListener('blur', () => { G.keys = {}; });
-// touch/mouse -> unlock audio
-window.addEventListener('pointerdown', () => { G.audio && G.audio.unlock(); G.primeSpeech && G.primeSpeech(); });
-window.addEventListener('touchend', () => { G.primeSpeech && G.primeSpeech(); });
+window.addEventListener('blur', () => { G.keys = {}; G.input.ptr.down = false; });
+
+// ---------- Pointer (touch / mouse / pen), in game pixels ----------
+// Input API, shared by every scene (keyboard and taps run side by side; a scene checks both):
+//   G.input.p(k) h(k) rep(k) dir() repDir()  keys / D-pad: 'up' 'down' 'left' 'right' 'A' 'B' 'C' 'M'
+//   G.input.keyHeld(k)    frames key k has been held down (0 = up), for press-and-hold on the keyboard
+//   G.input.tap()         {x, y} of a tap released this frame (short press, little movement), else null.
+//                         Only presses on the game picture count (not the black margins), the newest finger wins,
+//                         and a finger that went down less than 0.4 s after the top scene changed is ignored, so a
+//                         double tap can't answer a question (or walk, or close a menu) the child hasn't seen yet
+//   G.input.ready()       a tap starting now would count (the top scene has been up for that grace period)
+//   G.input.eat()         takes this frame's tap (returns it) so nothing after sees it (e.g. the map's menu button).
+//                         Only the top scene updates each frame. The field reads a map tap without eating it, so its
+//                         tasks (run inside its update, after the tap-to-walk check) still see it
+//   G.input.ptr           live pointer {down, x, y, sx, sy, held}: sx,sy = where it went down, held = frames down
+//   G.input.holding(x,y,w,h)  frames the pointer has been held inside the rect (pressed there on this scene,
+//                         still there), else 0: for press-and-hold buttons (a long press is never a tap)
+//   G.tapIn(x, y, w, h)   this frame's tap is inside the rect (or G.tapIn({x, y, w, h}))
+//   G.touch               true on touch screens; G.setDpad(on) shows/hides the HTML D-pad + A/B/C buttons
+//                         (hidden by default; the choice is G.prefs.dpad, saved per device)
+// On-canvas buttons (ui.js), 20x20 game px, tap area padded to 28x28; pressed look while held:
+//   G.iconBtn(ctx, kind, x, y) + G.btnHit(x, y)   kind: 'close' 'back' 'next' 'speaker' 'menu'
+//   G.closeBtn(ctx, x, y) + G.closeHit(x, y)      close / back (default spot: top-right of the screen)
+//   G.speakerBtn(ctx, x, y) + G.speakerHit(x, y)  "hear it again" (same as C)
+// Taps and key presses are both edge-triggered and cleared at the end of every frame. Scenes keep their tap
+// areas in small methods (rects(), rowRect(i), closeXY()...) shared by update and draw; tools/smoke.js uses them too.
+G.touch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0 && matchMedia('(pointer: coarse)').matches);
+const ptr = { down: false, x: 0, y: 0, sx: 0, sy: 0, held: 0 };
+let tapNow = null, ptrId = null, ptrT0 = 0, ptrF = 0, sceneF = 0;
+const TAP_MOVE = 12, TAP_MS = 800; // a tap: moved at most 12 game px, released within 0.8 s
+const TAP_GRACE = 24;              // frames after the top scene changes before a new finger counts (a double tap)
+function gameXY(e) {
+  const r = G.canvas.getBoundingClientRect();
+  return [G.clamp((e.clientX - r.left) * G.W / r.width, 0, G.W - 0.01), G.clamp((e.clientY - r.top) * G.H / r.height, 0, G.H - 0.01)];
+}
+// Speech may only start inside a user activation: a key, a mouse press, or a finger (or pen) lifting.
+const wake = prime => { G.audio && G.audio.unlock(); if (prime && G.primeSpeech) G.primeSpeech(); };
+window.addEventListener('pointerdown', e => {
+  wake(e.pointerType === 'mouse');
+  if (e.target !== G.canvas || (e.pointerType === 'mouse' && e.button !== 0)) return; // the margins and the D-pad aren't taps
+  const [x, y] = gameXY(e); // a new finger takes over from one already down (say, a thumb resting on the edge)
+  Object.assign(ptr, { down: true, x, y, sx: x, sy: y, held: 0 }); ptrId = e.pointerId; ptrT0 = performance.now(); ptrF = G.frame;
+});
+window.addEventListener('pointermove', e => { if (ptr.down && e.pointerId === ptrId) [ptr.x, ptr.y] = gameXY(e); });
+window.addEventListener('pointerup', e => {
+  wake(e.pointerType !== 'mouse');
+  if (!ptr.down || e.pointerId !== ptrId) return;
+  [ptr.x, ptr.y] = gameXY(e); ptr.down = false; ptr.held = 0;
+  if (Math.hypot(ptr.x - ptr.sx, ptr.y - ptr.sy) <= TAP_MOVE && performance.now() - ptrT0 <= TAP_MS) tapNow = { x: ptr.x, y: ptr.y, f: ptrF };
+});
+window.addEventListener('pointercancel', e => { if (e.pointerId === ptrId) { ptr.down = false; ptr.held = 0; } });
+window.addEventListener('touchend', () => wake(true));
+G.canvas.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('gesturestart', e => e.preventDefault()); // no pinch-zoom on iOS
+const inRect = (px, py, x, y, w, h) => px >= x && px < x + w && py >= y && py < y + h;
+G.tapIn = (x, y, w, h) => { if (typeof x === 'object') ({ x, y, w, h } = x); const t = G.input.tap(); return !!t && inRect(t.x, t.y, x, y, w, h); };
 
 G.input = {
   // edge-triggered
   p(k) { return !!G.pressed[k]; },
   // held
   h(k) { return !!G.keys[k]; },
+  keyHeld(k) { return G.keys[k] ? (G.repeatT[k] || 0) + 1 : 0; },
   // edge + auto-repeat (for cursors/menus)
   rep(k, delay = 14, rate = 5) {
     if (G.pressed[k]) return true;
@@ -90,15 +143,22 @@ G.input = {
     for (const d of ['up', 'down', 'left', 'right']) if (this.rep(d, delay, rate)) return d;
     return null;
   },
-  clear() { G.pressed = {}; }
+  ptr,
+  tap() { return tapNow && tapNow.f >= sceneF + TAP_GRACE ? tapNow : null; },
+  ready() { return G.frame >= sceneF + TAP_GRACE; },
+  eat() { const t = this.tap(); tapNow = null; return t; },
+  holding(x, y, w, h) { return ptr.down && ptrF >= sceneF && inRect(ptr.sx, ptr.sy, x, y, w, h) && inRect(ptr.x, ptr.y, x, y, w, h) ? ptr.held + 1 : 0; },
+  sceneChanged() { sceneF = G.frame; },
+  endFrame() { G.pressed = {}; tapNow = null; if (ptr.down) ptr.held++; },
+  clear() { G.pressed = {}; tapNow = null; }
 };
 G.DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 
 // ---------- Scene stack ----------
 // A scene: {update(), draw(ctx), onEnter?, onExit?, transparent?}
 G.scenes = [];
-G.push = s => { G.scenes.push(s); s.onEnter && s.onEnter(); return s; };
-G.pop = () => { const s = G.scenes.pop(); s && s.onExit && s.onExit(); return s; };
+G.push = s => { G.scenes.push(s); G.input.sceneChanged(); s.onEnter && s.onEnter(); return s; };
+G.pop = () => { const s = G.scenes.pop(); G.input.sceneChanged(); s && s.onExit && s.onExit(); return s; };
 G.replace = s => { while (G.scenes.length) G.pop(); return G.push(s); };
 G.top = () => G.scenes[G.scenes.length - 1];
 
@@ -144,7 +204,7 @@ function step() {
   if (G.fx.flash > 0) G.fx.flash--;
   for (const k in G.keys) if (G.keys[k]) G.repeatT[k] = (G.repeatT[k] || 0) + 1;
   if (G.toastT > 0) G.toastT--;
-  G.pressed = {};
+  G.input.endFrame();
   G.audio && G.audio.tick();
 }
 function draw() {
@@ -183,34 +243,47 @@ G.store = {
   del(k) { try { localStorage.removeItem(k); } catch (e) { } }
 };
 
-// ---------- Touch controls (phones/tablets) ----------
+// ---------- On-screen D-pad + A/B/C (a grown-ups option, per device; hidden by default) ----------
 (function () {
-  const touch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0 && matchMedia('(pointer: coarse)').matches);
-  G.canvas.tabIndex = 0;
-  G.canvas.addEventListener('pointerdown', () => { try { G.canvas.focus(); } catch (e) { } });
-  if (!touch) return;
   const css = document.createElement('style');
-  css.textContent = '.tc{position:fixed;z-index:5;display:flex;gap:10px;touch-action:none;user-select:none;-webkit-user-select:none}' +
+  css.textContent = 'html,body{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}canvas#screen{outline:none}' +
+    '.tc{position:fixed;z-index:5;display:flex;gap:10px;touch-action:none;user-select:none;-webkit-user-select:none}' +
     '.tc button{width:54px;height:54px;border-radius:50%;border:2px solid #8898e0;background:rgba(28,44,140,.55);color:#f0f0ff;font:bold 16px monospace}' +
     '.tc button:active,.tc button.on{background:rgba(240,208,96,.7);color:#101030}' +
     '#tcpad{left:14px;bottom:calc(14px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(3,48px);gap:2px}' +
     '#tcpad button{width:48px;height:48px;border-radius:8px}' +
     '#tcbtn{right:14px;bottom:calc(20px + env(safe-area-inset-bottom,0px));align-items:flex-end}';
   document.head.appendChild(css);
-  const pad = document.createElement('div'); pad.id = 'tcpad'; pad.className = 'tc';
-  const cells = ['', 'up', '', 'left', '', 'right', '', 'down', ''];
-  const lab = { up: '▲', down: '▼', left: '◀', right: '▶' };
-  cells.forEach(k => { const b = document.createElement(k ? 'button' : 'span'); if (k) { b.textContent = lab[k]; b.dataset.k = k; } pad.appendChild(b); });
-  const btns = document.createElement('div'); btns.id = 'tcbtn'; btns.className = 'tc';
-  [['C', 'C'], ['B', 'B'], ['A', 'A']].forEach(([k, t]) => { const b = document.createElement('button'); b.textContent = t; b.dataset.k = k; if (k === 'A') b.style.marginBottom = '30px'; btns.appendChild(b); });
-  document.body.appendChild(pad); document.body.appendChild(btns);
-  const down = k => { if (!G.keys[k]) { G.pressed[k] = true; G.repeatT[k] = 0; } G.keys[k] = true; G.audio && G.audio.unlock(); G.primeSpeech && G.primeSpeech(); };
-  const up = k => { G.keys[k] = false; };
-  [pad, btns].forEach(el => {
-    el.addEventListener('pointerdown', e => { const k = e.target.dataset && e.target.dataset.k; if (!k) return; e.preventDefault(); e.target.classList.add('on'); down(k); e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId); });
-    const rel = e => { const k = e.target.dataset && e.target.dataset.k; if (!k) return; e.target.classList.remove('on'); up(k); };
-    el.addEventListener('pointerup', rel); el.addEventListener('pointercancel', rel); el.addEventListener('pointerleave', rel);
-  });
+  G.canvas.tabIndex = 0;
+  G.canvas.addEventListener('pointerdown', () => { try { G.canvas.focus(); } catch (e) { } });
+  let els = null;
+  function build() {
+    const pad = document.createElement('div'); pad.id = 'tcpad'; pad.className = 'tc';
+    const cells = ['', 'up', '', 'left', '', 'right', '', 'down', ''];
+    const lab = { up: '▲', down: '▼', left: '◀', right: '▶' };
+    cells.forEach(k => { const b = document.createElement(k ? 'button' : 'span'); if (k) { b.textContent = lab[k]; b.dataset.k = k; } pad.appendChild(b); });
+    const btns = document.createElement('div'); btns.id = 'tcbtn'; btns.className = 'tc';
+    [['C', 'C'], ['B', 'B'], ['A', 'A']].forEach(([k, t]) => { const b = document.createElement('button'); b.textContent = t; b.dataset.k = k; if (k === 'A') b.style.marginBottom = '30px'; btns.appendChild(b); });
+    document.body.appendChild(pad); document.body.appendChild(btns);
+    const down = k => { if (!G.keys[k]) { G.pressed[k] = true; G.repeatT[k] = 0; } G.keys[k] = true; }; // audio and speech wake up in the window's handlers
+    const up = k => { G.keys[k] = false; };
+    [pad, btns].forEach(el => {
+      el.addEventListener('pointerdown', e => { const k = e.target.dataset && e.target.dataset.k; if (!k) return; e.preventDefault(); e.target.classList.add('on'); down(k); e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId); });
+      const rel = e => { const k = e.target.dataset && e.target.dataset.k; if (!k) return; e.target.classList.remove('on'); up(k); };
+      el.addEventListener('pointerup', rel); el.addEventListener('pointercancel', rel); el.addEventListener('pointerleave', rel);
+    });
+    return [pad, btns];
+  }
+  // on: show or hide; noSave: don't store the choice (G.prefs lives in audio.js, which loads after this file)
+  G.setDpad = function (on, noSave) {
+    on = !!on;
+    if (G.prefs) { if (!noSave && G.audio && G.audio.setPref) G.audio.setPref('dpad', on); else G.prefs.dpad = on; }
+    if (on && !els) els = build();
+    if (els) els.forEach(el => { el.style.display = on ? '' : 'none'; });
+    if (!on) ['up', 'down', 'left', 'right', 'A', 'B', 'C'].forEach(k => { G.keys[k] = false; });
+  };
+  const init = () => G.setDpad(G.prefs && G.prefs.dpad, true); // after every script has run
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else setTimeout(init);
 })();
 
 </script>
@@ -1198,25 +1271,29 @@ G.store = {
       this.boxX = hasP ? 70 : 8; this.boxW = G.W - this.boxX - 8;
       const t = this.pages[this.pi].t;
       G.richIds(t).forEach(id => G.st && G.st.see(id));
-      this.lines = G.richLayout(t, this.boxW - 18);
+      this.lines = G.richLayout(t, this.boxW - 18 - (this.opts.noVoice ? 0 : 24)); // room for the speaker button
       this.shown = 0; this.scroll = 0; this.t = 0;
       this.spoke = !!this.opts.noVoice;
     }
     chars(a, b) { return this.lines.slice(a, b).reduce((s, L) => s + L.chars, 0); }
+    boxY() { return this.opts.pos === 'top' ? 6 : G.H - 66; }
+    spk() { return [this.boxX + this.boxW - 26, this.boxY() + 6]; } // "hear it again" button
     update() {
       this.t++;
       if (!this.spoke) { this.spoke = true; G.speak(G.plain(this.pages[this.pi].t)); }
+      if (!this.opts.noVoice && G.speakerHit(...this.spk())) { G.input.eat(); G.speak(G.plain(this.pages[this.pi].t)); }
       if (G.input.p('C')) G.speak(G.plain(this.pages[this.pi].t));
+      const go = G.input.p('A') || G.input.p('B') || !!G.input.tap(); // a tap anywhere = A
       const target = this.chars(0, this.scroll + 3);
       if (this.shown < target) {
         const sp = G.input.h('A') || G.input.h('B') ? 4 : 1;
         this.shown = Math.min(target, this.shown + sp);
         if (this.t % 3 === 0 && !this.opts.silent) G.audio.sfx('text');
-        if ((G.input.p('A') || G.input.p('B')) && this.t > 4) this.shown = target;
+        if (go && this.t > 4) this.shown = target;
         return;
       }
       if (this.opts.auto) { if (this.t > this.opts.auto) this.next(); return; }
-      if (G.input.p('A') || G.input.p('B')) this.next();
+      if (go) this.next();
     }
     next() {
       if (this.scroll + 3 < this.lines.length) { this.scroll += 3; this.t = 0; return; }
@@ -1226,7 +1303,7 @@ G.store = {
     }
     draw(ctx) {
       const top = this.opts.pos === 'top';
-      const h = 60, y = top ? 6 : G.H - h - 6;
+      const h = 60, y = this.boxY();
       if (this.opts.portrait) {
         const py = top ? 6 : G.H - 60 - 6;
         G.win(ctx, 6, py, 60, 60);
@@ -1238,6 +1315,7 @@ G.store = {
       G.richDraw(ctx, this.lines, this.boxX + 9, y + 6, { from: this.scroll, n: 3, chars: this.shown - this.chars(0, this.scroll) });
       const done = this.shown >= this.chars(0, this.scroll + 3);
       if (done && !this.opts.auto && (this.t >> 4) % 2 === 0) G.text(ctx, '\u0001', this.boxX + this.boxW - 14, y + h - 12, '#f8e060');
+      if (!this.opts.noVoice) G.speakerBtn(ctx, ...this.spk());
       const en = this.pages[this.pi].en;
       if (en && G.enVisible()) G.enBox(ctx, en, top ? y + h + 2 : y - (name ? 14 : 0), top);
     }
@@ -1264,7 +1342,8 @@ G.store = {
   };
   // Mobile browsers need extra care:
   //  - iOS Safari / Android Chrome only allow speech after it has been started inside a real tap or key
-  //    press, so the first touch "primes" it with a silent utterance (G.primeSpeech, called from core.js);
+  //    press, so the first one "primes" it with a silent utterance (G.primeSpeech, called from core.js on a key
+  //    press, a mouse press or a finger lifting: a finger going down doesn't count as a tap there);
   //  - cancel() immediately followed by speak() often drops the new line, so we wait a moment after cancelling;
   //  - speech can get stuck "paused", so we resume() first; and we keep a reference to the current
   //    utterance so it isn't garbage-collected mid-sentence.
@@ -1344,24 +1423,37 @@ G.store = {
       this.transparent = true; this.w = w; this.opts = opts || {};
       this.items = items.map(it => typeof it === 'string' ? { label: it } : it);
       this.i = G.clamp(this.opts.start || 0, 0, Math.max(0, this.items.length - 1)); this.top = 0; this.t = 0;
-      this.rows = Math.min(this.items.length, this.opts.maxRows || 8);
+      this.rows = Math.min(this.items.length, this.opts.maxRows || 8); this.rh = this.opts.rowH || 12;
       const iw = Math.max(...this.items.map(it => G.textWidth(it.label) + (it.right ? G.textWidth(it.right) + 14 : 0)), this.opts.title ? G.textWidth(this.opts.title) : 0);
       this.wd = this.opts.w || iw + 30;
-      this.ht = this.rows * 12 + 14 + (this.opts.title ? 12 : 0);
+      this.ht = this.rows * this.rh + 14 + (this.opts.title ? 12 : 0);
       this.x = this.opts.x != null ? this.opts.x : Math.floor((G.W - this.wd) / 2);
       this.y = this.opts.y != null ? this.opts.y : Math.floor((G.H - this.ht) / 2);
       this.opts.onMove && this.opts.onMove(this.i);
     }
+    // tap areas: row r on screen (item this.top + r); the ^ / v scroll strips above and below the rows (reaching
+    // 10 px outside the window, so they are big enough to hit); the close button just outside the window (right, else left)
+    rowRect(r) { return { x: this.x + 3, y: this.y + 6 + (this.opts.title ? 12 : 0) + r * this.rh, w: this.wd - 6, h: this.rh }; }
+    scrollRect(down) { const a = down ? this.rowRect(this.rows).y : this.y - 10, b = down ? this.y + this.ht + 10 : this.rowRect(0).y; return { x: this.x, y: a, w: this.wd, h: b - a }; }
+    closeXY() { const r = this.x + this.wd + 2; return [r + G.BTN <= G.W ? r : Math.max(0, this.x - G.BTN - 2), this.y]; }
     update() {
       this.t++;
-      const n = this.items.length; if (!n) { if (G.input.p('B') || G.input.p('A')) { G.pop(); this.w.resolve(-1); } return; }
-      const d = G.input.repDir(14, 4);
+      const n = this.items.length; if (!n) { if (G.input.p('B') || G.input.p('A') || G.input.tap()) { G.pop(); this.w.resolve(-1); } return; }
+      const d = G.input.repDir(14, 4), i0 = this.i;
+      let tapped = false;
+      if (G.input.tap()) { // tap a row = pick it; the ^ / v arrows scroll
+        if (this.opts.cancel !== false && G.closeHit(...this.closeXY())) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(-1); return; }
+        if (this.top > 0 && G.tapIn(this.scrollRect(false))) { this.i = this.top - 1; G.audio.sfx('cursor'); }
+        else if (this.top + this.rows < n && G.tapIn(this.scrollRect(true))) { this.i = this.top + this.rows; G.audio.sfx('cursor'); }
+        else for (let r = 0; r < this.rows; r++) if (this.items[this.top + r] && G.tapIn(this.rowRect(r))) { this.i = this.top + r; tapped = true; }
+        if (this.i !== i0) this.opts.onMove && this.opts.onMove(this.i);
+      }
       if (d === 'up' || d === 'down') {
         this.i = (this.i + (d === 'up' ? -1 : 1) + n) % n; G.audio.sfx('cursor');
         this.opts.onMove && this.opts.onMove(this.i);
       }
       if (this.i < this.top) this.top = this.i; if (this.i >= this.top + this.rows) this.top = this.i - this.rows + 1;
-      if (G.input.p('A')) {
+      if (G.input.p('A') || tapped) {
         const it = this.items[this.i];
         if (it.disabled) { G.audio.sfx('error'); return; }
         G.audio.sfx('ok'); if (!this.opts.keep) G.pop(); this.w.resolve(this.i);
@@ -1371,15 +1463,17 @@ G.store = {
       G.win(ctx, this.x, this.y, this.wd, this.ht);
       let y = this.y + 8;
       if (this.opts.title) { G.text(ctx, this.opts.title, this.x + 9, y, '#f8e060'); y += 12; }
+      const ty = r => y + r * this.rh + ((this.rh - 12) >> 1);
       for (let r = 0; r < this.rows; r++) {
         const idx = this.top + r, it = this.items[idx]; if (!it) break;
         const col = it.disabled ? '#7078a0' : (it.color || '#fff');
-        G.text(ctx, it.label, this.x + 17, y + r * 12, col);
-        if (it.right) G.textR(ctx, it.right, this.x + this.wd - 9, y + r * 12, col);
-        if (idx === this.i && (this.t >> 3) % 4 !== 3) G.text(ctx, '\u0002', this.x + 8, y + r * 12, '#f8e060');
+        G.text(ctx, it.label, this.x + 17, ty(r), col);
+        if (it.right) G.textR(ctx, it.right, this.x + this.wd - 9, ty(r), col);
+        if (idx === this.i && (this.t >> 3) % 4 !== 3) G.text(ctx, '\u0002', this.x + 8, ty(r), '#f8e060');
       }
       if (this.top > 0) G.textC(ctx, '^', this.x + this.wd / 2, this.y + 2, '#f8e060');
       if (this.top + this.rows < this.items.length) G.textC(ctx, '\u0001', this.x + this.wd / 2, this.y + this.ht - 8, '#f8e060');
+      if (this.opts.cancel !== false) G.closeBtn(ctx, ...this.closeXY());
       const cur = this.items[this.i];
       if (cur && cur.en && G.enVisible()) G.enBox(ctx, cur.en, this.y);
       if (this.opts.help) {
@@ -1397,31 +1491,39 @@ G.store = {
   class CrossMenu {
     cancel() { G.pop(); this.w.resolve(null); }
     constructor(entries, opts, w) { this.transparent = true; this.e = entries; this.opts = opts || {}; this.w = w; this.sel = 'up'; this.t = 0; }
+    center() { return [this.opts.x != null ? this.opts.x : G.W / 2, this.opts.y != null ? this.opts.y : G.H - 52]; }
+    iconRect(d) { const [cx, cy] = this.center(), [dx, dy] = CROSS[d]; return { x: cx + dx - 12, y: cy + dy - 10, w: 24, h: 20 }; }
+    labelRect() { const [cx, cy] = this.center(); return { x: cx + 48, y: cy - 8, w: Math.max(56, G.textWidth(this.e[this.sel].label) + 18), h: 20 }; }
     update() {
       this.t++;
       const d = G.input.repDir(20, 10);
       if (d && this.e[d]) { if (d !== this.sel) G.audio.sfx('cursor'); this.sel = d; }
-      if (G.input.p('A')) {
+      let tapped = false;
+      if (G.input.tap()) { // tap an icon (or the label) to pick it; the close button = B
+        if (G.closeHit()) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(null); return; }
+        tapped = G.tapIn(this.labelRect());
+        for (const k in this.e) { const r = this.iconRect(k); if (G.tapIn(r.x - 2, r.y - 2, r.w + 4, r.h + 4)) { this.sel = k; tapped = true; } }
+      }
+      if (G.input.p('A') || tapped) {
         const en = this.e[this.sel];
         if (en.disabled) { G.audio.sfx('error'); return; }
         G.audio.sfx('ok'); G.pop(); this.w.resolve(this.sel);
       } else if (G.input.p('B')) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(null); }
     }
     draw(ctx) {
-      const cx = this.opts.x != null ? this.opts.x : G.W / 2, cy = this.opts.y != null ? this.opts.y : G.H - 52;
-      const pos = { up: [0, -22], left: [-30, 0], right: [30, 0], down: [0, 22] };
       for (const d of ['up', 'left', 'right', 'down']) {
         const en = this.e[d]; if (!en) continue;
-        const [dx, dy] = pos[d]; const s = d === this.sel;
+        const r = this.iconRect(d), s = d === this.sel;
         const bob = s ? Math.round(Math.sin(this.t / 5) * 1.5) : 0;
-        G.drawIcon(ctx, en.icon, cx + dx - 12, cy + dy - 10 + bob, s, en.disabled);
+        G.drawIcon(ctx, en.icon, r.x, r.y + bob, s, en.disabled);
       }
-      const lab = this.e[this.sel].label;
-      const lw = G.textWidth(lab) + 18;
-      G.win(ctx, cx + 48, cy - 8, Math.max(56, lw), 20);
-      G.text(ctx, lab, cx + 57, cy - 2, this.e[this.sel].disabled ? '#7078a0' : '#fff');
+      const L = this.labelRect();
+      G.win(ctx, L.x, L.y, L.w, L.h);
+      G.text(ctx, this.e[this.sel].label, L.x + 9, L.y + 6, this.e[this.sel].disabled ? '#7078a0' : '#fff');
+      G.closeBtn(ctx);
     }
   }
+  const CROSS = { up: [0, -22], left: [-30, 0], right: [30, 0], down: [0, 22] };
   G.cross = function (entries, opts) { const w = new Wait(); G.push(new CrossMenu(entries, opts, w)); return w; };
 
   // ---------- Icons (procedural 24x20 framed tiles) ----------
@@ -1459,6 +1561,35 @@ G.store = {
     ctx.drawImage(spr, Math.round(x + 12 - spr.width / 2), Math.round(y + 10 - spr.height / 2));
     ctx.globalAlpha = 1;
   };
+
+  // ---------- Tap buttons: 20x20 on the canvas, tap area padded to 28x28 (see the input notes in core.js) ----------
+  const BTN_ART = {
+    close: ['ww......ww', 'www....www', '.www..www.', '..wwwwww..', '...wwww...', '...wwww...', '..wwwwww..', '.www..www.', 'www....www', 'ww......ww'],
+    back: ['....ww', '...www', '..www.', '.www..', 'www...', 'ww....', 'www...', '.www..', '..www.', '...www', '....ww'],
+    speaker: ['....w.......', '...ww.....w.', '..www..w...w', 'wwwww...w..w', 'wwwww...w..w', 'wwwww...w..w', '..www..w...w', '...ww.....w.', '....w.......'],
+  };
+  G.BTN = 20;
+  G.btnHit = (x, y) => G.tapIn(x - 4, y - 4, G.BTN + 8, G.BTN + 8);
+  G.iconBtn = function (ctx, kind, x, y) {
+    x = Math.round(x); y = Math.round(y);
+    const on = G.input.holding(x - 4, y - 4, G.BTN + 8, G.BTN + 8) > 0;
+    ctx.fillStyle = '#000010'; ctx.fillRect(x + 1, y, 18, 20); ctx.fillRect(x, y + 1, 20, 18);
+    ctx.fillStyle = on ? '#f0d060' : '#8898e0'; ctx.fillRect(x + 1, y + 1, 18, 18);
+    ctx.fillStyle = on ? '#304cc0' : '#1c2c8c'; ctx.fillRect(x + 2, y + 2, 16, 16);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x + 2, y + 2, 16, 3);
+    let spr;
+    if (kind === 'menu') spr = G.sprite('icon_book', ICON_ART.book, ICON_PAL); // the notebook, like the field menu's Cuaderno
+    else {
+      const art = BTN_ART[kind === 'next' ? 'back' : kind]; if (!art) return;
+      spr = G.sprite('btn_' + kind, art, { w: '#f0f0ff' }, kind === 'next');
+      ctx.drawImage(G.tinted(spr, '#000010', 'btn_' + kind), x + 11 - (spr.width >> 1), y + 11 - (spr.height >> 1));
+    }
+    ctx.drawImage(spr, x + 10 - (spr.width >> 1), y + 10 - (spr.height >> 1));
+  };
+  G.closeBtn = (ctx, x = G.W - 26, y = 6) => G.iconBtn(ctx, 'close', x, y);
+  G.closeHit = (x = G.W - 26, y = 6) => G.btnHit(x, y);
+  G.speakerBtn = (ctx, x, y) => G.iconBtn(ctx, 'speaker', x, y);
+  G.speakerHit = (x, y) => G.btnHit(x, y);
 
 })();
 
@@ -5719,11 +5850,12 @@ G.store = {
     constructor(ids, w) { G.toastT = 0; this.transparent = true; this.ids = ids; this.i = 0; this.w = w; this.t = 0; this.open(); }
     open() { this.t = 0; G.speak(G.baseForm(this.ids[this.i])); }
     word() { return D().words[this.ids[this.i]]; }
+    spk() { return [(G.W + 200) / 2 - 26, 30]; }
     update() {
       this.t++;
       if (this.t < 20) return;
-      if (G.input.p('C')) { G.speak(G.baseForm(this.ids[this.i])); return; }
-      if (G.input.p('A') || G.input.p('B')) {
+      if (G.input.p('C') || G.speakerHit(...this.spk())) { G.speak(G.baseForm(this.ids[this.i])); return; }
+      if (G.input.p('A') || G.input.p('B') || G.input.tap()) {
         G.audio.sfx('ok');
         if (++this.i >= this.ids.length) { G.pop(); this.w.resolve(); return; }
         this.open();
@@ -5741,6 +5873,7 @@ G.store = {
       if (G.enVisible()) G.textC(ctx, wd.en, G.W / 2, y + 112, '#a8b0d8');
       if (this.t >= 20 && (this.t >> 4) % 2 === 0) G.text(ctx, '\u0001', x + W - 16, y + H - 13, '#f8e060');
       ctx.globalAlpha = 1;
+      if (pop >= 1) G.speakerBtn(ctx, ...this.spk());
     }
   }
   // Mark words learned; celebrates the ones that are new. Yieldable.
@@ -5772,7 +5905,7 @@ G.store = {
       while (this.ch[this.i] && this.ch[this.i].off) this.i++;
       G.richIds(opts.prompt || '').forEach(id => S().see(id));
       this.ch.forEach(c => c.word && S().see(c.word));
-      this.lines = G.richLayout(opts.prompt || '', G.W - 44);
+      this.lines = G.richLayout(opts.prompt || '', G.W - 96); // room for the speaker (and back) buttons
       if (!opts.noVoice) G.speak(G.plain(opts.prompt || ''));
     }
     move(d) {
@@ -5780,12 +5913,33 @@ G.store = {
       for (let s = 0; s < n; s++) { k = (k + d + n) % n; if (!this.ch[k].off) break; }
       if (k !== this.i) { this.i = k; G.audio.sfx('cursor'); const v = view(this.ch[k]); if (v.label && this.ch[k].word) G.speak(v.label); }
     }
+    // tap areas: one rect per choice (picture cards or list rows), the speaker and the back button (o.cancel)
+    rects() {
+      const vs = this.ch.map(view);
+      if (this.cards) {
+        const n = this.ch.length, cw = 58, gap = 12, tw = n * cw + (n - 1) * gap, x0 = (G.W - tw) / 2, y0 = G.H - 92;
+        return vs.map((v, k) => ({ x: x0 + k * (cw + gap), y: y0, w: cw, h: v.label ? 78 : 62 }));
+      }
+      const wd = Math.max(...vs.map(v => (v.label ? G.textWidth(v.label) : 0) + (v.icon ? 20 : 0))) + 34;
+      const h = this.ch.length * 20 + 8, x = (G.W - wd) / 2, y = G.H - h - 10;
+      return vs.map((v, k) => ({ x, y: y + 4 + k * 20, w: wd, h: 20 }));
+    }
+    spk() { return [G.W - 38, 12]; }
+    backXY() { return [18, 12]; }
     update() {
       this.t++; if (this.shake > 0) this.shake--;
       const d = G.input.repDir(14, 6);
       if (d === (this.cards ? 'left' : 'up')) this.move(-1);
       if (d === (this.cards ? 'right' : 'down')) this.move(1);
-      if (G.input.p('C')) G.speak(G.plain(this.o.prompt || ''));
+      if (G.input.p('C') || (G.speakerHit(...this.spk()) && G.input.eat())) G.speak(G.plain(this.o.prompt || ''));
+      if (G.input.tap() && this.t > 8) { // tapping a card (or row) answers with it
+        if (this.o.cancel && G.btnHit(...this.backXY())) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(-1); return; }
+        const pad = this.cards ? 6 : 0;
+        const k = this.rects().findIndex(r => G.tapIn(r.x - pad, r.y - pad, r.w + pad * 2, r.h + pad));
+        if (k >= 0 && this.ch[k].off) G.audio.sfx('error');
+        else if (k >= 0) { this.i = k; G.pop(); this.w.resolve(k); }
+        return;
+      }
       if (G.input.p('A') && this.t > 8) { G.pop(); this.w.resolve(this.i); }
       if (G.input.p('B') && this.o.cancel) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(-1); }
     }
@@ -5793,26 +5947,27 @@ G.store = {
       const o = this.o, top = 8;
       const ph = this.lines.length * 16 + 10 + (o.show ? 58 : 0);
       G.win(ctx, 12, top, G.W - 24, ph);
+      G.speakerBtn(ctx, ...this.spk());
+      if (o.cancel) G.iconBtn(ctx, 'back', ...this.backXY());
       if (o.show) G.drawIcon16(ctx, o.show, G.W / 2 - 24, top + 8, 3, 'card');
       G.richDraw(ctx, this.lines, G.W / 2, top + 5 + (o.show ? 58 : 0), { center: true });
       if (o.en && G.enVisible()) G.enBox(ctx, o.en, top + ph + 1, true);
       const sx = this.shake ? (this.shake % 4 < 2 ? 2 : -2) : 0;
-      const vs = this.ch.map(view);
+      const vs = this.ch.map(view), R = this.rects();
       if (this.cards) {
-        const n = this.ch.length, cw = 58, gap = 12, tw = n * cw + (n - 1) * gap, x0 = (G.W - tw) / 2, y0 = G.H - 92;
+        const cw = 58, y0 = R[0].y;
         this.ch.forEach((c, k) => {
-          const v = vs[k], x = x0 + k * (cw + gap), sel = k === this.i;
+          const v = vs[k], x = R[k].x, sel = k === this.i;
           const bob = sel ? Math.round(Math.sin(this.t / 6) * 1.5) : 0;
           ctx.globalAlpha = c.off ? 0.3 : 1;
-          G.win(ctx, x, y0 - bob, cw, v.label ? 78 : 62, sel ? { fill1: '#3a56c8', fill2: '#1c2c8c' } : {});
+          G.win(ctx, x, y0 - bob, cw, R[k].h, sel ? { fill1: '#3a56c8', fill2: '#1c2c8c' } : {});
           G.drawIcon16(ctx, v.icon || D().words[c.word] || c.icon, x + cw / 2 - 16, y0 + 12 - bob, 2, sel ? 'sel' : 'card');
           if (v.label) G.textC(ctx, v.label, x + cw / 2, y0 + 56 - bob, v.col);
           ctx.globalAlpha = 1;
           if (sel && (this.t >> 3) % 4 !== 3) G.textC(ctx, '\u0001', x + cw / 2, y0 - 10 - bob, '#f8e060');
         });
       } else {
-        const rows = this.ch.length, wd = Math.max(...vs.map(v => (v.label ? G.textWidth(v.label) : 0) + (v.icon ? 20 : 0))) + 34;
-        const h = rows * 20 + 8, x = (G.W - wd) / 2 + sx, y = G.H - h - 10;
+        const wd = R[0].w, h = this.ch.length * 20 + 8, x = R[0].x + sx, y = R[0].y - 4;
         G.win(ctx, x, y, wd, h);
         this.ch.forEach((c, k) => {
           const v = vs[k], yy = y + 6 + k * 20, sel = k === this.i;
@@ -5867,7 +6022,7 @@ G.store = {
   // ---------- Badge award ----------
   class BadgeCard {
     constructor(q, w) { G.toastT = 0; this.transparent = true; this.q = q; this.w = w; this.t = 0; }
-    update() { this.t++; if (this.t > 40 && (G.input.p('A') || G.input.p('B'))) { G.pop(); this.w.resolve(); } }
+    update() { this.t++; if (this.t > 40 && (G.input.p('A') || G.input.p('B') || G.input.tap())) { G.pop(); this.w.resolve(); } }
     draw(ctx) {
       const q = D().quests[this.q], W = 200, H = 100, x = (G.W - W) / 2, y = 44;
       G.win(ctx, x, y, W, H, { fill1: '#7a4a10', fill2: '#3a2008' });
@@ -5892,7 +6047,7 @@ G.store = {
   // ---------- New errand card: who asked -> what they want, in pictures ----------
   class QuestCard {
     constructor(id, w) { G.toastT = 0; this.transparent = true; this.id = id; this.w = w; this.t = 0; }
-    update() { this.t++; if (this.t > 30 && (G.input.p('A') || G.input.p('B'))) { G.pop(); this.w.resolve(); } }
+    update() { this.t++; if (this.t > 30 && (G.input.p('A') || G.input.p('B') || G.input.tap())) { G.pop(); this.w.resolve(); } }
     draw(ctx) {
       const q = D().quests[this.id], gw = G.goalWidth(q.goal), W = Math.max(150, gw + 80), H = 64, x = (G.W - W) / 2, y = 50 + Math.max(0, 10 - this.t);
       G.win(ctx, x, y, W, H, { fill1: '#2a6a3a', fill2: '#103a1c' });
@@ -5931,7 +6086,7 @@ G.store = {
 <script>/* src/creator.js */
 // ===== Character creator: the first thing in a new game (boy or girl, then skin, hair and clothes) =====
 // Up/down picks a row, left/right changes it (the preview updates live), A on ✓ starts the game.
-// The dice button picks a random look.
+// The dice button picks a random look. On a touch screen every option, the dice and ✓ are tapped directly.
 'use strict';
 (function () {
   const L = () => G.data.looks;
@@ -5940,6 +6095,7 @@ G.store = {
   const LIST = { gender: 'genders', skin: 'skins', style: 'styles', hair: 'hairs', outfit: 'outfits' };
   const KEY = { gender: 'gender', skin: 'skin', style: 'style', hair: 'hair', outfit: 'outfit' };
 
+  const X0 = 132, STEP = 20; // option panel left edge; option spacing (a 20 px touch target each)
   class Creator {
     constructor(w) {
       this.w = w; this.t = 0; this.row = 0; this.btn = 1; // done row: 0 = dice, 1 = ✓
@@ -5963,12 +6119,35 @@ G.store = {
       this.look = { gender: pick(L().genders), skin: pick(L().skins), style: pick(L().styles), hair: pick(L().hairs), outfit: pick(L().outfits) };
       G.audio.sfx('select'); this.spin = 0;
     }
+    // tap areas (shared with draw): the whole row, each option in it (done row: 0 = dice, 1 = ✓), the back button
+    rowRect(r) { return { x: X0 + 5, y: 16 + r * 32, w: G.W - X0 - 20, h: 30 }; }
+    optRects(r) {
+      const row = ROWS[r], y = 20 + r * 32;
+      if (row === 'done') return [0, 1].map(k => ({ x: X0 + 40 + k * 60, y: y - 2, w: 40, h: 26 }));
+      if (row === 'gender') return this.options(row).map((g, k) => ({ x: X0 + 22 + k * 82, y: y - 3, w: 74, h: 28 }));
+      return this.options(row).map((v, k) => ({ x: X0 + 50 + k * STEP, y: y - 4, w: STEP, h: 30 }));
+    }
+    backXY() { return [14, 14]; }
+    pick(r, k) { // a tapped option: same as moving there with the arrows and pressing A on dice / ✓
+      this.row = r; const row = ROWS[r];
+      if (row !== 'done') { this.set(row, k); return; }
+      this.btn = k;
+      if (k === 0) this.random(); else { G.audio.sfx('ok'); this.naming = G.nameEntry(this.look, this.name); }
+    }
     update() {
       this.t++; this.spin++;
       if (this.naming && this.naming.done()) { // back from the name screen: a name starts the game, null returns here
         const r = this.naming.result; this.naming = null;
         if (r != null) { this.name = r; G.pop(); this.w.resolve({ look: this.look, name: r }); }
         return;
+      }
+      if (G.input.tap()) {
+        if (G.btnHit(...this.backXY())) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(null); return; }
+        for (let r = 0; r < ROWS.length; r++) {
+          const k = this.optRects(r).findIndex(o => G.tapIn(o));
+          if (k >= 0) { this.pick(r, k); return; }
+          if (G.tapIn(this.rowRect(r)) && r !== this.row) { this.row = r; G.audio.sfx('cursor'); }
+        }
       }
       const d = G.input.repDir(14, 6), row = ROWS[this.row];
       if (d === 'up' || d === 'down') { this.row = (this.row + (d === 'up' ? -1 : 1) + ROWS.length) % ROWS.length; G.audio.sfx('cursor'); }
@@ -5998,20 +6177,21 @@ G.store = {
       G.win(ctx, 36, 128, 60, 60, { alpha: 1 });
       G.drawPortrait(ctx, spec.portrait, 40, 132, this.t);
       G.textC(ctx, this.name || '?', 66, 196, '#f8e060');
+      G.iconBtn(ctx, 'back', ...this.backXY());
 
       // option rows
-      const x0 = 132, w = G.W - x0 - 10;
+      const x0 = X0, w = G.W - x0 - 10;
       G.win(ctx, x0, 10, w, 204);
       ROWS.forEach((row, r) => {
         const y = 20 + r * 32, sel = r === this.row;
         if (sel) { ctx.fillStyle = 'rgba(248,224,96,0.18)'; ctx.fillRect(x0 + 5, y - 4, w - 10, 30); }
         if (sel && (this.t >> 3) % 4 !== 3) G.text(ctx, '\u0002', x0 + 8, y + 8, '#f8e060');
+        const R = this.optRects(r);
         if (row === 'done') {
-          const bx = x0 + 40, by = y;
           [['dado', 0], ['si', 1]].forEach(([ic, k]) => {
-            const on = sel && this.btn === k, xx = bx + k * 60;
-            G.win(ctx, xx, by - 2, 40, 26, on ? { fill1: '#3a56c8', fill2: '#1c2c8c' } : {});
-            G.drawIcon16(ctx, ic === 'dado' ? { icon: 'dado', n: 5 } : 'si', xx + 12, by + 3);
+            const on = sel && this.btn === k, o = R[k];
+            G.win(ctx, o.x, o.y, o.w, o.h, on ? { fill1: '#3a56c8', fill2: '#1c2c8c' } : {});
+            G.drawIcon16(ctx, ic === 'dado' ? { icon: 'dado', n: 5 } : 'si', o.x + 12, o.y + 5);
           });
           return;
         }
@@ -6019,7 +6199,7 @@ G.store = {
         const opts = this.options(row), cur = this.index(row);
         if (row === 'gender') {
           opts.forEach((g, k) => {
-            const xx = x0 + 22 + k * 82, on = k === cur;
+            const xx = R[k].x, on = k === cur;
             G.win(ctx, xx, y - 3, 74, 28, on ? { fill1: '#3a56c8', fill2: '#1c2c8c' } : { alpha: 0.7 });
             const sp = G.data.playerSpec(Object.assign({}, G.data.defaultLook(g), { skin: this.look.skin, hair: this.look.hair }));
             ctx.drawImage(G.unitSprite(sp.map, 'down', 0), xx + 4, y - 1);
@@ -6027,9 +6207,8 @@ G.store = {
           });
           return;
         }
-        const ox = x0 + 52, step = 19;
         opts.forEach((v, k) => {
-          const xx = ox + k * step, on = k === cur;
+          const xx = R[k].x + 2, on = k === cur;
           if (row === 'style') {
             const sp = G.data.playerSpec(Object.assign({}, this.look, { style: v }));
             if (on) { ctx.fillStyle = '#f8e060'; ctx.fillRect(xx - 2, y - 3, 19, 26); ctx.fillStyle = '#1c2c8c'; ctx.fillRect(xx - 1, y - 2, 17, 24); }
@@ -6052,7 +6231,7 @@ G.store = {
   const MAX = 10;
   class NameEntry {
     constructor(look, name, w) {
-      this.transparent = true; this.look = look; this.w = w; this.t = 0; this.r = 0; this.c = 0;
+      this.transparent = true; this.look = look; this.w = w; this.t = 0; this.r = 0; this.c = 0; this.grid = GRID;
       this.name = name || '';
       G.textInput = key => this.key(key);
     }
@@ -6078,8 +6257,19 @@ G.store = {
       else if (cell === 'SP') { if (this.name && !/ $/.test(this.name)) this.add(' '); }
       else this.add(cell);
     }
+    // tap areas (shared with draw): a letter cell, the close button (back to the creator)
+    cellRect(r, c) {
+      const cell = GRID[r][c], x = (G.W - 268) / 2, y = 14;
+      return { x: x + 14 + (r === 3 ? [0, 24, 48, 72, 96, 140, 196][c] : c * 24), y: y + 80 + r * 26, w: cell.length > 1 ? (cell === 'SP' ? 40 : 52) : 20, h: 22 };
+    }
+    backXY() { return [(G.W + 268) / 2 - 26, 20]; }
     update() {
       this.t++;
+      if (G.input.tap() && this.t > 5) { // tap a letter; the close button returns to the creator
+        if (G.btnHit(...this.backXY())) { G.audio.sfx('cancel'); this.done(null); return; }
+        GRID.forEach((row, r) => row.forEach((cell, c) => { const o = this.cellRect(r, c); if (G.tapIn(o.x - 2, o.y - 2, o.w + 4, o.h + 4)) { this.r = r; this.c = c; this.press(cell); } }));
+        if (this.w.done()) return;
+      }
       const d = G.input.repDir(14, 5);
       if (d === 'up' || d === 'down') { this.r = (this.r + (d === 'up' ? -1 : 1) + GRID.length) % GRID.length; this.c = Math.min(this.c, GRID[this.r].length - 1); G.audio.sfx('cursor'); }
       if (d === 'left' || d === 'right') { const n = GRID[this.r].length; this.c = (this.c + (d === 'left' ? -1 : 1) + n) % n; G.audio.sfx('cursor'); }
@@ -6099,10 +6289,10 @@ G.store = {
       ctx.fillStyle = '#8898e0'; ctx.fillRect(x + 82, y + 59, 170, 1);
       G.bigText(ctx, this.name, x + 84 + G.textWidth(this.name), y + 49, 2, '#ffffff');
       if ((this.t >> 4) % 2 === 0 && this.name.length < MAX) { ctx.fillStyle = '#f8e060'; ctx.fillRect(x + 86 + G.textWidth(this.name) * 2, y + 42, 2, 15); }
+      G.closeBtn(ctx, ...this.backXY());
       // letter grid
       GRID.forEach((row, r) => row.forEach((cell, c) => {
-        const wide = cell.length > 1, cx = x + 14 + (r === 3 ? [0, 24, 48, 72, 96, 140, 196][c] : c * 24), cy = y + 80 + r * 26;
-        const cw = wide ? (cell === 'SP' ? 40 : 52) : 20, sel = r === this.r && c === this.c;
+        const o = this.cellRect(r, c), cx = o.x, cy = o.y, cw = o.w, sel = r === this.r && c === this.c;
         G.win(ctx, cx, cy, cw, 22, sel ? { fill1: '#3a56c8', fill2: '#1c2c8c' } : { alpha: 0.75 });
         const col = sel ? '#f8e060' : '#ffffff';
         if (cell === 'SP') { ctx.fillStyle = col; ctx.fillRect(cx + 10, cy + 13, 20, 2); ctx.fillRect(cx + 10, cy + 10, 1, 4); ctx.fillRect(cx + 29, cy + 10, 1, 4); }
@@ -6146,15 +6336,27 @@ G.store = {
     constructor(w, start) { G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; this.pi = Math.max(0, D().pageOrder.indexOf(start)); this.wi = 0; }
     page() { return D().pageOrder[this.pi]; }
     words() { return D().pages[this.page()].words; }
+    // tap areas (shared with draw): word k on the page, the < > page buttons around the page dots, close
+    cellRect(k) { return { x: 18 + (k % 3) * 96, y: 34 + Math.floor(k / 3) * 58, w: 92, h: 56 }; }
+    prevXY() { return [G.W / 2 - 60, 4]; }
+    nextXY() { return [G.W / 2 + 36, 4]; }
+    closeXY() { return [G.W - 30, 8]; }
+    turn(dx) { this.pi = (this.pi + dx + D().pageOrder.length) % D().pageOrder.length; this.wi = 0; G.audio.sfx('select'); }
     update() {
       this.t++;
       const d = G.input.repDir(14, 5), found = S().hasPage(this.page()), n = this.words().length;
-      if (G.input.p('B')) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); return; }
+      if (G.input.p('B') || G.closeHit(...this.closeXY())) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); return; }
+      if (G.btnHit(...this.prevXY())) { this.turn(-1); return; }
+      if (G.btnHit(...this.nextXY())) { this.turn(1); return; }
+      if (found) for (let k = 0; k < n; k++) if (G.tapIn(this.cellRect(k))) { // tap a word: hear it
+        if (this.wi !== k) G.audio.sfx('cursor');
+        this.wi = k; if (S().seen(this.words()[k])) G.speak(G.baseForm(this.words()[k]));
+      }
       // left/right moves within the page's 3-column grid, and past its edge turns the page
       if (d === 'left' || d === 'right') {
         const col = this.wi % 3, dx = d === 'left' ? -1 : 1;
         if (found && col + dx >= 0 && col + dx < 3 && this.wi + dx < n) { this.wi += dx; G.audio.sfx('cursor'); }
-        else { this.pi = (this.pi + dx + D().pageOrder.length) % D().pageOrder.length; this.wi = 0; G.audio.sfx('select'); return; }
+        else { this.turn(dx); return; }
       }
       if (found && (d === 'up' || d === 'down')) { const k = this.wi + (d === 'up' ? -3 : 3); if (k >= 0 && k < n) { this.wi = k; G.audio.sfx('cursor'); } }
       if (found && (G.input.p('A') || G.input.p('C'))) { const id = this.words()[this.wi]; if (S().seen(id)) G.speak(G.baseForm(id)); }
@@ -6162,7 +6364,7 @@ G.store = {
     draw(ctx) {
       G.win(ctx, 6, 6, G.W - 12, G.H - 12, { fill1: '#f4ecd8', fill2: '#e0d4b8', alpha: 1 });
       const pid = this.page(), found = S().hasPage(pid);
-      G.text(ctx, '<', 14, 12, '#7a4a20', null); G.textR(ctx, '>', G.W - 14, 12, '#7a4a20', null);
+      G.iconBtn(ctx, 'back', ...this.prevXY()); G.iconBtn(ctx, 'next', ...this.nextXY()); G.closeBtn(ctx, ...this.closeXY());
       // page dots
       D().pageOrder.forEach((p, k) => {
         const x = G.W / 2 - 34 + k * 14;
@@ -6176,9 +6378,9 @@ G.store = {
       }
       const tp = D().topics[D().pages[pid].topic];
       G.textC(ctx, tp.name, G.W / 2, 24, '#a05020', null);
-      if (G.enVisible()) G.textR(ctx, tp.en, G.W - 16, 24, '#a09070', null);
+      if (G.enVisible()) G.text(ctx, tp.en, 16, 24, '#a09070', null);
       this.words().forEach((id, k) => {
-        const cx = 22 + (k % 3) * 96, cy = 36 + Math.floor(k / 3) * 58, sel = k === this.wi;
+        const R = this.cellRect(k), cx = R.x + 4, cy = R.y + 2, sel = k === this.wi;
         const wd = D().words[id], seen = S().seen(id), kn = S().knows(id);
         if (sel) { ctx.fillStyle = '#f8e0a0'; ctx.fillRect(cx - 4, cy - 2, 92, 56); }
         G.drawIcon16(ctx, wd, cx + 26, cy, 2);
@@ -6194,9 +6396,10 @@ G.store = {
   // ---------- Misiones: who asked, and what they want (pictures only) ----------
   class QuestLog {
     constructor(w) { G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; }
-    update() { this.t++; if (G.input.p('A') || G.input.p('B')) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); } }
+    update() { this.t++; if (G.input.p('A') || G.input.p('B') || G.input.tap()) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); } } // a tap anywhere closes
     draw(ctx) {
       G.win(ctx, 6, 6, G.W - 12, G.H - 12);
+      G.closeBtn(ctx, G.W - 30, 8);
       G.drawIcon(ctx, 'quest', G.W / 2 - 12, 8);
       const list = D().questOrder.filter(id => S().quest(id));
       if (!list.length) G.bigText(ctx, '?', G.W / 2, 80, 3, '#404878');
@@ -6223,7 +6426,7 @@ G.store = {
   // ---------- Opciones (mostly for grown-ups) ----------
   // Up/down picks a row; left/right moves a volume slider (0..10); A changes the other rows.
   class Options {
-    constructor(w) { this.transparent = true; this.w = w; this.t = 0; this.i = 0; }
+    constructor(w) { this.transparent = true; this.w = w; this.t = 0; this.i = 0; this.n = this.rows().length; }
     rows() {
       const voices = G.spanishVoices(), cur = G.currentVoice();
       return [
@@ -6239,31 +6442,42 @@ G.store = {
       if (kind === 'sfx') G.audio.sfx('coin');
       else if (kind === 'voice') G.speak('¡Hola!');
     }
+    vol(kind, level) { const before = G.prefs[kind]; G.audio.setVolume(kind, level); if (G.prefs[kind] !== before) this.sample(kind); }
+    // tap areas (shared with draw): row k, the volume bar's left edge (cells are 9 px; left of it = 0), close
+    box() { const W = 220, H = this.n * 18 + 28; return { x: (G.W - W) / 2, y: 40, W, H }; }
+    rowRect(k) { const b = this.box(); return { x: b.x + 4, y: b.y + 19 + k * 18, w: b.W - 8, h: 18 }; }
+    barX() { return this.box().x + 100; }
+    closeXY() { const b = this.box(); return [b.x + b.W - 16, b.y - 6]; }
     update() {
       this.t++;
-      const rows = this.rows(), r = rows[this.i];
-      const d = G.input.repDir(14, 5);
+      const rows = this.rows();
+      if (G.input.tap()) { // tap a row to pick it (and change it); tap a volume bar to set the level
+        if (G.closeHit(...this.closeXY())) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); return; }
+        const k = rows.findIndex((r, i) => G.tapIn(this.rowRect(i))), tx = G.input.tap().x, bx = this.barX();
+        if (k >= 0 && k !== this.i) { this.i = k; G.audio.sfx('cursor'); }
+        if (k >= 0 && rows[k].vol && tx >= bx - 12) this.vol(rows[k].vol, tx < bx ? 0 : Math.floor((tx - bx) / 9) + 1);
+        else if (k >= 0 && !rows[k].vol) this.act();
+      }
+      const r = rows[this.i], d = G.input.repDir(14, 5);
       if (d === 'up' || d === 'down') { this.i = (this.i + (d === 'up' ? -1 : 1) + rows.length) % rows.length; G.audio.sfx('cursor'); }
-      if (r.vol && (d === 'left' || d === 'right')) {
-        const before = G.prefs[r.vol];
-        G.audio.setVolume(r.vol, before + (d === 'left' ? -1 : 1));
-        if (G.prefs[r.vol] !== before) this.sample(r.vol);
-      }
-      if (G.input.p('A')) {
-        if (this.i === 3) {
-          const voices = G.spanishVoices(), cur = G.currentVoice();
-          if (!voices.length) { G.audio.sfx('error'); return; }
-          G.state.opts.voiceName = voices[(voiceIndex(voices, cur) + 1) % voices.length].name;
-          G.audio.setPref('voiceMode', 0);
-          if (!G.prefs.voice) G.audio.setVolume('voice', 7);
-          G.speak('¡Hola! Hoy es tu primer día en el Club de Español.');
-        } else if (this.i === 4) { G.state.opts.english = !G.state.opts.english; G.audio.sfx('ok'); }
-      }
+      if (r.vol && (d === 'left' || d === 'right')) this.vol(r.vol, G.prefs[r.vol] + (d === 'left' ? -1 : 1));
+      if (G.input.p('A')) this.act();
       if (G.input.p('B')) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); }
     }
+    act() { // A on a row
+      if (this.i === 3) {
+        const voices = G.spanishVoices(), cur = G.currentVoice();
+        if (!voices.length) { G.audio.sfx('error'); return; }
+        G.state.opts.voiceName = voices[(voiceIndex(voices, cur) + 1) % voices.length].name;
+        G.audio.setPref('voiceMode', 0);
+        if (!G.prefs.voice) G.audio.setVolume('voice', 7);
+        G.speak('¡Hola! Hoy es tu primer día en el Club de Español.');
+      } else if (this.i === 4) { G.state.opts.english = !G.state.opts.english; G.audio.sfx('ok'); }
+    }
     draw(ctx) {
-      const rows = this.rows(), W = 220, H = rows.length * 18 + 28, x = (G.W - W) / 2, y = 40;
+      const rows = this.rows(), { x, y, W, H } = this.box();
       G.win(ctx, x, y, W, H);
+      G.closeBtn(ctx, ...this.closeXY());
       G.text(ctx, 'OPCIONES', x + 9, y + 8, '#f8e060');
       rows.forEach((r, k) => {
         const yy = y + 24 + k * 18, sel = k === this.i;
@@ -6271,7 +6485,7 @@ G.store = {
         if (r.icon) volIcon(ctx, r.icon, x + 18, yy - 1, r.vol && !G.prefs[r.vol]);
         G.text(ctx, r.label, x + (r.icon ? 32 : 18), yy, sel ? '#f8e060' : '#ffffff');
         if (r.vol) {
-          const v = G.prefs[r.vol], bx = x + 100;
+          const v = G.prefs[r.vol], bx = this.barX();
           if (sel) G.text(ctx, '<', bx - 8, yy, '#f8e060');
           for (let s = 0; s < 10; s++) { ctx.fillStyle = s < v ? (sel ? '#f8d030' : '#c8d0f0') : '#303a78'; ctx.fillRect(bx + s * 9, yy + 6 - Math.floor(s / 2), 7, 2 + Math.floor(s / 2)); }
           if (sel) G.text(ctx, '>', bx + 92, yy, '#f8e060');
@@ -6308,6 +6522,10 @@ G.store = {
 (function () {
   const D = () => G.data;
   const key = (x, y) => x + ',' + y;
+  const HUD = [G.W - 26, 6];          // the field menu button (= B), top-right
+  const COUNTER = 'etaY';             // people are talked to across these (see interact)
+  const THING = 'rlkgPLYZteauj';      // objects a tap walks up to and searches (fences, walls, trees, water: just walk)
+  const DIR4 = ['up', 'down', 'left', 'right'];
 
   class Field {
     constructor(mapId, x, y, dir) {
@@ -6371,12 +6589,24 @@ G.store = {
       const m = { u: 'up', d: 'down', l: 'left', r: 'right' };
       for (const c of dirs) { if (m[c]) { const dir = m[c]; const [dx, dy] = G.DIRS[dir]; o.dir = dir; o.x += dx; o.y += dy; const n = Math.ceil(G.TILE / speed); for (let i = 1; i <= n; i++) { o.ox = -dx * (G.TILE - Math.min(G.TILE, i * speed)); o.oy = -dy * (G.TILE - Math.min(G.TILE, i * speed)); yield 1; } o.ox = 0; o.oy = 0; } else if (c === '.') yield 16; else if (c === 'U') o.dir = 'up'; else if (c === 'D') o.dir = 'down'; else if (c === 'L') o.dir = 'left'; else if (c === 'R') o.dir = 'right'; }
     }
+    // The player walks with the keys, or along a tap route (this.route, see tapTarget/plan). Both use the
+    // same steps below, so doors, events and talking behave the same; a key press cancels a tap route.
     *playerWalk() {
       const p = this.player;
       while (true) {
         yield 1;
-        if (this.locked || G.top() !== this) continue;
-        const d = G.input.dir();
+        if (this.locked || G.top() !== this) { this.route = null; continue; } // a cutscene or a screen on top ends a tap walk
+        let d = G.input.dir();
+        if (d || G.input.p('A') || G.input.p('B')) this.route = null;
+        if (!d && this.route) {
+          const pl = this.plan(this.route);
+          if (pl && pl.dir) d = pl.dir;
+          else { // arrived (or can't get any closer): face the target, then talk / search like A
+            this.route = null;
+            if (pl && pl.face) p.dir = pl.face;
+            if (pl && pl.act) { this.locked = true; yield* this.interact(); this.locked = false; continue; }
+          }
+        }
         if (d) {
           if (p.dir !== d && !G.input.h(d + 'Moved')) { p.dir = d; }
           const [dx, dy] = G.DIRS[d];
@@ -6385,15 +6615,63 @@ G.store = {
           if (moved) {
             this.stepCount++;
             if (this.stepCount % 2 === 0) G.audio.sfx('step');
-            if (ex) { yield* this.useExit(ex); continue; }
+            if (ex) { this.route = null; yield* this.useExit(ex); continue; }
             const ev = (this.def.events || []).find(e => e.x === p.x && e.y === p.y && (!e.once || !G.state.flags['ev_' + this.mapId + e.x + '_' + e.y]) && (!e.cond || e.cond()));
-            if (ev) { if (ev.once) G.state.flags['ev_' + this.mapId + ev.x + '_' + ev.y] = true; this.locked = true; yield* ev.run(this); this.locked = false; }
+            if (ev) { this.route = null; if (ev.once) G.state.flags['ev_' + this.mapId + ev.x + '_' + ev.y] = true; this.locked = true; yield* ev.run(this); this.locked = false; }
           }
           continue;
         }
         if (G.input.p('A')) { this.locked = true; yield* this.interact(); this.locked = false; continue; }
-        if (G.input.p('B')) { this.locked = true; yield* G.fieldMenu(this); this.locked = false; continue; }
+        if (G.input.p('B') || this.menuReq) { this.menuReq = false; this.locked = true; yield* G.fieldMenu(this); this.locked = false; continue; }
       }
+    }
+    // ---------- tap-to-walk ----------
+    // What a tap on the map means: talk to someone (their tile, the tile above where the head and bubble are,
+    // or a counter in front of them), go through a door (or its sign), search a sparkle / object, or walk there.
+    tapTarget(tap) {
+      const T = G.TILE, wx = tap.x + Math.round(this.cam.x), wy = tap.y + Math.round(this.cam.y), tx = Math.floor(wx / T), ty = Math.floor(wy / T);
+      const talker = (x, y) => this.npcs.find(n => n.talk && n.spec && !n.hidden && n.x === x && n.y === y);
+      // a person where they are drawn (mid-step too, sliding between tiles), or `up` tiles above that (the head)
+      const drawn = up => this.npcs.find(n => n.talk && n.spec && !n.hidden && wx >= n.x * T + n.ox && wx < n.x * T + n.ox + T && wy >= (n.y - up) * T + n.oy && wy < (n.y - up + 1) * T + n.oy);
+      const c = this.map.get(tx, ty);
+      let n = drawn(0) || talker(tx, ty) || drawn(1) || talker(tx, ty + 1);
+      if (!n && COUNTER.includes(c)) n = DIR4.map(d => talker(tx + G.DIRS[d][0], ty + G.DIRS[d][1])).find(Boolean);
+      if (n) return { npc: n, x: n.x, y: n.y };
+      if (this.exitAt(tx, ty)) return { exit: true, x: tx, y: ty };
+      const door = (G.TERRAIN[c] || G.TERRAIN['.']).wall && DIR4.map(d => this.exitAt(tx + G.DIRS[d][0], ty + G.DIRS[d][1])).find(Boolean);
+      if (door) return { exit: true, x: door.x, y: door.y }; // the wall or sign around a door, the dark just outside one
+      const pg = (this.def.pages || {})[key(tx, ty)];
+      if ((pg && !G.st.hasPage(pg)) || (this.def.searches || {})[key(tx, ty)] || THING.includes(c)) return { search: true, x: tx, y: ty };
+      return { x: tx, y: ty };
+    }
+    // Next step of a tap route, re-planned every step (people move): a breadth-first search over walkable
+    // tiles to the nearest goal; doors only as the destination. -> {dir} to walk, or {face, act} on arrival.
+    // If no goal can be reached, it walks to the reachable tile closest to the target.
+    plan(r) {
+      const p = this.player, goals = new Map(); // tile -> direction to face there
+      let tx = r.x, ty = r.y;
+      if (r.npc) {
+        if (!this.npcs.includes(r.npc)) return null;
+        tx = r.npc.x; ty = r.npc.y;
+        for (const d of DIR4) { const [dx, dy] = G.DIRS[d]; goals.set(key(tx - dx, ty - dy), d); if (COUNTER.includes(this.map.get(tx - dx, ty - dy)) && !goals.has(key(tx - 2 * dx, ty - 2 * dy))) goals.set(key(tx - 2 * dx, ty - 2 * dy), d); }
+      } else if (r.search) for (const d of DIR4) goals.set(key(tx - G.DIRS[d][0], ty - G.DIRS[d][1]), d);
+      else goals.set(key(tx, ty), null);
+      const start = key(p.x, p.y), prev = new Map([[start, null]]), q = [[p.x, p.y]];
+      let found = null, near = start, nearD = Math.abs(p.x - tx) + Math.abs(p.y - ty);
+      for (let i = 0; i < q.length && !found; i++) {
+        const [x, y] = q[i], k = key(x, y), door = k !== start && this.exitAt(x, y);
+        if (door && !(r.exit && x === tx && y === ty)) continue; // never walk through a door on the way
+        if (goals.has(k)) { found = k; break; }
+        const md = Math.abs(x - tx) + Math.abs(y - ty); if (md < nearD) { near = k; nearD = md; }
+        for (const d of DIR4) {
+          const nx = x + G.DIRS[d][0], ny = y + G.DIRS[d][1], nk = key(nx, ny);
+          if (!prev.has(nk) && !this.blocked(nx, ny, p)) { prev.set(nk, [k, d]); q.push([nx, ny]); }
+        }
+      }
+      let k = found || near, dir = null;
+      r.end = k.split(',').map(Number);
+      while (prev.get(k)) { dir = prev.get(k)[1]; k = prev.get(k)[0]; }
+      return { dir, face: found ? goals.get(found) : null, act: !!(found && (r.npc || r.search)) };
     }
     *useExit(ex) {
       if (ex.run) { this.locked = true; const ok = yield* ex.run(this); this.locked = false; if (ok === false) return; }
@@ -6456,6 +6734,12 @@ G.store = {
     start() { this.tasks.add(this.playerWalk()); this.tasks.add(this.npcAI()); }
     update() {
       this.t++;
+      // keys win over a tap walk, and a cutscene (the field locked) ends it rather than pausing it
+      if (this.route && (this.locked || G.input.dir() || ['up', 'down', 'left', 'right', 'A', 'B'].some(k => G.input.p(k)))) this.route = null;
+      if (!this.locked && G.input.tap()) { // the menu button (= B, eats the tap), else tap-to-walk (field tasks still see the tap)
+        if (G.btnHit(...HUD)) { G.input.eat(); this.menuReq = true; this.route = null; }
+        else { this.route = this.tapTarget(G.input.tap()); this.plan(this.route); }
+      }
       this.tasks.update();
       const ct = this.camTarget(); this.cam.x += (ct.x - this.cam.x) * 0.3; this.cam.y += (ct.y - this.cam.y) * 0.3;
       if (Math.abs(ct.x - this.cam.x) < 0.5) this.cam.x = ct.x; if (Math.abs(ct.y - this.cam.y) < 0.5) this.cam.y = ct.y;
@@ -6481,6 +6765,13 @@ G.store = {
         if (G.st.hasPage(this.def.pages[k])) continue;
         const [px, py] = k.split(',').map(Number), ph = (this.t + px * 7) % 60;
         if (ph < 30) { const sx = px * T - cx + 12, sy = py * T - cy + 8 - (ph >> 3); ctx.fillStyle = '#ffffff'; ctx.fillRect(sx - 2, sy, 5, 1); ctx.fillRect(sx, sy - 2, 1, 5); ctx.fillStyle = '#f8e060'; ctx.fillRect(sx, sy, 1, 1); }
+      }
+      if (this.route && this.route.end) { // where a tap is taking you: pulsing corner marks
+        const [ex, ey] = this.route.end, i = 3 + ((this.t >> 3) & 1), mx = ex * T - cx, my = ey * T - cy, s = T - 1 - 2 * i;
+        for (const [col, o] of [['#10102a', 1], ['#f8e060', 0]]) {
+          ctx.fillStyle = col;
+          for (const [ax, ay] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const px = mx + i + ax * s + o, py = my + i + ay * s + o; ctx.fillRect(ax ? px - 3 : px, py, 4, 1); ctx.fillRect(px, ay ? py - 3 : py, 1, 4); }
+        }
       }
       const ents = this.npcs.filter(n => n.spec && !n.hidden).concat([this.player]).sort((a, b) => (a.y * T + a.oy) - (b.y * T + b.oy));
       for (const e of ents) {
@@ -6513,6 +6804,7 @@ G.store = {
         if (ic) G.drawIcon16(ctx, ic, (G.W - w) / 2 + 12, 13);
         G.textC(ctx, this.banner.text, G.W / 2 + (ic ? 10 : 0), 17, '#f8e060'); ctx.globalAlpha = 1;
       }
+      if (!this.locked && G.top() === this) G.iconBtn(ctx, 'menu', ...HUD);
     }
   }
   G.Field = Field;
@@ -6850,17 +7142,23 @@ G.MAPDATA = {
   const words = (...ids) => ids.map(id => ({ word: id }));
 
   // ---------- Button hints, in pictures ----------
+  // Keys on a keyboard, A/B/C with the on-screen pad; on a plain touch screen: tap, the menu button and the speaker.
   class KeyHint {
     constructor(w) { this.transparent = true; this.w = w; this.t = 0; }
-    update() { this.t++; if (this.t > 30 && (G.input.p('A') || G.input.p('B'))) { G.pop(); this.w.resolve(); } }
+    update() { this.t++; if (this.t > 30 && (G.input.p('A') || G.input.p('B') || G.input.tap())) { G.pop(); this.w.resolve(); } }
     key(ctx, k, x, y) { G.win(ctx, x, y, 22, 20, { fill1: '#e8e8f0', fill2: '#b8b8c8', alpha: 1 }); G.textC(ctx, k, x + 11, y + 6, '#202040', null); }
     draw(ctx) {
       const x = G.W / 2 - 70, y = 40;
       G.win(ctx, x, y, 140, 104);
-      const touch = !!document.getElementById('tcpad');
-      this.key(ctx, touch ? 'A' : 'Z', x + 14, y + 10); G.drawIcon16(ctx, 'pregunta', x + 44, y + 12); G.drawIcon16(ctx, 'si', x + 64, y + 12);
-      this.key(ctx, touch ? 'B' : 'X', x + 14, y + 40); G.drawIcon(ctx, 'book', x + 42, y + 40); G.drawIcon(ctx, 'quest', x + 68, y + 40);
-      this.key(ctx, 'C', x + 14, y + 70); // C: hear it again
+      const pad = !!(G.prefs && G.prefs.dpad), tap = G.touch && !pad;
+      if (tap) { // a fingertip with a pulsing tap ring
+        ctx.strokeStyle = '#f8e060'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x + 25, y + 20, 5 + ((this.t >> 3) % 3) * 2, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = '#f0c8a0'; ctx.beginPath(); ctx.arc(x + 25, y + 20, 4, 0, Math.PI * 2); ctx.fill();
+      } else this.key(ctx, pad ? 'A' : 'Z', x + 14, y + 10);
+      G.drawIcon16(ctx, 'pregunta', x + 44, y + 12); G.drawIcon16(ctx, 'si', x + 64, y + 12);
+      if (tap) G.iconBtn(ctx, 'menu', x + 15, y + 40); else this.key(ctx, pad ? 'B' : 'X', x + 14, y + 40);
+      G.drawIcon(ctx, 'book', x + 42, y + 40); G.drawIcon(ctx, 'quest', x + 68, y + 40);
+      if (tap) G.iconBtn(ctx, 'speaker', x + 15, y + 70); else this.key(ctx, 'C', x + 14, y + 70); // C: hear it again
       ctx.fillStyle = '#f8e060'; ctx.fillRect(x + 46, y + 76, 4, 8); ctx.fillRect(x + 50, y + 73, 2, 14); ctx.fillRect(x + 52, y + 71, 2, 18);
       for (let i = 0; i < 3; i++) { ctx.fillRect(x + 58 + i * 4, y + 78 - i * 2, 1, 4 + i * 4); }
       if ((this.t >> 4) % 2 === 0) G.text(ctx, '\u0001', x + 124, y + 90, '#f8e060');
@@ -6910,7 +7208,7 @@ G.MAPDATA = {
   // ---------- Diploma ----------
   class Diploma {
     constructor(w) { G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; }
-    update() { this.t++; if (this.t > 60 && (G.input.p('A') || G.input.p('B'))) { G.pop(); this.w.resolve(); } }
+    update() { this.t++; if (this.t > 60 && (G.input.p('A') || G.input.p('B') || G.input.tap())) { G.pop(); this.w.resolve(); } }
     draw(ctx) {
       const x = 24, y = 14, w = G.W - 48, h = G.H - 28;
       ctx.fillStyle = '#5a3810'; ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
@@ -6979,9 +7277,11 @@ G.MAPDATA = {
       this.confetti.forEach(e => { e.x += e.vx + Math.sin((this.t + e.life) / 25) * 0.3; e.y += e.vy; e.life--; });
       this.confetti = this.confetti.filter(e => e.life > 0 && e.y < G.H + 5);
       if (this.t < 30) return;
-      const d = G.input.repDir(14, 6);
+      const d = G.input.repDir(14, 6), k = this.opts.findIndex((o, i) => G.tapIn(this.rowRect(i))); // tap a row = pick it
       if (d === 'up' || d === 'down') { let n = this.i; do { n = (n + (d === 'up' ? -1 : 1) + this.opts.length) % this.opts.length; } while (this.opts[n].d); this.i = n; G.audio.sfx('cursor'); }
-      if (G.input.p('A')) {
+      if (k >= 0 && this.opts[k].d) { G.audio.sfx('error'); return; }
+      if (k >= 0) this.i = k;
+      if (G.input.p('A') || k >= 0) {
         const o = this.opts[this.i]; if (o.d) { G.audio.sfx('error'); return; }
         G.audio.sfx('ok');
         if (this.i === 0) this.newGame();
@@ -6999,9 +7299,11 @@ G.MAPDATA = {
         if (!r.result) { G.toTitle(); return; }
         G.state.look = r.result.look; G.state.name = r.result.name;
         const f = G.goto('casa', 4, 4, 'up');
-        f.tasks.add((function* () { yield 40; f.locked = true; yield* G.story.mamaIntro(); f.locked = false; })());
+        f.locked = true; // from the start, so a quick tap or key can't reach Mamá and start her intro a second time
+        f.tasks.add((function* () { yield 40; yield* G.story.mamaIntro(); f.locked = false; })());
       })());
     }
+    rowRect(i) { return { x: G.W / 2 - 52, y: 122 + i * 20, w: 104, h: 20 }; }
     cont() {
       if (!G.st.load()) { G.audio.sfx('error'); return; }
       const l = G.state.loc;
@@ -7014,21 +7316,23 @@ G.MAPDATA = {
       const bob = Math.round(Math.sin(this.t / 40) * 2);
       ctx.drawImage(this.logo, Math.floor((G.W - 260) / 2), 24 + bob);
       if (this.t > 30) {
-        G.win(ctx, G.W / 2 - 56, 120, 112, 16 + this.opts.length * 13);
+        G.win(ctx, G.W / 2 - 56, 118, 112, 8 + this.opts.length * 20);
         this.opts.forEach((o, i) => {
-          G.text(ctx, o.l, G.W / 2 - 36, 128 + i * 13, o.d ? '#6068a0' : '#fff');
-          if (i === this.i && (this.t >> 3) % 4 !== 3) G.text(ctx, '\u0002', G.W / 2 - 46, 128 + i * 13, '#f8e060');
+          const y = this.rowRect(i).y + 6;
+          G.text(ctx, o.l, G.W / 2 - 36, y, o.d ? '#6068a0' : '#fff');
+          if (i === this.i && (this.t >> 3) % 4 !== 3) G.text(ctx, '\u0002', G.W / 2 - 46, y, '#f8e060');
         });
       }
       G.textC(ctx, 'Un juego para aprender español', G.W / 2, G.H - 22, '#fff8e0');
-      G.textC(ctx, 'Z: OK   X: menú   C: escuchar   M: sonido', G.W / 2, G.H - 11, '#f8e8c0');
+      if (!G.touch) G.textC(ctx, 'Z: OK   X: menú   C: escuchar   M: sonido', G.W / 2, G.H - 11, '#f8e8c0');
     }
   }
   class Controls {
     constructor() { this.transparent = true; }
-    update() { if (G.input.p('A') || G.input.p('B')) { G.audio.sfx('cancel'); G.pop(); } }
+    update() { if (G.input.p('A') || G.input.p('B') || G.input.tap()) { G.audio.sfx('cancel'); G.pop(); } } // a tap anywhere closes
     draw(ctx) {
       G.win(ctx, 16, 16, G.W - 32, G.H - 32);
+      G.closeBtn(ctx, G.W - 32, 10);
       const L = [['CONTROLES  /  CONTROLS', '#f8e060'], ['', ''],
         ['Flechas / WASD', 'caminar, elegir  -  walk, choose'], ['Z, Espacio, Enter', 'hablar, buscar, OK  -  talk, search, OK'],
         ['X, Esc', 'menú, volver  -  menu, back'], ['C', 'escuchar otra vez  -  hear it again'], ['M', 'sonido  -  sound on/off'], ['', ''],

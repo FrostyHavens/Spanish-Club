@@ -1,6 +1,6 @@
 // ===== Character creator: the first thing in a new game (boy or girl, then skin, hair and clothes) =====
 // Up/down picks a row, left/right changes it (the preview updates live), A on ✓ starts the game.
-// The dice button picks a random look.
+// The dice button picks a random look. On a touch screen every option, the dice and ✓ are tapped directly.
 'use strict';
 (function () {
   const L = () => G.data.looks;
@@ -9,6 +9,7 @@
   const LIST = { gender: 'genders', skin: 'skins', style: 'styles', hair: 'hairs', outfit: 'outfits' };
   const KEY = { gender: 'gender', skin: 'skin', style: 'style', hair: 'hair', outfit: 'outfit' };
 
+  const X0 = 132, STEP = 20; // option panel left edge; option spacing (a 20 px touch target each)
   class Creator {
     constructor(w) {
       this.w = w; this.t = 0; this.row = 0; this.btn = 1; // done row: 0 = dice, 1 = ✓
@@ -32,12 +33,35 @@
       this.look = { gender: pick(L().genders), skin: pick(L().skins), style: pick(L().styles), hair: pick(L().hairs), outfit: pick(L().outfits) };
       G.audio.sfx('select'); this.spin = 0;
     }
+    // tap areas (shared with draw): the whole row, each option in it (done row: 0 = dice, 1 = ✓), the back button
+    rowRect(r) { return { x: X0 + 5, y: 16 + r * 32, w: G.W - X0 - 20, h: 30 }; }
+    optRects(r) {
+      const row = ROWS[r], y = 20 + r * 32;
+      if (row === 'done') return [0, 1].map(k => ({ x: X0 + 40 + k * 60, y: y - 2, w: 40, h: 26 }));
+      if (row === 'gender') return this.options(row).map((g, k) => ({ x: X0 + 22 + k * 82, y: y - 3, w: 74, h: 28 }));
+      return this.options(row).map((v, k) => ({ x: X0 + 50 + k * STEP, y: y - 4, w: STEP, h: 30 }));
+    }
+    backXY() { return [14, 14]; }
+    pick(r, k) { // a tapped option: same as moving there with the arrows and pressing A on dice / ✓
+      this.row = r; const row = ROWS[r];
+      if (row !== 'done') { this.set(row, k); return; }
+      this.btn = k;
+      if (k === 0) this.random(); else { G.audio.sfx('ok'); this.naming = G.nameEntry(this.look, this.name); }
+    }
     update() {
       this.t++; this.spin++;
       if (this.naming && this.naming.done()) { // back from the name screen: a name starts the game, null returns here
         const r = this.naming.result; this.naming = null;
         if (r != null) { this.name = r; G.pop(); this.w.resolve({ look: this.look, name: r }); }
         return;
+      }
+      if (G.input.tap()) {
+        if (G.btnHit(...this.backXY())) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(null); return; }
+        for (let r = 0; r < ROWS.length; r++) {
+          const k = this.optRects(r).findIndex(o => G.tapIn(o));
+          if (k >= 0) { this.pick(r, k); return; }
+          if (G.tapIn(this.rowRect(r)) && r !== this.row) { this.row = r; G.audio.sfx('cursor'); }
+        }
       }
       const d = G.input.repDir(14, 6), row = ROWS[this.row];
       if (d === 'up' || d === 'down') { this.row = (this.row + (d === 'up' ? -1 : 1) + ROWS.length) % ROWS.length; G.audio.sfx('cursor'); }
@@ -67,20 +91,21 @@
       G.win(ctx, 36, 128, 60, 60, { alpha: 1 });
       G.drawPortrait(ctx, spec.portrait, 40, 132, this.t);
       G.textC(ctx, this.name || '?', 66, 196, '#f8e060');
+      G.iconBtn(ctx, 'back', ...this.backXY());
 
       // option rows
-      const x0 = 132, w = G.W - x0 - 10;
+      const x0 = X0, w = G.W - x0 - 10;
       G.win(ctx, x0, 10, w, 204);
       ROWS.forEach((row, r) => {
         const y = 20 + r * 32, sel = r === this.row;
         if (sel) { ctx.fillStyle = 'rgba(248,224,96,0.18)'; ctx.fillRect(x0 + 5, y - 4, w - 10, 30); }
         if (sel && (this.t >> 3) % 4 !== 3) G.text(ctx, '\u0002', x0 + 8, y + 8, '#f8e060');
+        const R = this.optRects(r);
         if (row === 'done') {
-          const bx = x0 + 40, by = y;
           [['dado', 0], ['si', 1]].forEach(([ic, k]) => {
-            const on = sel && this.btn === k, xx = bx + k * 60;
-            G.win(ctx, xx, by - 2, 40, 26, on ? { fill1: '#3a56c8', fill2: '#1c2c8c' } : {});
-            G.drawIcon16(ctx, ic === 'dado' ? { icon: 'dado', n: 5 } : 'si', xx + 12, by + 3);
+            const on = sel && this.btn === k, o = R[k];
+            G.win(ctx, o.x, o.y, o.w, o.h, on ? { fill1: '#3a56c8', fill2: '#1c2c8c' } : {});
+            G.drawIcon16(ctx, ic === 'dado' ? { icon: 'dado', n: 5 } : 'si', o.x + 12, o.y + 5);
           });
           return;
         }
@@ -88,7 +113,7 @@
         const opts = this.options(row), cur = this.index(row);
         if (row === 'gender') {
           opts.forEach((g, k) => {
-            const xx = x0 + 22 + k * 82, on = k === cur;
+            const xx = R[k].x, on = k === cur;
             G.win(ctx, xx, y - 3, 74, 28, on ? { fill1: '#3a56c8', fill2: '#1c2c8c' } : { alpha: 0.7 });
             const sp = G.data.playerSpec(Object.assign({}, G.data.defaultLook(g), { skin: this.look.skin, hair: this.look.hair }));
             ctx.drawImage(G.unitSprite(sp.map, 'down', 0), xx + 4, y - 1);
@@ -96,9 +121,8 @@
           });
           return;
         }
-        const ox = x0 + 52, step = 19;
         opts.forEach((v, k) => {
-          const xx = ox + k * step, on = k === cur;
+          const xx = R[k].x + 2, on = k === cur;
           if (row === 'style') {
             const sp = G.data.playerSpec(Object.assign({}, this.look, { style: v }));
             if (on) { ctx.fillStyle = '#f8e060'; ctx.fillRect(xx - 2, y - 3, 19, 26); ctx.fillStyle = '#1c2c8c'; ctx.fillRect(xx - 1, y - 2, 17, 24); }
@@ -121,7 +145,7 @@
   const MAX = 10;
   class NameEntry {
     constructor(look, name, w) {
-      this.transparent = true; this.look = look; this.w = w; this.t = 0; this.r = 0; this.c = 0;
+      this.transparent = true; this.look = look; this.w = w; this.t = 0; this.r = 0; this.c = 0; this.grid = GRID;
       this.name = name || '';
       G.textInput = key => this.key(key);
     }
@@ -147,8 +171,19 @@
       else if (cell === 'SP') { if (this.name && !/ $/.test(this.name)) this.add(' '); }
       else this.add(cell);
     }
+    // tap areas (shared with draw): a letter cell, the close button (back to the creator)
+    cellRect(r, c) {
+      const cell = GRID[r][c], x = (G.W - 268) / 2, y = 14;
+      return { x: x + 14 + (r === 3 ? [0, 24, 48, 72, 96, 140, 196][c] : c * 24), y: y + 80 + r * 26, w: cell.length > 1 ? (cell === 'SP' ? 40 : 52) : 20, h: 22 };
+    }
+    backXY() { return [(G.W + 268) / 2 - 26, 20]; }
     update() {
       this.t++;
+      if (G.input.tap() && this.t > 5) { // tap a letter; the close button returns to the creator
+        if (G.btnHit(...this.backXY())) { G.audio.sfx('cancel'); this.done(null); return; }
+        GRID.forEach((row, r) => row.forEach((cell, c) => { const o = this.cellRect(r, c); if (G.tapIn(o.x - 2, o.y - 2, o.w + 4, o.h + 4)) { this.r = r; this.c = c; this.press(cell); } }));
+        if (this.w.done()) return;
+      }
       const d = G.input.repDir(14, 5);
       if (d === 'up' || d === 'down') { this.r = (this.r + (d === 'up' ? -1 : 1) + GRID.length) % GRID.length; this.c = Math.min(this.c, GRID[this.r].length - 1); G.audio.sfx('cursor'); }
       if (d === 'left' || d === 'right') { const n = GRID[this.r].length; this.c = (this.c + (d === 'left' ? -1 : 1) + n) % n; G.audio.sfx('cursor'); }
@@ -168,10 +203,10 @@
       ctx.fillStyle = '#8898e0'; ctx.fillRect(x + 82, y + 59, 170, 1);
       G.bigText(ctx, this.name, x + 84 + G.textWidth(this.name), y + 49, 2, '#ffffff');
       if ((this.t >> 4) % 2 === 0 && this.name.length < MAX) { ctx.fillStyle = '#f8e060'; ctx.fillRect(x + 86 + G.textWidth(this.name) * 2, y + 42, 2, 15); }
+      G.closeBtn(ctx, ...this.backXY());
       // letter grid
       GRID.forEach((row, r) => row.forEach((cell, c) => {
-        const wide = cell.length > 1, cx = x + 14 + (r === 3 ? [0, 24, 48, 72, 96, 140, 196][c] : c * 24), cy = y + 80 + r * 26;
-        const cw = wide ? (cell === 'SP' ? 40 : 52) : 20, sel = r === this.r && c === this.c;
+        const o = this.cellRect(r, c), cx = o.x, cy = o.y, cw = o.w, sel = r === this.r && c === this.c;
         G.win(ctx, cx, cy, cw, 22, sel ? { fill1: '#3a56c8', fill2: '#1c2c8c' } : { alpha: 0.75 });
         const col = sel ? '#f8e060' : '#ffffff';
         if (cell === 'SP') { ctx.fillStyle = col; ctx.fillRect(cx + 10, cy + 13, 20, 2); ctx.fillRect(cx + 10, cy + 10, 1, 4); ctx.fillRect(cx + 29, cy + 10, 1, 4); }

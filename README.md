@@ -18,7 +18,7 @@ It uses the same hand-drawn-in-code engine as *Embers of Aldmere*: pixel tiles, 
 | C | hear the line again |
 | M | sound on/off |
 
-On phones and tablets, on-screen buttons appear.
+On phones and tablets, just tap: tap a spot to walk there, tap people to talk to them (and doors, signs or a sparkle to go or look there), tap a picture card to answer, tap the speaker to hear a line again, and the notebook button in the corner opens the menu. Every screen can be played with taps or with the keys.
 
 ## How it teaches (like *Tunic*: you start knowing almost nothing)
 - **No translations.** Characters speak short, simple Spanish. Meaning comes from pictures, context and what people do. (Grown-ups can turn on English in *Opciones → Inglés (padres)*.)
@@ -51,5 +51,6 @@ That's 30 words in 5 topics, with 5 notebook pages, 5 badges and a diploma. Prog
 - **Game:** `src/field.js` (exploring), `src/menus.js` (Cuaderno, Misiones, Guardar, Opciones), `src/maps.js` (townsfolk and errands), `src/story.js` (opening, party, diploma), `src/main.js` (title)
 - **Maps:** `tools/mapgen.py` generates `src/mapdata.js`
 - **Build:** `python3 tools/build.py` rebuilds the single-file `dist/` version
+- **Smoke test:** `NODE_PATH=$(npm root -g) node tools/smoke.js [screenshot dir]` plays the opening with taps on an iPad-sized touch screen and with the keyboard on a desktop (needs Playwright with Chromium installed globally)
 
 See `docs/CONTENT.md` for how to add words, characters and errands.

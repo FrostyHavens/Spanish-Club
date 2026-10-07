@@ -8,17 +8,23 @@
   const words = (...ids) => ids.map(id => ({ word: id }));
 
   // ---------- Button hints, in pictures ----------
+  // Keys on a keyboard, A/B/C with the on-screen pad; on a plain touch screen: tap, the menu button and the speaker.
   class KeyHint {
     constructor(w) { this.transparent = true; this.w = w; this.t = 0; }
-    update() { this.t++; if (this.t > 30 && (G.input.p('A') || G.input.p('B'))) { G.pop(); this.w.resolve(); } }
+    update() { this.t++; if (this.t > 30 && (G.input.p('A') || G.input.p('B') || G.input.tap())) { G.pop(); this.w.resolve(); } }
     key(ctx, k, x, y) { G.win(ctx, x, y, 22, 20, { fill1: '#e8e8f0', fill2: '#b8b8c8', alpha: 1 }); G.textC(ctx, k, x + 11, y + 6, '#202040', null); }
     draw(ctx) {
       const x = G.W / 2 - 70, y = 40;
       G.win(ctx, x, y, 140, 104);
-      const touch = !!document.getElementById('tcpad');
-      this.key(ctx, touch ? 'A' : 'Z', x + 14, y + 10); G.drawIcon16(ctx, 'pregunta', x + 44, y + 12); G.drawIcon16(ctx, 'si', x + 64, y + 12);
-      this.key(ctx, touch ? 'B' : 'X', x + 14, y + 40); G.drawIcon(ctx, 'book', x + 42, y + 40); G.drawIcon(ctx, 'quest', x + 68, y + 40);
-      this.key(ctx, 'C', x + 14, y + 70); // C: hear it again
+      const pad = !!(G.prefs && G.prefs.dpad), tap = G.touch && !pad;
+      if (tap) { // a fingertip with a pulsing tap ring
+        ctx.strokeStyle = '#f8e060'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x + 25, y + 20, 5 + ((this.t >> 3) % 3) * 2, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = '#f0c8a0'; ctx.beginPath(); ctx.arc(x + 25, y + 20, 4, 0, Math.PI * 2); ctx.fill();
+      } else this.key(ctx, pad ? 'A' : 'Z', x + 14, y + 10);
+      G.drawIcon16(ctx, 'pregunta', x + 44, y + 12); G.drawIcon16(ctx, 'si', x + 64, y + 12);
+      if (tap) G.iconBtn(ctx, 'menu', x + 15, y + 40); else this.key(ctx, pad ? 'B' : 'X', x + 14, y + 40);
+      G.drawIcon(ctx, 'book', x + 42, y + 40); G.drawIcon(ctx, 'quest', x + 68, y + 40);
+      if (tap) G.iconBtn(ctx, 'speaker', x + 15, y + 70); else this.key(ctx, 'C', x + 14, y + 70); // C: hear it again
       ctx.fillStyle = '#f8e060'; ctx.fillRect(x + 46, y + 76, 4, 8); ctx.fillRect(x + 50, y + 73, 2, 14); ctx.fillRect(x + 52, y + 71, 2, 18);
       for (let i = 0; i < 3; i++) { ctx.fillRect(x + 58 + i * 4, y + 78 - i * 2, 1, 4 + i * 4); }
       if ((this.t >> 4) % 2 === 0) G.text(ctx, '\u0001', x + 124, y + 90, '#f8e060');
@@ -68,7 +74,7 @@
   // ---------- Diploma ----------
   class Diploma {
     constructor(w) { G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; }
-    update() { this.t++; if (this.t > 60 && (G.input.p('A') || G.input.p('B'))) { G.pop(); this.w.resolve(); } }
+    update() { this.t++; if (this.t > 60 && (G.input.p('A') || G.input.p('B') || G.input.tap())) { G.pop(); this.w.resolve(); } }
     draw(ctx) {
       const x = 24, y = 14, w = G.W - 48, h = G.H - 28;
       ctx.fillStyle = '#5a3810'; ctx.fillRect(x - 3, y - 3, w + 6, h + 6);

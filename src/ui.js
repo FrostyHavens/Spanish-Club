@@ -93,25 +93,29 @@
       this.boxX = hasP ? 70 : 8; this.boxW = G.W - this.boxX - 8;
       const t = this.pages[this.pi].t;
       G.richIds(t).forEach(id => G.st && G.st.see(id));
-      this.lines = G.richLayout(t, this.boxW - 18);
+      this.lines = G.richLayout(t, this.boxW - 18 - (this.opts.noVoice ? 0 : 24)); // room for the speaker button
       this.shown = 0; this.scroll = 0; this.t = 0;
       this.spoke = !!this.opts.noVoice;
     }
     chars(a, b) { return this.lines.slice(a, b).reduce((s, L) => s + L.chars, 0); }
+    boxY() { return this.opts.pos === 'top' ? 6 : G.H - 66; }
+    spk() { return [this.boxX + this.boxW - 26, this.boxY() + 6]; } // "hear it again" button
     update() {
       this.t++;
       if (!this.spoke) { this.spoke = true; G.speak(G.plain(this.pages[this.pi].t)); }
+      if (!this.opts.noVoice && G.speakerHit(...this.spk())) { G.input.eat(); G.speak(G.plain(this.pages[this.pi].t)); }
       if (G.input.p('C')) G.speak(G.plain(this.pages[this.pi].t));
+      const go = G.input.p('A') || G.input.p('B') || !!G.input.tap(); // a tap anywhere = A
       const target = this.chars(0, this.scroll + 3);
       if (this.shown < target) {
         const sp = G.input.h('A') || G.input.h('B') ? 4 : 1;
         this.shown = Math.min(target, this.shown + sp);
         if (this.t % 3 === 0 && !this.opts.silent) G.audio.sfx('text');
-        if ((G.input.p('A') || G.input.p('B')) && this.t > 4) this.shown = target;
+        if (go && this.t > 4) this.shown = target;
         return;
       }
       if (this.opts.auto) { if (this.t > this.opts.auto) this.next(); return; }
-      if (G.input.p('A') || G.input.p('B')) this.next();
+      if (go) this.next();
     }
     next() {
       if (this.scroll + 3 < this.lines.length) { this.scroll += 3; this.t = 0; return; }
@@ -121,7 +125,7 @@
     }
     draw(ctx) {
       const top = this.opts.pos === 'top';
-      const h = 60, y = top ? 6 : G.H - h - 6;
+      const h = 60, y = this.boxY();
       if (this.opts.portrait) {
         const py = top ? 6 : G.H - 60 - 6;
         G.win(ctx, 6, py, 60, 60);
@@ -133,6 +137,7 @@
       G.richDraw(ctx, this.lines, this.boxX + 9, y + 6, { from: this.scroll, n: 3, chars: this.shown - this.chars(0, this.scroll) });
       const done = this.shown >= this.chars(0, this.scroll + 3);
       if (done && !this.opts.auto && (this.t >> 4) % 2 === 0) G.text(ctx, '\u0001', this.boxX + this.boxW - 14, y + h - 12, '#f8e060');
+      if (!this.opts.noVoice) G.speakerBtn(ctx, ...this.spk());
       const en = this.pages[this.pi].en;
       if (en && G.enVisible()) G.enBox(ctx, en, top ? y + h + 2 : y - (name ? 14 : 0), top);
     }
@@ -159,7 +164,8 @@
   };
   // Mobile browsers need extra care:
   //  - iOS Safari / Android Chrome only allow speech after it has been started inside a real tap or key
-  //    press, so the first touch "primes" it with a silent utterance (G.primeSpeech, called from core.js);
+  //    press, so the first one "primes" it with a silent utterance (G.primeSpeech, called from core.js on a key
+  //    press, a mouse press or a finger lifting: a finger going down doesn't count as a tap there);
   //  - cancel() immediately followed by speak() often drops the new line, so we wait a moment after cancelling;
   //  - speech can get stuck "paused", so we resume() first; and we keep a reference to the current
   //    utterance so it isn't garbage-collected mid-sentence.
@@ -239,24 +245,37 @@
       this.transparent = true; this.w = w; this.opts = opts || {};
       this.items = items.map(it => typeof it === 'string' ? { label: it } : it);
       this.i = G.clamp(this.opts.start || 0, 0, Math.max(0, this.items.length - 1)); this.top = 0; this.t = 0;
-      this.rows = Math.min(this.items.length, this.opts.maxRows || 8);
+      this.rows = Math.min(this.items.length, this.opts.maxRows || 8); this.rh = this.opts.rowH || 12;
       const iw = Math.max(...this.items.map(it => G.textWidth(it.label) + (it.right ? G.textWidth(it.right) + 14 : 0)), this.opts.title ? G.textWidth(this.opts.title) : 0);
       this.wd = this.opts.w || iw + 30;
-      this.ht = this.rows * 12 + 14 + (this.opts.title ? 12 : 0);
+      this.ht = this.rows * this.rh + 14 + (this.opts.title ? 12 : 0);
       this.x = this.opts.x != null ? this.opts.x : Math.floor((G.W - this.wd) / 2);
       this.y = this.opts.y != null ? this.opts.y : Math.floor((G.H - this.ht) / 2);
       this.opts.onMove && this.opts.onMove(this.i);
     }
+    // tap areas: row r on screen (item this.top + r); the ^ / v scroll strips above and below the rows (reaching
+    // 10 px outside the window, so they are big enough to hit); the close button just outside the window (right, else left)
+    rowRect(r) { return { x: this.x + 3, y: this.y + 6 + (this.opts.title ? 12 : 0) + r * this.rh, w: this.wd - 6, h: this.rh }; }
+    scrollRect(down) { const a = down ? this.rowRect(this.rows).y : this.y - 10, b = down ? this.y + this.ht + 10 : this.rowRect(0).y; return { x: this.x, y: a, w: this.wd, h: b - a }; }
+    closeXY() { const r = this.x + this.wd + 2; return [r + G.BTN <= G.W ? r : Math.max(0, this.x - G.BTN - 2), this.y]; }
     update() {
       this.t++;
-      const n = this.items.length; if (!n) { if (G.input.p('B') || G.input.p('A')) { G.pop(); this.w.resolve(-1); } return; }
-      const d = G.input.repDir(14, 4);
+      const n = this.items.length; if (!n) { if (G.input.p('B') || G.input.p('A') || G.input.tap()) { G.pop(); this.w.resolve(-1); } return; }
+      const d = G.input.repDir(14, 4), i0 = this.i;
+      let tapped = false;
+      if (G.input.tap()) { // tap a row = pick it; the ^ / v arrows scroll
+        if (this.opts.cancel !== false && G.closeHit(...this.closeXY())) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(-1); return; }
+        if (this.top > 0 && G.tapIn(this.scrollRect(false))) { this.i = this.top - 1; G.audio.sfx('cursor'); }
+        else if (this.top + this.rows < n && G.tapIn(this.scrollRect(true))) { this.i = this.top + this.rows; G.audio.sfx('cursor'); }
+        else for (let r = 0; r < this.rows; r++) if (this.items[this.top + r] && G.tapIn(this.rowRect(r))) { this.i = this.top + r; tapped = true; }
+        if (this.i !== i0) this.opts.onMove && this.opts.onMove(this.i);
+      }
       if (d === 'up' || d === 'down') {
         this.i = (this.i + (d === 'up' ? -1 : 1) + n) % n; G.audio.sfx('cursor');
         this.opts.onMove && this.opts.onMove(this.i);
       }
       if (this.i < this.top) this.top = this.i; if (this.i >= this.top + this.rows) this.top = this.i - this.rows + 1;
-      if (G.input.p('A')) {
+      if (G.input.p('A') || tapped) {
         const it = this.items[this.i];
         if (it.disabled) { G.audio.sfx('error'); return; }
         G.audio.sfx('ok'); if (!this.opts.keep) G.pop(); this.w.resolve(this.i);
@@ -266,15 +285,17 @@
       G.win(ctx, this.x, this.y, this.wd, this.ht);
       let y = this.y + 8;
       if (this.opts.title) { G.text(ctx, this.opts.title, this.x + 9, y, '#f8e060'); y += 12; }
+      const ty = r => y + r * this.rh + ((this.rh - 12) >> 1);
       for (let r = 0; r < this.rows; r++) {
         const idx = this.top + r, it = this.items[idx]; if (!it) break;
         const col = it.disabled ? '#7078a0' : (it.color || '#fff');
-        G.text(ctx, it.label, this.x + 17, y + r * 12, col);
-        if (it.right) G.textR(ctx, it.right, this.x + this.wd - 9, y + r * 12, col);
-        if (idx === this.i && (this.t >> 3) % 4 !== 3) G.text(ctx, '\u0002', this.x + 8, y + r * 12, '#f8e060');
+        G.text(ctx, it.label, this.x + 17, ty(r), col);
+        if (it.right) G.textR(ctx, it.right, this.x + this.wd - 9, ty(r), col);
+        if (idx === this.i && (this.t >> 3) % 4 !== 3) G.text(ctx, '\u0002', this.x + 8, ty(r), '#f8e060');
       }
       if (this.top > 0) G.textC(ctx, '^', this.x + this.wd / 2, this.y + 2, '#f8e060');
       if (this.top + this.rows < this.items.length) G.textC(ctx, '\u0001', this.x + this.wd / 2, this.y + this.ht - 8, '#f8e060');
+      if (this.opts.cancel !== false) G.closeBtn(ctx, ...this.closeXY());
       const cur = this.items[this.i];
       if (cur && cur.en && G.enVisible()) G.enBox(ctx, cur.en, this.y);
       if (this.opts.help) {
@@ -292,31 +313,39 @@
   class CrossMenu {
     cancel() { G.pop(); this.w.resolve(null); }
     constructor(entries, opts, w) { this.transparent = true; this.e = entries; this.opts = opts || {}; this.w = w; this.sel = 'up'; this.t = 0; }
+    center() { return [this.opts.x != null ? this.opts.x : G.W / 2, this.opts.y != null ? this.opts.y : G.H - 52]; }
+    iconRect(d) { const [cx, cy] = this.center(), [dx, dy] = CROSS[d]; return { x: cx + dx - 12, y: cy + dy - 10, w: 24, h: 20 }; }
+    labelRect() { const [cx, cy] = this.center(); return { x: cx + 48, y: cy - 8, w: Math.max(56, G.textWidth(this.e[this.sel].label) + 18), h: 20 }; }
     update() {
       this.t++;
       const d = G.input.repDir(20, 10);
       if (d && this.e[d]) { if (d !== this.sel) G.audio.sfx('cursor'); this.sel = d; }
-      if (G.input.p('A')) {
+      let tapped = false;
+      if (G.input.tap()) { // tap an icon (or the label) to pick it; the close button = B
+        if (G.closeHit()) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(null); return; }
+        tapped = G.tapIn(this.labelRect());
+        for (const k in this.e) { const r = this.iconRect(k); if (G.tapIn(r.x - 2, r.y - 2, r.w + 4, r.h + 4)) { this.sel = k; tapped = true; } }
+      }
+      if (G.input.p('A') || tapped) {
         const en = this.e[this.sel];
         if (en.disabled) { G.audio.sfx('error'); return; }
         G.audio.sfx('ok'); G.pop(); this.w.resolve(this.sel);
       } else if (G.input.p('B')) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(null); }
     }
     draw(ctx) {
-      const cx = this.opts.x != null ? this.opts.x : G.W / 2, cy = this.opts.y != null ? this.opts.y : G.H - 52;
-      const pos = { up: [0, -22], left: [-30, 0], right: [30, 0], down: [0, 22] };
       for (const d of ['up', 'left', 'right', 'down']) {
         const en = this.e[d]; if (!en) continue;
-        const [dx, dy] = pos[d]; const s = d === this.sel;
+        const r = this.iconRect(d), s = d === this.sel;
         const bob = s ? Math.round(Math.sin(this.t / 5) * 1.5) : 0;
-        G.drawIcon(ctx, en.icon, cx + dx - 12, cy + dy - 10 + bob, s, en.disabled);
+        G.drawIcon(ctx, en.icon, r.x, r.y + bob, s, en.disabled);
       }
-      const lab = this.e[this.sel].label;
-      const lw = G.textWidth(lab) + 18;
-      G.win(ctx, cx + 48, cy - 8, Math.max(56, lw), 20);
-      G.text(ctx, lab, cx + 57, cy - 2, this.e[this.sel].disabled ? '#7078a0' : '#fff');
+      const L = this.labelRect();
+      G.win(ctx, L.x, L.y, L.w, L.h);
+      G.text(ctx, this.e[this.sel].label, L.x + 9, L.y + 6, this.e[this.sel].disabled ? '#7078a0' : '#fff');
+      G.closeBtn(ctx);
     }
   }
+  const CROSS = { up: [0, -22], left: [-30, 0], right: [30, 0], down: [0, 22] };
   G.cross = function (entries, opts) { const w = new Wait(); G.push(new CrossMenu(entries, opts, w)); return w; };
 
   // ---------- Icons (procedural 24x20 framed tiles) ----------
@@ -354,5 +383,34 @@
     ctx.drawImage(spr, Math.round(x + 12 - spr.width / 2), Math.round(y + 10 - spr.height / 2));
     ctx.globalAlpha = 1;
   };
+
+  // ---------- Tap buttons: 20x20 on the canvas, tap area padded to 28x28 (see the input notes in core.js) ----------
+  const BTN_ART = {
+    close: ['ww......ww', 'www....www', '.www..www.', '..wwwwww..', '...wwww...', '...wwww...', '..wwwwww..', '.www..www.', 'www....www', 'ww......ww'],
+    back: ['....ww', '...www', '..www.', '.www..', 'www...', 'ww....', 'www...', '.www..', '..www.', '...www', '....ww'],
+    speaker: ['....w.......', '...ww.....w.', '..www..w...w', 'wwwww...w..w', 'wwwww...w..w', 'wwwww...w..w', '..www..w...w', '...ww.....w.', '....w.......'],
+  };
+  G.BTN = 20;
+  G.btnHit = (x, y) => G.tapIn(x - 4, y - 4, G.BTN + 8, G.BTN + 8);
+  G.iconBtn = function (ctx, kind, x, y) {
+    x = Math.round(x); y = Math.round(y);
+    const on = G.input.holding(x - 4, y - 4, G.BTN + 8, G.BTN + 8) > 0;
+    ctx.fillStyle = '#000010'; ctx.fillRect(x + 1, y, 18, 20); ctx.fillRect(x, y + 1, 20, 18);
+    ctx.fillStyle = on ? '#f0d060' : '#8898e0'; ctx.fillRect(x + 1, y + 1, 18, 18);
+    ctx.fillStyle = on ? '#304cc0' : '#1c2c8c'; ctx.fillRect(x + 2, y + 2, 16, 16);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x + 2, y + 2, 16, 3);
+    let spr;
+    if (kind === 'menu') spr = G.sprite('icon_book', ICON_ART.book, ICON_PAL); // the notebook, like the field menu's Cuaderno
+    else {
+      const art = BTN_ART[kind === 'next' ? 'back' : kind]; if (!art) return;
+      spr = G.sprite('btn_' + kind, art, { w: '#f0f0ff' }, kind === 'next');
+      ctx.drawImage(G.tinted(spr, '#000010', 'btn_' + kind), x + 11 - (spr.width >> 1), y + 11 - (spr.height >> 1));
+    }
+    ctx.drawImage(spr, x + 10 - (spr.width >> 1), y + 10 - (spr.height >> 1));
+  };
+  G.closeBtn = (ctx, x = G.W - 26, y = 6) => G.iconBtn(ctx, 'close', x, y);
+  G.closeHit = (x = G.W - 26, y = 6) => G.btnHit(x, y);
+  G.speakerBtn = (ctx, x, y) => G.iconBtn(ctx, 'speaker', x, y);
+  G.speakerHit = (x, y) => G.btnHit(x, y);
 
 })();

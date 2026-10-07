@@ -25,15 +25,27 @@
     constructor(w, start) { G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; this.pi = Math.max(0, D().pageOrder.indexOf(start)); this.wi = 0; }
     page() { return D().pageOrder[this.pi]; }
     words() { return D().pages[this.page()].words; }
+    // tap areas (shared with draw): word k on the page, the < > page buttons around the page dots, close
+    cellRect(k) { return { x: 18 + (k % 3) * 96, y: 34 + Math.floor(k / 3) * 58, w: 92, h: 56 }; }
+    prevXY() { return [G.W / 2 - 60, 4]; }
+    nextXY() { return [G.W / 2 + 36, 4]; }
+    closeXY() { return [G.W - 30, 8]; }
+    turn(dx) { this.pi = (this.pi + dx + D().pageOrder.length) % D().pageOrder.length; this.wi = 0; G.audio.sfx('select'); }
     update() {
       this.t++;
       const d = G.input.repDir(14, 5), found = S().hasPage(this.page()), n = this.words().length;
-      if (G.input.p('B')) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); return; }
+      if (G.input.p('B') || G.closeHit(...this.closeXY())) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); return; }
+      if (G.btnHit(...this.prevXY())) { this.turn(-1); return; }
+      if (G.btnHit(...this.nextXY())) { this.turn(1); return; }
+      if (found) for (let k = 0; k < n; k++) if (G.tapIn(this.cellRect(k))) { // tap a word: hear it
+        if (this.wi !== k) G.audio.sfx('cursor');
+        this.wi = k; if (S().seen(this.words()[k])) G.speak(G.baseForm(this.words()[k]));
+      }
       // left/right moves within the page's 3-column grid, and past its edge turns the page
       if (d === 'left' || d === 'right') {
         const col = this.wi % 3, dx = d === 'left' ? -1 : 1;
         if (found && col + dx >= 0 && col + dx < 3 && this.wi + dx < n) { this.wi += dx; G.audio.sfx('cursor'); }
-        else { this.pi = (this.pi + dx + D().pageOrder.length) % D().pageOrder.length; this.wi = 0; G.audio.sfx('select'); return; }
+        else { this.turn(dx); return; }
       }
       if (found && (d === 'up' || d === 'down')) { const k = this.wi + (d === 'up' ? -3 : 3); if (k >= 0 && k < n) { this.wi = k; G.audio.sfx('cursor'); } }
       if (found && (G.input.p('A') || G.input.p('C'))) { const id = this.words()[this.wi]; if (S().seen(id)) G.speak(G.baseForm(id)); }
@@ -41,7 +53,7 @@
     draw(ctx) {
       G.win(ctx, 6, 6, G.W - 12, G.H - 12, { fill1: '#f4ecd8', fill2: '#e0d4b8', alpha: 1 });
       const pid = this.page(), found = S().hasPage(pid);
-      G.text(ctx, '<', 14, 12, '#7a4a20', null); G.textR(ctx, '>', G.W - 14, 12, '#7a4a20', null);
+      G.iconBtn(ctx, 'back', ...this.prevXY()); G.iconBtn(ctx, 'next', ...this.nextXY()); G.closeBtn(ctx, ...this.closeXY());
       // page dots
       D().pageOrder.forEach((p, k) => {
         const x = G.W / 2 - 34 + k * 14;
@@ -55,9 +67,9 @@
       }
       const tp = D().topics[D().pages[pid].topic];
       G.textC(ctx, tp.name, G.W / 2, 24, '#a05020', null);
-      if (G.enVisible()) G.textR(ctx, tp.en, G.W - 16, 24, '#a09070', null);
+      if (G.enVisible()) G.text(ctx, tp.en, 16, 24, '#a09070', null);
       this.words().forEach((id, k) => {
-        const cx = 22 + (k % 3) * 96, cy = 36 + Math.floor(k / 3) * 58, sel = k === this.wi;
+        const R = this.cellRect(k), cx = R.x + 4, cy = R.y + 2, sel = k === this.wi;
         const wd = D().words[id], seen = S().seen(id), kn = S().knows(id);
         if (sel) { ctx.fillStyle = '#f8e0a0'; ctx.fillRect(cx - 4, cy - 2, 92, 56); }
         G.drawIcon16(ctx, wd, cx + 26, cy, 2);
@@ -73,9 +85,10 @@
   // ---------- Misiones: who asked, and what they want (pictures only) ----------
   class QuestLog {
     constructor(w) { G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; }
-    update() { this.t++; if (G.input.p('A') || G.input.p('B')) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); } }
+    update() { this.t++; if (G.input.p('A') || G.input.p('B') || G.input.tap()) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); } } // a tap anywhere closes
     draw(ctx) {
       G.win(ctx, 6, 6, G.W - 12, G.H - 12);
+      G.closeBtn(ctx, G.W - 30, 8);
       G.drawIcon(ctx, 'quest', G.W / 2 - 12, 8);
       const list = D().questOrder.filter(id => S().quest(id));
       if (!list.length) G.bigText(ctx, '?', G.W / 2, 80, 3, '#404878');
@@ -102,7 +115,7 @@
   // ---------- Opciones (mostly for grown-ups) ----------
   // Up/down picks a row; left/right moves a volume slider (0..10); A changes the other rows.
   class Options {
-    constructor(w) { this.transparent = true; this.w = w; this.t = 0; this.i = 0; }
+    constructor(w) { this.transparent = true; this.w = w; this.t = 0; this.i = 0; this.n = this.rows().length; }
     rows() {
       const voices = G.spanishVoices(), cur = G.currentVoice();
       return [
@@ -118,31 +131,42 @@
       if (kind === 'sfx') G.audio.sfx('coin');
       else if (kind === 'voice') G.speak('¡Hola!');
     }
+    vol(kind, level) { const before = G.prefs[kind]; G.audio.setVolume(kind, level); if (G.prefs[kind] !== before) this.sample(kind); }
+    // tap areas (shared with draw): row k, the volume bar's left edge (cells are 9 px; left of it = 0), close
+    box() { const W = 220, H = this.n * 18 + 28; return { x: (G.W - W) / 2, y: 40, W, H }; }
+    rowRect(k) { const b = this.box(); return { x: b.x + 4, y: b.y + 19 + k * 18, w: b.W - 8, h: 18 }; }
+    barX() { return this.box().x + 100; }
+    closeXY() { const b = this.box(); return [b.x + b.W - 16, b.y - 6]; }
     update() {
       this.t++;
-      const rows = this.rows(), r = rows[this.i];
-      const d = G.input.repDir(14, 5);
+      const rows = this.rows();
+      if (G.input.tap()) { // tap a row to pick it (and change it); tap a volume bar to set the level
+        if (G.closeHit(...this.closeXY())) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); return; }
+        const k = rows.findIndex((r, i) => G.tapIn(this.rowRect(i))), tx = G.input.tap().x, bx = this.barX();
+        if (k >= 0 && k !== this.i) { this.i = k; G.audio.sfx('cursor'); }
+        if (k >= 0 && rows[k].vol && tx >= bx - 12) this.vol(rows[k].vol, tx < bx ? 0 : Math.floor((tx - bx) / 9) + 1);
+        else if (k >= 0 && !rows[k].vol) this.act();
+      }
+      const r = rows[this.i], d = G.input.repDir(14, 5);
       if (d === 'up' || d === 'down') { this.i = (this.i + (d === 'up' ? -1 : 1) + rows.length) % rows.length; G.audio.sfx('cursor'); }
-      if (r.vol && (d === 'left' || d === 'right')) {
-        const before = G.prefs[r.vol];
-        G.audio.setVolume(r.vol, before + (d === 'left' ? -1 : 1));
-        if (G.prefs[r.vol] !== before) this.sample(r.vol);
-      }
-      if (G.input.p('A')) {
-        if (this.i === 3) {
-          const voices = G.spanishVoices(), cur = G.currentVoice();
-          if (!voices.length) { G.audio.sfx('error'); return; }
-          G.state.opts.voiceName = voices[(voiceIndex(voices, cur) + 1) % voices.length].name;
-          G.audio.setPref('voiceMode', 0);
-          if (!G.prefs.voice) G.audio.setVolume('voice', 7);
-          G.speak('¡Hola! Hoy es tu primer día en el Club de Español.');
-        } else if (this.i === 4) { G.state.opts.english = !G.state.opts.english; G.audio.sfx('ok'); }
-      }
+      if (r.vol && (d === 'left' || d === 'right')) this.vol(r.vol, G.prefs[r.vol] + (d === 'left' ? -1 : 1));
+      if (G.input.p('A')) this.act();
       if (G.input.p('B')) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); }
     }
+    act() { // A on a row
+      if (this.i === 3) {
+        const voices = G.spanishVoices(), cur = G.currentVoice();
+        if (!voices.length) { G.audio.sfx('error'); return; }
+        G.state.opts.voiceName = voices[(voiceIndex(voices, cur) + 1) % voices.length].name;
+        G.audio.setPref('voiceMode', 0);
+        if (!G.prefs.voice) G.audio.setVolume('voice', 7);
+        G.speak('¡Hola! Hoy es tu primer día en el Club de Español.');
+      } else if (this.i === 4) { G.state.opts.english = !G.state.opts.english; G.audio.sfx('ok'); }
+    }
     draw(ctx) {
-      const rows = this.rows(), W = 220, H = rows.length * 18 + 28, x = (G.W - W) / 2, y = 40;
+      const rows = this.rows(), { x, y, W, H } = this.box();
       G.win(ctx, x, y, W, H);
+      G.closeBtn(ctx, ...this.closeXY());
       G.text(ctx, 'OPCIONES', x + 9, y + 8, '#f8e060');
       rows.forEach((r, k) => {
         const yy = y + 24 + k * 18, sel = k === this.i;
@@ -150,7 +174,7 @@
         if (r.icon) volIcon(ctx, r.icon, x + 18, yy - 1, r.vol && !G.prefs[r.vol]);
         G.text(ctx, r.label, x + (r.icon ? 32 : 18), yy, sel ? '#f8e060' : '#ffffff');
         if (r.vol) {
-          const v = G.prefs[r.vol], bx = x + 100;
+          const v = G.prefs[r.vol], bx = this.barX();
           if (sel) G.text(ctx, '<', bx - 8, yy, '#f8e060');
           for (let s = 0; s < 10; s++) { ctx.fillStyle = s < v ? (sel ? '#f8d030' : '#c8d0f0') : '#303a78'; ctx.fillRect(bx + s * 9, yy + 6 - Math.floor(s / 2), 7, 2 + Math.floor(s / 2)); }
           if (sel) G.text(ctx, '>', bx + 92, yy, '#f8e060');
