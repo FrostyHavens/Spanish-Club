@@ -192,6 +192,7 @@
         if (s.run) yield* s.run(this);
         return;
       }
+      if (G.ambient && G.ambient.poke(this, fx, fy)) return; // pet the cat on the fence
       yield G.say({ t: '...', en: 'Nothing here.' }, { noVoice: true });
     }
     // ---------- NPC wandering ----------
@@ -223,6 +224,7 @@
         else { this.route = this.tapTarget(G.input.tap()); this.plan(this.route); }
       }
       this.tasks.update();
+      if (G.ambient) G.ambient.update(this); // the living town (ambient.js): critters, people who look at you, walkers
       const ct = this.camTarget(); this.cam.x += (ct.x - this.cam.x) * 0.3; this.cam.y += (ct.y - this.cam.y) * 0.3;
       if (Math.abs(ct.x - this.cam.x) < 0.5) this.cam.x = ct.x; if (Math.abs(ct.y - this.cam.y) < 0.5) this.cam.y = ct.y;
       if (this.banner) this.banner.t--;
@@ -256,6 +258,7 @@
           for (const [ax, ay] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const px = mx + i + ax * s + o, py = my + i + ay * s + o; ctx.fillRect(ax ? px - 3 : px, py, 4, 1); ctx.fillRect(px, ay ? py - 3 : py, 1, 4); }
         }
       }
+      if (G.ambient) G.ambient.draw(this, ctx, 'ground'); // birds on the ground, shadows
       const ents = this.npcs.filter(n => n.spec && !n.hidden).concat([this.player]).sort((a, b) => (a.y * T + a.oy) - (b.y * T + b.oy));
       for (const e of ents) {
         const moving = e.moving || e.ox || e.oy;
@@ -263,6 +266,7 @@
         const img = G.unitSprite(e.spec, e.dir, fr), bob = Math.abs(e.ox + e.oy) >= 6 && Math.abs(e.ox + e.oy) <= 18 ? 1 : 0; // a hop mid-step
         ctx.drawImage(img, Math.round(e.x * T + e.ox - cx), Math.round(e.y * T + e.oy - cy - 3) - bob);
       }
+      if (G.ambient) G.ambient.draw(this, ctx, 'air'); // birds in flight, butterflies, the cat
       // "!" bubbles over people who have something for the player (kids always know where to go next)
       for (const e of ents) {
         const al = e.alert && e.alert(); if (!al) continue;
