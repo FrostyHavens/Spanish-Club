@@ -107,10 +107,10 @@
       if (G.input.p('C')) G.speak(G.plain(this.pages[this.pi].t));
       const go = G.input.p('A') || G.input.p('B') || !!G.input.tap(); // a tap anywhere = A
       const target = this.chars(0, this.scroll + 3);
-      if (this.shown < target) {
-        const sp = G.input.h('A') || G.input.h('B') ? 4 : 1;
+      if (this.shown < target) { // the typewriter: 2 letters a frame (4 with A held); a tap shows the rest, the next tap goes on
+        const sp = G.input.h('A') || G.input.h('B') ? 4 : 2;
         this.shown = Math.min(target, this.shown + sp);
-        if (this.t % 3 === 0 && !this.opts.silent) G.audio.sfx('text');
+        if (this.t % 4 === 0 && !this.opts.silent) G.audio.sfx('text');
         if (go && this.t > 4) this.shown = target;
         return;
       }
@@ -136,13 +136,19 @@
       if (name) { const nw = G.textWidth(name) + 14; G.win(ctx, this.boxX + 6, y - 13, nw, 16); G.text(ctx, name, this.boxX + 13, y - 9, '#f8e060'); }
       G.richDraw(ctx, this.lines, this.boxX + 9, y + 6, { from: this.scroll, n: 3, chars: this.shown - this.chars(0, this.scroll) });
       const done = this.shown >= this.chars(0, this.scroll + 3);
-      if (done && !this.opts.auto && (this.t >> 4) % 2 === 0) G.text(ctx, '\u0001', this.boxX + this.boxW - 14, y + h - 12, '#f8e060');
+      if (done && !this.opts.auto) G.moreArrow(ctx, this.boxX + this.boxW - 16, y + h - 11, this.t);
       if (!this.opts.noVoice) G.speakerBtn(ctx, ...this.spk());
       const en = this.pages[this.pi].en;
       if (en && G.enVisible()) G.enBox(ctx, en, top ? y + h + 2 : y - (name ? 14 : 0), top);
     }
   }
   G.say = function (pages, opts) { const w = new Wait(); G.push(new TextBox(pages, opts, w)); return w; };
+  // the bouncing "go on" arrow at the end of a page or card (tap, or A)
+  G.moreArrow = function (ctx, x, y, t) {
+    y -= Math.round(Math.abs(Math.sin(t / 9)) * 3);
+    ctx.fillStyle = '#10102a'; for (let i = 0; i < 4; i++) ctx.fillRect(x + i + 1, y + i + 1, 7 - 2 * i, 1);
+    for (let i = 0; i < 4; i++) { ctx.fillStyle = i ? '#f8e060' : '#fff8c0'; ctx.fillRect(x + i, y + i, 7 - 2 * i, 1); }
+  };
 
   // ---------- Spoken Spanish (browser speech synthesis; silently skipped if unavailable) ----------
   // Default: a North American voice (Mexico, then the US, then other Latin American), Spain only as a
