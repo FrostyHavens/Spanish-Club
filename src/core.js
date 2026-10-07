@@ -189,6 +189,7 @@ function step() {
   if (G.fx.flash > 0) G.fx.flash--;
   for (const k in G.keys) if (G.keys[k]) G.repeatT[k] = (G.repeatT[k] || 0) + 1;
   if (G.toastT > 0) G.toastT--;
+  if (G.day) G.day.step(); if (G.hint) G.hint.step(); // the day's clock (day.js), tap hints (hint.js): before input clears
   G.input.endFrame();
   G.audio && G.audio.tick();
 }
@@ -206,6 +207,7 @@ function draw() {
   if (G.fx.flash > 0) { ctx.globalAlpha = Math.min(1, G.fx.flash / 6); ctx.fillStyle = G.fx.flashColor; ctx.fillRect(0, 0, G.W, G.H); ctx.globalAlpha = 1; }
   if (G.fade.a > 0) { ctx.globalAlpha = G.fade.a; ctx.fillStyle = G.fade.color; ctx.fillRect(0, 0, G.W, G.H); ctx.globalAlpha = 1; }
   if (G.toastT > 0 && G.win) { const w = G.textWidth(G.toastMsg) + 20; ctx.globalAlpha = Math.min(1, G.toastT / 15); G.win(ctx, (G.W - w) / 2, 40, w, 20); G.textC(ctx, G.toastMsg, G.W / 2, 46, '#f8e060'); ctx.globalAlpha = 1; }
+  if (G.hint) G.hint.draw(ctx); // the tapping hand, the keyboard strip (hint.js)
 }
 G.toast = (msg, t = 90) => { G.toastMsg = msg; G.toastT = t; };
 G.step = step; G.drawFrame = draw;

@@ -184,6 +184,7 @@
   // ---------- Mi casa ----------
   G.maps.casa = {
     name: 'Mi casa', icon: 'casa', rows: MD.casa.rows, music: 'headquarters',
+    onEnter: function* (f) { if (G.day) yield* G.day.evening(f); }, // home after sunset: good night, Hoy, a new morning
     exits: [Object.assign(exitAt('casa', 'casaDoor'), {
       run: function* () {
         if (F().intro) return true;
@@ -191,9 +192,10 @@
       } })],
     npcs: [
       { id: 'mama', npc: 'mama', x: P('casa', 'mama')[0], y: P('casa', 'mama')[1], dir: 'down', fixed: true,
-        alert: () => !F().intro,
-        talk: function* () {
+        alert: () => !F().intro || !!(G.day && G.day.over()),
+        talk: function* (f) {
           if (!F().intro) { yield* G.story.mamaIntro(); return; }
+          if (G.day && G.day.over()) { yield* G.day.evening(f); return; } // already home when the sun went down
           if (S.done('fiesta')) yield* say('mama', T('¡{name}! ¡Muy bien!', '{name}! Well done!'));
           else yield* say('mama', T('La [escuela]. ¡Vamos!', 'The school. Off you go!'));
         } },
