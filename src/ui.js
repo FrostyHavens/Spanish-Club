@@ -234,6 +234,8 @@
       attempt(clean, Math.min(MODES - 1, G.prefs.voiceMode || 0), 0);
     } catch (e) { G.voiceStatus = 'error'; }
   };
+  // stop talking now, and drop a line still waiting to start or to be retried (speech.js calls it before listening)
+  G.hush = function () { current = null; clearTimeout(timer); clearTimeout(watch); musicBack(); lastCancel = performance.now(); try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) { } };
 
 
 

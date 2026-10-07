@@ -49,8 +49,10 @@ That's 30 words in 5 topics, with 5 notebook pages, 5 badges and a diploma. Prog
 - **Engine (shared with Embers of Aldmere):** `src/core.js`, `src/gfx.js` (bitmap font, with Spanish letters added), `src/ui.js` (dialogue with English help, menus), `src/audio.js`, `src/music.js`, `src/tiles.js`, `src/sprites.js`
 - **Learning:** `src/data.js` (vocabulary, notebook pages, errands, characters), `src/icons.js` (word pictures), `src/learn.js` (picture questions, learning by doing, word cards, errand cards, badges), `src/state.js` (seen/learned words, pages, save). Picture-words in dialogue are drawn by the rich text in `src/ui.js`.
 - **Game:** `src/field.js` (exploring), `src/menus.js` (Cuaderno, Misiones, Guardar, Opciones), `src/maps.js` (townsfolk and errands), `src/story.js` (opening, party, diploma), `src/main.js` (title)
+- **Speaking (being tested):** `src/speech.js` listens for a Spanish word with the browser's speech recognition and scores what it heard (`G.speech.listen`, `G.speech.match`); `src/mictest.js` is the grown-ups' microphone test (`G.micTest()`), which shows what the device heard and logs whether the game's voice still works after the mic. On iPad it needs Safari with Dictation turned on (*Settings → General → Keyboard → Enable Dictation*).
 - **Maps:** `tools/mapgen.py` generates `src/mapdata.js`
 - **Build:** `python3 tools/build.py` rebuilds the single-file `dist/` version
 - **Smoke test:** `NODE_PATH=$(npm root -g) node tools/smoke.js [screenshot dir]` plays the opening with taps on an iPad-sized touch screen and with the keyboard on a desktop (needs Playwright with Chromium installed globally)
+- **Speech test:** `NODE_PATH=$(npm root -g) node tools/test-speech.js [screenshot dir]` checks the word matching in plain Node and drives the mic test with a fake recognizer (`sh tools/test-all.sh` runs every test)
 
 See `docs/CONTENT.md` for how to add words, characters and errands.
