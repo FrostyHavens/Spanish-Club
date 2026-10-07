@@ -38,7 +38,7 @@ async function touchRun(browser) {
     // a tap the scene eats (the menu button) still gets its ripple
     await g.until(() => G.fx.live('ring') === 0, null, 'the old ripple to fade');
     await g.tap(G_W - 16, 16);
-    await g.until(() => G.top().constructor.name === 'CrossMenu', null, 'the field menu');
+    await g.until(() => G.top().constructor.name === 'FieldMenu', null, 'the field menu');
     check('fx: the menu button\'s (eaten) tap gets a ripple too', await g.ev(() => G.fx.live('ring') > 0 && !G.field.route));
     await g.tap(G_W - 16, 16);
     await g.fieldIdle('villa');

@@ -78,8 +78,7 @@ async function touchRun(browser) {
     check('ipad: G.setDpad(false) hides it', !(await padShown()) && await g.ev(() => G.prefs.dpad === false));
     await g.shot('title');
 
-    await g.tapRect(await g.ev(() => G.top().rowRect(0))); // Nuevo juego
-    await g.until(() => G.top().constructor.name === 'Creator', null, 'the character creator');
+    await g.toCreator(); // a tap on the title: no saves yet, so straight into the creator
     check('ipad: speech is primed when the finger lifts', await g.ev(() => window.__speak.length > 0 && ['pointerup', 'touchend'].includes(window.__speak[0].during)), JSON.stringify(await g.ev(() => window.__speak[0])));
     const tapOpt = async (r, k) => g.tapRect(await g.ev(([r, k]) => G.top().optRects(r)[k], [r, k]));
     await tapOpt(0, 1); await tapOpt(1, 3); await tapOpt(2, 3); await tapOpt(3, 2); await tapOpt(4, 4);
@@ -113,11 +112,11 @@ async function touchRun(browser) {
     // the menu button opens the field menu, without walking
     const before = await g.ev(() => [G.field.player.x, G.field.player.y]);
     await g.tap(G_W - 16, 16);
-    await g.until(() => G.top().constructor.name === 'CrossMenu', null, 'the field menu');
+    await g.until(() => G.top().constructor.name === 'FieldMenu', null, 'the field menu');
     check('ipad: the menu button opens the menu and doesn\'t walk', await g.ev(b => !G.field.route && G.field.player.x === b[0] && G.field.player.y === b[1], before));
     await g.frames(4); await g.shot('menu');
-    const tapIcon = async d => g.tapRect(await g.ev(d => G.top().iconRect(d), d));
-    await tapIcon('up');
+    const tapIcon = async k => g.tapRect(await g.ev(k => G.top().rect(k), k));
+    await tapIcon('book');
     await g.until(() => G.top().constructor.name === 'Notebook', null, 'the notebook');
     await g.tapBtn(await g.ev(() => G.top().nextXY()));
     check('ipad: notebook > turns the page', await g.ev(() => G.top().pi === 1));
@@ -126,26 +125,15 @@ async function touchRun(browser) {
     check('ipad: notebook < turns back, tapping a word picks it', await g.ev(() => G.top().pi === 0 && G.top().wi === 2));
     await g.shot('notebook_tapped');
     await g.tapBtn(await g.ev(() => G.top().closeXY()));
-    await g.until(() => G.top().constructor.name === 'CrossMenu', null, 'back to the menu');
-    await tapIcon('left');
+    await g.until(() => G.top().constructor.name === 'FieldMenu', null, 'back to the menu');
+    await tapIcon('quest');
     await g.until(() => G.top().constructor.name === 'QuestLog', null, 'Misiones');
     await g.frames(4); await g.shot('questlog');
     await g.tap(160, 112);
-    await g.until(() => G.top().constructor.name === 'CrossMenu', null, 'back to the menu');
-    await tapIcon('down');
-    await g.until(() => G.top().constructor.name === 'Options', null, 'Opciones');
-    const bar = await g.ev(() => ({ x: G.top().barX(), y: G.top().rowRect(0).y + 9 }));
-    await g.tap(bar.x + 3 * 9 + 4, bar.y); // 4th cell of the music bar
-    check('ipad: tapping the music bar sets the volume', await g.ev(() => G.prefs.music === 4), 'music = ' + await g.ev(() => G.prefs.music));
-    await g.tapRect(await g.ev(() => G.top().rowRect(4)));
-    check('ipad: tapping a row changes it (English on)', await g.ev(() => G.state.opts.english === true));
-    await g.shot('options');
-    await g.tapRect(await g.ev(() => G.top().rowRect(4)));
-    await g.tapBtn(await g.ev(() => G.top().closeXY()));
-    await g.until(() => G.top().constructor.name === 'CrossMenu', null, 'back to the menu');
+    await g.until(() => G.top().constructor.name === 'FieldMenu', null, 'back to the menu');
     await g.tap(G_W - 16, 16); // the close button sits where the menu button was
     await g.fieldIdle('villa');
-    check('ipad: menu closed by its close button', await g.ev(() => !G.state.opts.english && G.prefs.music === 4));
+    check('ipad: menu closed by its close button', true); // the grown-ups menu (was Opciones) is tested in tools/test-saves.js
 
     await toSchool(g, false);
     await talkToLuna(g, false);
@@ -296,8 +284,7 @@ async function keyboardRun(browser) {
   const { ctx, g } = await open(browser, 'desktop', false);
   try {
     check('desktop: no on-screen pad', await g.ev(() => !document.getElementById('tcpad')));
-    await g.press('Enter'); // Nuevo juego
-    await g.until(() => G.top().constructor.name === 'Creator', null, 'the character creator');
+    await g.toCreator(); // Enter on the title: no saves yet, so straight into the creator
     await g.press('ArrowRight'); // niña
     const d = await g.ev(() => { const d = G.data.defaultLook('nina'), L = G.data.looks; return { skin: L.skins.indexOf(d.skin), style: L.styles.indexOf(d.style) }; });
     await g.press('ArrowDown'); await g.press('ArrowRight'); await g.press('ArrowRight'); // skin: two to the right
@@ -319,7 +306,7 @@ async function keyboardRun(browser) {
     check('desktop: walked out of the house with the arrow keys', true);
     await g.shot('villa');
     await g.press('x');
-    check('desktop: X opens the field menu', await g.ev(() => G.top().constructor.name === 'CrossMenu'));
+    check('desktop: X opens the field menu', await g.ev(() => G.top().constructor.name === 'FieldMenu'));
     await g.press('x');
     await g.fieldIdle('villa');
     await toSchool(g, true);

@@ -203,11 +203,12 @@ function draw() {
   while (start > 0 && G.scenes[start].transparent) start--;
   for (let i = Math.max(0, start); i < G.scenes.length; i++) G.scenes[i].draw(ctx);
   ctx.restore();
-  if (G.fx.draw) G.fx.draw(ctx); // particles above every scene (fx.js)
+  // above the scenes, bottom to top: flash, toast, the hint hand (hint.js), particles (fx.js); a fade covers it all
   if (G.fx.flash > 0) { ctx.globalAlpha = Math.min(1, G.fx.flash / 6); ctx.fillStyle = G.fx.flashColor; ctx.fillRect(0, 0, G.W, G.H); ctx.globalAlpha = 1; }
-  if (G.fade.a > 0) { ctx.globalAlpha = G.fade.a; ctx.fillStyle = G.fade.color; ctx.fillRect(0, 0, G.W, G.H); ctx.globalAlpha = 1; }
   if (G.toastT > 0 && G.win) { const w = G.textWidth(G.toastMsg) + 20; ctx.globalAlpha = Math.min(1, G.toastT / 15); G.win(ctx, (G.W - w) / 2, 40, w, 20); G.textC(ctx, G.toastMsg, G.W / 2, 46, '#f8e060'); ctx.globalAlpha = 1; }
-  if (G.hint) G.hint.draw(ctx); // the tapping hand, the keyboard strip (hint.js)
+  if (G.hint) G.hint.draw(ctx); // the tapping hand, the keyboard strip
+  if (G.fx.draw) G.fx.draw(ctx); // ripples, bursts, confetti, flying stars (unshaken)
+  if (G.fade.a > 0) { ctx.globalAlpha = G.fade.a; ctx.fillStyle = G.fade.color; ctx.fillRect(0, 0, G.W, G.H); ctx.globalAlpha = 1; }
 }
 G.toast = (msg, t = 90) => { G.toastMsg = msg; G.toastT = t; };
 G.step = step; G.drawFrame = draw;

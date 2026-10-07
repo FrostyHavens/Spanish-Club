@@ -2,7 +2,7 @@
 // moving an old save into slot 1, saving by itself (and surviving reloads), and every grown-ups row.
 //   NODE_PATH=$(npm root -g) node tools/test-saves.js [screenshot dir]
 'use strict';
-const { open, check, run } = require('./harness');
+const { open, check, run, G_W } = require('./harness');
 
 const GIRL = { gender: 'nina', skin: '#a87050', style: 'braid', hair: '#201010', outfit: '#8a50c8' };
 const SAVE = (name, extra) => Object.assign({
@@ -253,13 +253,24 @@ async function grownUpsTitle(browser) {
     await g.shot('grownups_changed');
     await tapRow(g, 'dpad');
     check('adults: ...and off', !(await pad()) && await g.ev(() => G.prefs.dpad === false));
-    check('adults: Microphone test greyed out without G.micTest', await g.ev(() => { const r = G.top().rows().find(r => r.id === 'mic'); return r.off && r.right === 'not available'; }));
+    // the real mic test (mictest.js) opens over the menu and its close button comes back to it
+    check('adults: Microphone test is on (mictest.js is loaded)', await g.ev(() => !G.top().rows().find(r => r.id === 'mic').off));
+    await tapRow(g, 'mic');
+    await scene(g, 'MicTest', 'the microphone test');
+    await g.frames(4); await g.shot('mictest');
+    await g.tapBtn([G_W - 26, 6]);
+    await scene(g, 'GrownUps', 'back in the grown-ups menu');
+    check('adults: the mic test opens from the row and closes back to the menu', true);
+    const mic = await g.ev(() => { window.__realMic = G.micTest; G.micTest = undefined; return true; });
+    await g.frames(2);
+    check('adults: Microphone test greyed out without G.micTest', mic && await g.ev(() => { const r = G.top().rows().find(r => r.id === 'mic'); return r.off && r.right === 'not available'; }));
     await tapRow(g, 'mic');
     check('adults: ...and tapping it does nothing', await g.ev(() => G.top().constructor.name === 'GrownUps'));
     await g.ev(() => { window.__mic = 0; G.micTest = () => { window.__mic++; }; });
     await g.frames(2);
     await tapRow(g, 'mic');
     check('adults: with G.micTest defined, the row calls it', await g.ev(() => window.__mic === 1 && !G.top().rows().find(r => r.id === 'mic').off));
+    await g.ev(() => { G.micTest = window.__realMic; });
     await tapRow(g, 'help');
     await scene(g, 'Controls', 'controls and tips');
     await g.frames(4); await g.shot('controls');
