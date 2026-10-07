@@ -36,6 +36,7 @@
     ],
     signs: [sign('casaDoor', 'casa'), sign('escuelaDoor', 'escuela'), sign('rosaDoor', 'casa'), sign('panaderiaDoor', 'panaderia'), sign('bibliotecaDoor', 'biblioteca')],
     pages: { [P('villa', 'fuente').join(',')]: 'numeros', '21,20': 'colores' },
+    ambient: { birds: 8, butterflies: 5, cat: [16, 17] }, // ambient.js: birds, butterflies, a cat on the park fence
     npcs: [
       { id: 'pepe', npc: 'pepe', x: P('villa', 'pepe')[0], y: P('villa', 'pepe')[1], dir: 'down', fixed: true,
         alert: () => !F().pepeSiNo ? true : S.active('mercado') && !F().compra ? [['manzana', 3], ['platano', 2]] : false,
@@ -43,7 +44,8 @@
       { id: 'rosa', npc: 'rosa', x: 7, y: 7, dir: 'down', wander: 1,
         alert: () => townOpen() && (!S.quest('mercado') ? true : F().compra && !S.done('mercado') ? [['manzana', 3], ['platano', 2]] : false),
         talk: function* () { yield* rosaTalk(); } },
-      { id: 'tomas', npc: 'tomas', x: 20, y: 12, dir: 'down', wander: 2,
+      { id: 'tomas', npc: 'tomas', x: 20, y: 12, dir: 'down', // his mail round (ambient.js): the plaza, beside the bakery door, Rosa's
+        route: [[20, 12, 'down', 150], [28, 7, 'up', 120], [4, 7, 'up', 120]],
         alert: () => townOpen() && (!S.quest('carta') ? 'carta' : F().cartaDada && !S.done('carta') ? true : false),
         talk: function* () { yield* tomasTalk(); } },
       { id: 'gomez', npc: 'gomez', x: 8, y: 11, dir: 'right', wander: 1,
@@ -55,8 +57,11 @@
       { id: 'sofia', npc: 'sofia', x: P('villa', 'sofia')[0], y: P('villa', 'sofia')[1], dir: 'down',
         alert: () => townOpen() && (!S.quest('pelota') ? 'pelota' : F().pelotaRoja && !S.done('pelota') ? true : false),
         talk: function* () { yield* sofiaTalk(); } },
-      { id: 'canelo', npc: 'canelo', x: 19, y: 9, dir: 'left', wander: 3,
-        talk: function* () { G.audio.sfx('select'); yield G.say(T('¡Guau, guau!', 'Woof, woof!'), { name: 'Canelo' }); } },
+      { id: 'canelo', npc: 'canelo', x: 19, y: 9, dir: 'left', wander: 3, follow: () => F().canelo, // tags along once you've met
+        talk: function* (f, n) {
+          if (F().canelo && G.ambient) { G.ambient.happy(n, '¡Guau!'); yield 20; return; } // a friend already: a hop, a heart, a bark
+          G.audio.sfx('select'); yield G.say(T('¡Guau, guau!', 'Woof, woof!'), { name: 'Canelo' }); F().canelo = true; if (G.ambient) G.ambient.happy(n);
+        } },
     ],
     searches: {
       [P('villa', 'arbusto1').join(',')]: { cond: () => S.quest('pelota'), run: function* () { yield* findBall('azul'); }, emptyText: T('[pelota] [azul]', 'A blue ball.') },
