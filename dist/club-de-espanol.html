@@ -2243,6 +2243,7 @@ G.store = {
     'l': OBSTACLE('Well', 'town'), 'k': OBSTACLE('Barrels', 'town'), 'g': OBSTACLE('Grave', 'grass'),
     'P': OBSTACLE('Shrub', 'grass'), 'L': OBSTACLE('Lamp Post', 'town'), 'Y': OBSTACLE('Stall', 'town'),
     'Z': OBSTACLE('Statue', 'town'),
+    'J': OBSTACLE('Bench', 'town'), 'O': OBSTACLE('Hay', 'grass'), // Round B: el banco, a round hay bale at the farm
     'i': tt('Floor', 0, 1, 1, 1, 1, 'indoor'),
     'I': WALL('Wall', 'indoor'),
     'q': tt('Carpet', 0, 1, 1, 1, 1, 'indoor'),
@@ -2259,7 +2260,7 @@ G.store = {
   // n[] order: N NE E SE S SW W NW
   const DX = [0, 1, 1, 1, 0, -1, -1, -1], DY = [-1, -1, 0, 1, 1, 1, 0, -1];
   const BASEMAP = { '.': '.', 'o': '.', 'y': '.', 'f': '.', 'h': '.', ',': ',', '=': '=', 'p': 'p', 's': 's', 'x': 'x', 'i': 'i', 'c': 'c' };
-  const OBJ = new Set('rFlkgPLYZteauj'.split(''));
+  const OBJ = new Set('rFlkgPLYZteaujJO'.split(''));
   const INDOOR_OBJ = new Set('teauj'.split(''));
   const BASE_PREF = ['=', 'p', 'x', 'c', 'i', ',', 's', '.'];
   const WATERISH = c => c === 'w' || c === '~' || c === 'b' || c === 'B';
@@ -3146,36 +3147,35 @@ G.store = {
     b.rect(10, 5, 4, 15, P.T2); b.vl(10, 5, 19, P.T4); b.vl(13, 5, 19, P.T1);
     b.hl(10, 13, 4, P.T5); b.hl(10, 13, 19, P.T0);
   }
-  function wellTile(b, I) {
+  // the plaza fountain (la fuente, Round B): a round stone basin of water, a pedestal with a little bowl on top and
+  // water arcing down from it (4 frames); a goldfish lives in it (animals.js)
+  function fountainTile(b, I) {
     drawGround(b, I.base, I);
-    dropShadow(b, 14, 19, 10, 3.5, 0.6);
-    const cx = 12, cy = 11;
-    for (let y = 2; y < 23; y++) for (let x = 1; x < 23; x++) {
+    dropShadow(b, 13, 20, 11, 3, 0.6);
+    const cx = 12, cy = 13;
+    for (let y = 3; y < 24; y++) for (let x = 0; x < 24; x++) {
       const dx = x + 0.5 - cx, dy = y + 0.5 - cy;
-      const top = (dx / 10) ** 2 + (dy / 6.5) ** 2;
-      const side = (dx / 10) ** 2 + ((dy - 5) / 6.5) ** 2;
+      const top = (dx / 11) ** 2 + (dy / 6.5) ** 2, side = (dx / 11) ** 2 + ((dy - 4) / 6.5) ** 2;
       if (top <= 1) {
-        const inner = (dx / 6.5) ** 2 + ((dy + 0.5) / 3.8) ** 2;
-        if (inner <= 1) b.set(x, y, dy < -1 ? P.W0 : (inner < 0.35 && dx < 0 ? P.W3 : P.W1));
-        else {
-          const seg = Math.floor((Math.atan2(dy, dx) + Math.PI) * 2.2);
-          let c = (seg & 1) ? P.K4 : P.K3; if (dy < -2) c = lighten(c, 0.2);
-          if (inner < 1.25) c = P.K1;
-          b.set(x, y, c);
-        }
+        const inner = (dx / 8.6) ** 2 + ((dy + 0.3) / 4.6) ** 2;
+        if (inner <= 1) { let c = dy < -2 ? P.W2 : P.W3; if (((x * 3 + y * 5 + I.af * 7) % 23) === 0) c = P.W5; else if (inner < 0.5 && dx < -2 && dy < 0) c = P.W4; b.set(x, y, c); }
+        else { let c = (Math.floor((Math.atan2(dy, dx) + Math.PI) * 2.6) & 1) ? P.K5 : P.K4; if (dy > 2) c = P.K3; if (inner < 1.22) c = dy < 0 ? P.K2 : P.K5; b.set(x, y, c); }
       } else if (side <= 1 && dy > 0) {
-        const lx = Math.floor(x / 4 + (y > 17 ? 0.5 : 0));
-        let c = (lx & 1) ? P.K2 : P.K3;
-        if (y === 17) c = P.K1;
-        if (side > 0.8) c = P.K1;
+        let c = (Math.floor(x / 4 + (y > 19 ? 0.5 : 0)) & 1) ? P.K3 : P.K4;
+        if (side > 0.82 || y === 19) c = P.K2;
         b.set(x, y, c);
       }
     }
-    // wooden frame + bucket
-    for (const px of [2, 20]) { b.rect(px, 0, 2, 12, P.T2); b.vl(px, 0, 11, P.T4); b.vl(px + 1, 0, 11, P.T1); }
-    b.hl(2, 21, 1, P.T4); b.hl(2, 21, 2, P.T2); b.hl(2, 21, 3, P.T0);
-    b.vl(12, 4, 7, P.P1);
-    b.rect(10, 8, 5, 3, P.T3); b.hl(10, 14, 8, P.K3); b.hl(10, 14, 10, P.T1);
+    // the pedestal and its bowl
+    b.rect(11, 6, 3, 8, P.K4); b.vl(11, 6, 13, P.K5); b.vl(13, 6, 13, P.K2); b.hl(11, 13, 13, P.K2);
+    for (let x = 8; x <= 16; x++) { b.set(x, 6, P.K5); b.set(x, 7, x < 10 || x > 14 ? P.K2 : P.K3); }
+    b.hl(9, 15, 5, P.W4); b.set(12, 5, P.W5);
+    // water falling from the bowl on both sides, the drops moving down frame by frame
+    for (const sgn of [-1, 1]) for (let k = 0; k < 7; k++) {
+      const t = (k + I.af * 0.5) / 7, x = 12 + sgn * (4 + t * 3.5), y = 6 + t * t * 7;
+      b.set(Math.round(x), Math.round(y), (k + I.af) % 2 ? P.W6 : P.W5);
+    }
+    b.vl(12, 1, 4, P.W5); b.set(12, 1 + (I.af % 3), P.W6); b.set(11, 3, P.W4); b.set(13, 2, P.W4);
   }
   function barrelTile(b, I) {
     drawGround(b, I.base, I);
@@ -3348,6 +3348,31 @@ G.store = {
       b.set(x, y, c);
     }
   }
+  // a park bench seen from the front: a slatted back, the seat, iron legs and arms (Round B, 'J')
+  function benchTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 12, 19, 10.5, 2.5, 0.62);
+    for (const x of [3, 20]) { b.rect(x, 5, 2, 15, P.K1); b.vl(x, 5, 19, P.K2); }
+    for (const [y, h] of [[6, 3], [10, 3]]) { b.rect(2, y, 20, h, P.T3); b.hl(2, 21, y, P.T5); b.hl(2, 21, y + h - 1, P.T1); }
+    b.rect(1, 14, 22, 3, P.T4); b.hl(1, 22, 14, P.T5); b.hl(1, 22, 16, P.T2); b.hl(1, 22, 17, P.T0);
+    for (const x of [2, 20]) { b.rect(x, 17, 2, 4, P.K1); b.set(x, 17, P.K3); }
+    b.vl(0, 14, 17, P.T1); b.vl(23, 14, 17, P.T0);
+  }
+  // a round hay bale, rolled, at the farm (Round B, 'O')
+  function hayTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 13, 20, 10, 2.5, 0.6);
+    for (let y = 4; y < 21; y++) for (let x = 2; x < 22; x++) {
+      const end = ((x + 0.5 - 7) / 5.5) ** 2 + ((y + 0.5 - 12.5) / 8) ** 2;
+      if (end <= 1) { const r = Math.hypot((x + 0.5 - 7) / 5.5, (y + 0.5 - 12.5) / 8); b.set(x, y, r > 0.85 ? P.H1 : (Math.round(r * 6) & 1) ? P.H2 : P.H3); continue; }
+      if (x >= 7 && x < 19 && y >= 5 && y < 20 && ((x + 0.5 - 18) / 3.5) ** 2 + ((y + 0.5 - 12.5) / 8) ** 2 <= 1.6) {
+        let c = y < 8 ? P.H4 : y < 15 ? P.H3 : y < 18 ? P.H2 : P.H1;
+        if (hsh(x, y, I.v) < 0.18) c = P.Y1;
+        b.set(x, y, c);
+      }
+    }
+    for (let y = 5; y < 20; y++) { b.set(12, y, P.T2); }
+  }
   function tableTile(b, I) {
     drawGround(b, I.base, I);
     const n = I.n, jw = n[6] === 't', je = n[2] === 't';
@@ -3498,13 +3523,15 @@ G.store = {
   reg('S', { need: 'n', fn: (b, I) => stoneWallTile(b, I, 'S') });
   reg('G', { need: 'n', fn: (b, I) => stoneWallTile(b, I, 'G') });
   reg('K', { need: 'n', fn: (b, I) => stoneWallTile(b, I, 'K') });
-  reg('l', { need: 'g', base: true, fn: wellTile });
+  reg('l', { need: 'g', base: true, anim: 4, spd: 10, fn: fountainTile });
   reg('k', { need: 'g', base: true, fn: barrelTile });
   reg('g', { need: 'g', base: true, fn: graveTile });
   reg('P', { need: 'g', base: true, fn: shrubTile });
   reg('L', { need: 'g', base: true, anim: 4, spd: 14, fn: lampTile });
   reg('Y', { need: 'g', base: true, fn: stallTile });
   reg('Z', { need: 'g', base: true, fn: statueTile });
+  reg('J', { need: 'g', base: true, fn: benchTile });
+  reg('O', { need: 'g', base: true, fn: hayTile });
   reg('I', { need: 'n', fn: iwallTile });
   reg('t', { need: 'g', base: true, fn: tableTile });
   reg('e', { need: 'g', base: true, fn: counterTile });
@@ -3559,7 +3586,7 @@ G.store = {
     'h': '#7aa440', 'M': '#8c6c48', 's': '#dcc080', '~': '#5890e0', 'w': '#2250b4', 'b': '#9c5e2a', 'B': '#9c5e2a', 'r': '#7c7c88',
     'x': '#a09c98', 'X': '#5c5c6c', 'F': '#8c5a28', 'R': '#b43620', 'Q': '#3a5c98', '+': '#3a5c98', 'W': '#d8ccae', 'N': '#d8ccae',
     'D': '#74421e', 'S': '#8a8a96', 'G': '#8a8a96', 'K': '#74421e', 'l': '#6c6c80', 'k': '#9c5e2a', 'g': '#9a9aa4', 'P': '#3c8a2c',
-    'L': '#e8c850', 'Y': '#c8343c', 'Z': '#b4b2b4', 'i': '#a0602c', 'I': '#4c4032', 'q': '#9c1c2c', 't': '#c0823a', 'e': '#74421e',
+    'L': '#e8c850', 'Y': '#c8343c', 'Z': '#b4b2b4', 'J': '#c0823a', 'O': '#e2be46', 'i': '#a0602c', 'I': '#4c4032', 'q': '#9c1c2c', 't': '#c0823a', 'e': '#74421e',
     'a': '#e6e2d8', 'u': '#74421e', 'j': '#d8d8e8', 'v': '#e05818', 'n': '#5c3418', 'c': '#a08c6c', ' ': '#000000',
   };
   G.MINI_COLORS = MINI;
@@ -6004,6 +6031,59 @@ G.store = {
     p.put(5, 6, '#ffffff'); p.put(10, 6, '#ffffff');
   }
 
+  // pixel rows (one letter per pixel, '.' = empty) painted with a palette, at x0, y0 (flip: mirrored)
+  function rows(p, x0, y0, rs, pal, flip) {
+    rs.forEach((r, y) => { for (let x = 0; x < r.length; x++) { const c = pal[r[flip ? r.length - 1 - x : x]]; if (c) p.put(x0 + x, y0 + y, c); } });
+  }
+  // sound waves: arcs going up and right from cx, cy (an animal making its sound)
+  function waves(p, cx, cy, col, radii = [3.5, 6]) {
+    for (const r of radii) for (let a = -1.35; a <= 0.15; a += 0.08) p.put(cx + Math.cos(a) * r, cy + Math.sin(a) * r, col);
+  }
+  // little faces for the sound words (about 9x9, bottom left)
+  const MINI = {
+    perro(p) { p.ell(5, 11, 3.8, 3.4, '#c07838'); p.ell(1.6, 11, 1.3, 2.6, '#7a4420'); p.ell(8.4, 11, 1.3, 2.6, '#7a4420'); p.ell(5, 13, 2, 1.5, '#f0d8b0'); p.rect(3, 10, 1, 1, '#201010'); p.rect(6, 10, 1, 1, '#201010'); p.rect(4, 12, 2, 1, '#201010'); p.rect(4, 14, 2, 1, '#f07080'); },
+    gato(p) { p.tri(1, 10, 3, 6, 5, 9, '#f09840'); p.tri(9, 10, 7, 6, 5, 9, '#f09840'); p.ell(5, 11.5, 4, 3.4, '#f09840'); p.rect(4, 8, 2, 1, '#b8601c'); p.ell(5, 13.5, 1.6, 1, '#fff0d8'); p.rect(3, 11, 1, 1, '#2a7020'); p.rect(6, 11, 1, 1, '#2a7020'); p.put(4.5, 12, '#f07890'); },
+    pajaro(p) { p.ell(5, 12, 4, 3, '#4a7ee0'); p.disc(6.5, 9, 2.6, '#4a7ee0'); p.ell(5, 13, 2.5, 1.5, '#f4a060'); p.tri(8.5, 8, 8.5, 10.5, 11, 9, '#f0b040'); p.put(7, 8, '#101010'); p.tri(0, 10, 2, 11, 1, 14, '#22408c'); },
+    pato(p) { p.ell(5, 12.5, 4.2, 2.6, '#ffffff'); p.disc(7, 8.5, 2.4, '#ffffff'); p.rect(9, 8.5, 2.5, 1.3, '#f89020'); p.put(7, 8, '#101010'); p.shade(5, 12.5, 4.2, '#d0d0e0'); p.rect(0, 15, 10, 1, '#68b0f0'); },
+    rana(p) { p.ell(5, 12, 4.4, 3, '#58b840'); p.disc(2.5, 9, 1.8, '#58b840'); p.disc(7.5, 9, 1.8, '#58b840'); p.put(2.5, 9, '#101010'); p.put(7.5, 9, '#101010'); p.rect(2, 13, 6, 1, '#2a6a20'); p.ell(5, 14, 2.5, 0.8, '#b8e890'); },
+    cabra(p) { p.tri(2.5, 9, 3.5, 9, 1.5, 5, '#8a7a60'); p.tri(6.5, 9, 7.5, 9, 8.5, 5, '#8a7a60'); p.ell(5, 11, 2.8, 3.2, '#ece8e0'); p.ell(1, 10, 1.6, 0.8, '#ece8e0'); p.ell(9, 10, 1.6, 0.8, '#ece8e0'); p.rect(3, 10, 1, 1, '#302010'); p.rect(6, 10, 1, 1, '#302010'); p.ell(5, 13.2, 1.3, 0.9, '#d8a8a8'); p.tri(4, 14, 6, 14, 5, 16, '#d8d4cc'); },
+  };
+  const BROWN = '#c07838', BROWN2 = '#8a5022', CREAM = '#f0d8b0', INK = '#201010';
+  // Canelo, the town's dog, sitting and facing left (sientate) or other poses
+  function dogSit(p, ox = 0, oy = 0) {
+    rows(p, ox, oy, [
+      '....ddbb.......',
+      '...dbbbbb......',
+      '..ddbkbbbd.....',
+      'kwwbbbbbdd.....',
+      'wwwwbbbbdd.....',
+      '.wpwbbbb.......',
+      '...wwbbb.......',
+      '...wwbbbb...b..',
+      '...wwbbbbb..b..',
+      '...wwbbbbbb.b..',
+      '...wwbbbbbbbb..',
+      '...wb.wbbbbb...',
+      '...wb.wbbbbb...',
+      '..wwb.wwbbbb...',
+    ], { b: BROWN, d: BROWN2, w: CREAM, k: INK, p: '#f07080' });
+  }
+  function dogRun(p, ox = 0, oy = 0, legs = 0) {
+    rows(p, ox, oy, [
+      '..dd...........',
+      '.dbbbd.........',
+      'dbkbbd.........',
+      'wwbbbb.........',
+      'kwwbbbbbbbbbb.b',
+      '..wbbbbbbbbbbbb',
+      '...wbbbbbbbbbb.',
+      '...wwbbbbbbbb..',
+      legs ? '...wb.....bw...' : '..wb.......wb..',
+      legs ? '....wb...bw....' : '.wb.........wb.',
+    ], { b: BROWN, d: BROWN2, w: CREAM, k: INK });
+  }
+  function smiley(p, col, sh) { p.disc(8, 8.5, 6.5, col); p.shade(8, 8.5, 6.5, sh); }
+
   const DRAW = {
     hola(p) { hand(p, false); [[1, 2], [2, 4], [0, 4]].forEach(([x, y]) => p.put(x, y, '#f8d030')); p.put(1, 3, '#f8d030'); },
     adios(p) { hand(p, true); for (let y = 3; y < 9; y += 2) { p.put(15, y, '#68b0f0'); p.put(14, y + 1, '#68b0f0'); } },
@@ -6041,7 +6121,7 @@ G.store = {
     flecha(p) { p.rect(2, 7, 8, 3, '#f8e060'); p.tri(9, 3.5, 9, 13.5, 15, 8.5, '#f8e060'); },
     dado(p, w) {
       p.rect(2, 2, 12, 12, '#f8f8f0'); p.rect(2, 13, 12, 1, '#c8c8d0'); p.rect(13, 2, 1, 12, '#c8c8d0');
-      const pos = { 1: [[7, 7]], 2: [[4, 4], [10, 10]], 3: [[4, 4], [7, 7], [10, 10]], 4: [[4, 4], [10, 4], [4, 10], [10, 10]], 5: [[4, 4], [10, 4], [7, 7], [4, 10], [10, 10]] }[w.n] || [];
+      const pos = { 1: [[7, 7]], 2: [[4, 4], [10, 10]], 3: [[4, 4], [7, 7], [10, 10]], 4: [[4, 4], [10, 4], [4, 10], [10, 10]], 5: [[4, 4], [10, 4], [7, 7], [4, 10], [10, 10]], 6: [[4, 3], [10, 3], [4, 7], [10, 7], [4, 11], [10, 11]] }[w.n] || [];
       pos.forEach(([x, y]) => p.rect(x, y, 2, 2, '#d02838'));
     },
     manzana(p) {
@@ -6110,6 +6190,190 @@ G.store = {
       for (let i = 0; i < 7; i++) { p.put(1 + i, 4 + i * 0.7, '#a8a8b8'); p.put(14 - i, 4 + i * 0.7, '#a8a8b8'); }
       p.disc(8, 9, 1.8, '#d02838');
     },
+    // ===================== Round B =====================
+    diez(p, w) { // 7..10: a ten frame (two rows of five), the right number of red dots filled in
+      p.rect(0, 3, 16, 10, '#f8f8f0'); p.rect(0, 12, 16, 1, '#c8c8d0');
+      for (let k = 0; k < 10; k++) { const x = 1 + (k % 5) * 3, y = k < 5 ? 4 : 8; p.rect(x, y, 2, 3, k < w.n ? '#d02838' : '#bcbcca'); }
+      p.rect(0, 7, 16, 1, '#c8c8d0');
+    },
+    leche(p) {
+      p.tri(3, 5, 13, 5, 8, 1, '#e8eef8'); p.rect(3, 5, 10, 10, '#ffffff'); p.rect(11, 5, 2, 10, '#d8e0ec');
+      p.rect(3, 8, 10, 3, '#3a78e0'); p.rect(11, 8, 2, 3, '#2a58b0'); p.rect(7, 1, 2, 1, '#3a78e0');
+      p.disc(6, 13, 1, '#3a78e0');
+    },
+    queso(p) {
+      p.tri(1, 7, 15, 4, 15, 7, '#fff090'); p.rect(1, 7, 15, 7, '#f8d040'); p.rect(1, 13, 15, 1, '#d8a820');
+      [[4, 9, 1.4], [9, 11, 1.2], [12, 8.5, 1], [6, 12, 0.8]].forEach(([x, y, r]) => p.disc(x, y, r, '#d8a020'));
+    },
+    huevo(p) { p.ell(8, 9, 5, 6.5, '#fff6e4'); p.shade(8, 9, 6.6, '#e6d2b0'); p.put(6, 5, '#ffffff'); p.put(5, 6, '#ffffff'); p.put(5, 7, '#ffffff'); },
+    agua(p) {
+      p.disc(8, 10.5, 4.8, '#3a90f0'); p.tri(3.6, 9, 12.4, 9, 8, 0.5, '#3a90f0'); p.shade(8, 10.5, 4.8, '#2060c0');
+      p.put(6, 8, '#d0f0ff'); p.put(5, 9, '#d0f0ff'); p.put(5, 10, '#d0f0ff'); p.put(7, 6, '#a0d8ff');
+    },
+    galleta(p) {
+      p.disc(8, 8.5, 6.5, '#d8a058'); p.shade(8, 8.5, 6.5, '#b88038');
+      [[5, 6], [9, 5], [11, 9], [6, 10], [9, 12], [4, 9]].forEach(([x, y]) => { p.rect(x, y, 2, 1, '#5a3010'); p.put(x, y + 1, '#5a3010'); });
+    },
+    arbol(p) {
+      p.rect(7, 10, 3, 6, '#8a5028'); p.put(6, 15, '#8a5028'); p.put(10, 15, '#8a5028'); p.rect(9, 10, 1, 6, '#6a3818');
+      p.disc(8.5, 6.5, 6, '#40a838'); p.disc(4, 8.5, 3.2, '#40a838'); p.disc(13, 8.5, 3, '#40a838'); p.shade(8.5, 6.5, 6.5, '#2a7a28');
+      p.put(6, 3, '#90e070'); p.put(5, 4, '#90e070'); p.put(7, 3, '#90e070');
+    },
+    flor(p) {
+      p.rect(7, 9, 2, 7, '#38a040'); p.ell(4.5, 12.5, 2.5, 1.2, '#38a040'); p.ell(11.5, 13, 2.5, 1.2, '#38a040');
+      [[8, 2.5], [11.6, 5.3], [10.2, 9.3], [5.8, 9.3], [4.4, 5.3]].forEach(([x, y]) => p.disc(x, y, 2.4, '#f070a8'));
+      p.disc(8, 6.5, 2.2, '#f8d030'); p.put(7, 5, '#fff8c0');
+    },
+    fuente(p) {
+      p.ell(8, 12.5, 7.5, 3, '#b8b8c8'); p.ell(8, 12, 6, 1.8, '#4a90e8'); p.rect(7, 6, 2, 6, '#b8b8c8'); p.ell(8, 6.5, 4, 1.4, '#b8b8c8'); p.ell(8, 6.2, 2.6, 0.8, '#4a90e8');
+      p.rect(7, 1, 2, 5, '#68c0ff'); p.put(7, 1, '#ffffff'); p.put(6, 2, '#68c0ff'); p.put(9, 2, '#68c0ff');
+      p.put(3, 9, '#68c0ff'); p.put(13, 9, '#68c0ff'); p.put(4, 8, '#68c0ff'); p.put(12, 8, '#68c0ff');
+      p.rect(1, 13, 14, 2, '#9898a8');
+    },
+    banco(p) {
+      p.rect(1, 3, 14, 2, '#c07838'); p.rect(1, 6, 14, 2, '#c07838'); p.rect(0, 9, 16, 2, '#d89048'); p.rect(0, 10, 16, 1, '#a05a28');
+      p.rect(2, 11, 2, 4, '#404048'); p.rect(12, 11, 2, 4, '#404048'); p.rect(2, 2, 1, 7, '#404048'); p.rect(13, 2, 1, 7, '#404048');
+    },
+    puerta(p) {
+      p.rect(3, 4, 10, 12, '#a05a28'); p.disc(8, 4.5, 5, '#a05a28'); p.rect(3, 15, 10, 1, '#a05a28');
+      p.rect(5, 4, 2, 10, '#8a4a20'); p.rect(9, 4, 2, 10, '#8a4a20'); p.rect(8, 1, 0, 0, '#000'); p.rect(4, 6, 1, 1, '#c07838');
+      p.disc(11, 10, 1, '#f8d030');
+    },
+    ventana(p) {
+      p.rect(2, 2, 12, 12, '#f0e8d8'); p.rect(3, 3, 10, 10, '#78c0f8'); p.rect(7, 3, 2, 10, '#f0e8d8'); p.rect(3, 7, 10, 2, '#f0e8d8');
+      p.put(4, 4, '#e0f4ff'); p.put(5, 4, '#e0f4ff'); p.put(4, 5, '#e0f4ff'); p.put(10, 4, '#e0f4ff');
+      p.rect(1, 13, 14, 2, '#a05a28'); p.rect(0, 2, 2, 11, '#d84040'); p.rect(14, 2, 2, 11, '#d84040');
+    },
+    granja(p) {
+      p.tri(0, 7, 16, 7, 8, 1, '#c03028'); p.rect(2, 7, 12, 8, '#d84030'); p.rect(2, 14, 12, 1, '#a02820');
+      p.rect(5, 9, 6, 6, '#f8f0e0'); for (let i = 0; i < 6; i++) { p.put(5 + i, 9 + i, '#f8f0e0'); }
+      p.rect(6, 10, 4, 5, '#8a2018'); for (let i = 0; i < 4; i++) { p.put(6 + i, 10 + i, '#f8f0e0'); p.put(9 - i, 10 + i, '#f8f0e0'); }
+      p.rect(7, 4, 2, 2, '#f8f0e0');
+    },
+    perro(p) {
+      p.ell(8, 8.5, 5.5, 5.2, BROWN); p.shade(8, 8.5, 5.5, '#a86028');
+      p.ell(2.6, 9.5, 1.9, 4.4, BROWN2); p.ell(13.4, 9.5, 1.9, 4.4, BROWN2);
+      p.ell(8, 11.5, 3.4, 2.5, CREAM); p.rect(7, 9, 2, 2, INK); p.rect(7, 11, 2, 1, INK);
+      p.rect(7, 12, 2, 2, '#f07080'); p.put(8, 13, '#d04860');
+      p.rect(5, 6, 1, 2, INK); p.rect(10, 6, 1, 2, INK); p.put(5, 6, '#ffffff'); p.put(10, 6, '#ffffff');
+    },
+    gato(p) {
+      p.tri(1, 9, 3, 1, 8, 5, '#f09840'); p.tri(15, 9, 13, 1, 8, 5, '#f09840'); p.tri(3, 6, 3.6, 3, 5.5, 5, '#f8a0b0'); p.tri(13, 6, 12.4, 3, 10.5, 5, '#f8a0b0');
+      p.ell(8, 9.5, 6.4, 5, '#f09840'); p.shade(8, 9.5, 6.4, '#d07828');
+      p.rect(7, 5, 2, 2, '#b8601c'); p.put(5, 5, '#b8601c'); p.put(10, 5, '#b8601c');
+      p.ell(8, 12.2, 2.8, 1.8, '#fff0d8'); p.rect(7, 11, 2, 1, '#f07890');
+      p.rect(4, 8, 2, 2, '#58c040'); p.rect(10, 8, 2, 2, '#58c040'); p.rect(5, 8, 1, 2, '#101010'); p.rect(10, 8, 1, 2, '#101010');
+      p.put(0, 11, '#fff8f0'); p.put(1, 11, '#fff8f0'); p.put(15, 11, '#fff8f0'); p.put(14, 11, '#fff8f0');
+    },
+    pajaro(p) {
+      p.tri(0, 7, 4, 8, 2, 12, '#22408c'); p.ell(7.5, 9.5, 5, 3.8, '#4a7ee0'); p.disc(11, 6, 3.2, '#4a7ee0');
+      p.ell(8.5, 11, 3.6, 2.2, '#f4a060'); p.ell(6, 9, 3, 2, '#2a4ca0'); p.tri(13.5, 5, 13.5, 7.5, 16, 6.3, '#f0b040');
+      p.put(12, 5, '#101010'); p.put(11, 4, '#ffffff'); p.rect(7, 13, 1, 2, '#806040'); p.rect(9, 13, 1, 2, '#806040');
+    },
+    mariposa(p) {
+      for (const f of [false, true]) {
+        const X = x => f ? 16 - x : x;
+        p.ell(X(4.2), 5.5, 3.8, 3.6, '#f88c28'); p.ell(X(5), 11.2, 2.8, 2.8, '#f8a838');
+        p.disc(X(3.5), 4.5, 1, '#3a1808'); p.put(X(4.5) - (f ? 1 : 0), 11, '#ffffff');
+      }
+      p.rect(7, 3, 2, 11, '#3a2418'); p.put(6, 1, '#3a2418'); p.put(5, 0, '#3a2418'); p.put(9, 1, '#3a2418'); p.put(10, 0, '#3a2418');
+    },
+    pez(p) {
+      p.tri(10, 8, 15.5, 3, 15.5, 13, '#f8a040'); p.ell(7, 8, 5.5, 4, '#f88828'); p.tri(5, 4.5, 9, 4.5, 8, 2, '#f8a040');
+      p.shade(7, 8, 5.5, '#d06818'); p.disc(4, 7, 1.2, '#ffffff'); p.put(4, 7, '#101010'); p.put(1, 9, '#c05010');
+      [[7, 8], [9, 7], [9, 9]].forEach(([x, y]) => p.put(x, y, '#ffc080'));
+      p.disc(2, 2, 1, '#a8d8ff');
+    },
+    conejo(p) {
+      p.ell(5, 4.5, 1.8, 4.5, '#e8e0ec'); p.ell(11, 4.5, 1.8, 4.5, '#e8e0ec'); p.ell(5, 4.5, 0.7, 3.2, '#f8a0b8'); p.ell(11, 4.5, 0.7, 3.2, '#f8a0b8');
+      p.ell(8, 11, 5.5, 4.4, '#ece6f0'); p.shade(8, 11, 5.5, '#c8c0d4');
+      p.rect(5, 10, 1, 2, '#201828'); p.rect(10, 10, 1, 2, '#201828'); p.put(5, 10, '#ffffff'); p.put(10, 10, '#ffffff');
+      p.rect(7, 12, 2, 1, '#f070a0'); p.put(3, 12, '#f8b0c8'); p.put(12, 12, '#f8b0c8');
+    },
+    pato(p) {
+      p.rect(0, 14, 16, 1, '#68b0f0'); p.ell(9, 11, 6.5, 3.2, '#ffffff'); p.tri(13, 11, 16, 6.5, 15, 11, '#ffffff');
+      p.rect(4, 5, 3, 6, '#ffffff'); p.disc(5, 4.5, 3, '#ffffff'); p.rect(0, 4.5, 3, 2, '#f89020'); p.put(0, 6, '#f89020');
+      p.shade(9, 11, 6.6, '#cfd2e4'); p.ell(10, 10, 3, 1.4, '#dcdeec'); p.put(5, 3, '#101010'); p.rect(1, 15, 14, 1, '#3a88e0');
+    },
+    rana(p) {
+      p.disc(4, 5, 3, '#58b840'); p.disc(12, 5, 3, '#58b840'); p.ell(8, 10, 7.2, 4.8, '#58b840'); p.shade(8, 10, 7.2, '#3a9030');
+      p.disc(4, 5, 1.8, '#ffffff'); p.disc(12, 5, 1.8, '#ffffff'); p.rect(4, 5, 1, 1, '#101010'); p.rect(11, 5, 1, 1, '#101010');
+      p.rect(4, 11, 8, 1, '#1a5a18'); p.put(3, 10, '#1a5a18'); p.put(12, 10, '#1a5a18'); p.put(2, 9, '#f890a0'); p.put(13, 9, '#f890a0');
+      p.ell(8, 13.5, 3.5, 1, '#b8e890');
+    },
+    gallina(p) {
+      p.tri(10, 9, 15, 3, 15.5, 10, '#8a4820'); p.ell(8.5, 10.5, 6, 4.5, '#c87838'); p.disc(5, 5.5, 2.8, '#c87838'); p.rect(4, 6, 3, 4, '#c87838');
+      p.disc(4, 2.6, 1.1, '#e83030'); p.disc(5.6, 2.3, 1.1, '#e83030'); p.rect(3, 8, 1, 2, '#e83030');
+      p.tri(0.5, 5.5, 2.6, 4.6, 2.6, 6.6, '#f0b040'); p.put(4, 5, '#101010');
+      p.ell(10, 10.5, 3.4, 2, '#a05828'); p.ell(6, 12, 2.6, 2, '#e0a060'); p.rect(7, 15, 1, 1, '#f0b040'); p.rect(10, 15, 1, 1, '#f0b040');
+    },
+    caballo(p) {
+      p.tri(6, 16, 15, 16, 12, 4, '#a0602c'); p.rect(9, 6, 5, 10, '#a0602c');
+      p.disc(9.5, 4.5, 3, '#a0602c'); p.ell(5, 7, 4, 2.5, '#a0602c'); p.ell(2.6, 8, 2.4, 2.2, '#b87848');
+      p.tri(9, 2.5, 11.5, 2.5, 11, -0.5, '#a0602c'); p.shade(10, 10, 9, '#844a20');
+      for (let y = 2; y < 16; y++) { const x = 11.5 + y * 0.28; p.rect(x, y, 2, 1, '#3a2010'); }
+      p.rect(8, 2, 2, 1, '#3a2010'); p.put(8, 4, '#101010'); p.put(1, 8, '#4a2810'); p.rect(7, 6, 1, 1, '#d8a878');
+    },
+    cabra(p) {
+      p.tri(4.5, 5, 6.5, 5, 2.5, 0.5, '#8a7a60'); p.tri(9.5, 5, 11.5, 5, 13.5, 0.5, '#8a7a60');
+      p.ell(2.5, 6.5, 2.4, 1.2, '#ece8e0'); p.ell(13.5, 6.5, 2.4, 1.2, '#ece8e0'); p.put(2, 6.5, '#e8b0b0'); p.put(13, 6.5, '#e8b0b0');
+      p.ell(8, 8.5, 4, 5, '#ece8e0'); p.shade(8, 8.5, 4.5, '#ccc6ba');
+      p.rect(5, 7, 2, 1, '#f0c040'); p.rect(9, 7, 2, 1, '#f0c040'); p.put(6, 7, '#201008'); p.put(9, 7, '#201008');
+      p.ell(8, 11.6, 2.2, 1.4, '#d8a8a8'); p.put(7, 11, '#806060'); p.put(9, 11, '#806060');
+      p.tri(6.5, 13, 9.5, 13, 8, 16, '#d8d4cc');
+    },
+    guau(p) { MINI.perro(p); waves(p, 7, 9, '#f8a020', [4, 6.5]); },
+    miau(p) { MINI.gato(p); waves(p, 7, 9, '#f8a020', [4, 6.5]); },
+    pio(p) { MINI.pajaro(p); waves(p, 7, 9, '#f8a020', [4.5, 7]); },
+    cuac(p) { MINI.pato(p); waves(p, 8, 9, '#f8a020', [4.5, 7]); },
+    croac(p) { MINI.rana(p); waves(p, 7, 10, '#f8a020', [4.5, 7]); },
+    bee(p) { MINI.cabra(p); waves(p, 7, 9, '#f8a020', [4.5, 7]); },
+    hueso(p) {
+      for (let t = 0; t <= 1; t += 0.05) p.disc(4 + t * 8, 12 - t * 8, 1.6, '#f8f0dc');
+      p.disc(2.5, 11.2, 2, '#f8f0dc'); p.disc(4.8, 13.5, 2, '#f8f0dc'); p.disc(11.2, 2.5, 2, '#f8f0dc'); p.disc(13.5, 4.8, 2, '#f8f0dc');
+      p.shade(8, 8, 9, '#dccaa4'); p.put(10, 3, '#ffffff'); p.put(2, 10, '#ffffff');
+    },
+    cama(p) {
+      p.rect(1, 3, 3, 12, '#8a5028'); p.rect(1, 3, 3, 1, '#a86838'); p.rect(4, 11, 11, 3, '#8a5028'); p.rect(13, 9, 2, 6, '#8a5028');
+      p.rect(4, 8, 10, 3, '#ffffff'); p.rect(7, 7, 7, 4, '#5080e0'); p.rect(7, 10, 7, 1, '#3860b8'); p.ell(5.5, 7.5, 1.8, 1.3, '#ffffff');
+      p.rect(4, 14, 1, 1, '#6a3818');
+    },
+    sientate(p) { dogSit(p, 0, 1); },
+    ven(p) {
+      dogRun(p, 1, 3, 1);
+      p.rect(0, 14, 3, 1, '#c8b890'); p.put(14, 4, '#f8a020'); p.put(15, 5, '#f8a020'); p.put(14, 6, '#f8a020');
+    },
+    salta(p) { // Canelo in the air over a little hurdle
+      p.rect(3, 11, 1, 5, '#e8e8f0'); p.rect(12, 11, 1, 5, '#e8e8f0'); p.rect(2, 11, 12, 2, '#e03838'); p.rect(5, 11, 2, 2, '#f8f8f8'); p.rect(9, 11, 2, 2, '#f8f8f8');
+      dogRun(p, 1, 0, 0);
+    },
+    pata(p) {
+      p.ell(8, 11, 4.2, 3.6, BROWN); p.shade(8, 11, 4.4, '#a86028');
+      [[3.2, 6.4], [6.4, 3.8], [9.8, 3.8], [12.8, 6.4]].forEach(([x, y]) => p.ell(x, y, 1.7, 2, BROWN));
+      p.ell(8, 11.5, 2.4, 1.8, '#3a2010'); [[3.2, 6.6], [6.4, 4], [9.8, 4], [12.8, 6.6]].forEach(([x, y]) => p.disc(x, y, 0.9, '#3a2010'));
+    },
+    gira(p) {
+      for (let a = 0.5; a < Math.PI * 1.75; a += 0.06) p.put(8 + Math.cos(a) * 6.8 - 0.5, 8 + Math.sin(a) * 6.8 - 0.5, '#f8a020');
+      p.tri(11, 0, 15, 3.5, 10.5, 5.5, '#f8a020');
+      p.ell(8, 9, 3.4, 2.4, BROWN); p.disc(6, 6.5, 2, BROWN); p.put(5, 6, INK); p.put(3.5, 7, INK); p.ell(7, 5, 0.8, 1.3, BROWN2); p.rect(10, 7, 2, 1, BROWN);
+    },
+    feliz(p) {
+      smiley(p, '#f8d030', '#e0b018');
+      p.put(4, 7, '#302018'); p.put(5, 6, '#302018'); p.put(6, 7, '#302018'); p.put(9, 7, '#302018'); p.put(10, 6, '#302018'); p.put(11, 7, '#302018');
+      p.rect(4, 10, 8, 1, '#302018'); p.rect(5, 11, 6, 2, '#a02838'); p.rect(6, 12, 4, 1, '#f07080');
+      p.rect(2, 9, 2, 1, '#f09080'); p.rect(12, 9, 2, 1, '#f09080');
+    },
+    triste(p) {
+      smiley(p, '#88b8f0', '#6890d0');
+      p.rect(5, 6, 2, 2, '#302018'); p.rect(10, 6, 2, 2, '#302018'); p.put(4, 5, '#302018'); p.put(12, 5, '#302018');
+      p.rect(6, 11, 4, 1, '#302018'); p.put(5, 12, '#302018'); p.put(10, 12, '#302018');
+      p.rect(4, 9, 1, 2, '#e8f8ff'); p.put(4, 11, '#ffffff');
+    },
+    cansado(p) {
+      smiley(p, '#f0c870', '#d0a050');
+      p.rect(4, 7, 3, 1, '#302018'); p.rect(9, 7, 3, 1, '#302018'); p.ell(8, 11, 1.4, 1.6, '#803030');
+      p.rect(11, 0, 3, 1, '#4060c0'); p.put(12, 1, '#4060c0'); p.rect(11, 2, 3, 1, '#4060c0'); p.put(14, 3, '#4060c0'); p.put(15, 3, '#4060c0'); p.put(15, 4, '#4060c0'); p.put(14, 5, '#4060c0'); p.put(15, 5, '#4060c0');
+    },
   };
 
   // G.icon(name | word, size?) -> canvas (cached). A word object may carry n / col params.
@@ -6123,6 +6387,8 @@ G.store = {
     p.outline();
     return (cache[key] = p.canvas());
   };
+  // true when a word (or icon name) has its own picture, not the plain placeholder tile (tools/test-roundb-world.js)
+  G.iconDrawn = w => { if (typeof w === 'string') w = G.data.words[w] || { icon: w }; return !!(w && DRAW[w.icon]); };
   // draw an icon scaled (pixel-perfect) inside an optional frame
   G.drawIcon16 = function (ctx, w, x, y, scale = 1, frame) {
     const img = G.icon(w), s = S * scale;
@@ -6151,8 +6417,18 @@ G.store = {
     numeros: { name: 'Los números', en: 'Numbers' },
     colores: { name: 'Los colores', en: 'Colors' },
     pueblo: { name: 'El pueblo', en: 'Around town' },
+    // Round B (docs/ROUND_B_PLAN.md)
+    numeros2: { name: 'Más números', en: 'More numbers' },
+    campo: { name: 'El día de campo', en: 'The picnic' },
+    colores2: { name: 'Más colores', en: 'More colors' },
+    cosas: { name: 'En el pueblo', en: 'Things in town' },
+    animales: { name: 'Los animales', en: 'Animals' },
+    granja: { name: 'La granja', en: 'The farm and the pond' },
+    sonidos: { name: '¿Qué dicen?', en: 'What do they say?' },
+    mascota: { name: 'Mi perro', en: 'My dog' },
+    sentir: { name: 'Así me siento', en: 'Feelings' },
   };
-  D.topicOrder = ['saludos', 'numeros', 'comida', 'colores', 'pueblo'];
+  D.topicOrder = ['saludos', 'numeros', 'comida', 'colores', 'pueblo', 'animales', 'granja', 'sonidos', 'mascota', 'cosas', 'numeros2', 'campo', 'colores2', 'sentir'];
 
   // icon: picture drawn in icons.js. n: number value (for dice pictures). say: text for speech, if different.
   D.words = {
@@ -6190,8 +6466,67 @@ G.store = {
     panaderia: { es: 'la panadería', en: 'the bakery', topic: 'pueblo', icon: 'panaderia' },
     biblioteca: { es: 'la biblioteca', en: 'the library', topic: 'pueblo', icon: 'biblioteca' },
     carta: { es: 'la carta', en: 'the letter', topic: 'pueblo', icon: 'carta' },
+
+    // ----- Round B (docs/ROUND_B_PLAN.md). alt: more ways of saying it that the mic accepts (say-it-back) -----
+    seis: { es: 'seis', en: 'six', topic: 'numeros2', icon: 'dado', n: 6 },
+    siete: { es: 'siete', en: 'seven', topic: 'numeros2', icon: 'diez', n: 7 },
+    ocho: { es: 'ocho', en: 'eight', topic: 'numeros2', icon: 'diez', n: 8 },
+    nueve: { es: 'nueve', en: 'nine', topic: 'numeros2', icon: 'diez', n: 9 },
+    diez: { es: 'diez', en: 'ten', topic: 'numeros2', icon: 'diez', n: 10 },
+
+    leche: { es: 'la leche', en: 'the milk', topic: 'campo', icon: 'leche' },
+    queso: { es: 'el queso', en: 'the cheese', topic: 'campo', icon: 'queso' },
+    huevo: { es: 'el huevo', en: 'the egg', topic: 'campo', icon: 'huevo', pl: 'huevos' },
+    agua: { es: 'el agua', en: 'the water', topic: 'campo', icon: 'agua' },
+    galleta: { es: 'la galleta', en: 'the cookie', topic: 'campo', icon: 'galleta', pl: 'galletas' },
+
+    blanco: { es: 'blanco / blanca', en: 'white', topic: 'colores2', icon: 'color', col: '#f8f8f4' },
+    negro: { es: 'negro / negra', en: 'black', topic: 'colores2', icon: 'color', col: '#383848' },
+    cafe: { es: 'café', en: 'brown', topic: 'colores2', icon: 'color', col: '#94582a' },
+    rosa: { es: 'rosa', en: 'pink', topic: 'colores2', icon: 'color', col: '#f878b8', alt: 'rosado / rosada' },
+
+    arbol: { es: 'el árbol', en: 'the tree', topic: 'cosas', icon: 'arbol', pl: 'árboles' },
+    flor: { es: 'la flor', en: 'the flower', topic: 'cosas', icon: 'flor', pl: 'flores' },
+    fuente: { es: 'la fuente', en: 'the fountain', topic: 'cosas', icon: 'fuente' },
+    banco: { es: 'el banco', en: 'the bench', topic: 'cosas', icon: 'banco' },
+    puerta: { es: 'la puerta', en: 'the door', topic: 'cosas', icon: 'puerta' },
+    ventana: { es: 'la ventana', en: 'the window', topic: 'cosas', icon: 'ventana' },
+    granja: { es: 'la granja', en: 'the farm', topic: 'cosas', icon: 'granja' },
+
+    perro: { es: 'el perro', en: 'the dog', topic: 'animales', icon: 'perro', pl: 'perros' },
+    gato: { es: 'el gato', en: 'the cat', topic: 'animales', icon: 'gato', pl: 'gatos' },
+    pajaro: { es: 'el pájaro', en: 'the bird', topic: 'animales', icon: 'pajaro', pl: 'pájaros' },
+    mariposa: { es: 'la mariposa', en: 'the butterfly', topic: 'animales', icon: 'mariposa', pl: 'mariposas' },
+    pez: { es: 'el pez', en: 'the fish', topic: 'animales', icon: 'pez', pl: 'peces', alt: 'pescado / pescadito / pecesito' },
+    conejo: { es: 'el conejo', en: 'the rabbit', topic: 'animales', icon: 'conejo', pl: 'conejos', alt: 'conejito' },
+
+    pato: { es: 'el pato', en: 'the duck', topic: 'granja', icon: 'pato', pl: 'patos', alt: 'patito' },
+    rana: { es: 'la rana', en: 'the frog', topic: 'granja', icon: 'rana', pl: 'ranas', alt: 'ranita' },
+    gallina: { es: 'la gallina', en: 'the hen', topic: 'granja', icon: 'gallina', pl: 'gallinas' },
+    caballo: { es: 'el caballo', en: 'the horse', topic: 'granja', icon: 'caballo', pl: 'caballos' },
+    cabra: { es: 'la cabra', en: 'the goat', topic: 'granja', icon: 'cabra', pl: 'cabras', alt: 'chiva / chivo' },
+
+    guau: { es: 'guau', en: 'woof', topic: 'sonidos', icon: 'guau', alt: 'guau guau / wow / guao' },
+    miau: { es: 'miau', en: 'meow', topic: 'sonidos', icon: 'miau', alt: 'miau miau / meow' },
+    pio: { es: 'pío', en: 'tweet', topic: 'sonidos', icon: 'pio', alt: 'pío pío / pio pio' },
+    cuac: { es: 'cuac', en: 'quack', topic: 'sonidos', icon: 'cuac', alt: 'cuac cuac / quack / cuak' },
+    croac: { es: 'croac', en: 'ribbit', topic: 'sonidos', icon: 'croac', alt: 'croac croac / croak' },
+    bee: { es: 'bee', en: 'baa', topic: 'sonidos', icon: 'bee', alt: 'be / beee / mee' },
+
+    hueso: { es: 'el hueso', en: 'the bone', topic: 'mascota', icon: 'hueso', pl: 'huesos' },
+    cama: { es: 'la cama', en: 'the bed', topic: 'mascota', icon: 'cama' },
+    sientate: { es: 'siéntate', en: 'sit!', topic: 'mascota', icon: 'sientate', alt: 'sentado / siéntese / sienta' },
+    ven: { es: 'ven', en: 'come!', topic: 'mascota', icon: 'ven', alt: 'ven acá / ven aquí / vente' },
+    salta: { es: 'salta', en: 'jump!', topic: 'mascota', icon: 'salta', alt: 'brinca / salte' },
+    pata: { es: 'dame la pata', en: 'shake! (give me your paw)', topic: 'mascota', icon: 'pata', alt: 'la pata / pata / dame la patita' },
+    gira: { es: 'gira', en: 'spin!', topic: 'mascota', icon: 'gira', alt: 'gira gira / da la vuelta / vuelta' },
+
+    feliz: { es: 'feliz', en: 'happy', topic: 'sentir', icon: 'feliz', alt: 'contento / contenta' },
+    triste: { es: 'triste', en: 'sad', topic: 'sentir', icon: 'triste' },
+    cansado: { es: 'cansado / cansada', en: 'tired', topic: 'sentir', icon: 'cansado' },
   };
-  D.numberWords = ['uno', 'dos', 'tres', 'cuatro', 'cinco'];
+  D.numberWords = ['uno', 'dos', 'tres', 'cuatro', 'cinco']; // the market's numbers (Round A)
+  D.numberWords10 = ['uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'];
 
   // ---------- Notebook pages (found around town, like a game manual) ----------
   // Each page pictures one topic. Finding a page marks its words as seen.
@@ -6201,8 +6536,18 @@ G.store = {
     comida: { topic: 'comida', words: ['manzana', 'platano', 'naranja', 'uvas', 'pan'] },
     colores: { topic: 'colores', words: ['rojo', 'azul', 'verde', 'amarillo', 'pelota'] },
     pueblo: { topic: 'pueblo', words: ['casa', 'escuela', 'parque', 'panaderia', 'biblioteca', 'carta'] },
+    // Round B pages, hidden around town (maps.js `pages`; where: docs/ROUND_B_PLAN.md)
+    animales: { topic: 'animales', words: ['perro', 'gato', 'pajaro', 'mariposa', 'pez', 'conejo'] },
+    granja: { topic: 'granja', words: ['pato', 'rana', 'gallina', 'caballo', 'cabra'] },
+    sonidos: { topic: 'sonidos', words: ['guau', 'miau', 'pio', 'cuac', 'croac', 'bee'] },
+    mascota: { topic: 'mascota', words: ['hueso', 'cama', 'sientate', 'ven', 'salta', 'pata', 'gira'] },
+    cosas: { topic: 'cosas', words: ['arbol', 'flor', 'fuente', 'banco', 'puerta', 'ventana', 'granja'] },
+    numeros2: { topic: 'numeros2', words: ['seis', 'siete', 'ocho', 'nueve', 'diez'] },
+    campo: { topic: 'campo', words: ['leche', 'queso', 'huevo', 'agua', 'galleta'] },
+    colores2: { topic: 'colores2', words: ['blanco', 'negro', 'cafe', 'rosa'] },
+    sentir: { topic: 'sentir', words: ['feliz', 'triste', 'cansado'] },
   };
-  D.pageOrder = ['saludos', 'numeros', 'comida', 'colores', 'pueblo'];
+  D.pageOrder = ['saludos', 'numeros', 'comida', 'colores', 'pueblo', 'animales', 'granja', 'sonidos', 'mascota', 'cosas', 'numeros2', 'campo', 'colores2', 'sentir'];
 
   // ---------- Errands ----------
   // goal: what the Misiones screen pictures — [word, count] pairs, '>' draws an arrow ("take this there").
@@ -6304,6 +6649,8 @@ G.store = {
       opts: { english: false },
       look: null,         // the player's avatar, from the character creator
       name: null,         // the player's name, typed after the creator
+      album: {},          // Round B (animals.js): animal id -> {first: ms, map, n: times tapped, said: name said out loud}
+      sayback: {},        // Round B (world.js): word id -> 'YYYY-M-D' it last earned a say-it-back star (one a day)
     };
   }
   function devicePrefs(s) {
@@ -6456,9 +6803,9 @@ G.store = {
   // corners, the picture bounces and sparkles, and the word is spoken. With the mic on (mic.js), a mic beside the
   // picture lets the child say the new word for a speaking star (once per word); a tap anywhere else still goes on.
   class WordCard {
-    constructor(ids, w) {
+    constructor(ids, w, o) {
       G.toastT = 0; this.transparent = true; this.ids = ids; this.i = 0; this.w = w; this.t = 0;
-      this.mic = G.mic && G.mic.on() ? new G.MicBtn(this, { rect: () => this.micRect(), ready: () => this.t >= 20, heard: a => this.heard(a), again: () => G.speak(G.baseForm(this.ids[this.i])) }) : null;
+      this.mic = !(o && o.noMic) && G.mic && G.mic.on() ? new G.MicBtn(this, { rect: () => this.micRect(), ready: () => this.t >= 20, heard: a => this.heard(a), again: () => G.speak(G.baseForm(this.ids[this.i])) }) : null;
       this.open();
     }
     onEnter() { if (this.mic) this.mic.arm(); }
@@ -6519,13 +6866,14 @@ G.store = {
       if (this.mic && this.t >= 20) this.mic.draw(ctx);
     }
   }
-  // Mark words learned; celebrates the ones that are new. Yieldable.
-  G.learnWords = function (ids) {
+  // Mark words learned; celebrates the ones that are new. Yieldable. o.noMic: the card has no mic (the word was just
+  // said out loud, world.js's say-it-back)
+  G.learnWords = function (ids, o) {
     ids = (Array.isArray(ids) ? ids : [ids]).filter(id => D().words[id] && S().learn(id));
     const w = new G.Wait();
     if (!ids.length) { w.resolve(); return w; }
     G.audio.jingle('item');
-    G.push(new WordCard(ids, w)); return w;
+    G.push(new WordCard(ids, w, o)); return w;
   };
 
   // ---------- Choice screen ----------
@@ -6786,6 +7134,7 @@ G.store = {
 //   G.mic.on()                  mic buttons show: speech recognition here, the grown-ups' "Speaking (mic)" switch on
 //                               (G.prefs.mic, per device, on unless turned off) and not blocked this session
 //   G.mic.target(choice)        what a choice sounds like: its label plus every form of its word ('rojo / roja', ...)
+//                               and the word's `alt` forms (data.js, Round B: 'patito' for el pato)
 //   G.mic.best(targets, alts, prefer)  the index of the best PASSING target (G.speech.match), or -1; a tie goes to prefer
 //   G.mic.award(id, x, y)       a speaking star: words[id].said++, the speaking-star total and a star that flies from x, y
 //   new G.MicBtn(scene, o)      the button. o: {rect() (its tap area, game px), ready() (may listen now),
@@ -6804,7 +7153,7 @@ G.store = {
   const BLOCK = ['not-allowed', 'service-not-allowed', 'language-not-supported', 'audio-capture', 'unsupported'];
   M.blocked = false;
   M.on = () => !!G.speech && G.speech.supported() && G.prefs.mic !== false && !M.blocked;
-  M.target = c => { const w = c && c.word && G.data.words[c.word]; return [c && c.label, w && w.es].filter(Boolean).join(' / ') || null; };
+  M.target = c => { const w = c && c.word && G.data.words[c.word]; return [c && c.label, w && w.es, w && w.alt].filter(Boolean).join(' / ') || null; };
   M.best = function (targets, alts, prefer) {
     let k = -1, sc = 0;
     targets.forEach((t, i) => {
@@ -7261,8 +7610,8 @@ G.store = {
     words() { return D().pages[this.page()].words; }
     // tap areas (shared with draw): word k on the page, the < > page buttons around the page dots, close
     cellRect(k) { return { x: 18 + (k % 3) * 96, y: 34 + Math.floor(k / 3) * 58, w: 92, h: 56 }; }
-    prevXY() { return [G.W / 2 - 60, 4]; }
-    nextXY() { return [G.W / 2 + 36, 4]; }
+    prevXY() { return [G.W / 2 - 82, 4]; } // the page dots sit between these (14 pages since Round B)
+    nextXY() { return [G.W / 2 + 62, 4]; }
     closeXY() { return [G.W - 30, 8]; }
     turn(dx) { this.pi = (this.pi + dx + D().pageOrder.length) % D().pageOrder.length; this.wi = 0; G.audio.sfx('select'); }
     update() {
@@ -7289,10 +7638,11 @@ G.store = {
       const pid = this.page(), found = S().hasPage(pid);
       G.iconBtn(ctx, 'back', ...this.prevXY()); G.iconBtn(ctx, 'next', ...this.nextXY()); G.closeBtn(ctx, ...this.closeXY());
       // page dots
+      const n = D().pageOrder.length, step = Math.min(14, Math.floor(118 / n)), dw = Math.max(5, step - 3);
       D().pageOrder.forEach((p, k) => {
-        const x = G.W / 2 - 34 + k * 14;
+        const x = Math.round(G.W / 2 - (n * step - (step - dw)) / 2 + k * step);
         ctx.fillStyle = k === this.pi ? '#a05020' : S().hasPage(p) ? '#c8a070' : '#e8dcc0';
-        ctx.fillRect(x, 11, 8, 6); ctx.fillStyle = '#7a4a20'; ctx.fillRect(x, 17, 8, 1);
+        ctx.fillRect(x, 11, dw, 6); ctx.fillStyle = '#7a4a20'; ctx.fillRect(x, 17, dw, 1);
       });
       if (!found) {
         ctx.globalAlpha = 0.35; G.drawIcon16(ctx, 'pagina', G.W / 2 - 24, 64, 3); ctx.globalAlpha = 1;
@@ -7819,7 +8169,7 @@ G.store = {
   const key = (x, y) => x + ',' + y;
   const HUD = [G.W - 26, 6];          // the field menu button (= B), top-right
   const COUNTER = 'etaY';             // people are talked to across these (see interact)
-  const THING = 'rlkgPLYZteauj';      // objects a tap walks up to and searches (fences, walls, trees, water: just walk)
+  const THING = 'rlkgPLYZteaujJO';      // objects a tap walks up to and searches (fences, walls, trees, water: just walk)
   const DIR4 = ['up', 'down', 'left', 'right'];
 
   class Field {
@@ -7897,9 +8247,10 @@ G.store = {
           const pl = this.plan(this.route);
           if (pl && pl.dir) d = pl.dir;
           else { // arrived (or can't get any closer): face the target, then talk / search like A
-            this.route = null;
+            const r = this.route; this.route = null;
             if (pl && pl.face) p.dir = pl.face;
             if (pl && pl.act) { this.locked = true; yield* this.interact(); this.locked = false; continue; }
+            if (pl && r.name && G.world) G.world.arrive(this, r); // a thing with a word: it names itself (world.js)
           }
         }
         if (d) {
@@ -7924,6 +8275,7 @@ G.store = {
     // ---------- tap-to-walk ----------
     // What a tap on the map means: talk to someone (their tile, the tile above where the head and bubble are,
     // or a counter in front of them), go through a door (or its sign), search a sparkle / object, or walk there.
+    // A thing with a word (world.js) carries it as `name`: it names itself when you get there. (Animals: update.)
     tapTarget(tap) {
       const T = G.TILE, wx = tap.x + Math.round(this.cam.x), wy = tap.y + Math.round(this.cam.y), tx = Math.floor(wx / T), ty = Math.floor(wy / T);
       const talker = (x, y) => this.npcs.find(n => n.talk && n.spec && !n.hidden && n.x === x && n.y === y);
@@ -7937,7 +8289,10 @@ G.store = {
       const door = (G.TERRAIN[c] || G.TERRAIN['.']).wall && DIR4.map(d => this.exitAt(tx + G.DIRS[d][0], ty + G.DIRS[d][1])).find(Boolean);
       if (door) return { exit: true, x: door.x, y: door.y }; // the wall or sign around a door, the dark just outside one
       const pg = (this.def.pages || {})[key(tx, ty)];
-      if ((pg && !G.st.hasPage(pg)) || (this.def.searches || {})[key(tx, ty)] || THING.includes(c)) return { search: true, x: tx, y: ty };
+      const name = G.world ? G.world.wordAt(this, tx, ty) : null;
+      const special = !!((pg && !G.st.hasPage(pg)) || (this.def.searches || {})[key(tx, ty)]); // these win over an animal on them
+      if (special || THING.includes(c)) return { search: true, x: tx, y: ty, name, special };
+      if (name) return this.blocked(tx, ty, this.player) && !(this.player.x === tx && this.player.y === ty) ? { search: true, x: tx, y: ty, name } : { x: tx, y: ty, name };
       return { x: tx, y: ty };
     }
     // Next step of a tap route, re-planned every step (people move): a breadth-first search over walkable
@@ -8007,6 +8362,7 @@ G.store = {
         return;
       }
       if (G.ambient && G.ambient.poke(this, fx, fy)) return; // pet the cat on the fence
+      if (G.world && G.world.nameTile(this, fx, fy)) return; // a thing with a word says it (world.js)
       yield G.say({ t: '...', en: 'Nothing here.' }, { noVoice: true });
     }
     // ---------- NPC wandering ----------
@@ -8029,16 +8385,22 @@ G.store = {
       }
     }
     start() { this.tasks.add(this.playerWalk()); this.tasks.add(this.npcAI()); }
+    onExit() { if (G.world) G.world.leave(this); }
     update() {
       this.t++;
+      if (G.world && G.world.update(this)) G.input.eat(); // the say-it-back mic used this frame's tap or key (world.js)
       // keys win over a tap walk, and a cutscene (the field locked) ends it rather than pausing it
       if (this.route && (this.locked || G.input.dir() || ['up', 'down', 'left', 'right', 'A', 'B'].some(k => G.input.p(k)))) this.route = null;
       if (!this.locked && G.input.tap()) { // the menu button (= B, eats the tap), else tap-to-walk (field tasks still see the tap)
         if (G.btnHit(...HUD)) { G.input.eat(); this.menuReq = true; this.route = null; }
-        else { this.route = this.tapTarget(G.input.tap()); this.plan(this.route); }
+        else { // tap-to-walk; a tap on an animal (animals.js, not over a person or a door) names it and walks toward it
+          const tap = G.input.tap(), tt = this.tapTarget(tap), an = !tt.npc && !tt.exit && !tt.special && G.animals && G.animals.hit(this, tap);
+          this.route = an ? G.animals.tapped(this, an) : tt; this.plan(this.route);
+        }
       }
       this.tasks.update();
       if (G.ambient) G.ambient.update(this); // the living town (ambient.js): critters, people who look at you, walkers
+      if (G.animals) G.animals.update(this); // ducks, hens, the fish, the frog, the rabbit, the horse, the goat (animals.js)
       const ct = this.camTarget(); this.cam.x += (ct.x - this.cam.x) * 0.3; this.cam.y += (ct.y - this.cam.y) * 0.3;
       if (Math.abs(ct.x - this.cam.x) < 0.5) this.cam.x = ct.x; if (Math.abs(ct.y - this.cam.y) < 0.5) this.cam.y = ct.y;
       if (this.banner) this.banner.t--;
@@ -8065,6 +8427,7 @@ G.store = {
         const [px, py] = k.split(',').map(Number), ph = (this.t + px * 7) % 60;
         if (ph < 30) { const sx = px * T - cx + 12, sy = py * T - cy + 8 - (ph >> 3); ctx.fillStyle = '#ffffff'; ctx.fillRect(sx - 2, sy, 5, 1); ctx.fillRect(sx, sy - 2, 1, 5); ctx.fillStyle = '#f8e060'; ctx.fillRect(sx, sy, 1, 1); }
       }
+      if (G.world) G.world.drawUnder(this, ctx); // a named thing wiggles
       if (this.route && this.route.end) { // where a tap is taking you: pulsing corner marks
         const [ex, ey] = this.route.end, i = 3 + ((this.t >> 3) & 1), mx = ex * T - cx, my = ey * T - cy, s = T - 1 - 2 * i;
         for (const [col, o] of [['#10102a', 1], ['#f8e060', 0]]) {
@@ -8073,14 +8436,18 @@ G.store = {
         }
       }
       if (G.ambient) G.ambient.draw(this, ctx, 'ground'); // birds on the ground, shadows
-      const ents = this.npcs.filter(n => n.spec && !n.hidden).concat([this.player]).sort((a, b) => (a.y * T + a.oy) - (b.y * T + b.oy));
-      for (const e of ents) {
+      if (G.animals) G.animals.draw(this, ctx, 'ground'); // lily pads, ripples, swimmers, shadows
+      const ents = this.npcs.filter(n => n.spec && !n.hidden).concat([this.player]);
+      const zoo = G.animals ? G.animals.ents(this) : []; // land animals, drawn in order with the people
+      for (const e of ents.concat(zoo).sort((a, b) => (a.sy != null ? a.sy : a.y * T + a.oy) - (b.sy != null ? b.sy : b.y * T + b.oy))) {
+        if (e.draw) { e.draw(ctx, cx, cy); continue; }
         const moving = e.moving || e.ox || e.oy;
         const fr = moving ? Math.floor(this.t / 6) % 2 : Math.floor((this.t + (e.x || 0) * 13) / 24) % 2;
         const img = G.unitSprite(e.spec, e.dir, fr), bob = Math.abs(e.ox + e.oy) >= 6 && Math.abs(e.ox + e.oy) <= 18 ? 1 : 0; // a hop mid-step
         ctx.drawImage(img, Math.round(e.x * T + e.ox - cx), Math.round(e.y * T + e.oy - cy - 3) - bob);
       }
       if (G.ambient) G.ambient.draw(this, ctx, 'air'); // birds in flight, butterflies, the cat
+      if (G.animals) G.animals.drawTop(this, ctx); // hearts and splashes
       if (G.day) G.day.drawField(ctx, this, cx, cy); // the sunset (over the critters too), lit windows, the moon over home (day.js)
       // "!" bubbles over people who have something for the player (kids always know where to go next)
       for (const e of ents) {
@@ -8099,6 +8466,7 @@ G.store = {
           G.drawGoal(ctx, goal, bx + 4, by + 3);
         }
       }
+      if (G.world) G.world.draw(this, ctx); // the word bubble of a thing just named, and its say-it-back mic
       if (this.banner && G.top() !== this) this.banner.t = Math.min(this.banner.t, 0); // a talk or a card opened over the map: the name has done its job
       if (this.banner && this.banner.t > 0) {
         const a = Math.min(1, this.banner.t / 30), ic = this.banner.icon;
@@ -8321,6 +8689,7 @@ G.store = {
       if (c.blink > 0) c.blink--; else if (ri(260) === 0) c.blink = 7;
       const dx = px - (c.x * T + 12), near = Math.abs(dx) < 3 * T && Math.abs(py - (c.y * T + 12)) < 3 * T;
       const want = near && Math.abs(dx) > 8 ? Math.sign(dx) : 0;
+      if (near || c.happy) c.nap = 0; else c.nap = (c.nap || 0) + 1; // nobody about for ~8 s: a nap (Round B)
       if (want !== c.look && ++c.lookT > 10) { c.look = want; c.lookT = 0; } else if (want === c.look) c.lookT = 0;
     }
     a.fx = a.fx.filter(e => ++e.t < e.life);
@@ -8379,9 +8748,9 @@ G.store = {
     fl.tx = fl.hx; fl.ty = fl.hy; fl.t = 90; fl.sp = 1.5; fl.flee = 40;
   }
   function pet(a) {
-    const c = a.cat; if (c.happy > 30) return;
+    const c = a.cat; c.nap = 0; if (c.happy > 30) return;
     c.happy = 80; meow();
-    a.fx.push({ kind: 'say', s: '¡Miau!', x: c.x * T + 12, y: c.y * T - 9, dx: -8, t: 0, life: 70 }); // the bubble up-left,
+    if (!G.animals) a.fx.push({ kind: 'say', s: '¡Miau!', x: c.x * T + 12, y: c.y * T - 9, dx: -8, t: 0, life: 70 }); // the bubble up-left (Round B: the word bubble says it),
     a.fx.push({ kind: 'heart', x: c.x * T + 22, y: c.y * T - 4, t: 0, life: 50 });                    // a heart rising on the right
   }
   function catHit(c, wx, wy) { const x = c.x * T + 12, y = c.y * T; return wx >= x - 10 && wx < x + 11 && wy >= y - 9 && wy < y + 12; }
@@ -8450,11 +8819,13 @@ G.store = {
     if (!f.amb) setup(f);
     sync(f);
     const tap = G.input.tap(), a = f.amb, p = f.player;
-    if (tap) { // poke a critter (the tap still walks you there)
+    if (tap) { // poke a critter (the tap still walks you there); Round B: it says its name too (animals.js)
       const wx = tap.x + Math.round(f.cam.x), wy = tap.y + Math.round(f.cam.y), [px, py] = center(p);
-      for (const b of a.birds) if ((b.st === 'ground' || b.st === 'land') && Math.hypot(b.x - wx, b.y - b.z - 3 - wy) < 12) scare(f, a, b, px, py);
-      for (const fl of a.flies) if (Math.hypot(fl.x - wx, fl.y - fl.z - wy) < 12) flee(f, a, fl);
-      if (a.cat && catHit(a.cat, wx, wy)) pet(a);
+      let named = null;
+      for (const b of a.birds) if ((b.st === 'ground' || b.st === 'land') && Math.hypot(b.x - wx, b.y - b.z - 3 - wy) < 12) { scare(f, a, b, px, py); named = named || ['pajaro', b.x, b.y - b.z - 8]; }
+      for (const fl of a.flies) if (Math.hypot(fl.x - wx, fl.y - fl.z - wy) < 12) { flee(f, a, fl); named = named || ['mariposa', fl.x, fl.y - fl.z - 4]; }
+      if (a.cat && catHit(a.cat, wx, wy)) { pet(a); named = ['gato', a.cat.x * T + 12, a.cat.y * T - 8]; }
+      if (named && G.animals) G.animals.tap(named[0], named[1], named[2], { silent: true });
     }
     for (const n of f.npcs) {
       const m = meet(n);
@@ -8490,11 +8861,12 @@ G.store = {
     }
     const c = a.cat; // on its fence post, in front of anyone standing behind the fence
     if (c && vis(c.x * T, c.y * T)) {
-      const x = c.x * T + 9 - cx, y = c.y * T - 5 - cy, tail = CAT_TAIL[[0, 1, 2, 1][(c.t >> (c.happy ? 2 : 4)) & 3]], shut = c.blink || c.happy > 10;
+      const nap = (c.nap || 0) > 480, x = c.x * T + 9 - cx, y = c.y * T - 5 - cy, tail = CAT_TAIL[nap ? 0 : [0, 1, 2, 1][(c.t >> (c.happy ? 2 : 4)) & 3]], shut = c.blink || c.happy > 10 || nap;
       ctx.fillStyle = OL; for (const [tx, ty] of tail) ctx.fillRect(x + tx - 1, y + ty - 1, 3, 3);
       ctx.fillStyle = CAT_PAL.b; for (const [tx, ty] of tail) ctx.fillRect(x + tx, y + ty, 1, 1);
       ctx.drawImage(pix('catbody', CAT_BODY, CAT_PAL), x - 1, y + 5);
-      ctx.drawImage(pix(shut ? 'cathead2' : 'cathead', shut ? CAT_HEAD_SHUT : CAT_HEAD, CAT_PAL), x - 1 + c.look, y - 1);
+      ctx.drawImage(pix(shut ? 'cathead2' : 'cathead', shut ? CAT_HEAD_SHUT : CAT_HEAD, CAT_PAL), x - 1 + c.look, y - 1 + (nap ? 1 : 0));
+      if (nap) for (let i = 0; i < 2; i++) { const k = ((c.t + i * 50) % 100) / 100; ctx.globalAlpha = 1 - k; G.text(ctx, 'z', x + 8 + Math.round(k * 6), y - 4 - Math.round(k * 12), '#ffffff', '#303060'); ctx.globalAlpha = 1; }
     }
     for (const b of a.birds) if ((b.st === 'fly' || b.st === 'land') && vis(b.x, b.y - b.z)) drawBird(b);
     for (const fl of a.flies) {
@@ -8512,7 +8884,9 @@ G.store = {
     }
   };
   // A pressed facing a tile: the cat purrs and meows (true = handled, so the search says nothing)
-  A.poke = function (f, x, y) { const a = f.amb; if (a && a.cat && a.cat.x === x && a.cat.y === y) { pet(a); return true; } return false; };
+  A.poke = function (f, x, y) { const a = f.amb; if (a && a.cat && a.cat.x === x && a.cat.y === y) { pet(a); if (G.animals) G.animals.tap('gato', x * T + 12, y * T - 8, { silent: true }); return true; } return false; };
+  A.sfx = { meow, yip, flutter }; // for animals.js
+  A.napping = f => !!(f && f.amb && f.amb.cat && (f.amb.cat.nap || 0) > 480);
   // a happy hop, a heart and a yip (Canelo, when you talk to him), and a little speech bubble if `say` is given
   A.happy = function (n, say) {
     const m = meet(n), a = G.field && G.field.amb; m.hop = 24; yip();
@@ -8523,11 +8897,653 @@ G.store = {
 })();
 
 </script>
+<script>/* src/animals.js */
+// ===== Round B: the animals of Villa Sol (ducks, hens, a fish, a frog, a rabbit, a horse, a goat) and the album =====
+// Animals live on a map from its definition (maps.js):
+//   animals: [{ kind: 'pato', n: 3, area: 'estanque' }, { kind: 'pez', at: 'fuentePez' }, ...]
+//   area: a G.MAPDATA[map].pos tag holding [x, y, w, h] in tiles (at: a tag holding [x, y])
+// Like the critters in ambient.js they are decoration: never in field.npcs, never block anyone, animate from G.frame
+// (so they keep moving under a dialogue box), and use Math.random (the game's seedable dice stay untouched).
+// Behaviour: ducks swim on the water of their area (the mother first, ducklings in a line behind), hens walk and peck,
+// the rabbit hops about and nibbles, the horse and the goat graze in the paddock and swish their tails, the frog sits
+// on a lily pad and croaks (now and then it hops to the other pad), the fish swims in the fountain and jumps out.
+// A tap on one (field.js asks G.animals.hit first; people and doors still win): it reacts (a hop, a flap, the horse
+// rears up, the fish jumps) with its own little sound, then the game names it: a word bubble with its picture,
+// "el gato" and its sound "¡Miau!", spoken; the word and its sound word are marked seen, the album records it, and
+// with the mic on a say-it-back bubble asks the child to say the name (src/world.js). The tap also walks you toward it.
+// The town's other animals use the same naming: birds (pájaro), butterflies (mariposa) and the cat (gato) in
+// ambient.js, and Canelo (perro) in maps.js, all through G.animals.tap(kind, ...).
+//
+// API (for the album screen, errands and tests):
+//   G.animals.KINDS[id]       {word, sound (a word id or null), cry ('¡Miau!'), order} for the 11 animals
+//   G.animals.list()          the animal ids in album order
+//   G.animals.met(id)         true once the child has tapped / met it
+//   G.animals.meet(id)        record it in the album (true the first time); G.state.album[id] =
+//                             {first: ms timestamp, map: 'villa', n: times tapped, said: true once its name was said}
+//   G.animals.tap(id, wx, wy, o)  the shared reaction for any animal at world px wx, wy (o.silent: no cry sound,
+//                             o.noWalk) -> names it (G.world.name) and records the album. Returns the album record.
+//   G.animals.here(f?)        the live animals on the current map: [{kind, x, y (world px, feet), st}]
+//   G.animals.find(kind, f?)  the first live one of a kind, or null
+//   G.animals.cry(kind)       play its sound (procedural, through the sound-effects volume)
+//   G.animals.screen(a, f?)   where an animal is on screen [x, y] (game px), for tests and hints
+'use strict';
+(function () {
+  const T = G.TILE, AN = G.animals = {};
+  const rnd = n => Math.random() * n, ri = n => Math.floor(Math.random() * n);
+  const OL = '#1a1420';
+
+  // ---------- the animals ----------
+  AN.KINDS = {
+    perro: { word: 'perro', sound: 'guau', cry: '¡Guau, guau!' },
+    gato: { word: 'gato', sound: 'miau', cry: '¡Miau!' },
+    pajaro: { word: 'pajaro', sound: 'pio', cry: '¡Pío, pío!' },
+    mariposa: { word: 'mariposa', sound: null, cry: null },
+    pez: { word: 'pez', sound: null, cry: '¡Glu, glu!' },
+    conejo: { word: 'conejo', sound: null, cry: null },
+    pato: { word: 'pato', sound: 'cuac', cry: '¡Cuac, cuac!' },
+    rana: { word: 'rana', sound: 'croac', cry: '¡Croac!' },
+    gallina: { word: 'gallina', sound: null, cry: '¡Coc, coc!' },
+    caballo: { word: 'caballo', sound: null, cry: '¡Iiijii!' },
+    cabra: { word: 'cabra', sound: 'bee', cry: '¡Beee!' },
+  };
+  const ORDER = Object.keys(AN.KINDS);
+  ORDER.forEach((k, i) => { AN.KINDS[k].order = i; });
+  AN.list = () => ORDER.slice();
+  const album = () => (G.state.album || (G.state.album = {}));
+  AN.met = id => !!(G.state && G.state.album && G.state.album[id]);
+  AN.meet = function (id) {
+    if (!AN.KINDS[id] || !G.state) return false;
+    const a = album(), first = !a[id];
+    if (first) a[id] = { first: Date.now(), map: G.field ? G.field.mapId : null, n: 0, said: false };
+    a[id].n++;
+    G.st.autosave();
+    return first;
+  };
+
+  // ---------- pictures: rows of letters -> palette, outlined, cached (facing right; flip for left) ----------
+  function pix(id, rs, pal, flip) {
+    const w = Math.max(...rs.map(r => r.length)), h = rs.length;
+    rs = rs.map(r => r.padEnd(w, '.'));
+    return G.cached('ani|' + id + (flip ? '|f' : ''), w + 2, h + 2, ctx => {
+      const at = (x, y) => { if (x < 0 || y < 0 || x >= w || y >= h) return null; const c = rs[y][flip ? w - 1 - x : x]; return c === '.' ? null : c; };
+      ctx.fillStyle = OL;
+      for (let y = -1; y <= h; y++) for (let x = -1; x <= w; x++) if (!at(x, y) && (at(x - 1, y) || at(x + 1, y) || at(x, y - 1) || at(x, y + 1))) ctx.fillRect(x + 1, y + 1, 1, 1);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const c = at(x, y); if (c && pal[c]) { ctx.fillStyle = pal[c]; ctx.fillRect(x + 1, y + 1, 1, 1); } }
+    });
+  }
+  // feet at the bottom row; every frame of a kind has the same size
+  const SPR = {
+    pato: { pal: { w: '#ffffff', g: '#d4d8e8', k: '#f89020', e: '#101010' },
+      swim: ['......ww...', '.....wwwekk', '.....www...', 'w....wwww..', 'wwwwwwwgww.', '.wwggggww..', '..wwwwww...'],
+      dip: ['...........', '...........', '...........', 'w..........', 'ww...ww....', '.wwwwwggwkk', '..wwwwwww..'],
+      flap: ['g.....ww...', 'gg...wwwekk', '.gg..www...', 'w.gggwwww..', 'wwwwwwwgww.', '.wwggggww..', '..wwwwww...'] },
+    patito: { pal: { y: '#f8d838', d: '#e0b020', k: '#f89020', e: '#101010' },
+      swim: ['...yy..', '...yyek', 'y.yyy..', 'yyyyyy.', '.yddy..'],
+      dip: ['.......', '.......', 'y......', 'yyyyyek', '.yddy..'],
+      flap: ['d..yy..', 'dd.yyek', 'yddyy..', 'yyyyyy.', '.yddy..'] },
+    gallina: { pal: { b: '#c87838', d: '#8a4820', c: '#e0a060', r: '#e83030', k: '#f0b040', e: '#101010', l: '#f0a030' },
+      stand: ['.......rr..', '.......bbr.', '......bbek.', 'd.....bbbkk', 'dd...bbbr..', 'ddbbbbbbb..', '.dbbddbbc..', '..bbdddcc..', '...bbbbb...', '....l..l...', '...ll.ll...'],
+      peck: ['...........', '...........', 'd..........', 'dd.........', 'ddbbbbb.rr.', '.dbbddbbbbr', '..bbdddcbek', '...bbbbbbrk', '....bbbbb..', '....l..l...', '...ll.ll...'],
+      flap: ['.......rr..', 'd......bbr.', 'dd....bbek.', 'ddd.d.bbbkk', '.dddddbbr..', '..ddddbbb..', '.dbbddbbc..', '..bbbbbcc..', '...bbbbb...', '....l..l...', '...ll.ll...'] },
+    conejo: { pal: { w: '#f4f0f6', s: '#c8c0d4', p: '#f8a0b8', k: '#201828', n: '#f070a0', t: '#ffffff' },
+      sit: ['......wp...', '.....wpw.wp', '.....wpwwpw', '......wwwpw', '.....wwwww.', '....wwwwkwn', '.swwwwwwwww', 'twwwwwwwww.', 'tswwwwwww..', '.sswwswww..', '..ss..ww...'],
+      hop: ['...........', '......wp.wp', '.....wpwwpw', '......wwwpw', '.....wwwwkn', '.swwwwwwwww', 'twwwwwwwww.', 'tswwwwwww..', '.ss....ww..', 'ss......ww.', '...........'],
+      eat: ['...........', '...........', '......wp.wp', '.....wpwwpw', '......wwwpw', '....wwwwwww', '.swwwwwwwkw', 'twwwwwwwwwn', 'tswwwwwww..', '.sswwswww..', '..ss..ww...'] },
+    caballo: { pal: { b: '#a0602c', d: '#844a20', m: '#3a2010', w: '#f0e0c8', e: '#101010', h: '#4a3020' },
+      stand: ['................mm..', '...............mbb..', '..............mbbeb.', '..............mbbbbb', '.............mbbb.wb', '............mbbb....', '.mbbbbbbbbbbbbbb....', 'mmbbbbbbbbbbbbbd....', 'm.bbbbbbbbbbbbbd....', 'm.dbbbbbbbbbbbd.....', '..db.db....bd.db....', '..db.db....bd.db....', '..db.db....bd.db....', '..hh.hh....hh.hh....'],
+      graze: ['....................', '....................', '....................', '....................', '....................', '.mbbbbbbbbbbbbb.....', 'mmbbbbbbbbbbbbbbm...', 'm.bbbbbbbbbbbbbbbm..', 'm.dbbbbbbbbbbbd.bbm.', '..db.db....bd.db.bbb', '..db.db....bd.db.bebb', '..db.db....bd.db..bwb', '..db.db....bd.db.....', '..hh.hh....hh.hh.....'],
+      rear: ['..............mm....', '.............mbb....', '............mbbeb...', '............mbbbbb..', '...........mbbb.wb..', '..........mbbbb.....', '........bbbbbbbd....', '......bbbbbbbbbd.d..', '....mbbbbbbbbb.db...', '...mmbbbbbbbbd..b...', '..m.bbbbbbdd........', '..m.db.db...........', '....db.db...........', '....hh.hh...........'] },
+    cabra: { pal: { w: '#ece8e0', s: '#c8c2b6', h: '#8a7a60', e: '#201008', y: '#f0c040', p: '#d8a8a8', k: '#4a4038' },
+      stand: ['.........h.h.', '..........hh.', '.........wwww', '..ww....wwwye', '.wwwwwwwwwwwp', 'wwwwwwwwwwsww', '.wwwwwwwwws.w', '.swwwwwwwss..', '..w.w...w.w..', '..w.w...w.w..', '..k.k...k.k..'],
+      graze: ['.............', '.............', '.............', '..ww.........', '.wwwwwwwwwh.h', 'wwwwwwwwwwwhh', '.wwwwwwwwwwww', '.swwwwwwwswye', '..w.w...w.wwp', '..w.w...w.w.w', '..k.k...k.k..'],
+      hop: ['.........h.h.', '..........hh.', '.........wwww', '..ww....wwwye', '.wwwwwwwwwwwp', 'wwwwwwwwwwsww', '.wwwwwwwwws.w', '.swwwwwwwss..', '.w..w...w..w.', 'w....w.w....w', 'k....k.k....k'] },
+    rana: { pal: { g: '#58b840', d: '#3a9030', W: '#ffffff', e: '#101010', b: '#b8e890', m: '#1a5a18', p: '#f8e0a0' },
+      sit: ['.gg..gg.', 'gWeggeWg', 'gggggggg', 'gmmmmmmg', 'dgbbbbgd', 'dd....dd'],
+      croak: ['.gg..gg.', 'gWeggeWg', 'gggggggg', 'gmmmmmmg', 'dpppppgd', 'dppppppd', '.dd..dd.'],
+      hop: ['.gg..gg.', 'gWeggeWg', 'gggggggg', 'gmmmmmmg', '.gbbbbg.', 'd.d..d.d'] },
+    pez: { pal: { o: '#f88828', l: '#f8b860', e: '#101010', d: '#d06010' },
+      swim: ['l..oo..', 'llooooe', 'l.dooo.'],
+      jump: ['..l..', '.lol.', '.ooo.', '.ooo.', '.oeo.', '..o..'] },
+  };
+  const lily = ['..gggg..', '.gggggg.', 'ggggg.gg', '.gggggg.', '..gggg..'];
+  const LILY_PAL = { g: '#3a9a48' };
+
+  // ---------- little sounds (the synth's own effects are private to audio.js) ----------
+  function au() { const a = G.audio; return a && a.ctx && a.sfxGain ? a : null; }
+  function tone(type, f0, f1, len, vol, at = 0, o = {}) {
+    const a = au(); if (!a) return;
+    const ac = a.ctx, t = ac.currentTime + 0.01 + at, osc = ac.createOscillator(), g = ac.createGain();
+    osc.type = type; osc.frequency.setValueAtTime(f0, t); osc.frequency.exponentialRampToValueAtTime(f1, t + len);
+    let out = osc;
+    if (o.filter) { const fl = ac.createBiquadFilter(); fl.type = o.filter; fl.frequency.value = o.ff || 1200; fl.Q.value = o.q || 1; osc.connect(fl); out = fl; }
+    if (o.vib) { const lfo = ac.createOscillator(), lg = ac.createGain(); lfo.frequency.value = o.vib; lg.gain.value = o.depth || 20; lfo.connect(lg); lg.connect(osc.frequency); lfo.start(t); lfo.stop(t + len + 0.05); }
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + (o.att || 0.012));
+    if (o.hold) g.gain.setValueAtTime(vol, t + o.hold);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    out.connect(g); g.connect(a.sfxGain); osc.start(t); osc.stop(t + len + 0.05);
+  }
+  function noise(freq, len, vol, at = 0) {
+    const a = au(); if (!a || !a.noise) return;
+    const ac = a.ctx, t = ac.currentTime + 0.01 + at, n = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+    n.buffer = a.noise; f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = 1.2;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + len);
+    n.connect(f); f.connect(g); g.connect(a.sfxGain); n.start(t); n.stop(t + len + 0.05);
+  }
+  const CRY = {
+    pato() { for (const at of [0, 0.2]) tone('sawtooth', 520, 330, 0.13, 0.12, at, { filter: 'bandpass', ff: 1300, q: 4 }); },
+    gallina() { [0, 0.11, 0.22].forEach((at, i) => tone('square', 760 - i * 40, 520, 0.07, 0.05, at, { filter: 'lowpass', ff: 1800 })); },
+    rana() { for (const at of [0, 0.32]) tone('sawtooth', 150, 110, 0.24, 0.12, at, { vib: 34, depth: 60, filter: 'lowpass', ff: 700 }); },
+    caballo() { tone('sawtooth', 980, 520, 0.7, 0.07, 0, { vib: 16, depth: 90, filter: 'bandpass', ff: 1500, q: 2, hold: 0.4 }); },
+    cabra() { tone('sawtooth', 440, 400, 0.6, 0.08, 0, { vib: 8, depth: 30, filter: 'bandpass', ff: 1000, q: 3, hold: 0.35 }); },
+    conejo() { tone('sine', 380, 900, 0.12, 0.14); tone('sine', 500, 1100, 0.1, 0.08, 0.13); },
+    pez() { tone('sine', 300, 1100, 0.09, 0.16); noise(1800, 0.25, 0.12, 0.05); },
+    pajaro() { tone('sine', 2900, 3800, 0.06, 0.05); tone('sine', 3100, 4100, 0.06, 0.05, 0.12); },
+    mariposa() { tone('sine', 1800, 2600, 0.1, 0.04); tone('sine', 2400, 3200, 0.1, 0.03, 0.08); },
+    gato() { if (G.ambient && G.ambient.sfx) G.ambient.sfx.meow(); },
+    perro() { if (G.ambient && G.ambient.sfx) G.ambient.sfx.yip(); },
+  };
+  AN.cry = kind => { try { (CRY[kind] || (() => { }))(); } catch (e) { } };
+
+  // ---------- the shared reaction: name it, record it ----------
+  AN.tap = function (kind, wx, wy, o = {}) {
+    const K = AN.KINDS[kind]; if (!K) return null;
+    if (!o.silent) AN.cry(kind);
+    AN.meet(kind);
+    if (K.sound) G.st.see(K.sound);
+    if (G.world) G.world.name(K.word, wx, wy, { cry: K.cry, animal: kind, delay: o.silent ? 0 : 22 });
+    return album()[kind];
+  };
+
+  // ---------- setting up a map ----------
+  const area = (f, tag) => { const p = G.MAPDATA[f.mapId] && G.MAPDATA[f.mapId].pos[tag]; return p && p.length === 4 ? p : p ? [p[0], p[1], 1, 1] : null; };
+  const LAND = '.o,=py';
+  function tilesIn(f, r, ok) { const out = []; if (!r) return out; for (let y = r[1]; y < r[1] + r[3]; y++) for (let x = r[0]; x < r[0] + r[2]; x++) if (ok(f.map.get(x, y), x, y)) out.push([x, y]); return out; }
+  function setup(f) {
+    const z = f.zoo = { f: G.frame, list: [], fx: [] };
+    for (const c of f.def.animals || []) {
+      const r = area(f, c.area || c.at); if (!r) continue;
+      if (c.kind === 'pato') {
+        const water = tilesIn(f, r, ch => ch === 'w'); if (!water.length) continue;
+        const [x, y] = water[ri(water.length)];
+        const mom = add(z, 'pato', x * T + 12, y * T + 16, { water, ducklings: [] });
+        for (let i = 1; i < (c.n || 1); i++) mom.ducklings.push(add(z, 'pato', mom.x - 10 * i, mom.y, { baby: true, mom, trail: i }));
+      } else if (c.kind === 'rana') {
+        const water = tilesIn(f, r, ch => ch === 'w'); if (!water.length) continue;
+        const pads = [water[0], water[water.length - 1]].map(([x, y], i) => [x * T + 8 + i * 8, y * T + 10 + i * 4]);
+        add(z, 'rana', pads[0][0], pads[0][1], { pads, pad: 0 });
+      } else if (c.kind === 'pez') {
+        add(z, 'pez', r[0] * T + 12, r[1] * T + 16, { cx: r[0] * T + 12, cy: r[1] * T + 16, ang: rnd(6), next: 120 + ri(200) });
+      } else {
+        const ground = tilesIn(f, r, (ch, x, y) => LAND.includes(ch) && !f.exitAt(x, y));
+        if (!ground.length) continue;
+        for (let i = 0; i < (c.n || 1); i++) {
+          const [x, y] = ground[ri(ground.length)];
+          add(z, c.kind, x * T + 4 + rnd(16), y * T + 12 + rnd(10), { ground, tint: i });
+        }
+      }
+    }
+  }
+  function add(z, kind, x, y, extra) {
+    const a = Object.assign({ kind, x, y, z: 0, flip: ri(2) === 1, st: 'idle', t: 30 + ri(120), age: ri(100), react: 0, tx: x, ty: y, sp: 0 }, extra);
+    z.list.push(a); return a;
+  }
+  const onTile = (a) => [Math.floor(a.x / T), Math.floor(a.y / T)];
+
+  // ---------- one tick per game frame ----------
+  function sync(f) {
+    const z = f.zoo; if (!z) return;
+    let n = G.frame - z.f; if (n <= 0) return;
+    z.f = G.frame; if (n > 4) n = 4;
+    while (n--) for (const a of z.list) tick(f, a);
+    z.fx = z.fx.filter(e => ++e.t < e.life);
+  }
+  function goToward(a, sp) {
+    const dx = a.tx - a.x, dy = a.ty - a.y, d = Math.hypot(dx, dy);
+    if (d < sp) { a.x = a.tx; a.y = a.ty; return true; }
+    a.x += dx / d * sp; a.y += dy / d * sp; if (Math.abs(dx) > 0.5) a.flip = dx < 0;
+    return false;
+  }
+  function pickGround(a) { const [x, y] = a.ground[ri(a.ground.length)]; return [x * T + 4 + rnd(16), y * T + 12 + rnd(10)]; }
+  function tick(f, a) {
+    a.age++;
+    if (a.react > 0) a.react--;
+    const zf = f.zoo.fx;
+    switch (a.kind) {
+      case 'pato': {
+        if (a.baby) { // follow the one in front, a little behind
+          const lead = a.trail === 1 ? a.mom : a.mom.ducklings[a.trail - 2];
+          const bx = lead.x + (lead.flip ? 11 : -11), by = lead.y + 1, d = Math.hypot(bx - a.x, by - a.y);
+          if (d > 1.5) { a.tx = bx; a.ty = by; goToward(a, Math.min(0.6, d * 0.05 + 0.15)); }
+          a.st = a.react ? 'flap' : a.mom.st === 'dip' && a.age % 200 < 30 ? 'dip' : 'swim';
+          break;
+        }
+        if (a.st === 'dip') { if (--a.t <= 0) { a.st = 'idle'; a.t = 60 + ri(120); zf.push({ k: 'ring', x: a.x, y: a.y, t: 0, life: 30 }); } break; }
+        if (a.st === 'swim') {
+          if (goToward(a, 0.22)) { a.st = 'idle'; a.t = 40 + ri(160); }
+          if (a.age % 40 === 0) zf.push({ k: 'ring', x: a.x - (a.flip ? -6 : 6), y: a.y + 1, t: 0, life: 36 });
+          break;
+        }
+        if (--a.t <= 0) {
+          if (ri(4) === 0) { a.st = 'dip'; a.t = 50; zf.push({ k: 'ring', x: a.x, y: a.y, t: 0, life: 30 }); }
+          else { const [x, y] = a.water[ri(a.water.length)]; a.tx = x * T + 6 + rnd(12); a.ty = y * T + 13 + rnd(8); a.st = 'swim'; }
+        }
+        break;
+      }
+      case 'gallina': {
+        if (a.st === 'walk') { if (goToward(a, 0.45)) { a.st = 'idle'; a.t = 20 + ri(60); } break; }
+        if (a.st === 'peck') { if (--a.t <= 0) { a.st = 'idle'; a.t = 20 + ri(40); } break; }
+        if (--a.t <= 0) {
+          const r = Math.random();
+          if (r < 0.5) { a.st = 'peck'; a.t = 24 + 16 * ri(3); }
+          else if (r < 0.85) { [a.tx, a.ty] = pickGround(a); a.st = 'walk'; }
+          else { a.flip = !a.flip; a.t = 30; }
+        }
+        break;
+      }
+      case 'conejo': {
+        if (a.st === 'hop') {
+          const s = ++a.h / 14; a.x = a.hx0 + (a.tx - a.hx0) * Math.min(1, s); a.y = a.hy0 + (a.ty - a.hy0) * Math.min(1, s); a.z = Math.sin(Math.min(1, s) * Math.PI) * 5;
+          if (s >= 1) { a.z = 0; a.hops--; if (a.hops > 0) startHop(a, 10 + rnd(8)); else { a.st = 'idle'; a.t = 60 + ri(160); } }
+          break;
+        }
+        if (a.st === 'eat') { if (--a.t <= 0) { a.st = 'idle'; a.t = 40 + ri(80); } break; }
+        // keep away from you a little (a hop or two away when you come very close)
+        const p = f.player, px = p.x * T + 12, py = p.y * T + 18;
+        if (Math.hypot(px - a.x, py - a.y) < 26 && !a.react) { a.flip = px > a.x; a.hops = 2; startHop(a, 14, a.flip ? -1 : 1); break; }
+        if (--a.t <= 0) { if (ri(2)) { a.st = 'eat'; a.t = 60 + ri(90); } else { a.hops = 1 + ri(3); startHop(a, 10 + rnd(8)); } }
+        break;
+      }
+      case 'caballo': case 'cabra': {
+        if (a.st === 'walk') { if (goToward(a, a.kind === 'cabra' ? 0.3 : 0.25)) { a.st = 'graze'; a.t = 120 + ri(240); } break; }
+        if (--a.t <= 0) {
+          if (a.st === 'graze' && ri(3)) { a.st = 'idle'; a.t = 60 + ri(120); }
+          else if (ri(2)) { [a.tx, a.ty] = pickGround(a); a.st = 'walk'; }
+          else { a.st = 'graze'; a.t = 120 + ri(200); }
+        }
+        if (a.kind === 'cabra' && a.react) a.z = Math.abs(Math.sin(a.react / 10 * Math.PI)) * 4;
+        else a.z = 0;
+        break;
+      }
+      case 'rana': {
+        if (a.st === 'hop') {
+          const s = ++a.h / 24, [tx, ty] = a.pads[a.pad];
+          a.x = a.hx0 + (tx - a.hx0) * s; a.y = a.hy0 + (ty - a.hy0) * s; a.z = Math.sin(s * Math.PI) * 12;
+          if (s >= 1) { a.z = 0; a.st = 'idle'; a.t = 90 + ri(200); zf.push({ k: 'ring', x: a.x, y: a.y + 2, t: 0, life: 30 }); }
+          break;
+        }
+        if (a.st === 'croak') { if (--a.t <= 0) { a.st = 'idle'; a.t = 120 + ri(240); } break; }
+        if (--a.t <= 0) {
+          if (ri(3) === 0) { a.pad = (a.pad + 1) % a.pads.length; a.hx0 = a.x; a.hy0 = a.y; a.h = 0; a.st = 'hop'; a.flip = a.pads[a.pad][0] < a.x; }
+          else { a.st = 'croak'; a.t = 40; if (visible(f, a)) CRY.rana(); }
+        }
+        break;
+      }
+      case 'pez': {
+        if (a.st === 'jump') {
+          const s = ++a.h / 40; a.z = Math.sin(Math.min(1, s) * Math.PI) * 18; a.x = a.cx + (s - 0.5) * 8 * (a.flip ? -1 : 1);
+          if (s >= 1) { a.st = 'idle'; a.z = 0; a.next = (near(f, a, 4) ? 150 : 300) + ri(240); zf.push({ k: 'splash', x: a.x, y: a.cy - 3, t: 0, life: 24 }); zf.push({ k: 'ring', x: a.x, y: a.cy - 3, t: 0, life: 30 }); }
+          break;
+        }
+        a.ang += 0.03; a.x = a.cx + Math.cos(a.ang) * 5.5; a.y = a.cy + Math.sin(a.ang) * 1.5; a.flip = Math.sin(a.ang) > 0;
+        if (--a.next <= 0) AN.jump(a, f);
+        break;
+      }
+    }
+  }
+  function startHop(a, dist, dir) {
+    const d = dir || (ri(2) ? 1 : -1), dy = rnd(8) - 4;
+    let tx = a.x + d * dist, ty = a.y + dy;
+    const t = a.ground.some(([x, y]) => x === Math.floor(tx / T) && y === Math.floor(ty / T));
+    if (!t) { tx = a.x - d * dist; ty = a.y - dy; if (!a.ground.some(([x, y]) => x === Math.floor(tx / T) && y === Math.floor(ty / T))) { [tx, ty] = pickGround(a); } }
+    a.flip = tx < a.x; a.hx0 = a.x; a.hy0 = a.y; a.tx = tx; a.ty = ty; a.h = 0; a.st = 'hop';
+  }
+  AN.jump = function (a, f) { if (a.st === 'jump') return; a.st = 'jump'; a.h = 0; a.cx = a.x; a.flip = ri(2) === 1; (f || G.field).zoo.fx.push({ k: 'splash', x: a.x, y: a.cy - 3, t: 0, life: 20 }); if (visible(f || G.field, a)) CRY.pez(); };
+  const near = (f, a, tiles) => Math.abs(f.player.x * T + 12 - a.x) + Math.abs(f.player.y * T + 12 - a.y) < tiles * T;
+  function visible(f, a) { const x = a.x - f.cam.x, y = a.y - f.cam.y; return x > -16 && x < G.W + 16 && y > -16 && y < G.H + 16; }
+
+  // ---------- reacting to a tap ----------
+  function react(f, a) {
+    const p = f.player;
+    a.react = 40;
+    if (a.kind !== 'pez' && a.kind !== 'rana') a.flip = p.x * T + 12 < a.x;
+    if (a.kind === 'pez') AN.jump(a, f);
+    else if (a.kind === 'rana') { a.pad = (a.pad + 1) % a.pads.length; a.hx0 = a.x; a.hy0 = a.y; a.h = 0; a.st = 'hop'; }
+    else if (a.kind === 'conejo') { a.hops = 1; a.st = 'idle'; startHop(a, 4, a.flip ? -1 : 1); a.tx = a.x; a.ty = a.y; }
+    else if (a.kind === 'caballo') { a.st = 'idle'; a.t = 70; a.react = 60; }
+    else if (a.kind === 'gallina' || a.kind === 'pato') { if (a.st !== 'swim') a.st = 'idle'; a.t = Math.max(a.t, 40); }
+    f.zoo.fx.push({ k: 'heart', x: a.x + (a.flip ? -8 : 8), y: a.y - frameOf(a).height + 4, t: 0, life: 50 });
+  }
+  // the animal under a tap (world px), nearest first; generous areas for small fingers
+  AN.hit = function (f, tap) {
+    if (!f.zoo) return null;
+    const wx = tap.x + Math.round(f.cam.x), wy = tap.y + Math.round(f.cam.y);
+    let best = null, bd = 1e9;
+    for (const a of f.zoo.list) {
+      if (a.kind === 'pez' && a.st !== 'jump') continue; // the fish only while it jumps (the fountain names itself)
+      const img = frameOf(a), w = Math.max(20, img.width + 6), h = Math.max(20, img.height + 6), cy = a.y - a.z - img.height / 2;
+      const dx = Math.abs(wx - a.x), dy = Math.abs(wy - cy);
+      if (dx <= w / 2 && dy <= h / 2 && dx + dy < bd) { best = a; bd = dx + dy; }
+    }
+    return best;
+  };
+  // field.js: a tap landed on an animal -> its reaction and its name; the tap walks you toward it
+  AN.tapped = function (f, a) {
+    react(f, a);
+    AN.tap(a.kind, a.x, a.y - a.z - frameOf(a).height, {});
+    const [x, y] = onTile(a);
+    return { x, y, animal: a.kind };
+  };
+
+  // ---------- drawing ----------
+  function frameOf(a) {
+    const S = SPR[a.baby ? 'patito' : a.kind], R = a.react > 0;
+    let fr;
+    switch (a.kind) {
+      case 'pato': fr = R && (a.react >> 3) & 1 ? 'flap' : a.st === 'dip' ? 'dip' : 'swim'; break;
+      case 'gallina': fr = R ? ((a.react >> 2) & 1 ? 'flap' : 'stand') : a.st === 'peck' && (a.t >> 3) & 1 ? 'peck' : 'stand'; break;
+      case 'conejo': fr = a.st === 'hop' ? 'hop' : a.st === 'eat' && (a.t >> 4) & 1 ? 'eat' : 'sit'; break;
+      case 'caballo': fr = R ? 'rear' : a.st === 'graze' ? 'graze' : 'stand'; break;
+      case 'cabra': fr = R ? 'hop' : a.st === 'graze' ? 'graze' : 'stand'; break;
+      case 'rana': fr = a.st === 'hop' ? 'hop' : a.st === 'croak' && (a.t >> 3) & 1 ? 'croak' : 'sit'; break;
+      case 'pez': fr = a.st === 'jump' ? 'jump' : 'swim'; break;
+    }
+    const pal = a.kind === 'gallina' && a.tint ? Object.assign({}, S.pal, { b: '#f4f0e8', c: '#ffffff', d: '#d0c8c0' }) : S.pal;
+    return pix((a.baby ? 'patito' : a.kind) + fr + (a.tint && a.kind === 'gallina' ? 'w' : ''), S[fr], pal, a.flip);
+  }
+  function drawOne(ctx, a, cx, cy) {
+    const img = frameOf(a), x = Math.round(a.x - img.width / 2 - cx), y = Math.round(a.y - img.height - a.z - cy);
+    if (a.kind === 'caballo' || a.kind === 'cabra') { // a swishing tail: one pixel that moves
+      const sw = (a.age >> 4) & 1;
+      ctx.drawImage(img, x, y);
+      if (a.st !== 'idle' || sw) { ctx.fillStyle = a.kind === 'caballo' ? '#3a2010' : '#ece8e0'; const tx = a.flip ? x + img.width - 2 : x + 1; ctx.fillRect(tx + (sw ? (a.flip ? 1 : -1) : 0), y + Math.round(img.height * 0.55), 1, 3); }
+      return;
+    }
+    ctx.drawImage(img, x, y);
+  }
+  // field.js: everything drawn on the ground / water (before people), and land animals sorted in with the people
+  AN.draw = function (f, ctx, layer) {
+    const z = f.zoo; if (!z) return;
+    sync(f);
+    const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
+    if (layer !== 'ground') return;
+    for (const a of z.list) { // shadows; lily pads; ripples; swimmers and the fountain's fish
+      if (a.kind === 'rana') for (const [px, py] of a.pads) ctx.drawImage(pix('lily', lily, LILY_PAL), Math.round(px - 5 - cx), Math.round(py - 4 - cy));
+    }
+    for (const e of z.fx) if (e.k === 'ring') {
+      const k = e.t / e.life, r = 3 + k * 7;
+      ctx.globalAlpha = (1 - k) * 0.8; ctx.strokeStyle = '#d8f0ff'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(Math.round(e.x - cx) + 0.5, Math.round(e.y - cy) + 0.5, r, r * 0.45, 0, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
+    }
+    for (const a of z.list) {
+      if (a.kind === 'pato' || a.kind === 'rana' || (a.kind === 'pez' && a.st !== 'jump')) {
+        if (a.kind === 'pez') { ctx.globalAlpha = 0.85; drawOne(ctx, a, cx, cy); ctx.globalAlpha = 1; } else drawOne(ctx, a, cx, cy);
+      } else if (a.kind !== 'pez') { // a soft shadow under land animals
+        const w = a.kind === 'caballo' ? 16 : a.kind === 'cabra' ? 10 : 7;
+        ctx.fillStyle = 'rgba(16,28,8,0.3)'; ctx.fillRect(Math.round(a.x - w / 2 - cx), Math.round(a.y - cy) - 1, w, 2);
+      }
+    }
+  };
+  // land animals and the jumping fish, for field.js to draw in order with the people: [{sy, draw(ctx, cx, cy)}]
+  AN.ents = function (f) {
+    const z = f.zoo; if (!z) return [];
+    return z.list.filter(a => a.kind !== 'pato' && a.kind !== 'rana' && (a.kind !== 'pez' || a.st === 'jump'))
+      .map(a => ({ sy: a.kind === 'pez' ? a.y + 8 : a.y - 21, draw: (ctx, cx, cy) => drawOne(ctx, a, cx, cy) }));
+  };
+  // hearts and splashes above everything on the map
+  AN.drawTop = function (f, ctx) {
+    const z = f.zoo; if (!z) return;
+    const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
+    for (const e of z.fx) {
+      const k = e.t / e.life, x = Math.round(e.x - cx), y = Math.round(e.y - cy);
+      if (e.k === 'heart') { ctx.globalAlpha = k > 0.75 ? (1 - k) * 4 : 1; G.text(ctx, '\u0003', x - 2, y - Math.round(e.t * 0.35), '#f04878', '#401020'); ctx.globalAlpha = 1; }
+      else if (e.k === 'splash') {
+        ctx.fillStyle = '#e8f8ff';
+        for (let i = 0; i < 5; i++) { const ang = Math.PI * (0.15 + i * 0.175), r = k * 9; ctx.fillRect(Math.round(x + Math.cos(ang) * r), Math.round(y - Math.sin(ang) * r * 1.4 + k * k * 8), 1, 1); }
+      }
+    }
+  };
+
+  // ---------- hooks and lookups ----------
+  AN.update = function (f) { if (!f.zoo) setup(f); sync(f); };
+  AN.here = function (f) { f = f || G.field; if (!f) return []; if (!f.zoo) setup(f); return f.zoo.list.map(a => ({ kind: a.kind, x: a.x, y: a.y, st: a.st, baby: !!a.baby })); };
+  AN.find = function (kind, f) { f = f || G.field; if (!f) return null; if (!f.zoo) setup(f); return f.zoo.list.find(a => a.kind === kind && !a.baby) || null; };
+  AN.screen = function (a, f) { f = f || G.field; const img = frameOf(a); return [a.x - Math.round(f.cam.x), a.y - a.z - img.height / 2 - Math.round(f.cam.y)]; };
+  AN.sheet = SPR; // the pictures, for tools
+  AN.frame = frameOf;
+})();
+
+</script>
+<script>/* src/world.js */
+// ===== Round B: tap anything. Things in town say their Spanish word; say it back for a speaking star =====
+// A tap on a thing that has a word (a tree, a flower, the fountain, a bench, a window, the barn, the pond...) shows a
+// word bubble over it with its picture and its Spanish word ("el árbol"), says the word, marks it seen and gives the
+// thing a little wiggle and a sparkle. With the mic on, a small pink mic bubble sits beside the word for ~5 s: tap it
+// (or press V, or hold Space while you talk) and say the word -> a speaking star (G.mic.award), the word is learned
+// if it wasn't ("¡Palabra nueva!", without its own mic), and that word gives no more say-it-back stars today (one per
+// word per calendar day, kept in G.state.sayback[id] = 'YYYY-M-D', so it can't be farmed). A miss: "¡Otra vez!", the
+// bubble stays a little longer, no penalty. Animals (animals.js, ambient.js, Canelo) use the same bubble, with their
+// sound under the word ("el gato" / "¡Miau!").
+//
+// How a tap on the map is read (field.js tapTarget), in this order:
+//   1. a person, a door (or its sign or wall), a notebook page sparkle, a search spot: exactly as before
+//   2. an animal (animals.js): it reacts and says its name at once; you walk toward it (nothing else on arrival)
+//   3. an object you can't walk onto (the fountain, a bench, a tree, the water, a roof): you walk up to it and it names
+//      itself when you get there (right away if you're already beside it). If you can't get beside it (the middle of
+//      the pond, a roof), you walk as close as you can and then it names itself
+//   4. something you can walk onto (a flower, a little tree in the corner): you walk there and it names itself when
+//      you arrive (the same word only once every 20 s this way, so walking over flowers isn't noisy)
+//   5. anything else: walk there, as before
+// With the keys, A facing a thing names it (where it used to say "...").
+//
+// Which things have words: G.world.TILES (tile code -> word id) for every map that has `things` in its definition,
+// plus the map's own `things` (maps.js):
+//   things: { tiles: { k: 'banco' } (more or different tile words; a code: null takes one away),
+//             areas: { escuelaArea: 'escuela' } (G.MAPDATA[map].pos tag holding [x, y, w, h] -> word, for the tiles
+//                     of that rectangle that have no tile word: a building's roof and walls),
+//             at: { '41,4': 'puerta' } (one tile -> word; wins over everything) }
+// A map without `things` names nothing (and A there still says "...").
+//
+// API: G.world.wordAt(f, x, y)        the word id of tile x, y on field f, or null
+//      G.world.name(id, wx, wy, o)    name a word at world px wx, wy (the top of the thing): the bubble, the voice, seen,
+//                                     sparkles; then the say-it-back mic. o: {cry: '¡Miau!' (a second line, also spoken),
+//                                     animal: id (for the album's `said`), tile: [x, y] (wiggles it), delay: frames
+//                                     before speaking, noMic, walkOn (the 20 s rule)}. Returns the bubble or null.
+//      G.world.nameTile(f, x, y)      name tile x, y if it has a word (true if it did)
+//      G.world.bubble                 the word bubble showing now {id, x, y, t, cry} or null
+//      G.world.sayBack                the say-it-back now {id, t, life, mic (a G.MicBtn), done} or null
+//      G.world.offerSayBack(id, b)    show the mic for word id beside bubble b (name() calls it)
+//      G.world.canSayBack(id)         the mic is on and this word hasn't earned its say-it-back star today
+//      G.world.today()                today's key, 'YYYY-M-D'
+'use strict';
+(function () {
+  const T = G.TILE, WD = G.world = {};
+  const key = (x, y) => x + ',' + y;
+  WD.TILES = { T: 'arbol', f: 'arbol', o: 'flor', l: 'fuente', w: 'agua', J: 'banco', N: 'ventana', D: 'puerta', j: 'cama' };
+  const LIFE = 170, SAY_LIFE = 330, WALK_AGAIN = 20 * 60;
+  WD.bubble = null; WD.sayBack = null;
+  let speakAt = null, walked = {}; // a line waiting to be spoken {f, text, at}; word -> G.frame it was named by walking onto it
+
+  WD.today = () => { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
+  const sbook = () => (G.state.sayback || (G.state.sayback = {}));
+
+  // ---------- which word a tile has ----------
+  WD.wordAt = function (f, x, y) {
+    const th = f && f.def && f.def.things; if (!th) return null;
+    if (th.at && th.at[key(x, y)]) return th.at[key(x, y)];
+    const c = f.map.get(x, y), tiles = Object.assign({}, WD.TILES, th.tiles || {});
+    if (tiles[c]) return tiles[c];
+    const pos = G.MAPDATA[f.mapId] && G.MAPDATA[f.mapId].pos;
+    for (const tag in th.areas || {}) {
+      const r = pos && pos[tag];
+      if (r && r.length === 4 && x >= r[0] && y >= r[1] && x < r[0] + r[2] && y < r[1] + r[3]) return th.areas[tag];
+    }
+    return null;
+  };
+
+  // ---------- naming ----------
+  WD.name = function (id, wx, wy, o = {}) {
+    const f = G.field, w = G.data.words[id]; if (!f || !w) return null;
+    if (o.walkOn && walked[id] != null && G.frame - walked[id] < WALK_AGAIN) return null;
+    if (o.walkOn) walked[id] = G.frame;
+    G.st.see(id);
+    const b = WD.bubble = { id, x: wx, y: wy, t: 0, cry: o.cry || null, f };
+    if (o.tile) f.wig = { x: o.tile[0], y: o.tile[1], t: 18 };
+    const text = w.es.split(' / ')[0] + (o.cry ? '. ' + o.cry : '');
+    if (o.delay) speakAt = { f, text, at: G.frame + o.delay }; else { speakAt = null; G.speak(text); }
+    G.audio.sfx('cursor');
+    const [sx, sy] = [wx - Math.round(f.cam.x), wy - Math.round(f.cam.y)];
+    for (let i = 0; i < 3; i++) G.fx.twinkle(sx + (Math.random() - 0.5) * 22, sy + (Math.random() - 0.5) * 12);
+    WD.lastNamed = { id, frame: G.frame, x: wx, y: wy };
+    if (WD.sayBack) { WD.sayBack.off(); WD.sayBack = null; }
+    if (!o.noMic && WD.canSayBack(id)) WD.offerSayBack(id, b, o.animal);
+    return b;
+  };
+  WD.nameTile = function (f, x, y, o = {}) {
+    const id = WD.wordAt(f, x, y); if (!id) return false;
+    WD.name(id, x * T + 12, y * T + 2, Object.assign({ tile: [x, y] }, o));
+    if (id === 'fuente' && G.animals) { const fish = G.animals.find('pez', f); if (fish) G.animals.jump(fish, f); } // the fish says hello
+    return true;
+  };
+  // field.js: a tap walk that had a word on it ended (walked onto it, or as close as it could get)
+  WD.arrive = function (f, r) {
+    if (!r || !r.name) return;
+    const walkOn = !f.blocked(r.x, r.y, f.player) || (f.player.x === r.x && f.player.y === r.y);
+    WD.nameTile(f, r.x, r.y, { walkOn });
+  };
+
+  // ---------- say it back ----------
+  WD.canSayBack = id => !!(G.mic && G.mic.on() && G.speech && G.state && sbook()[id] !== WD.today());
+  // the mic bubble: a small round button (pink; blue while listening, green once it hears you; a star when said)
+  class BubbleMic extends G.MicBtn {
+    draw(ctx) {
+      if (!this.shown()) return;
+      const r = this.o.rect(), cx = r.x + r.w / 2, cy = r.y + r.h / 2, L = !!this.l, ph = L ? this.l.phase : '';
+      const idle = !L && !this.done && this.can();
+      let rad = 11 + (idle && (this.t % 90) < 16 ? Math.round(Math.sin((this.t % 90) / 16 * Math.PI) * 2) : 0) + (this.pop ? Math.round(this.pop / 4) : 0);
+      if (L) for (let i = 0; i < 2; i++) {
+        const p = ((this.t + i * 20) % 40) / 40;
+        ctx.globalAlpha = (1 - p) * 0.8; ctx.strokeStyle = ph === 'speech' ? '#70e070' : '#f8e060'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(cx, cy, rad + 2 + p * 9, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      const x = cx + (this.sad > 40 ? Math.round(Math.sin(this.sad * 0.9) * 2) : 0);
+      const held = !L && G.input.holding(r.x, r.y, r.w, r.h) > 0;
+      const body = this.done ? '#2890c0' : L ? (ph === 'speech' ? '#30a850' : '#20a0c8') : held ? '#c02850' : this.sad ? '#a86080' : '#e85078';
+      const disc = (rr, c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, cy, rr, 0, Math.PI * 2); ctx.fill(); };
+      disc(rad + 2, '#200818'); disc(rad + 1, this.done ? '#d8f8ff' : L ? '#ffffff' : '#ffb0c8'); disc(rad - 1, body);
+      ctx.globalAlpha = 0.3; ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x - rad * 0.3, cy - rad * 0.4, rad * 0.4, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+      if (this.done) { G.text(ctx, '\u0005', x - 2, cy - 4, '#fff070', '#5a2c04'); G.mic.waves(ctx, x, cy, rad + 3, '#70e0ff', 2, this.t >> 1); return; }
+      const mx = Math.round(x), my = Math.round(cy); // a little white microphone: the head, its holder, the stand
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(mx - 3, my - 8, 6, 9); ctx.fillRect(mx - 2, my - 9, 4, 1); ctx.fillRect(mx - 2, my + 1, 4, 1);
+      ctx.fillStyle = '#c8d8ff'; ctx.fillRect(mx - 3, my - 7, 1, 7);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(mx - 5, my - 2, 1, 3); ctx.fillRect(mx + 4, my - 2, 1, 3); ctx.fillRect(mx - 4, my + 1, 1, 2); ctx.fillRect(mx + 3, my + 1, 1, 2); ctx.fillRect(mx - 3, my + 3, 6, 1);
+      ctx.fillRect(mx - 1, my + 4, 2, 2); ctx.fillRect(mx - 3, my + 6, 6, 1);
+      if (idle) G.mic.waves(ctx, x, cy, rad + 4, '#ffd0e0', 1, 0);
+    }
+  }
+  class SayBack {
+    constructor(f, id, b, animal) {
+      this.f = f; this.id = id; this.b = b; this.animal = animal || null; this.t = 0; this.life = SAY_LIFE; this.done = 0;
+      this.mic = new BubbleMic(f, { rect: () => WD.micRect(f, this.b), ready: () => this.t > 6 && !f.locked && G.top() === f && !this.done,
+        heard: a => this.heard(a), again: () => G.speak(G.data.words[id].es.split(' / ')[0]) });
+      this.mic.arm(); f.mic = this.mic;
+    }
+    target() { const w = G.data.words[this.id]; return [w.es, w.alt].filter(Boolean).join(' / '); }
+    heard(alts) {
+      if (!G.speech.match(this.target(), alts).pass) { this.mic.miss(); this.t = Math.min(this.t, this.life - 200); return; } // a little longer to try again
+      const r = WD.micRect(this.f, this.b), cx = r.x + r.w / 2, cy = r.y + r.h / 2, id = this.id, f = this.f;
+      this.mic.win(); this.done = 1;
+      G.mic.award(id, cx, cy);
+      G.fx.say('¡Bien dicho!', cx, cy - 18, '#a8f0ff', true);
+      sbook()[id] = WD.today();
+      if (this.animal && G.state.album && G.state.album[this.animal]) G.state.album[this.animal].said = true;
+      if (!G.st.knows(id)) f.tasks.add((function* () { yield 40; f.locked = true; yield G.learnWords([id], { noMic: true }); f.locked = false; })());
+      G.st.autosave();
+    }
+    // -> true when it used this frame's input
+    update() {
+      if (G.top() === this.f && !this.f.locked) this.t++;
+      if (this.done) this.done++;
+      const used = this.mic.update();
+      if (!this.mic.listening() && !this.mic.started && (this.t > this.life || this.done > 70)) return { used, end: true };
+      return { used, end: false };
+    }
+    off() { this.mic.off(); if (this.f.mic === this.mic) this.f.mic = null; }
+  }
+  WD.offerSayBack = function (id, b, animal) {
+    const f = G.field; if (!f) return null;
+    if (WD.sayBack) WD.sayBack.off();
+    WD.sayBack = new SayBack(f, id, b, animal);
+    return WD.sayBack;
+  };
+
+  // ---------- where things go on screen ----------
+  function lines(b) { const w = G.data.words[b.id]; return [w.es.split(' / ')[0]].concat(b.cry ? [b.cry] : []); }
+  WD.bubbleRect = function (f, b) {
+    const ls = lines(b), tw = Math.max(...ls.map(s => G.textWidth(s))), w = 30 + tw, h = ls.length > 1 ? 26 : 22;
+    let x = Math.round(b.x - f.cam.x - w / 2), y = Math.round(b.y - f.cam.y) - h - 6;
+    const below = y < 4; if (below) y = Math.round(b.y - f.cam.y) + 30;
+    const room = WD.sayBack && WD.sayBack.b === b ? 30 : 0; // keep the mic on screen too
+    x = G.clamp(x, 4, G.W - 4 - w - room);
+    return { x, y: G.clamp(y, 4, G.H - h - 4), w, h, below };
+  };
+  WD.micRect = function (f, b) { const r = WD.bubbleRect(f, b); return { x: r.x + r.w + 2, y: r.y + r.h / 2 - 14, w: 28, h: 28 }; };
+
+  // ---------- hooks (field.js) ----------
+  // every frame the map is on top, before it reads taps: -> true when the say-it-back mic used this frame's input
+  WD.update = function (f) {
+    if (speakAt && speakAt.f === f && G.frame >= speakAt.at) { G.speak(speakAt.text); speakAt = null; }
+    const b = WD.bubble;
+    if (b && b.f !== f) WD.bubble = null; else if (b) b.t++;
+    if (f.wig && --f.wig.t <= 0) f.wig = null;
+    const sb = WD.sayBack;
+    if (!sb) { if (b && b.t > LIFE) WD.bubble = null; return false; }
+    if (sb.f !== f) { sb.off(); WD.sayBack = null; return false; }
+    const r = sb.update();
+    if (r.end) { sb.off(); WD.sayBack = null; if (WD.bubble === sb.b) WD.bubble.t = Math.max(WD.bubble.t, LIFE - 20); }
+    else if (WD.bubble === sb.b) WD.bubble.t = Math.min(WD.bubble.t, 40); // the word stays while you can say it
+    return r.used;
+  };
+  // leaving a map: nothing of it stays armed
+  WD.leave = function (f) {
+    if (WD.sayBack && WD.sayBack.f === f) { WD.sayBack.off(); WD.sayBack = null; }
+    if (WD.bubble && WD.bubble.f === f) WD.bubble = null;
+    if (speakAt && speakAt.f === f) speakAt = null;
+  };
+  // the wiggle: the named tile drawn again, nudged side to side (after the tiles, before the people)
+  WD.drawUnder = function (f, ctx) {
+    const wg = f.wig; if (!wg) return;
+    const dx = Math.round(Math.sin(wg.t * 1.2) * 1.6); if (!dx) return;
+    ctx.drawImage(G.tileCanvas(f.map, wg.x, wg.y), wg.x * T - Math.round(f.cam.x) + dx, wg.y * T - Math.round(f.cam.y));
+  };
+  // the word bubble and the mic, over everything on the map
+  WD.draw = function (f, ctx) {
+    const b = WD.bubble; if (!b || b.f !== f) return;
+    const r = WD.bubbleRect(f, b), ls = lines(b), w = G.data.words[b.id];
+    const k = Math.min(1, b.t / 8), rise = Math.round((1 - FXease(k)) * 6), fade = b.t > LIFE - 20 ? Math.max(0, (LIFE - b.t) / 20) : 1;
+    ctx.globalAlpha = fade;
+    const y = r.y + rise;
+    G.win(ctx, r.x, y, r.w, r.h, { fill1: '#ffffff', fill2: '#ece8f4', alpha: 1 });
+    const tx = G.clamp(Math.round(b.x - f.cam.x), r.x + 6, r.x + r.w - 7); // the tail points at the thing
+    ctx.fillStyle = '#ffffff';
+    if (r.below) { ctx.fillRect(tx - 1, y - 2, 3, 2); ctx.fillRect(tx, y - 3, 1, 1); }
+    else { ctx.fillRect(tx - 1, y + r.h - 1, 3, 2); ctx.fillRect(tx, y + r.h + 1, 1, 1); }
+    const hop = b.t < 30 ? Math.round(Math.abs(Math.sin(b.t / 30 * Math.PI * 2)) * -2) : 0;
+    G.drawIcon16(ctx, w, r.x + 5, y + (r.h - 16) / 2 + hop);
+    G.text(ctx, ls[0], r.x + 25, y + (ls.length > 1 ? 4 : 7), G.st.knows(b.id) ? '#a06008' : '#2860a8', null);
+    if (ls[1]) G.text(ctx, ls[1], r.x + 25, y + 14, '#e06010', null);
+    ctx.globalAlpha = 1;
+    if (WD.sayBack && WD.sayBack.b === b && WD.sayBack.f === f) WD.sayBack.mic.draw(ctx);
+  };
+  const FXease = u => (G.fx.easeBack ? G.fx.easeBack(u) : u);
+})();
+
+</script>
 <script>/* src/mapdata.js */
 // Generated by tools/mapgen.py - original map layouts
 'use strict';
 G.MAPDATA = {
-  villa: { rows: ["TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT", "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT", "Tff...........QQQ+QQQ............ffT", "Tf......o.....QQQQQQQ.............fT", "T..RRRRR.....PSGSKSGSP.....QQQQQQ..T", "T..RRRRR.........,.........QQQQQQ..T", "T.PWNDNWk........,........kWNDNNWk.T", "T....,...........,...........,.....T", "T....,...o.L=====,======L.o..,.....T", "T....,.....==pppppppppp==....,.o...T", "T....,,,,,,,=pYppppppYp=,,,,,,.....T", "T..o.,.....==ppppplpppp==....,.....T", "T.P..,..o..==pppppppppp==....,.o.P.T", "T....,.....L============L....,.....T", "T....,,,,,,......,,......,,,,,.....T", "T..RRRRR..,......,,......,QQQQQQQ..T", "T..RRRRR..,......,,......,QQQQQQQ..T", "T.kWNDNWP.,FFFFFF,,FFFFFF,WNWDWNWP.T", "T....,....,Ff..........fF,...,.....T", "T....,....,F.o..P..o..P.F,...,.....T", "T....,....,F.........o..F,...,.....T", "T....,,,,,,F..o....www..F,,,,,.....T", "T..........F.P.....wwwo.F.......o..T", "T..o.......F...o........F..........T", "T......o...Ff....P..o..fF...o......T", "Tf.....P...FFFFFFFFFFFFFF....P....fT", "Tff..............................ffT", "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"], pos: {"escuelaDoor": [17, 4], "rosaDoor": [5, 6], "panaderiaDoor": [29, 6], "fuente": [18, 11], "pepe": [14, 9], "puesto": [14, 10], "casaDoor": [5, 17], "bibliotecaDoor": [29, 17], "parqueGate": [17, 17], "arbusto1": [13, 22], "arbusto2": [16, 19], "arbusto3": [22, 19], "arbusto4": [17, 24], "sofia": [18, 20], "casaFront": [5, 18], "start": [5, 18]} },
+  villa: { rows: ["TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT", "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT", "Tff...........QQQ+QQQ............ffF..RRRRRR.ffT", "Tf......o.....QQQQQQQ.............fF..RRRRRR..fT", "T..RRRRR.....PSGSKSGSP.....QQQQQQ..F.OWNWDNWOO.T", "T..RRRRR.........,.........QQQQQQ..F.....,.....T", "T.PWNDNWk........,........kWNDNNWk.Fo....,...o.T", "TO...,...........,...........,.....F...o.,.P...T", "T..o.,...o.L=====,======L.o..,....oF.....,..o..T", "To...,.....==Jppppppppp==....,.o...F.o...,.....T", "T....,,,,,,,=pYppppppYp=,,,,,,,,,,,,,,,,,,.o...T", "T..o.,.....==ppppplpppp==....,.....F.....,.....T", "T.P..,..o..==pppppppppJ==....,.o.P.F.FFFF,FFFFFT", "T....,.....L============L....,.....FPF.......OFT", "T....,,,,,,......,,......,,,,,.....F.F........FT", "T..RRRRR..,.o....,,....o.,QQQQQQQ..FoF........FT", "T..RRRRR..,......,,......,QQQQQQQ..F.F........FT", "T.kWNDNWP.,FFFFFF,,FFFFFF,WNWDWNWP.F.F........FT", "T....,....,Ff.......J..fF,...,.....F.FFFFFFFFFFT", "T....,....,F.o..P..o..P.F,...,.....Fo......o...T", "T....,....,F.........o..F,...,.....F..wwww..yyyT", "T....,,,,,,F..o....wwww.F,,,,,,,,,,,,wwwwww.yyyT", "T..........F.P.....www..F.......o..F.wwwwww.yyyT", "T..o.......F...o........F..........F.wwwwww.yyyT", "T......o...Ff....P..o..fF...o......Fo.wwww..yyyT", "Tf.....P...FFFFFFFFFFFFFF....P....fF......o.yyfT", "Tff......o....o.......o...o...o..ffF...o.....ffT", "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"], pos: {"escuelaDoor": [17, 4], "rosaDoor": [5, 6], "panaderiaDoor": [29, 6], "fuente": [18, 11], "pepe": [14, 9], "puesto": [14, 10], "casaDoor": [5, 17], "bibliotecaDoor": [29, 17], "parqueGate": [17, 17], "arbusto1": [13, 22], "arbusto2": [16, 19], "arbusto3": [22, 19], "arbusto4": [17, 24], "sofia": [18, 20], "casaFront": [5, 18], "start": [5, 18], "banco1": [13, 9], "banco2": [22, 12], "banco3": [20, 18], "gallinero": [1, 7, 4, 4], "rana": [19, 21, 4, 2], "conejo": [12, 18, 12, 7], "fuentePez": [18, 11], "gateFarm": [35, 10], "gatePond": [35, 21], "granjaDoor": [41, 4], "granja": [38, 2, 6, 3], "paddockGate": [41, 12], "corral": [38, 13, 8, 5], "estanque": [37, 20, 6, 5], "escuelaArea": [14, 2, 7, 3], "rosaArea": [3, 4, 5, 3], "panaderiaArea": [27, 4, 6, 3], "casaArea": [3, 15, 5, 3], "bibliotecaArea": [26, 15, 7, 3]} },
   casa: { rows: ["IIIIIIIII", "InniiviiI", "IiiiiiijI", "IittiiijI", "IiiiqiiiI", "IPiiqiiiI", "IIIIiIIII"], pos: {"door": [4, 6], "mama": [3, 2]} },
   escuela: { rows: ["IIIIIIIIIIIII", "IcnnccqccnncI", "IcccccqcccckI", "IcccccqcccccI", "IctttcqctttcI", "IcccccqcccccI", "IctttcqctttcI", "IcccccqcccccI", "IPccccqccccPI", "IIIIIIqIIIIII"], pos: {"door": [6, 9], "luna": [6, 2]} },
   rosa: { rows: ["IIIIIIIII", "IniiiiviI", "IiiiiiiiI", "IiitttijI", "IiiiiiijI", "IPiiiiikI", "IIIIiIIII"], pos: {"door": [4, 6], "rosa": [2, 2]} },
@@ -8573,9 +9589,25 @@ G.MAPDATA = {
       door('panaderiaDoor', 'panaderia', 5, 6),
       door('bibliotecaDoor', 'biblioteca', 5, 7),
     ],
-    signs: [sign('casaDoor', 'casa'), sign('escuelaDoor', 'escuela'), sign('rosaDoor', 'casa'), sign('panaderiaDoor', 'panaderia'), sign('bibliotecaDoor', 'biblioteca')],
-    pages: { [P('villa', 'fuente').join(',')]: 'numeros', '21,20': 'colores' },
+    signs: [sign('casaDoor', 'casa'), sign('escuelaDoor', 'escuela'), sign('rosaDoor', 'casa'), sign('panaderiaDoor', 'panaderia'), sign('bibliotecaDoor', 'biblioteca'), sign('granjaDoor', 'granja')],
+    pages: { [P('villa', 'fuente').join(',')]: 'numeros', '21,20': 'colores',
+      // Round B pages (docs/ROUND_B_PLAN.md): a flower in the park, the barn door, a bench, out in the country
+      '13,19': 'animales', '43,19': 'granja', [P('villa', 'granjaDoor').join(',')]: 'sonidos', [P('villa', 'banco1').join(',')]: 'cosas',
+      '44,4': 'numeros2', '44,8': 'colores2' },
     ambient: { birds: 8, butterflies: 5, cat: [16, 17] }, // ambient.js: birds, butterflies, a cat on the park fence
+    // Round B (animals.js): where the animals live (G.MAPDATA.villa.pos areas, made by tools/mapgen.py)
+    animals: [
+      { kind: 'pato', n: 3, area: 'estanque' },   // a duck and two ducklings on the farm pond
+      { kind: 'gallina', n: 2, area: 'gallinero' }, // Abuela Rosa's hens, beside her house
+      { kind: 'pez', at: 'fuentePez' },             // the goldfish in the plaza fountain
+      { kind: 'rana', area: 'rana' },               // the frog on the park pond's lily pads
+      { kind: 'conejo', area: 'conejo' },           // the rabbit on the park lawn
+      { kind: 'caballo', area: 'corral' },          // the horse and the goat in the paddock
+      { kind: 'cabra', area: 'corral' },
+    ],
+    // Round B (world.js): tap anything. Tile words come from G.world.TILES (trees, flowers, the fountain, benches,
+    // windows, water, the barn door); a building's roof and walls say the building
+    things: { areas: { escuelaArea: 'escuela', rosaArea: 'casa', casaArea: 'casa', panaderiaArea: 'panaderia', bibliotecaArea: 'biblioteca', granja: 'granja' } },
     npcs: [
       { id: 'pepe', npc: 'pepe', x: P('villa', 'pepe')[0], y: P('villa', 'pepe')[1], dir: 'down', fixed: true,
         alert: () => !F().pepeSiNo ? true : S.active('mercado') && !F().compra ? [['manzana', 3], ['platano', 2]] : false,
@@ -8598,8 +9630,10 @@ G.MAPDATA = {
         talk: function* () { yield* sofiaTalk(); } },
       { id: 'canelo', npc: 'canelo', x: 19, y: 9, dir: 'left', wander: 3, follow: () => F().canelo, // tags along once you've met
         talk: function* (f, n) {
-          if (F().canelo && G.ambient) { G.ambient.happy(n, '¡Guau!'); yield 20; return; } // a friend already: a hop, a heart, a bark
+          // a friend already: a hop, a heart, a bark, and "el perro / ¡Guau, guau!" (Round B: the word bubble, the album)
+          if (F().canelo && G.ambient) { G.ambient.happy(n, G.animals ? null : '¡Guau!'); if (G.animals) G.animals.tap('perro', n.x * G.TILE + 12, n.y * G.TILE - 6, { silent: true }); yield 20; return; }
           G.audio.sfx('select'); yield G.say(T('¡Guau, guau!', 'Woof, woof!'), { name: 'Canelo' }); F().canelo = true; if (G.ambient) G.ambient.happy(n);
+          if (G.animals) G.animals.tap('perro', n.x * G.TILE + 12, n.y * G.TILE - 6, { silent: true });
         } },
     ],
     searches: {
@@ -8723,6 +9757,7 @@ G.MAPDATA = {
   // ---------- Mi casa ----------
   G.maps.casa = {
     name: 'Mi casa', icon: 'casa', rows: MD.casa.rows, music: 'headquarters',
+    things: {}, pages: { '2,1': 'mascota' }, // world.js: the bed says "la cama"; a page about Canelo on the shelf
     onEnter: function* (f) { if (G.day) yield* G.day.evening(f); }, // home after sunset: good night, Hoy, a new morning
     exits: [Object.assign(exitAt('casa', 'casaDoor'), {
       run: function* () {
@@ -8744,6 +9779,7 @@ G.MAPDATA = {
   // ---------- La escuela (club) ----------
   G.maps.escuela = {
     name: 'La escuela', icon: 'escuela', rows: MD.escuela.rows, music: 'church',
+    things: {}, pages: { '3,1': 'sentir' },
     exits: [exitAt('escuela', 'escuelaDoor')],
     npcs: [
       { id: 'luna', npc: 'luna', x: P('escuela', 'luna')[0], y: P('escuela', 'luna')[1], dir: 'down', fixed: true,
@@ -8786,13 +9822,14 @@ G.MAPDATA = {
   G.maps.rosa = {
     name: 'La casa de Rosa', icon: 'casa', rows: MD.rosa.rows, music: 'inn',
     exits: [exitAt('rosa', 'rosaDoor')],
-    pages: { '1,1': 'comida' },
+    pages: { '1,1': 'comida' }, things: {},
     npcs: [],
   };
 
   // ---------- La panadería ----------
   G.maps.panaderia = {
     name: 'La panadería', icon: 'panaderia', rows: MD.panaderia.rows, music: 'inn',
+    things: {}, pages: { '2,1': 'campo' },
     exits: [exitAt('panaderia', 'panaderiaDoor')],
     npcs: [
       { id: 'marta', npc: 'marta', x: P('panaderia', 'marta')[0], y: P('panaderia', 'marta')[1], dir: 'down', fixed: true,
@@ -8815,7 +9852,7 @@ G.MAPDATA = {
   G.maps.biblioteca = {
     name: 'La biblioteca', icon: 'biblioteca', rows: MD.biblioteca.rows, music: 'castle',
     exits: [exitAt('biblioteca', 'bibliotecaDoor')],
-    pages: { '2,1': 'pueblo' },
+    pages: { '2,1': 'pueblo' }, things: {},
     npcs: [
       { id: 'ines', npc: 'ines', x: P('biblioteca', 'ines')[0], y: P('biblioteca', 'ines')[1], dir: 'down', fixed: true,
         talk: function* () {

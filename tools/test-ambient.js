@@ -207,7 +207,7 @@ async function keys(browser) {
     await g.ev(() => { const n = G.field.npc('canelo'), [x, y] = G.field.facing(); n.x = x; n.y = y; n.amb.idle = -1e9; });
     await g.press('z');
     await g.frames(6);
-    check('keys: Z on Canelo, a friend: a bark and a heart, no text box', await g.ev(() => G.top() === G.field && G.field.amb.fx.some(e => e.s === '¡Guau!') && G.field.amb.fx.some(e => e.kind === 'heart')));
+    check('keys: Z on Canelo, a friend: a bark (Round B: "el perro / ¡Guau, guau!" word bubble) and a heart, no text box', await g.ev(() => G.top() === G.field && G.world.bubble && G.world.bubble.id === 'perro' && G.field.amb.fx.some(e => e.kind === 'heart')));
     await g.shot('canelo');
     check('keys: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }

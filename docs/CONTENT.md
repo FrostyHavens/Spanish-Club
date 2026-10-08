@@ -5,8 +5,9 @@
    ```js
    perro: { es: 'el perro', en: 'the dog', topic: 'animales', icon: 'perro' },
    ```
+   Add `alt: 'perrito / perrita'` for other forms the mic should accept.
    Include the article (*el/la/los/las*) for nouns. Adjectives that change form can show both, like `'rojo / roja'`. Speech and answer labels use the part before the `/`.
-2. Add a picture to `DRAW` in `src/icons.js`. Each picture is a 16×16 function that paints with `p.disc`, `p.ell`, `p.rect`, `p.tri` and `p.shade`; the dark outline is added automatically. A word without a picture gets a plain placeholder tile.
+2. Add a picture to `DRAW` in `src/icons.js` (tools/test-roundb-world.js fails for a word without one). Each picture is a 16×16 function that paints with `p.disc`, `p.ell`, `p.rect`, `p.tri` and `p.shade`; the dark outline is added automatically. A word without a picture gets a plain placeholder tile.
 3. For a new topic, add it to `D.topics` and `D.topicOrder` so it shows up in the Cuaderno.
 
 ## Writing dialogue
@@ -50,6 +51,23 @@ Edit `tools/mapgen.py` and run `python3 tools/mapgen.py` to regenerate `src/mapd
 - Everyone turns to look at the player within 2 tiles, and holds still for a moment while you come over. Add `noLook: true` to a character to stop that.
 - `route: [[x, y, dir, wait], ...]` walks a character along the roads from stop to stop, pausing `wait` frames facing `dir` (Tomás's mail round). Talking stops them.
 - `follow: () => flag` makes a character tag along behind the player while it's true, as a ghost that never blocks (Canelo, once you've talked to him: `G.state.flags.canelo`).
+
+## A tappable thing (`src/world.js`)
+A map with `things` in its definition names its things when tapped (and with A facing them). Tile codes with a word are in `G.world.TILES` (`T`/`f` árbol, `o` flor, `l` fuente, `w` agua, `J` banco, `N` ventana, `D` puerta, `j` cama). In the map definition:
+```js
+things: {
+  tiles: { k: 'barril' },               // more tile words (or a code: null to take one away)
+  areas: { granja: 'granja' },          // a G.MAPDATA pos tag holding [x, y, w, h] (from mapgen's t.pos[...]): its roof and walls
+  at: { '41,4': 'puerta' },             // one tile; wins over everything
+},
+```
+`things: {}` just uses the default tiles. The word needs a picture and a page like any word. People, doors, pages and search spots on a tile always win over its word. From code: `G.world.name('flor', worldX, worldY, { cry: '...' })` shows the bubble, speaks, marks it seen and offers the say-it-back mic (one star per word per day).
+
+## A new animal (`src/animals.js`)
+1. The word (and a sound word if it has one) in `src/data.js`, with pictures.
+2. `G.animals.KINDS.id = { word, sound, cry: '¡...!' }`, its pixel frames in `SPR` (rows of letters, facing right, the same size every frame), a `CRY` sound and a case in `tick()` / `frameOf()` for its behaviour.
+3. Give it a home in a map definition: `animals: [{ kind: 'id', n: 2, area: 'tag' }]`, where `tag` is a `[x, y, w, h]` area added in `tools/mapgen.py` (`t.pos['tag'] = [...]`).
+Tapping it then does the rest: its reaction, the word bubble with its sound, the album (`G.state.album[id]`) and say-it-back. An animal drawn elsewhere (like the birds in ambient.js) calls `G.animals.tap(id, x, y)` when tapped.
 
 ## A new screen
 Most play is on an iPad, so every screen works with taps as well as keys:

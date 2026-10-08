@@ -92,9 +92,9 @@ t.mark('casaFront', 5, 18); t.mark('start', 5, 18)
 
 # ----- Round B: animals, benches, flowers, the farm (docs/ROUND_B_PLAN.md) -----
 # benches (el banco): two in the plaza, one in the park
-for tag, (x, y) in {'banco1': (13, 12), 'banco2': (22, 12), 'banco3': (20, 18)}.items(): t.put(x, y, 'J'); t.mark(tag, x, y)
+for tag, (x, y) in {'banco1': (13, 9), 'banco2': (22, 12), 'banco3': (20, 18)}.items(): t.put(x, y, 'J'); t.mark(tag, x, y)
 # more flowers in town
-for x, y in [(1,9),(3,8),(32,10),(34,8),(9,26),(14,26),(22,26),(26,26),(30,26),(12,15),(23,15)]: t.put(x, y, 'o')
+for x, y in [(1,9),(3,8),(34,8),(9,26),(14,26),(22,26),(26,26),(30,26),(12,15),(23,15)]: t.put(x, y, 'o')
 # Abuela Rosa's hens scratch about on the grass beside her house (an area: x, y, w, h)
 t.pos['gallinero'] = [1, 7, 4, 4]
 t.put(1, 7, 'O')                     # a hay bale by the hens

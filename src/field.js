@@ -126,7 +126,8 @@
       if (door) return { exit: true, x: door.x, y: door.y }; // the wall or sign around a door, the dark just outside one
       const pg = (this.def.pages || {})[key(tx, ty)];
       const name = G.world ? G.world.wordAt(this, tx, ty) : null;
-      if ((pg && !G.st.hasPage(pg)) || (this.def.searches || {})[key(tx, ty)] || THING.includes(c)) return { search: true, x: tx, y: ty, name };
+      const special = !!((pg && !G.st.hasPage(pg)) || (this.def.searches || {})[key(tx, ty)]); // these win over an animal on them
+      if (special || THING.includes(c)) return { search: true, x: tx, y: ty, name, special };
       if (name) return this.blocked(tx, ty, this.player) && !(this.player.x === tx && this.player.y === ty) ? { search: true, x: tx, y: ty, name } : { x: tx, y: ty, name };
       return { x: tx, y: ty };
     }
@@ -229,7 +230,7 @@
       if (!this.locked && G.input.tap()) { // the menu button (= B, eats the tap), else tap-to-walk (field tasks still see the tap)
         if (G.btnHit(...HUD)) { G.input.eat(); this.menuReq = true; this.route = null; }
         else { // tap-to-walk; a tap on an animal (animals.js, not over a person or a door) names it and walks toward it
-          const tap = G.input.tap(), tt = this.tapTarget(tap), an = !tt.npc && !tt.exit && G.animals && G.animals.hit(this, tap);
+          const tap = G.input.tap(), tt = this.tapTarget(tap), an = !tt.npc && !tt.exit && !tt.special && G.animals && G.animals.hit(this, tap);
           this.route = an ? G.animals.tapped(this, an) : tt; this.plan(this.route);
         }
       }
