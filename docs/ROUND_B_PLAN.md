@@ -4,7 +4,7 @@ Playtest (age 7, iPad, Safari 15.6, es-MX mic works well): *"Bored that there's 
 
 Round B puts animals at the heart of Villa Sol. Canelo becomes your dog and learns tricks by voice. Every animal and many things in town can be tapped: they say their Spanish word, and you can say it back for a speaking star. Eight longer story errands (5-10 min each) mix walking, finding, tapping and speaking. Townsfolk become friends (hearts), and an album fills up as you meet animals.
 
-**Status.** The foundation is built (the words, pictures, map, animals, tap-anything, say-it-back, album records). Canelo's tricks, hearts, the album screen and the errands are next. The APIs are listed at the end.
+**Status.** Built: the foundation (the words, pictures, map, animals, tap-anything, say-it-back, album records) and stage 2a (Canelo as your dog with his tricks and care, hearts with voice greetings, the album screen with the Amigos page). Next: the errands (§7). The APIs are listed at the end.
 
 Language rules: [CONTENT.md](CONTENT.md). Mexican Spanish, present tense, a few words per line, `{o/a}` for the player.
 
@@ -24,7 +24,7 @@ Every word has a 16x16 picture (`src/icons.js`) and sits on a notebook page (`sr
 | **Los animales** | el perro, el gato, el pájaro, la mariposa, el pez, el conejo | page: park flower (13,19). Tap the animals; Luna's animal count |
 | **La granja** | el pato, la rana, la gallina, el caballo, la cabra | page: flower by the pond (43,19). Tap the animals; Rosa (hens) |
 | **¿Qué dicen?** (sounds) | guau, miau, pío, cuac, croac, bee | page: the barn door (41,4). Every animal says its sound; Nico's sound game |
-| **Mi perro** (Canelo) | el hueso, la cama, siéntate, ven, salta, dame la pata, gira | page: your shelf at home. Mamá and Sofía (tricks) |
+| **Mi perro** (Canelo) | el hueso, la cama, siéntate, ven, salta, dame la pata, gira | page: Mamá hands it over with Canelo. Mamá, Sofía, Nico (tricks) |
 | **En el pueblo** (things) | el árbol, la flor, la fuente, el banco, la puerta, la ventana, la granja | page: the plaza bench (13,9). Tap anything |
 | **Más números** | seis, siete, ocho, nueve, diez | page: the hay bale by the barn (44,4). Luna's animal count |
 | **El día de campo** (picnic) | la leche, el queso, el huevo, el agua, la galleta | page: the bakery shelf. Rosa's picnic |
@@ -62,52 +62,61 @@ Birds (8), butterflies (5) and the cat (on the park fence; she naps when nobody 
 - **People, doors, page sparkles and search spots win**, exactly as in Round A.
 - **Say it back**: with *Speaking (mic)* on, a pink mic sits beside the word for ~5 s. Tap it (or V, or hold Space) and say the word → a speaking star (*¡Bien dicho!*), the word is learned if it wasn't (a *¡Palabra nueva!* card, without its own mic). **One say-it-back star per word per calendar day** (`G.state.sayback`), so it can't be farmed. A miss: *¡Otra vez!*, a little more time, no penalty.
 
-## 4. Canelo, your dog (next: tricks agent)
+## 4. Canelo, your dog (built: `src/pet.js`)
 
-Canelo already follows you once you've met him. Round B makes him *your* dog.
+Canelo already follows you once you've met him. Now he's *your* dog.
 
-**Start.** After Mamá's morning lesson (day 2, or after Round A's party for older saves): *"¡{name}! Canelo es tu perro."* Mamá gives the *Mi perro* page. Canelo has a bed (*la cama*) and a bowl at home.
+**Start.** Once the Saludos errand is done, Mamá has a "!" (an older save after the party gets it too): *"¡{name}! ¡Mira!"* Canelo bursts in and dances; *"¡Canelo es tu perro!"*; *"¡Para ti!"* and she hands over the *Mi perro* page (no longer on the shelf); then she teaches *siéntate*. (Sooner than "day 2" in the first plan: the playtester was bored, and the dog is what they love.) Canelo lives at home too: a red cushion (*la cama*, tap it) in the corner and a water bowl; he follows you in and out.
 
-**Tricks** (learned in this order; each one is a little scene):
+**Tricks** (learned in this order, one at a time; the teacher's thought bubble shows the trick's picture when it's their turn):
 | Trick | Taught by | Canelo does |
 | --- | --- | --- |
-| ¡Siéntate! | Mamá | sits (sit frame), wags |
-| ¡Ven! | Mamá, outside | runs to you from 4 tiles away |
-| ¡Dame la pata! | Sofía | lifts a paw; a heart |
-| ¡Salta! | Sofía | jumps (a hop of ~10 px), a dust puff |
-| ¡Gira! | Nico | spins (turns through the 4 directions) |
+| ¡Siéntate! | Mamá | sits (squashes down), wags, a heart |
+| ¡Ven! | Mamá | dashes off up to 3 tiles (walls stop him), a "!", then runs back to you with dust puffs and jumps up |
+| ¡Dame la pata! | Sofía (when her ball errand doesn't need her) | turns to you and lifts a front paw, a little high-five shake, sparkles |
+| ¡Salta! | Sofía | crouches, jumps ~20 px, lands with a dust puff |
+| ¡Gira! | Nico | spins through the four directions twice, sparkles |
 
-How it works: tap Canelo → a small trick menu of picture cards (only the tricks he knows, plus the one he's learning). Saying the command (the mic) or tapping its card makes him do it. Each trick needs **3 good tries** to be "learned" (a *¡Palabra nueva!* for the command, a heart from Canelo). Saying it earns speaking stars (normal G.ask once-per-question rules). Use `G.ask` with `{ word: 'sientate' }` choices so the mic and its matching come for free.
+A teaching scene: the teacher says it (*"¡Mira! Canelo... ¡siéntate!"*), Canelo does it for them, *"¡Ahora tú!"*, your first try (a "¡Dile a Canelo!" question), *"¡Otra vez! Toca a Canelo."* While a trick is being learned a thought bubble over Canelo shows its picture and three paw dots.
 
-**Care** (any time, from the same menu): *el hueso* / *la galleta* (feed: crunch, heart), *el agua* (the bowl at home or the fountain: lap lap), *la pelota* (throw: he fetches it back), pet him (tap and hold: hearts), *la cama* (at home, at night: he sleeps with *z z z*). Canelo's own happiness = hearts (0-5, see §5); a happy Canelo does a little dance.
+**The pet menu.** Tap Canelo (or A facing him): he comes to your side (the view lifts so you both stay above the menu) and big picture cards slide up. Top row, his tricks: known ones with their word in gold and a star; the one he's learning in pink with its paw prints (1-2-3); the next one faded with its teacher's little face; the rest "?". Bottom row, care: *el hueso*, *la galleta*, *el agua*, *la pelota*, a pat (his face with hearts), *la cama* (away from home it shows a little house). His name and hearts sit top-left; the close button top-right (a tap on the map above also closes it).
+- **The mic sits beside the tricks.** Say a command and he does it; say a care word and he gets it (*"¡la pelota!"* throws the ball). A speaking star once per word per day (the say-it-back book, `G.state.sayback`); a care word said out loud is learned (a *¡Palabra nueva!*, no second mic). Tapping a card says the word and does it too.
+- **Learning takes 3 good tries.** Tapping the learning card asks *"¡Dile a Canelo!"* (a `G.ask` with `{word}` picture cards, so the mic comes for free); saying the command straight at the menu counts as a try too. Try 1: he tilts his head with a "?" and half does it; try 2: nearly ("2/3"); try 3: the real thing, confetti, a fanfare, a heart (not capped) and the *¡Palabra nueva!* card for the command.
+- The menu closes while he does something (you see him clearly), then comes back, until you close it.
 
-## 5. Hearts (friendship) (next: hearts agent)
+**Care:** food in his red bowl (crunch crunch, crumbs; *el hueso* is his favourite: the gift heart), water (lap lap, drops), the ball (it arcs away and bounces, he runs, brings it back in his mouth and drops it at your feet), a pat (your hand pats his head, hearts float up), *la cama* (at home he goes to his cushion and sleeps, *z z z*; tap him to wake him). He also sleeps there after sunset and through the night, and hops up in the morning. A best-friend Canelo (5 hearts) does a little happy dance when you open the menu.
+
+## 5. Hearts (friendship) (built: `src/hearts.js`)
 
 Each townsperson (Mamá, Luna, Rosa, Pepe, Sofía, Tomás, Marta, Inés, Gómez, Lucía, Nico, and Canelo) has 0-5 hearts, saved in `G.state.hearts[npc]`.
 
-**What raises them** (at most +2 a day per person, so it's spread over days):
-- **Greeting by voice**: when you come near, they say *¡Hola, {name}!* and a mic bubble (the say-it-back helper) asks you to answer *hola* / *buenos días* / *bien*. Answered: +1 (once a day per person).
-- **Finishing their errand**: +2.
-- **A gift they like** (from the picnic foods, flowers, cookies): +1. Each person likes one thing (Rosa: *la flor*; Pepe: *el queso*; Sofía: *la galleta*; Tomás: *el agua*; Marta: *la leche*; Inés: *el pan*; Gómez: *la manzana*; Lucía: *la flor rosa*; Nico: *la pelota*; Luna: *la manzana*; Canelo: *el hueso*).
+**What raises them** (at most +2 a day per person from greetings, gifts and care, so it's spread over days):
+- **Greeting by voice**: after the Saludos errand, the first talk of the day with someone starts with their greeting as a picture-card question with the mic: *"Don Pepe: ¡Hola, Luz!"* (*hola*), *"¡Buenos días, Luz!"* early in a session (*buenos días*), or *"¡Hola! ¿Cómo estás?"* (*bien*). Answered (voice or tap): +1, once a day per person.
+- **Finishing their errand**: +2 to the errand's giver (`D.quests[id].giver`), not counted in the cap (Round A's errands do it too).
+- **A gift they like**: +1, once a day. Rosa: *la flor*; Pepe: *el queso*; Sofía: *la galleta*; Tomás: *el agua*; Marta: *la leche*; Inés: *el pan*; Gómez: *la manzana*; Lucía: *la flor* (a pink one); Nico: *la pelota*; Luna: *la manzana*; Mamá: *la flor*; Canelo: *el hueso* (the pet menu's bone). The errands give the things.
+- **Canelo**: each care action or trick shown +1 (within the cap), each trick learned +1 (not capped).
 
 **What unlocks:**
 | Hearts | Unlock |
 | --- | --- |
-| 1 | They call you by name and wave when you pass; their errand opens (some errands need 1 heart) |
-| 3 | A **secret**: they tell you where a hidden thing is (a page, an egg, a golden flower) with a picture bubble; and they give a **gift** for the album (a sticker of their face) |
-| 5 | **Best friends**: a photo in the album, they join the animal party (errand 8), and their greeting changes (*¡Mi amig{o/a} {name}!*) |
+| 1 | They call you by name as you pass within 2 tiles (a "¡Hola, Luz!" bubble and a hop, at most once a minute); errands can require it (`G.hearts.get`) |
+| 3 | A **secret**: where a notebook page you haven't found is (*"¡Un secreto! Una página... ¡el parque!"*, the place as a picture word; errands can replace it per person) and a **sticker** of their face (a round gold-edged card) for the album |
+| 5 | **Best friends**: a photo of the two of you for the album, and their greeting changes to *"¡Mi amig{o/a} {name}!"*. They join the animal party (errand 8: `G.hearts.best(npc)`) |
 
-The Hoy card can show hearts earned today.
+Hearts show as a row over a person on the map for a moment when they rise (the new heart pops, a chime, sparkles), and as a row of five over the portrait whenever they talk. The Hoy card shows the hearts earned today (top-left). The album's Amigos page lists everyone.
 
-## 6. The album (next: hearts/album agent)
+## 6. The album (built: `src/album.js`)
 
-A new tab in the menu (a paw icon next to Cuaderno). One card per animal, 11 in `G.animals.list()` order: perro, gato, pájaro, mariposa, pez, conejo, pato, rana, gallina, caballo, cabra.
+A third big button in the menu, *Animales* (a paw) with *7/11* under it, next to Cuaderno and Misiones. One card per animal, 11 in `G.animals.list()` order: perro, gato, pájaro, mariposa, pez, conejo, pato, rana, gallina, caballo, cabra.
 
-- Not met: a dark silhouette and *? ? ?*.
-- Met (`G.state.album[id]` exists): the animal's picture (its 16x16 icon at 3x, or the live map sprite), *el gato*, its sound *¡Miau!* (tap: hear both), how many times you said hi (`n`).
+- Title: a paw, *Mis animales*, *7/11* and a bar that fills a notch per animal.
+- Not met: a dark silhouette and *? ? ?*; a tap only wobbles it.
+- Met (`G.state.album[id]` exists): its picture (2x), *el gato*, its sound *¡Miau!*; tap: it hops and you hear both (and its cry).
 - Said its name (`said: true`): a little mic mark, like the Cuaderno.
-- Counted in Luna's animal count: a gold star.
-- All 11 met: a page of confetti and a badge (*¡Amig{o/a} de los animales!*).
+- Counted in Luna's animal count (`G.album.count(id)` sets `counted`): a gold star.
+- All 11 met: the first time, a fanfare, confetti and *"¡Amig{o/a} de los animales!"* spoken; from then on that title sits on a red ribbon (`flags.albumFull`).
+- The twelfth card, *Amigos* (a big heart and the total of everyone's hearts): a page of everyone's face, name and five hearts, a gold sticker mark at 3, a gold frame at 5. Back (or B) returns to the animals.
+- Taps and keys: arrows move, A or C says the card, B closes.
 
 ## 7. The eight story errands (next: errands agents)
 
@@ -181,9 +190,14 @@ Unlocks when 6 of the errands are done.
 - **Pet the horse**: hold a tap on him; he nuzzles. *Say caballo* for the star.
 - **The sleepy cat**: when she naps, tiptoe up (walk slowly) and say *gato* to wake her.
 
-## 8. APIs built in the foundation
+## 8. APIs
 
 - **Animals** (`src/animals.js`): `G.animals.KINDS[id]` `{word, sound, cry, order}`; `list()`; `met(id)`; `meet(id)`; `tap(kind, wx, wy, o)` (name + album, for any animal, including critters in `ambient.js` and Canelo); `here()` (live animals on this map), `find(kind)`, `jump(fish)`, `cry(kind)`, `screen(a)`, `hit(field, tap)`. Map config: `animals: [{ kind, n, area | at }]`.
 - **Album record**: `G.state.album[id] = { first: ms, map: 'villa', n: times tapped, said: bool }`.
 - **Tap anything / say it back** (`src/world.js`): `G.world.TILES`, map `things: { tiles, areas, at }`, `wordAt(f, x, y)`, `name(id, wx, wy, o)`, `nameTile(f, x, y)`, `offerSayBack(id, bubble)`, `canSayBack(id)`, `bubble`, `sayBack`, `today()`. `G.state.sayback[word] = 'YYYY-M-D'`.
 - `G.learnWords(ids, { noMic: true })`, `G.mic.target` includes a word's `alt`, `G.iconDrawn(id)`, `D.numberWords10`.
+- **Canelo** (`src/pet.js`): `G.pet.TRICKS` `[{id, by, anim}]`; `mine()` (he's yours: `flags.petStart`); `knows(id)` (3 good tries: use this to check a trick is learned); `tries(id)`; `learning()`; `known()`; `canTeach(who)`; generators `teach(id, who)`, `practice(id)`, `ask(id, o)` (a "¡Dile a Canelo!" question: `o.prompt`, `o.pool`), `command(id, o)` (ask, then he does it: for the pet show), `trick(id, {amp})`, `play(kind, o)` (sit come paw jump spin huh eat drink fetch pet dance wake; `{item: 'hueso'}` for eat), `menu()`, `start()`; `npc(f)`, `sleeping(f)`, `spokeStar(id)`. Saved: `G.state.pet = {tricks: {id: 0..3}, learning, sleep}`.
+- **Hearts** (`src/hearts.js`): `G.hearts.WHO`, `LIKES`, `get(npc)`, `add(npc, n, why)` (why: `greet` and `gift` once a day; `care`; `errand` and `trick` skip the daily cap; returns the hearts added), `canAddToday(npc, why)`, `did(npc, why)`, `today(npc?)`, `gift(npc, word)`, `best(npc)`, `greeting(npc)`, generators `greet(npc)` and `milestones(npc)` (call after adding hearts outside a normal talk), `secrets[npc] = function* () {...}` to replace a 3-heart secret, `sticker(npc)`, `photo(npc)`, `row(ctx, npc, x, y, scale)`, `face(ctx, npc, x, y, w)`. Saved: `G.state.hearts`, `G.state.heartlog` (today), `G.state.friends` (`m3`, `m5`). In maps.js, `hello(who)` (greeting + milestones) starts every townsperson's talk; `finishQuest(id)` gives the giver +2.
+- **Album** (`src/album.js`): `G.album(start?)` (opens it; `'amigos'` for the friends page), `G.album.count(id)` (the gold star for Luna's count), `counted(id)`, `metCount()`, `full()`.
+- **Hooks** for scenes: `G.say(pages, {portrait, name, who})` shows `who`'s hearts over the portrait; a map NPC can draw itself with `n.drawSelf(ctx, cx, cy)` (true = drawn); `field.camShift` lifts the view (px).
+

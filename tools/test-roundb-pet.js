@@ -62,7 +62,10 @@ async function tapCard(g, id, o = {}) {
   await g.tapRect(await card(g, id));
   if (o.shotAt) { await g.until(() => { const n = G.pet.npc(); return n && n.pa; }, null, 'Canelo to move'); await g.frames(o.shotAt); await g.shot(o.shot || id); }
 }
-const waitMenu = g => g.until(() => G.top().constructor.name === 'PetMenu' && G.top().t > 12, null, 'the pet menu again');
+const waitMenu = async g => { // (a heart surprise may come first: the sticker)
+  await g.drive(() => G.top().constructor.name === 'PetMenu', 'back to the menu').catch(e => { throw new Error(e.message + ' ' + g.errors.join(' | ')); });
+  await g.until(() => G.top().constructor.name === 'PetMenu' && G.top().t > 12, null, 'the pet menu again');
+};
 
 // ---------- iPad: Mamá gives you Canelo; siéntate by voice and by tap; care; hearts; save and reload ----------
 async function ipad(browser) {
@@ -115,7 +118,7 @@ async function ipad(browser) {
     await g.frames(30); await g.shot('sit_learned');
     await g.until(() => G.top().constructor.name === 'WordCard', null, 'the new word card');
     check('learned: 3 good tries -> siéntate is learned, a "¡Palabra nueva!" and a heart from Canelo', await g.ev(() => G.st.knows('sientate') && !G.pet.learning() && G.hearts.get('canelo') === 1));
-    await g.drive(() => G.top().constructor.name === 'PetMenu' && G.top().t > 12, 'back to the menu');
+    await waitMenu(g);
     check('menu: siéntate is gold now, ven is Mamá\'s next', await g.ev(() => G.top().cards().slice(0, 2).map(c => c.st).join() === 'known,next'));
     // a known trick by tap, and by voice
     await tapCard(g, 'sientate', { shotAt: 30, shot: 'sit' });
@@ -126,10 +129,11 @@ async function ipad(browser) {
     await g.until(() => G.top().constructor.name !== 'PetMenu', null, 'the menu to close for the trick');
     await waitMenu(g);
     check('voice: a known trick said again today does it, with no second star', await g.ev(s => G.state.stars === s, st2));
-    // care: el hueso (his favourite: the gift heart), then the cap
+    // care: el hueso (his favourite: the gift heart), then the cap (a new day for the hearts first)
+    const c0 = await g.ev(() => { G.state.heartlog.d = '1999-1-1'; return G.hearts.get('canelo'); });
     await tapCard(g, 'hueso', { shotAt: 40, shot: 'eat' });
     await waitMenu(g);
-    check('care: el hueso feeds him and is his favourite (a gift heart)', await g.ev(() => G.hearts.get('canelo') === 2 && G.hearts.did('canelo', 'gift')));
+    check('care: el hueso feeds him and is his favourite (a gift heart)', await g.ev(c0 => G.hearts.get('canelo') === c0 + 1 && G.hearts.did('canelo', 'gift'), c0));
     await tapCard(g, 'agua', { shotAt: 40, shot: 'drink' });
     await waitMenu(g);
     await tapCard(g, 'pelota', { shotAt: 22, shot: 'fetch_throw' });
@@ -137,14 +141,15 @@ async function ipad(browser) {
     await waitMenu(g);
     await tapCard(g, 'mimo', { shotAt: 50, shot: 'pet_hearts' });
     await waitMenu(g);
-    const h = await g.ev(() => ({ c: G.hearts.get('canelo'), today: G.state.heartlog.n.canelo }));
-    check('hearts: care hearts stop at the daily cap of 2 (the trick heart is extra)', h.c === 3 && h.today === 2, JSON.stringify(h));
+    const h = await g.ev(() => ({ c: G.hearts.get('canelo'), today: G.state.heartlog.n.canelo, sticker: G.hearts.sticker('canelo') }));
+    check('hearts: care hearts stop at the daily cap of 2', h.c === c0 + 2 && h.today === 2, JSON.stringify(h));
+    check('hearts: Canelo at 3 hearts gave his sticker', h.sticker, JSON.stringify(h));
     // a care word said: the ball, a star, and the word is learned
     await g.ev(() => window.__sr.queue.push({ results: ['la pelota'] }));
     await g.tapRect(await g.ev(() => G.top().micRect()));
     await g.until(() => G.top().constructor.name === 'WordCard' || G.st.knows('pelota'), null, 'la pelota learned');
     check('voice: "la pelota" said to Canelo throws it, a speaking star, and the word is learned', await g.ev(() => G.st.saidCount('pelota') === 1 && G.st.knows('pelota')));
-    await g.drive(() => G.top().constructor.name === 'PetMenu' && G.top().t > 12, 'back to the menu');
+    await waitMenu(g);
     // his bed: at home he goes to sleep
     await tapCard(g, 'cama');
     await settle(g, 'Canelo to bed');
@@ -156,7 +161,7 @@ async function ipad(browser) {
     check('teach: Mamá\'s thought bubble shows ven next', await g.ev(() => G.field.npc('mama').alert() === 'ven'));
     await g.tapTile(3, 2);
     await settle(g, 'Mamá teaches ven');
-    check('teach: Mamá teaches ven (one try done) and greets only once a day', await g.ev(() => G.pet.learning() === 'ven' && G.pet.tries('ven') === 1 && G.hearts.get('mama') === 1));
+    check('teach: Mamá teaches ven next (one try done)', await g.ev(() => G.pet.learning() === 'ven' && G.pet.tries('ven') === 1));
     // save and reload
     await g.ev(() => G.st.saveNow());
     const before = await g.ev(() => JSON.stringify({ p: G.state.pet, h: G.state.hearts, f: G.state.flags.petStart }));
@@ -337,4 +342,6 @@ async function keys(browser) {
   } finally { await ctx.close(); }
 }
 
-run('Round B: Canelo, hearts and the album', [['iPad: Canelo is your dog (voice and taps)', ipad], ['iPad: every trick, Sofía, a voice greeting', tricks], ['hearts: rules, surprises, waving', hearts], ['iPad: the album', album], ['desktop: keys', keys]]);
+const ONLY = process.env.ONLY;
+const ALL = [['iPad: Canelo is your dog (voice and taps)', ipad], ['iPad: every trick, Sofía, a voice greeting', tricks], ['hearts: rules, surprises, waving', hearts], ['iPad: the album', album], ['desktop: keys', keys]];
+run('Round B: Canelo, hearts and the album', ONLY ? ALL.filter(s => s[0].includes(ONLY)) : ALL);

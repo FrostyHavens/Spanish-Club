@@ -119,7 +119,9 @@
     for (const npc in pops) {
       const p = pops[npc], age = G.frame - p.f0; if (age > 170) continue;
       const n = who(f, npc); if (!n) continue;
-      const [sx, sy] = head(f, n), w = H.rowW() + 6, a = age > 150 ? (170 - age) / 20 : 1, rise = Math.round(Math.min(1, age / 12) * 6);
+      let [sx, sy] = head(f, n); const w = H.rowW() + 6;
+      try { if (n.alert && n.alert()) sy -= 26; } catch (e) { } // above their thought bubble
+      const a = age > 150 ? (170 - age) / 20 : 1, rise = Math.round(Math.min(1, age / 12) * 6);
       ctx.globalAlpha = a;
       ctx.fillStyle = '#10102a'; ctx.fillRect(sx - w / 2, sy - 10 - rise, w, 11); ctx.fillStyle = '#fff4f8'; ctx.fillRect(sx - w / 2 + 1, sy - 9 - rise, w - 2, 9);
       H.row(ctx, npc, sx - w / 2 + 3, sy - 8 - rise);

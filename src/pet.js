@@ -512,12 +512,11 @@
   };
   // the menu covers the bottom of the screen: lift the view so you and Canelo stay in sight above it
   function lift(f, n) {
-    const base = f.camShift || 0; f.camShift = 0;
+    f.camShift = 0;
     const cam = f.camTarget(), bottom = Math.max(n.y, f.player.y) * T + T - cam.y;
-    f.camShift = bottom > 126 ? Math.min(90, bottom - 122) : 0;
-    void base;
+    f.camShift = bottom > 118 ? Math.min(96, bottom - 116) : 0;
   }
- { if (G.hearts) G.hearts.add('canelo', 1, 'care'); };
+  const careHeart = () => { if (G.hearts) G.hearts.add('canelo', 1, 'care'); };
   // one thing from the menu (or said to Canelo) -> true when the menu shouldn't come back (he went to sleep)
   P.act = function* (v) {
     const f = G.field, id = v.id, spoken = !!v.spoken;

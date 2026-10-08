@@ -54,7 +54,7 @@ async function data(browser) {
       const placed = new Set(); for (const m in G.maps) for (const k in G.maps[m].pages || {}) placed.add(G.maps[m].pages[k]);
       return {
         n: ids.length, noPic: ids.filter(id => !G.iconDrawn(id)), offPage: ids.filter(id => !onPage.has(id)),
-        badTopic: ids.filter(id => !D.topics[D.words[id].topic]), unplaced: D.pageOrder.slice(5).filter(p => !placed.has(p)), // Round A's saludos page comes from Mamá
+        badTopic: ids.filter(id => !D.topics[D.words[id].topic]), unplaced: D.pageOrder.slice(5).filter(p => !placed.has(p) && p !== 'mascota'), // Round A's saludos page and Round B's Mi perro page come from Mamá
         big: D.pageOrder.filter(p => D.pages[p].words.length > 9), order: D.pageOrder.length === Object.keys(D.pages).length,
         kinds: G.animals.list(), animalWords: G.animals.list().every(k => D.words[G.animals.KINDS[k].word]),
         sounds: G.animals.list().map(k => G.animals.KINDS[k].sound).filter(Boolean).every(id => D.words[id]),

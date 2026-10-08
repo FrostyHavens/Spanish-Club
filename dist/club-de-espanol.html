@@ -1324,6 +1324,12 @@ G.store = {
         const py = top ? 6 : G.H - 60 - 6;
         G.win(ctx, 6, py, 60, 60);
         G.drawPortrait(ctx, this.opts.portrait, 10, py + 4, this.t);
+        const who = this.opts.who; // Round B: their hearts, over the portrait (hearts.js)
+        if (who && G.hearts && G.hearts.shows(who)) {
+          const hy = top ? py + 61 : py - 11, pl = G.hearts.pulse(who) && (this.t >> 3) & 1;
+          G.win(ctx, 6, hy, 60, 12, { fill1: pl ? '#ffe0ec' : '#fff4f8', fill2: '#f8d8e4', alpha: 1 });
+          G.hearts.row(ctx, who, 16, hy + 3);
+        }
       }
       G.win(ctx, this.boxX, y, this.boxW, h);
       const name = this.opts.name;
@@ -1575,6 +1581,7 @@ G.store = {
     book: ['.rrrr.cccc.', 'rRRRRrcCCCc', 'rRwwRrcwwCc', 'rRRRRrcCCCc', 'rRwwRrcwwCc', 'rRRRRrcCCCc', 'rRRRRrcCCCc', '.rrrrwcccc.', '.....w.....'],
     quest: ['.bbbbbbbb.', 'b........b', '.wwwwwwww.', '.wWWWWWWw.', '.wwwwwwww.', '.wWWWWWw..', '.wwwwwwww.', 'b........b', '.bbbbbbbb.'],
     save: ['........ys', '.......yy.', '......yy..', '.....yy...', '....yy....', '...yy.....', '..yy......', '.bb.......', 'bb........'],
+    album: ['...ss.ss...', '..ssssssss.', '..ssssssss.', 's..ss.ss..s', 'ss.......ss', 'ss..sss..ss', '...sssss...', '..sssssss..', '..sssssss..', '...sssss...'], // a paw (the animal album)
     gear: ['...gg.gg...', '..gWWgWWg..', '.gWWWWWWWg.', '..gWWgWWg..', 'gWWg...gWWg', '..gWWgWWg..', '.gWWWWWWWg.', '..gWWgWWg..', '...gg.gg...'],
     quit: ['w........w', '.w......w.', '..w....w..', '...w..w...', '....ww....', '...w..w...', '..w....w..', '.w......w.', 'w........w'],
   };
@@ -6651,6 +6658,10 @@ G.store = {
       name: null,         // the player's name, typed after the creator
       album: {},          // Round B (animals.js): animal id -> {first: ms, map, n: times tapped, said: name said out loud}
       sayback: {},        // Round B (world.js): word id -> 'YYYY-M-D' it last earned a say-it-back star (one a day)
+      pet: { tricks: {}, learning: null, sleep: false }, // Round B (pet.js): Canelo's tricks (good tries 0..3), the one he's learning
+      hearts: {},         // Round B (hearts.js): npc -> 0..5
+      heartlog: {},       // Round B (hearts.js): today's hearts {d: 'YYYY-M-D', n, all, why}
+      friends: {},        // Round B (hearts.js): npc -> {m3: secret + sticker given, m5: best-friend photo}
     };
   }
   function devicePrefs(s) {
@@ -7550,20 +7561,23 @@ G.store = {
       const r = yield G.kidMenu();
       if (r.result === 'book') yield G.notebook();
       else if (r.result === 'quest') yield G.questLog();
+      else if (r.result === 'album') yield G.album();
       else return;
     }
   };
-  // Two big picture buttons, Cuaderno and Misiones, plus a small gear that opens the grown-ups menu only after
-  // a 2 s press-and-hold (keyboard: move onto it and hold Z). Resolves 'book', 'quest' or null.
-  const KIDS = ['book', 'quest', 'gear'];
+  // Three big picture buttons, Cuaderno, Misiones and the animal album (a paw, Round B), plus a small gear that opens
+  // the grown-ups menu only after a 2 s press-and-hold (keyboard: move onto it and hold Z). Resolves 'book', 'quest',
+  // 'album' or null.
+  const KIDS = ['book', 'quest', 'album', 'gear'], TILES = ['book', 'quest', 'album'];
+  const KID_LABEL = { book: 'Cuaderno', quest: 'Misiones', album: 'Animales' };
   class FieldMenu {
     constructor(w) { this.transparent = true; this.w = w; this.t = 0; this.sel = 'book'; this.gear = new G.Hold(120); }
-    // tap areas (shared with draw): the 'book' and 'quest' tiles, the 'gear' (and its padded hold area), close
-    box() { return { x: 64, y: 46, w: 192, h: 132 }; }
+    // tap areas (shared with draw): the 'book', 'quest' and 'album' tiles, the 'gear' (and its padded hold area), close
+    box() { return { x: 22, y: 46, w: 276, h: 132 }; }
     rect(k) {
       const b = this.box();
       if (k === 'gear') return { x: b.x + b.w - 32, y: b.y + b.h - 28, w: 24, h: 20 };
-      return { x: b.x + 14 + (k === 'quest' ? 88 : 0), y: b.y + 14, w: 76, h: 82 };
+      return { x: b.x + 14 + TILES.indexOf(k) * 86, y: b.y + 14, w: 76, h: 82 };
     }
     gearHit() { const r = this.rect('gear'); return { x: r.x - 4, y: r.y - 4, w: r.w + 8, h: r.h + 8 }; }
     closeXY() { return [G.W - 26, 6]; } // where the map's menu button was
@@ -7574,11 +7588,11 @@ G.store = {
       if (this.gear.update(this.gearHit(), this.sel === 'gear')) { G.audio.sfx('ok'); G.grownUps(); return; }
       if (G.input.tap()) {
         if (G.closeHit(...this.closeXY())) { this.close(); return; }
-        for (const k of ['book', 'quest']) if (G.tapIn(this.rect(k))) { this.sel = k; this.pick(k); return; }
+        for (const k of TILES) if (G.tapIn(this.rect(k))) { this.sel = k; this.pick(k); return; }
       }
       const d = G.input.repDir(14, 6);
       if (d) {
-        const i = KIDS.indexOf(this.sel), n = d === 'down' ? 2 : d === 'up' ? (i === 2 ? 1 : i) : (i + (d === 'left' ? 2 : 1)) % 3;
+        const i = KIDS.indexOf(this.sel), n = d === 'down' ? 3 : d === 'up' ? (i === 3 ? 2 : i) : (i + (d === 'left' ? 3 : 1)) % 4;
         if (n !== i) { this.sel = KIDS[n]; G.audio.sfx('cursor'); }
       }
       if (G.input.p('A') && this.sel !== 'gear') this.pick(this.sel);
@@ -7587,12 +7601,13 @@ G.store = {
     draw(ctx) {
       const b = this.box();
       G.win(ctx, b.x, b.y, b.w, b.h);
-      ['book', 'quest'].forEach(k => {
+      TILES.forEach(k => {
         const r = this.rect(k), sel = this.sel === k, bob = sel ? Math.round(Math.sin(this.t / 6) * 1.5) : 0;
         G.win(ctx, r.x, r.y - bob, r.w, r.h, sel ? { fill1: '#3a56c8', fill2: '#1c2c8c' } : { alpha: 0.55 });
         const big = G.cached('kidbtn_' + k + (sel ? 1 : 0), 24, 20, c => G.drawIcon(c, k, 0, 0, sel));
         ctx.drawImage(big, r.x + (r.w - 48) / 2, r.y + 10 - bob, 48, 40);
-        G.textC(ctx, k === 'book' ? 'Cuaderno' : 'Misiones', r.x + r.w / 2, r.y + 62 - bob, sel ? '#f8e060' : '#ffffff');
+        G.textC(ctx, KID_LABEL[k], r.x + r.w / 2, r.y + 62 - bob, sel ? '#f8e060' : '#ffffff');
+        if (k === 'album' && G.state && G.animals) { const n = G.animals.list().filter(G.animals.met).length; G.textC(ctx, n + '/' + G.animals.list().length, r.x + r.w / 2, r.y + 72 - bob, '#a8d8ff'); }
         if (sel && (this.t >> 3) % 4 !== 3) G.textC(ctx, '\u0001', r.x + r.w / 2, r.y - 9 - bob, '#f8e060');
       });
       const g = this.rect('gear');
@@ -8215,6 +8230,7 @@ G.store = {
       const mw = this.map.w * T, mh = this.map.h * T;
       cx = mw <= G.W ? (mw - G.W) / 2 : G.clamp(cx, 0, mw - G.W);
       cy = mh <= G.H ? (mh - G.H) / 2 : G.clamp(cy, 0, mh - G.H);
+      if (this.camShift) cy += this.camShift; // a menu over the bottom of the map (pet.js) lifts the view a little
       return { x: cx, y: cy };
     }
     snapCam() { this.cam = this.camTarget(); }
@@ -8400,6 +8416,8 @@ G.store = {
       }
       this.tasks.update();
       if (G.ambient) G.ambient.update(this); // the living town (ambient.js): critters, people who look at you, walkers
+      if (G.pet) G.pet.update(this); // Canelo, your dog: his tricks and his bed (pet.js)
+      if (G.hearts) G.hearts.update(this); // friends call you by name as you pass (hearts.js)
       if (G.animals) G.animals.update(this); // ducks, hens, the fish, the frog, the rabbit, the horse, the goat (animals.js)
       const ct = this.camTarget(); this.cam.x += (ct.x - this.cam.x) * 0.3; this.cam.y += (ct.y - this.cam.y) * 0.3;
       if (Math.abs(ct.x - this.cam.x) < 0.5) this.cam.x = ct.x; if (Math.abs(ct.y - this.cam.y) < 0.5) this.cam.y = ct.y;
@@ -8437,10 +8455,12 @@ G.store = {
       }
       if (G.ambient) G.ambient.draw(this, ctx, 'ground'); // birds on the ground, shadows
       if (G.animals) G.animals.draw(this, ctx, 'ground'); // lily pads, ripples, swimmers, shadows
+      if (G.pet) G.pet.drawUnder(this, ctx); // Canelo's cushion and bowl at home
       const ents = this.npcs.filter(n => n.spec && !n.hidden).concat([this.player]);
       const zoo = G.animals ? G.animals.ents(this) : []; // land animals, drawn in order with the people
       for (const e of ents.concat(zoo).sort((a, b) => (a.sy != null ? a.sy : a.y * T + a.oy) - (b.sy != null ? b.sy : b.y * T + b.oy))) {
         if (e.draw) { e.draw(ctx, cx, cy); continue; }
+        if (e.drawSelf && e.drawSelf(ctx, cx, cy)) continue; // Canelo doing a trick, or asleep (pet.js)
         const moving = e.moving || e.ox || e.oy;
         const fr = moving ? Math.floor(this.t / 6) % 2 : Math.floor((this.t + (e.x || 0) * 13) / 24) % 2;
         const img = G.unitSprite(e.spec, e.dir, fr), bob = Math.abs(e.ox + e.oy) >= 6 && Math.abs(e.ox + e.oy) <= 18 ? 1 : 0; // a hop mid-step
@@ -8448,6 +8468,8 @@ G.store = {
       }
       if (G.ambient) G.ambient.draw(this, ctx, 'air'); // birds in flight, butterflies, the cat
       if (G.animals) G.animals.drawTop(this, ctx); // hearts and splashes
+      if (G.pet) G.pet.drawTop(this, ctx); // Canelo's hearts, dust, crumbs; the trick he's learning
+      if (G.hearts) G.hearts.drawTop(this, ctx); // a friend's hearts rising
       if (G.day) G.day.drawField(ctx, this, cx, cy); // the sunset (over the critters too), lit windows, the moon over home (day.js)
       // "!" bubbles over people who have something for the player (kids always know where to go next)
       for (const e of ents) {
@@ -9539,6 +9561,948 @@ G.store = {
 })();
 
 </script>
+<script>/* src/hearts.js */
+// ===== Round B: hearts (friendship) with the townsfolk and Canelo; voice greetings; best-friend stickers and photos =====
+// Everyone in town (and Canelo) has 0-5 hearts, saved in G.state.hearts[npc]. Hearts go up:
+//   - a greeting answered (by voice or by tap): once a day per person, +1. After the Saludos errand, the first talk of
+//     the day with someone starts with their greeting ("Don Pepe: ¡Hola, Luz!") as a G.ask question, so the kids'
+//     mic is there: say "hola" (or "buenos días" early in the session, or "bien" to "¿cómo estás?") or tap it;
+//   - a gift they like (G.hearts.gift(npc, word), once a day per person): +1 (LIKES below; Canelo likes el hueso);
+//   - finishing their errand (maps.js finishQuest -> giver): +2, not counted in the daily cap;
+//   - Canelo: care (food, water, the ball, petting, a trick shown) +1 each, and +1 for every trick learned (not capped).
+// At most DAY_CAP (2) a day per person from greetings, gifts and care, so friendships grow over several days.
+// Unlocks: 1 heart -> they call you by name and hop when you pass (a "¡Hola, Luz!" bubble, at most once a minute);
+// 3 -> a secret (where a notebook page you haven't found is, by a picture word) and a sticker of their face for the album;
+// 5 -> best friends: a photo of you together for the album, and their greeting changes to "¡Mi amig{o/a} {name}!".
+// Hearts show as a row over a person on the map for a moment when they rise (the new one pops), and as a row of five
+// above the portrait whenever they talk (G.say with opts.who). The album's Amigos page lists everyone's hearts.
+//
+// API (for errands, the album and tests):
+//   G.hearts.WHO               the 12 friends: mama luna rosa pepe sofia tomas marta ines gomez lucia nico canelo
+//   G.hearts.get(npc)          0..5
+//   G.hearts.add(npc, n, why)  -> hearts actually added (0 when capped / full / a once-a-day reason already used today).
+//                              why: 'greet' | 'gift' (once a day each) | 'care' | 'errand' | 'trick' (these two skip the cap)
+//   G.hearts.canAddToday(npc, why)  would add() give anything now
+//   G.hearts.did(npc, why)     that reason was used today (e.g. did('rosa', 'greet'))
+//   G.hearts.today(npc?)       hearts earned today by npc (or by everyone)
+//   G.hearts.gift(npc, word)   +1 if it's the thing they like (once a day); -> hearts added
+//   G.hearts.greet(npc)        generator: their voice greeting, once a day (yield* it at the start of a talk)
+//   G.hearts.milestones(npc)   generator: the 3-heart secret + sticker and the 5-heart photo, when due (once each)
+//   G.hearts.secrets[npc]      optional generator to replace someone's 3-heart secret (errands can hide things)
+//   G.hearts.greeting(npc)     the line they greet you with now
+//   G.hearts.row(ctx, npc, x, y, s)  draw their five hearts (s = scale)
+// Saved: G.state.hearts {npc: n}, G.state.heartlog {d: 'YYYY-M-D', n: {npc: capped today}, all: {npc: today}, why: {npc: {why: 1}}},
+// G.state.friends {npc: {m3: 1 (secret + sticker given), m5: 1 (photo)}}.
+'use strict';
+(function () {
+  const H = G.hearts = {}, T = G.TILE;
+  H.MAX = 5; H.DAY_CAP = 2;
+  H.WHO = ['mama', 'luna', 'rosa', 'pepe', 'sofia', 'tomas', 'marta', 'ines', 'gomez', 'lucia', 'nico', 'canelo'];
+  // what each friend likes as a gift (word ids; Lucía: a pink flower)
+  H.LIKES = { mama: 'flor', luna: 'manzana', rosa: 'flor', pepe: 'queso', sofia: 'galleta', tomas: 'agua', marta: 'leche', ines: 'pan', gomez: 'manzana', lucia: 'flor', nico: 'pelota', canelo: 'hueso' };
+  const ONCE = ['greet', 'gift'], FREE = ['errand', 'trick'];
+  H.secrets = {};
+  const today = () => (G.world ? G.world.today() : new Date().toDateString());
+  const obj = (s, k) => { if (!s[k] || typeof s[k] !== 'object' || Array.isArray(s[k])) s[k] = {}; return s[k]; };
+  function log() {
+    const s = G.state; let l = s.heartlog;
+    if (!l || typeof l !== 'object' || l.d !== today()) l = s.heartlog = { d: today(), n: {}, all: {}, why: {} };
+    obj(l, 'n'); obj(l, 'all'); obj(l, 'why');
+    return l;
+  }
+  const friends = npc => obj(obj(G.state, 'friends'), npc);
+  H.get = npc => (G.state && G.state.hearts ? Math.max(0, Math.min(H.MAX, G.state.hearts[npc] | 0)) : 0);
+  H.did = (npc, why) => !!(G.state && log().why[npc] && log().why[npc][why]);
+  H.mark = (npc, why) => { obj(log().why, npc)[why] = 1; };
+  H.today = npc => { if (!G.state) return 0; const a = log().all; return npc ? a[npc] | 0 : Object.keys(a).reduce((s, k) => s + (a[k] | 0), 0); };
+  H.canAddToday = function (npc, why = 'care') {
+    if (!G.state || H.WHO.indexOf(npc) < 0 || H.get(npc) >= H.MAX) return false;
+    if (ONCE.includes(why) && H.did(npc, why)) return false;
+    if (!FREE.includes(why) && (log().n[npc] | 0) >= H.DAY_CAP) return false;
+    return true;
+  };
+  H.add = function (npc, n = 1, why = 'care') {
+    if (!G.state) return 0;
+    const ok = H.canAddToday(npc, why), l = log();
+    if (ONCE.includes(why)) H.mark(npc, why);
+    if (!ok) return 0;
+    const cur = H.get(npc);
+    let k = Math.min(n, H.MAX - cur);
+    if (!FREE.includes(why)) k = Math.min(k, H.DAY_CAP - (l.n[npc] | 0));
+    if (k <= 0) return 0;
+    obj(G.state, 'hearts')[npc] = cur + k;
+    if (!FREE.includes(why)) l.n[npc] = (l.n[npc] | 0) + k;
+    l.all[npc] = (l.all[npc] | 0) + k;
+    obj(l.why, npc)[why] = 1;
+    H.show(npc, cur, cur + k);
+    G.st.autosave();
+    return k;
+  };
+  H.gift = (npc, word) => (H.LIKES[npc] === word ? H.add(npc, 1, 'gift') : 0);
+  H.best = npc => H.get(npc) >= H.MAX;
+  H.greeting = npc => H.best(npc) ? '¡Mi amig{o/a} {name}!' : H.get(npc) >= 1 ? '¡Hola, {name}!' : '¡Hola!';
+
+  // ---------- the sound of a heart, made here ----------
+  function chime() {
+    const au = G.audio; if (!au || !au.ctx || !au.sfxGain) return;
+    const ac = au.ctx;
+    [[880, 0], [1175, 0.09], [1568, 0.18]].forEach(([f, at]) => {
+      const t = ac.currentTime + 0.01 + at, o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(f, t);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.09, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+      o.connect(g); g.connect(au.sfxGain); o.start(t); o.stop(t + 0.3);
+    });
+  }
+
+  // ---------- drawing hearts ----------
+  const HEART = ['.kk.kk.', 'kRrkrrk', 'krrrrrk', 'krrrrrk', '.krrrk.', '..krk..', '...k...'];
+  const heartImg = full => G.sprite('heart7' + (full ? 'f' : 'e'), HEART, full ? { k: '#401020', r: '#f04878', R: '#ffc0d8' } : { k: '#2a2040', r: '#5a5078', R: '#6a6088' });
+  H.heart = (ctx, x, y, full, s = 1) => { ctx.imageSmoothingEnabled = false; ctx.drawImage(heartImg(full), Math.round(x), Math.round(y), 7 * s, 7 * s); };
+  const pops = {}; // npc -> {from, to, f0}: the last rise, for the map row and the portrait row's pulse
+  // five hearts, left to right from x, y; a heart that just rose pops and sparkles
+  H.row = function (ctx, npc, x, y, s = 1, n) {
+    const h = n == null ? H.get(npc) : n, p = pops[npc], age = p ? G.frame - p.f0 : 1e9;
+    for (let i = 0; i < H.MAX; i++) {
+      const fresh = p && i >= p.from && i < p.to && age < 90, k = fresh ? Math.min(1, age / 10) : 1;
+      const sc = fresh && age < 20 ? 1 + 0.6 * Math.sin(k * Math.PI) : 1, hx = x + i * 8 * s, w = 7 * s * sc;
+      if (fresh && age < 6) { H.heart(ctx, hx, y, false, s); continue; }
+      ctx.imageSmoothingEnabled = false; ctx.drawImage(heartImg(i < h), Math.round(hx + 3.5 * s - w / 2), Math.round(y + 3.5 * s - w / 2), Math.round(w), Math.round(w));
+    }
+  };
+  H.rowW = (s = 1) => (H.MAX * 8 - 1) * s;
+  // hearts over a person on the map when they rise (field.js -> drawTop)
+  H.show = function (npc, from, to) {
+    pops[npc] = { from, to, f0: G.frame };
+    chime();
+    const f = G.field, n = f && who(f, npc);
+    if (n) { const [sx, sy] = head(f, n); for (let i = 0; i < 4; i++) G.fx.twinkle(sx + (Math.random() - 0.5) * 30, sy - 4 + (Math.random() - 0.5) * 10); }
+  };
+  const who = (f, npc) => f.npcs.find(n => n.id === npc && !n.hidden) || f.npcs.find(n => n.npc === npc && !n.hidden && n.talk);
+  const head = (f, n) => [Math.round(n.x * T + (n.ox || 0) + 12 - f.cam.x), Math.round(n.y * T + (n.oy || 0) - f.cam.y - (n.id === 'canelo' ? 0 : 8))];
+  H.drawTop = function (f, ctx) {
+    for (const npc in pops) {
+      const p = pops[npc], age = G.frame - p.f0; if (age > 170) continue;
+      const n = who(f, npc); if (!n) continue;
+      let [sx, sy] = head(f, n); const w = H.rowW() + 6;
+      try { if (n.alert && n.alert()) sy -= 26; } catch (e) { } // above their thought bubble
+      const a = age > 150 ? (170 - age) / 20 : 1, rise = Math.round(Math.min(1, age / 12) * 6);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = '#10102a'; ctx.fillRect(sx - w / 2, sy - 10 - rise, w, 11); ctx.fillStyle = '#fff4f8'; ctx.fillRect(sx - w / 2 + 1, sy - 9 - rise, w - 2, 9);
+      H.row(ctx, npc, sx - w / 2 + 3, sy - 8 - rise);
+      ctx.globalAlpha = 1;
+    }
+  };
+  H.pulse = npc => { const p = pops[npc]; return !!p && G.frame - p.f0 < 120; };
+  // ui.js TextBox: a row of hearts above the portrait of someone who has hearts
+  H.shows = npc => H.WHO.includes(npc) && !!G.state && (H.get(npc) > 0 || G.st.done('saludos'));
+
+  // ---------- 1 heart: they call you by name as you pass ----------
+  const waved = {};
+  H.update = function (f) {
+    if (f.locked || G.top() !== f || !f.amb || !G.state) return;
+    const p = f.player;
+    for (const n of f.npcs) {
+      const id = n.id === 'canelo' ? null : H.WHO.includes(n.id) ? n.id : null;
+      if (!id || n.hidden || !n.spec || n.moving || H.get(id) < 1) continue;
+      const d = Math.abs(n.x - p.x) + Math.abs(n.y - p.y);
+      if (d > 2 || d === 0 || (waved[id] != null && G.frame - waved[id] < 3600)) continue;
+      if (waved[id] == null && G.frame < 240) { waved[id] = G.frame - 3000; continue; } // not the moment a map opens
+      waved[id] = G.frame;
+      if (n.amb) n.amb.hop = 24;
+      f.amb.fx.push({ kind: 'say', s: G.fill(H.best(id) ? '¡Mi amig{o/a}!' : '¡Hola, {name}!'), o: n, dx: 0, t: 0, life: 110 });
+    }
+  };
+
+  // ---------- the voice greeting (once a day per person, after the Saludos errand) ----------
+  const POOL = { hola: ['hola', 'adios', 'gracias'], buenosdias: ['buenosdias', 'adios', 'gracias'], bien: ['bien', 'adios', 'no'] };
+  H.greet = function* (npc) {
+    if (!G.state || !G.st.done('saludos') || npc === 'canelo' || !H.WHO.includes(npc) || H.did(npc, 'greet')) return false;
+    const nm = G.nameOf(npc) || '', dayN = new Date().getDate() + H.WHO.indexOf(npc);
+    const kind = H.best(npc) ? 'best' : G.sessionTime < 240 ? 'dias' : dayN % 2 ? 'hola' : 'como';
+    const Q = {
+      best: ['¡Mi amig{o/a} {name}!', 'My friend {name}! (say hi back)', 'hola'],
+      dias: ['¡[buenosdias], {name}!', 'Good morning, {name}! (say it back)', 'buenosdias'],
+      hola: ['¡[hola], {name}!', 'Hi, {name}! (say hi back)', 'hola'],
+      como: ['¡[hola]! ¿[comoestas]?', 'Hi! How are you?', 'bien'],
+    }[kind];
+    const c = G.wordChoices(Q[2], POOL[Q[2]], 3);
+    yield* G.ask({ prompt: nm + ': ' + Q[0], en: nm + ': ' + Q[1], choices: c.choices, answer: c.answer, layout: 'cards', learn: Q[2], who: npc });
+    H.add(npc, 1, 'greet'); // (marks today's greeting even when no heart is left to give)
+    yield 20;
+    yield* H.milestones(npc);
+    return true;
+  };
+
+  // ---------- 3 hearts: a secret and a sticker; 5 hearts: a photo together ----------
+  const PAGE_PLACE = { numeros: 'fuente', comida: 'casa', colores: 'parque', pueblo: 'biblioteca', animales: 'parque', granja: 'granja', sonidos: 'granja', cosas: 'banco', numeros2: 'granja', campo: 'panaderia', colores2: 'granja', sentir: 'escuela', mascota: 'casa' };
+  const T_ = (t, en) => ({ t, en });
+  const say = (npc, ...pages) => G.say(pages, { portrait: G.portraitOf(npc), name: G.nameOf(npc) || (npc === 'canelo' ? 'Canelo' : null), who: npc });
+  function* secret(npc) {
+    if (npc === 'canelo') { yield say(npc, T_('¡Guau, guau!', 'Woof, woof! (he wags his tail)')); return; }
+    const pg = G.data.pageOrder.find(p => !G.st.hasPage(p) && PAGE_PLACE[p] && p !== 'saludos');
+    if (!pg) { yield say(npc, T_('¡Eres muy simpátic{o/a}, {name}!', 'You\'re very nice, {name}!')); return; }
+    yield say(npc, T_('¡Un secreto! Una página... ¡[' + PAGE_PLACE[pg] + ']!', 'A secret! A notebook page... near the ' + G.data.words[PAGE_PLACE[pg]].en.replace('the ', '') + '!'));
+  }
+  H.milestones = function* (npc) {
+    if (!G.state || !H.WHO.includes(npc)) return;
+    const fr = friends(npc), h = H.get(npc);
+    if (h >= 3 && !fr.m3) {
+      fr.m3 = 1; G.st.autosave();
+      yield* (H.secrets[npc] || secret)(npc);
+      yield say(npc, T_('¡Para ti!', 'For you! (a sticker for your album)'));
+      yield H.card(npc, 'sticker');
+    }
+    if (h >= 5 && !fr.m5) {
+      fr.m5 = 1; G.st.autosave();
+      yield say(npc, T_(npc === 'canelo' ? '¡Guau! ¡Guau, guau!' : '¡{name}! ¡Mi amig{o/a}!', npc === 'canelo' ? 'Woof! (Canelo is your best friend)' : '{name}! My friend! (best friends)'));
+      yield H.card(npc, 'photo');
+    }
+  };
+  H.sticker = npc => !!(G.state && G.state.friends && G.state.friends[npc] && G.state.friends[npc].m3);
+  H.photo = npc => !!(G.state && G.state.friends && G.state.friends[npc] && G.state.friends[npc].m5);
+
+  // a face (portrait, or Canelo's sprite) in a w x w square
+  H.face = function (ctx, npc, x, y, w, t) {
+    const ps = npc === 'player' ? G.st.playerSpec().portrait : G.portraitOf(npc);
+    if (ps) { ctx.save(); ctx.translate(x, y); ctx.scale(w / 52, w / 52); G.drawPortrait(ctx, ps, 0, 0, t || 0); ctx.restore(); return; }
+    const sp = G.data.npcs[npc] && G.data.npcs[npc].map; if (!sp) return;
+    ctx.fillStyle = '#5a8a40'; ctx.fillRect(x, y, w, w);
+    ctx.imageSmoothingEnabled = false; ctx.drawImage(G.unitSprite(sp, 'down', ((t || 0) >> 5) & 1), x + w * 0.1, y + w * 0.08, w * 0.8, w * 0.8);
+  };
+
+  // ---------- the sticker / photo card ----------
+  class FriendCard {
+    constructor(npc, kind, w) { G.toastT = 0; this.transparent = true; this.npc = npc; this.kind = kind; this.w = w; this.t = 0; }
+    onEnter() { G.audio.jingle('item'); }
+    update() {
+      this.t++;
+      if (this.t === 1) { G.fx.confetti(G.W / 2 - 80, 150, -1, 20); G.fx.confetti(G.W / 2 + 80, 150, 1, 20); }
+      if (this.t > 30 && (G.input.p('A') || G.input.p('B') || G.input.tap())) { G.audio.sfx('ok'); G.pop(); this.w.resolve(); }
+    }
+    draw(ctx) {
+      const u = Math.min(1, this.t / 14), s = 0.3 + 0.7 * G.fx.easeBack(u), cx = G.W / 2, cy = 100;
+      ctx.globalAlpha = 0.5 * u; ctx.fillStyle = '#080c28'; ctx.fillRect(0, 0, G.W, G.H); ctx.globalAlpha = 1;
+      ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s); ctx.translate(-cx, -cy);
+      if (this.kind === 'sticker') { // a round sticker with a scalloped gold edge
+        for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2 + this.t / 60; ctx.fillStyle = '#f8c820'; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * 44, cy + Math.sin(a) * 44, 8, 0, Math.PI * 2); ctx.fill(); }
+        ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(cx, cy, 44, 0, Math.PI * 2); ctx.fill();
+        ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, 40, 0, Math.PI * 2); ctx.clip(); H.face(ctx, this.npc, cx - 40, cy - 40, 80, this.t); ctx.restore();
+      } else { // a photo: you and your friend, in a white frame, a little tilted
+        ctx.translate(cx, cy); ctx.rotate(-0.05); ctx.translate(-cx, -cy);
+        ctx.fillStyle = '#10102a'; ctx.fillRect(cx - 66, cy - 44, 132, 96); ctx.fillStyle = '#fffaf0'; ctx.fillRect(cx - 65, cy - 43, 130, 94);
+        ctx.fillStyle = '#88c8f8'; ctx.fillRect(cx - 58, cy - 36, 116, 64);
+        H.face(ctx, 'player', cx - 56, cy - 34, 56, this.t); H.face(ctx, this.npc, cx, cy - 34, 56, this.t);
+        G.text(ctx, '\u0003', cx - 3, cy - 40 + 2, '#f04878', null);
+        G.textC(ctx, G.fill('¡Mejores amigos!'), cx, cy + 34, '#a05020', null);
+      }
+      ctx.restore();
+      const nm = G.nameOf(this.npc) || 'Canelo';
+      if (u >= 1) { G.bigText(ctx, nm, cx, cy + 62, 2, '#f8e060'); H.row(ctx, this.npc, cx - H.rowW(2) / 2, cy + 84, 2); }
+      if (this.t > 30 && (this.t >> 4) % 2 === 0) G.text(ctx, '\u0001', G.W - 22, G.H - 16, '#f8e060');
+    }
+  }
+  H.card = function (npc, kind) { const w = new G.Wait(); G.push(new FriendCard(npc, kind, w)); return w; };
+})();
+
+</script>
+<script>/* src/pet.js */
+// ===== Round B: Canelo is your dog. Tricks learned by voice, care, his bed at home =====
+// Mamá gives you Canelo (after the Saludos errand; her "!" shows): "¡Canelo es tu perro!", the Mi perro notebook page,
+// and his first trick. Each trick is taught by someone (who says it, Canelo does it for them, then you try once):
+//   ¡Siéntate! Mamá (sits) -> ¡Ven! Mamá (runs off, then back to you) -> ¡Dame la pata! Sofía (lifts a paw)
+//   -> ¡Salta! Sofía (jumps) -> ¡Gira! Nico (spins). One at a time, in this order; a teacher's thought bubble shows the
+//   trick's picture when it's their turn.
+// Tap Canelo (or A facing him): the pet menu, big picture cards over the map. Top row: his tricks (known ones gold, the
+// one he's learning with its paw prints 1-2-3, the next one with its teacher's face, the rest "?"); bottom row: care
+// (el hueso, la galleta, el agua, la pelota, a pat, la cama). The mic sits beside the tricks: SAY a command and he does
+// it (a speaking star, once per word per day; a care word works too: "¡la pelota!" throws the ball). Tapping works too.
+// Learning a trick takes 3 good tries: tapping its card asks "¡Dile a Canelo!" (G.ask with {word} cards, so the mic is
+// built in); saying it straight at the menu counts too. Try 1: he tilts his head and half does it; try 2: nearly;
+// try 3: he does it, confetti, a heart and "¡Palabra nueva!" for the command.
+// Care: food (crunch crunch, el hueso is his favourite: a gift heart), water (lap lap), the ball (thrown; he fetches
+// it), a pat (hearts float up), la cama (at home he goes to his bed and sleeps, z z z; he sleeps there at night too).
+// Every action shows Canelo's own hearts (G.hearts 'canelo': care +1 up to the daily cap, +1 per trick learned).
+// A best-friend Canelo (5 hearts) does a little happy spin when you open the menu.
+//
+// API (errands, tests): G.pet.TRICKS [{id, by, anim}], G.pet.mine() (he's your dog: flags.petStart),
+//   G.pet.knows(id) (3 good tries), G.pet.tries(id), G.pet.learning() (the trick being learned, or null),
+//   G.pet.known() (ids), G.pet.canTeach(who) (the trick id `who` would teach now, or null),
+//   G.pet.teach(id, who) generator (the teaching scene), G.pet.practice(id) generator (one good try: the question, then
+//   Canelo's attempt), G.pet.command(id, o) generator (a G.ask "¡Dile a Canelo!" for any trick, then he does it: for
+//   shows; o.prompt, o.pool), G.pet.trick(id) generator (he just does it), G.pet.play(kind, o) generator (any animation:
+//   sit come paw jump spin huh eat drink fetch pet dance wake), G.pet.menu() generator (the pet menu),
+//   G.pet.npc(f) (Canelo on this map), G.pet.sleeping(f).
+// Saved: G.state.pet = {tricks: {id: good tries 0..3}, learning: id | null, sleep: bool}, flags.petStart.
+'use strict';
+(function () {
+  const P = G.pet = {}, T = G.TILE;
+  const F = () => G.state.flags, S = G.st;
+  const TT = (t, en) => ({ t, en });
+  P.TRICKS = [{ id: 'sientate', by: 'mama', anim: 'sit' }, { id: 'ven', by: 'mama', anim: 'come' }, { id: 'pata', by: 'sofia', anim: 'paw' },
+    { id: 'salta', by: 'sofia', anim: 'jump' }, { id: 'gira', by: 'nico', anim: 'spin' }];
+  P.CARE = ['hueso', 'galleta', 'agua', 'pelota', 'mimo', 'cama'];
+  P.NEED = 3;
+  P.BED = [7, 5]; P.BOWL = [1, 4]; // at home (casa): his cushion and his bowl
+  const trick = id => P.TRICKS.find(t => t.id === id);
+  const st = () => {
+    const s = G.state; if (!s.pet || typeof s.pet !== 'object' || Array.isArray(s.pet)) s.pet = {};
+    if (!s.pet.tricks || typeof s.pet.tricks !== 'object') s.pet.tricks = {};
+    return s.pet;
+  };
+  P.state = st;
+  P.mine = () => !!(G.state && G.state.flags.petStart);
+  P.tries = id => Math.min(P.NEED, st().tricks[id] | 0);
+  P.knows = id => P.tries(id) >= P.NEED;
+  P.learning = () => { const l = G.state && st().learning; return l && trick(l) && !P.knows(l) ? l : null; };
+  P.known = () => P.TRICKS.filter(t => P.knows(t.id)).map(t => t.id);
+  P.next = () => P.TRICKS.find(t => !P.knows(t.id)) || null;
+  P.canTeach = who => { if (!G.state || !P.mine() || P.learning()) return null; const n = P.next(); return n && n.by === who ? n.id : null; };
+  P.startReady = () => !!G.state && !!F().intro && S.done('saludos') && !P.mine();
+  P.npc = (f = G.field) => (f && f.npcs.find(n => n.id === 'canelo' && !n.hidden)) || null;
+  P.sleeping = (f = G.field) => !!(f && G.state && f.mapId === 'casa' && P.mine() && (st().sleep || (G.day && G.day.over())) && !f.petAwake);
+
+  // ---------- little sounds ----------
+  function au() { const a = G.audio; return a && a.ctx && a.sfxGain ? a : null; }
+  function tone(type, f0, f1, len, vol, at = 0) {
+    const a = au(); if (!a) return;
+    const ac = a.ctx, t = ac.currentTime + 0.01 + at, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + len);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    o.connect(g); g.connect(a.sfxGain); o.start(t); o.stop(t + len + 0.03);
+  }
+  function noise(freq, len, vol, at = 0) {
+    const a = au(); if (!a || !a.noise) return;
+    const ac = a.ctx, t = ac.currentTime + 0.01 + at, n = ac.createBufferSource(), fl = ac.createBiquadFilter(), g = ac.createGain();
+    n.buffer = a.noise; fl.type = 'bandpass'; fl.frequency.value = freq; fl.Q.value = 1.4;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + len);
+    n.connect(fl); fl.connect(g); g.connect(a.sfxGain); n.start(t); n.stop(t + len + 0.05);
+  }
+  const SND = {
+    bark: () => { tone('triangle', 640, 360, 0.09, 0.16); tone('triangle', 700, 380, 0.09, 0.16, 0.14); },
+    woof: () => { tone('sawtooth', 300, 170, 0.14, 0.09); tone('triangle', 520, 300, 0.12, 0.14, 0.01); },
+    whine: () => tone('sine', 900, 1300, 0.25, 0.06),
+    crunch: () => { noise(2600, 0.07, 0.25); noise(1800, 0.06, 0.18, 0.08); },
+    lap: () => { tone('sine', 500, 1100, 0.06, 0.12); noise(3200, 0.04, 0.08, 0.02); },
+    throw: () => noise(1200, 0.25, 0.1),
+    bounce: () => tone('sine', 220, 140, 0.08, 0.15),
+    pant: () => { for (let i = 0; i < 3; i++) noise(1500, 0.06, 0.06, i * 0.13); },
+    snore: () => tone('sine', 140, 110, 0.6, 0.05),
+    tada: () => { [[523, 0], [659, 0.1], [784, 0.2], [1047, 0.32]].forEach(([f, at]) => tone('square', f, f, 0.16, 0.05, at)); },
+  };
+  P.sound = k => { try { (SND[k] || (() => { }))(); } catch (e) { } };
+
+  // ---------- particles over the map (world px) ----------
+  let fx = [], fxF = 0;
+  const puff = (k, x, y, o = {}) => fx.push(Object.assign({ k, x, y, t: 0, life: 40, vx: 0, vy: 0 }, o));
+  function fxStep() { let n = G.frame - fxF; fxF = G.frame; if (n <= 0) return; if (n > 4) n = 4; while (n--) fx = fx.filter(e => { e.t++; e.x += e.vx; e.y += e.vy; if (e.g) e.vy += e.g; return e.t < e.life; }); }
+
+  // ---------- Canelo's animations (time from G.frame, so they play under any screen) ----------
+  // n.pa = {k, f0, len, amp, sx, sy (away direction), D (px away), ev: fired events, item}
+  const LEN = { sit: 80, come: 120, paw: 92, jump: 72, spin: 76, huh: 56, eat: 112, drink: 96, fetch: 168, pet: 104, dance: 64, wake: 30 };
+  const DIRS = ['down', 'right', 'up', 'left'];
+  const ease = u => 1 - (1 - u) * (1 - u);
+  // the free distance (tiles, up to max) from n's tile going (dx, dy): walls stop it
+  function room(f, n, dx, dy, max) { let k = 0; while (k < max) { const x = n.x + dx * (k + 1), y = n.y + dy * (k + 1); const t = G.TERRAIN[f.map.get(x, y)] || G.TERRAIN['.']; if (x < 0 || y < 0 || x >= f.map.w || y >= f.map.h || t.block || t.wall) break; k++; } return k; }
+  function start(f, n, k, o = {}) {
+    const p = f.player, a = { k, f0: G.frame, len: LEN[k] || 60, amp: o.amp == null ? 1 : o.amp, ev: {}, item: o.item || null, px: p.x, py: p.y };
+    if (k === 'come' || k === 'fetch') { // run away from you along the roomier side, 3 tiles at most
+      const side = n.x < p.x ? -1 : n.x > p.x ? 1 : (room(f, n, 1, 0, 4) >= room(f, n, -1, 0, 4) ? 1 : -1);
+      let dx = side, dy = 0, r = room(f, n, dx, dy, 3);
+      if (r < 2) { const r2 = room(f, n, -dx, 0, 3); if (r2 > r) { dx = -dx; r = r2; } }
+      if (r < 1) { dx = 0; dy = n.y <= p.y ? -1 : 1; r = room(f, n, 0, dy, 3); }
+      a.sx = dx; a.sy = dy; a.D = Math.max(0.6, r) * T * (k === 'come' ? Math.max(0.5, a.amp) : 1);
+    }
+    n.pa = a; return a;
+  }
+  P.anim = (n, k, o) => start(G.field, n, k, o);
+  const towardP = (n, a) => { const dx = a.px - n.x, dy = a.py - n.y; return Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'right' : dx < 0 ? 'left' : 'down') : dy > 0 ? 'down' : 'up'; };
+  const dirOf = (dx, dy) => dx > 0 ? 'right' : dx < 0 ? 'left' : dy < 0 ? 'up' : 'down';
+  // pose of the dog at frame t of its animation: offsets, squash, tilt and what to draw around it
+  function pose(n, a, t) {
+    const o = { dx: 0, dy: 0, z: 0, sx: 1, sy: 1, rot: 0, dir: n.dir, fr: (G.frame >> 4) & 1, paw: 0, bowl: null, ball: null, mouth: false };
+    const A = a.amp, ev = (at, fn) => { if (t >= at && !a.ev[at]) { a.ev[at] = 1; fn(); } };
+    const wx = n.x * T + 12, wy = n.y * T;
+    switch (a.k) {
+      case 'sit': {
+        const q = t < 12 ? t / 12 : t < 64 ? 1 : Math.max(0, 1 - (t - 64) / 16);
+        o.sy = 1 - 0.24 * q * A; o.sx = 1 + 0.08 * q * A; o.dir = 'down';
+        if (q >= 1 && A >= 1) o.rot = Math.sin(t / 3) * 0.03; // a wag
+        ev(14, () => { P.sound('bark'); if (A >= 1) puff('heart', wx + 8, wy - 2, { life: 50, vy: -0.35 }); });
+        break;
+      }
+      case 'come': {
+        const D = a.D;
+        if (t < 22) { const u = ease(t / 22); o.dx = a.sx * D * u; o.dy = a.sy * D * u; o.dir = dirOf(a.sx, a.sy); o.fr = (t >> 2) & 1; }
+        else if (t < 44) { o.dx = a.sx * D; o.dy = a.sy * D; o.dir = dirOf(-a.sx, -a.sy); ev(28, () => { puff('ex', wx + a.sx * D, wy + a.sy * D - 8, { life: 30 }); P.sound('woof'); }); }
+        else if (t < 84) {
+          const u = (t - 44) / 40; o.dx = a.sx * D * (1 - u); o.dy = a.sy * D * (1 - u); o.dir = dirOf(-a.sx, -a.sy); o.fr = (t >> 2) & 1;
+          o.z = Math.abs(Math.sin(t / 3.2)) * 3;
+          if (t % 6 === 0) puff('dust', wx + o.dx, wy + o.dy + 22, { life: 18, vx: a.sx * 0.3, vy: -0.2 });
+        } else { const u = (t - 84) / 36; o.z = Math.sin(Math.min(1, u * 1.6) * Math.PI) * 10 * A; o.dir = towardP(n, a); ev(88, () => { P.sound('bark'); puff('heart', wx, wy - 4, { life: 50, vy: -0.35 }); }); }
+        break;
+      }
+      case 'paw': {
+        const q = t < 14 ? t / 14 : t < 72 ? 1 : Math.max(0, 1 - (t - 72) / 20);
+        o.dir = a.px < n.x ? 'left' : a.px > n.x ? 'right' : (G.frame >> 6) & 1 ? 'left' : 'right';
+        o.paw = q * A; o.pawBob = t > 30 && t < 60 && A >= 1 ? Math.round(Math.sin(t / 2)) : 0; o.sy = 1 - 0.1 * q;
+        ev(30, () => { P.sound('bark'); if (A >= 1) { puff('spark', wx + (o.dir === 'left' ? -10 : 10), wy + 8, { life: 24 }); puff('heart', wx, wy - 2, { life: 50, vy: -0.35 }); } });
+        break;
+      }
+      case 'jump': {
+        if (t < 10) { o.sy = 1 - 0.16 * (t / 10); o.sx = 1 + 0.08 * (t / 10); }
+        else if (t < 42) { const u = (t - 10) / 32; o.z = Math.sin(u * Math.PI) * 20 * A; o.sy = 1.08; o.sx = 0.95; o.fr = 1; }
+        else if (t < 54) { const u = (t - 42) / 12; o.sy = 1 - 0.18 * Math.sin(u * Math.PI); o.sx = 1 + 0.1 * Math.sin(u * Math.PI); }
+        o.dir = 'down';
+        ev(11, () => P.sound('bark'));
+        ev(42, () => { P.sound('bounce'); for (let i = 0; i < 4; i++) puff('dust', wx + (i - 1.5) * 5, wy + 22, { life: 20, vx: (i - 1.5) * 0.4, vy: -0.25 }); });
+        break;
+      }
+      case 'spin': {
+        const steps = A >= 1 ? 12 : A > 0.5 ? 6 : 2, per = 52 / steps;
+        if (t < 56) { o.dir = DIRS[Math.min(steps, Math.floor(t / per)) % 4]; o.z = Math.abs(Math.sin(t / per * Math.PI)) * 2; o.fr = (t >> 2) & 1; } else o.dir = 'down';
+        if (t % 8 === 0 && t < 56 && A >= 1) puff('spark', wx + Math.cos(t / 4) * 14, wy + 10 + Math.sin(t / 4) * 5, { life: 18 });
+        ev(58, () => { P.sound('bark'); if (A >= 1) puff('heart', wx, wy - 2, { life: 50, vy: -0.35 }); });
+        break;
+      }
+      case 'huh': o.rot = Math.sin(Math.min(1, t / 10) * Math.PI / 2) * 0.22 * (t < 46 ? 1 : (56 - t) / 10); o.dir = 'down'; ev(4, () => { puff('q', wx, wy - 8, { life: 46 }); P.sound('whine'); }); break;
+      case 'eat': case 'drink': {
+        o.dir = 'down'; o.bowl = a.k === 'eat' ? (a.item || 'hueso') : 'agua'; o.left = Math.max(0, 1 - t / (a.len - 24));
+        if (t > 10 && t < a.len - 18) { o.dy = ((t >> 3) & 1) + 2; o.sy = 0.94; }
+        if (a.k === 'eat') { for (const at of [20, 40, 60, 80]) ev(at, () => { P.sound('crunch'); for (let i = 0; i < 3; i++) puff('crumb', wx + (Math.random() - 0.5) * 10, wy + 22, { life: 24, vx: (Math.random() - 0.5) * 0.8, vy: -0.9, g: 0.08 }); }); }
+        else for (const at of [16, 30, 44, 58, 72]) ev(at, () => { P.sound('lap'); puff('drop', wx + (Math.random() - 0.5) * 8, wy + 22, { life: 20, vx: (Math.random() - 0.5) * 0.6, vy: -1, g: 0.1 }); });
+        ev(a.len - 14, () => { P.sound('bark'); puff('heart', wx, wy - 2, { life: 50, vy: -0.35 }); });
+        break;
+      }
+      case 'fetch': {
+        const D = a.D, bx0 = (a.px - n.x) * T, by0 = (a.py - n.y) * T; // the ball from your hands (relative to the dog)
+        const bx1 = a.sx * D, by1 = a.sy * D;
+        ev(1, () => P.sound('throw'));
+        if (t < 30) { const u = t / 30; o.ball = [bx0 + (bx1 - bx0) * u, by0 + (by1 - by0) * u, Math.sin(u * Math.PI) * 26 + 8 * (1 - u)]; }
+        else if (t < 48) { const u = (t - 30) / 18; o.ball = [bx1 + a.sx * 6 * u, by1 + a.sy * 6 * u, Math.abs(Math.sin(u * Math.PI * 2)) * 6 * (1 - u)]; }
+        ev(30, () => P.sound('bounce'));
+        if (t < 10) o.dir = dirOf(a.sx, a.sy);
+        else if (t < 52) { const u = ease((t - 10) / 42); o.dx = (bx1 + a.sx * 6) * u; o.dy = (by1 + a.sy * 6) * u; o.dir = dirOf(a.sx, a.sy); o.fr = (t >> 2) & 1; o.z = Math.abs(Math.sin(t / 3)) * 2; if (t % 7 === 0) puff('dust', wx + o.dx, wy + o.dy + 22, { life: 16, vy: -0.2 }); }
+        else if (t < 62) { o.dx = bx1 + a.sx * 6; o.dy = by1 + a.sy * 6; o.sy = 0.9; o.dir = dirOf(a.sx, a.sy); if (t < 56) o.ball = [o.dx, o.dy, 0]; else o.mouth = true; }
+        else if (t < 104) { const u = (t - 62) / 42; o.dx = (bx1 + a.sx * 6) * (1 - u); o.dy = (by1 + a.sy * 6) * (1 - u); o.dir = dirOf(-a.sx, -a.sy); o.fr = (t >> 2) & 1; o.mouth = true; o.z = Math.abs(Math.sin(t / 3)) * 2; }
+        else { o.dir = towardP(n, a); if (t < 150) o.ball = [(a.px - n.x) * T * 0.4, (a.py - n.y) * T * 0.4 + 2, 0]; o.rot = Math.sin(t / 3) * 0.04; }
+        ev(56, () => P.sound('bark'));
+        ev(106, () => { P.sound('bark'); puff('heart', wx, wy - 2, { life: 50, vy: -0.35 }); });
+        break;
+      }
+      case 'pet': {
+        o.sx = 1 + Math.sin(t / 4) * 0.05; o.sy = 1 - Math.sin(t / 4) * 0.05; o.dir = 'down'; o.hand = t < 84 ? Math.abs(Math.sin(t / 7)) : 0;
+        if (t % 14 === 0 && t < 90) puff('heart', wx + (Math.random() - 0.5) * 16, wy, { life: 56, vy: -0.4, vx: (Math.random() - 0.5) * 0.2 });
+        ev(2, () => P.sound('pant')); ev(50, () => P.sound('bark'));
+        break;
+      }
+      case 'dance': { o.dir = DIRS[Math.floor(t / 6) % 4]; o.z = Math.abs(Math.sin(t / 6 * Math.PI)) * 6; ev(2, () => P.sound('bark')); ev(34, () => P.sound('bark')); if (t % 10 === 0) puff('spark', wx + (Math.random() - 0.5) * 20, wy + Math.random() * 10, { life: 20 }); break; }
+      case 'wake': o.z = Math.sin(Math.min(1, t / 20) * Math.PI) * 6; o.dir = 'down'; ev(2, () => P.sound('bark')); break;
+    }
+    return o;
+  }
+  const sleepPose = () => ({ dx: 0, dy: 3, z: 0, sx: 1.14, sy: 0.6, rot: 0, dir: 'left', fr: 0, paw: 0 });
+  // field.js calls n.drawSelf for Canelo: true when it drew him (an animation, or asleep)
+  function drawSelf(ctx, cx, cy) {
+    const n = this, f = G.field; if (!f) return false;
+    const a = n.pa && G.frame - n.pa.f0 < n.pa.len ? n.pa : null;
+    const sl = !a && P.sleeping(f);
+    if (!a && !sl) return false;
+    const o = a ? pose(n, a, G.frame - a.f0) : sleepPose();
+    const bx = Math.round(n.x * T + n.ox - cx + o.dx), by = Math.round(n.y * T + n.oy - cy - 3 + o.dy);
+    if (o.bowl) drawBowl(ctx, bx + 12, by + 25, o.bowl, o.left); // behind his nose... in front of his paws
+    ctx.fillStyle = 'rgba(16,28,8,0.3)'; const sw = Math.max(6, 14 - o.z / 2); ctx.fillRect(Math.round(bx + 12 - sw / 2), by + 24, Math.round(sw), 2);
+    const img = G.unitSprite(n.spec, o.dir, o.fr);
+    ctx.save(); ctx.translate(bx + 12, by + 24 - Math.round(o.z)); if (o.rot) ctx.rotate(o.rot); ctx.scale(o.sx, o.sy);
+    ctx.imageSmoothingEnabled = false; ctx.drawImage(img, -12, -24); ctx.restore();
+    if (o.paw > 0) { // a front paw up, toward you
+      const side = o.dir === 'left' ? -1 : 1, px = bx + 12 + side * Math.round(6 + o.paw * 5), py = by + 20 - Math.round(o.paw * 10) + (o.pawBob || 0);
+      ctx.fillStyle = '#1a1420'; ctx.fillRect(px - 4, py - 3, 8, 8); ctx.fillRect(px - 3, py - 4, 6, 10); // the leg up to a round paw
+      ctx.fillRect(px - side * 3 - 1, py + 3, 4, Math.max(0, by + 20 - py));
+      ctx.fillStyle = '#b87038'; ctx.fillRect(px - side * 3, py + 3, 2, Math.max(0, by + 19 - py)); ctx.fillRect(px - 3, py - 2, 6, 6); ctx.fillRect(px - 2, py - 3, 4, 8);
+      ctx.fillStyle = '#f0a0a8'; ctx.fillRect(px - 1, py, 2, 2); ctx.fillRect(px - 3, py - 2, 1, 1); ctx.fillRect(px, py - 3, 1, 1); ctx.fillRect(px + 2, py - 2, 1, 1);
+      if (o.paw > 0.9) { ctx.fillStyle = '#fff8b0'; ctx.fillRect(px + side * 6, py - 4, 1, 3); ctx.fillRect(px + side * 7, py, 2, 1); ctx.fillRect(px + side * 5, py + 4, 1, 1); } // a little "ta-da"!
+    }
+    if (o.mouth) drawBall(ctx, bx + 12 + (o.dir === 'left' ? -7 : o.dir === 'right' ? 7 : 0), by + 15 - Math.round(o.z), 0);
+    if (o.ball) drawBall(ctx, bx - o.dx + 12 + o.ball[0], by - o.dy + 22 + o.ball[1] - o.ball[2], o.ball[2]);
+    if (o.hand) { const hx = bx + 10, hy = by + 1 - Math.round(o.hand * 4); ctx.fillStyle = '#1a1420'; ctx.fillRect(hx - 1, hy - 1, 9, 6); ctx.fillStyle = G.st.playerSpec().map.skin || '#f0c8a0'; ctx.fillRect(hx, hy, 7, 4); ctx.fillRect(hx + 7, hy + 1, 1, 2); }
+    if (sl) for (let i = 0; i < 3; i++) { const k = ((G.frame + i * 40) % 120) / 120; ctx.globalAlpha = 1 - k; G.text(ctx, 'z', bx + 16 + Math.round(k * 8 + Math.sin(k * 6) * 2), by + 6 - Math.round(k * 18), '#ffffff', '#303060'); ctx.globalAlpha = 1; }
+    return true;
+  }
+  function drawBall(ctx, x, y, z) {
+    x = Math.round(x); y = Math.round(y);
+    if (z > 1) { ctx.fillStyle = 'rgba(16,28,8,0.3)'; ctx.fillRect(x - 2, y + Math.round(z) + 3, 4, 1); }
+    ctx.fillStyle = '#1a1420'; ctx.fillRect(x - 3, y - 2, 6, 5); ctx.fillRect(x - 2, y - 3, 4, 7);
+    ctx.fillStyle = '#e03028'; ctx.fillRect(x - 2, y - 2, 4, 5); ctx.fillRect(x - 3, y - 1, 6, 3);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 1, y - 2, 1, 1); ctx.fillStyle = '#f8e060'; ctx.fillRect(x - 3, y, 6, 1);
+  }
+  function drawBowl(ctx, x, y, what, left) {
+    x = Math.round(x); y = Math.round(y);
+    const el = (rx, ry, c, dy = 0) => { ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(x, y + dy, rx, ry, 0, 0, Math.PI * 2); ctx.fill(); };
+    el(8, 4.5, '#1a1420', 0.5); el(7, 3.5, '#d03838', 0.5); ctx.fillStyle = '#d03838'; ctx.fillRect(x - 7, y, 14, 3); // a round red bowl
+    el(5.5, 2, '#5a1818', -0.5); ctx.fillStyle = '#f07070'; ctx.fillRect(x - 5, y + 2, 3, 1);
+    if (left == null) left = 1;
+    if (what === 'agua') { if (left > 0) { el(4.5, 1.4 * Math.max(0.3, left), '#58a8f8', -0.5); ctx.fillStyle = '#d0ecff'; ctx.fillRect(x - 2, y - 1, 2, 1); } }
+    else if (left > 0.05) { ctx.globalAlpha = Math.min(1, left * 1.5); G.drawIcon16(ctx, what, x - 6, y - 12, 0.75); ctx.globalAlpha = 1; }
+  }
+  // his bed and bowl at home (field.js, before the people)
+  P.drawUnder = function (f, ctx) {
+    if (f.mapId !== 'casa' || !G.state || !P.mine()) return;
+    const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y), [bx, by] = P.BED, x = bx * T - cx, y = by * T - cy;
+    // a round cushion: dark rim, red edge, soft cream middle
+    ctx.fillStyle = '#1a1420'; ctx.beginPath(); ctx.ellipse(x + 12, y + 16, 12, 7, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#c04040'; ctx.beginPath(); ctx.ellipse(x + 12, y + 16, 11, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#f0dcb8'; ctx.beginPath(); ctx.ellipse(x + 12, y + 17, 8, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#e06060'; ctx.fillRect(x + 4, y + 11, 6, 1);
+    const [wx, wy] = P.BOWL; drawBowl(ctx, wx * T - cx + 12, wy * T - cy + 18, 'agua', 1);
+  };
+
+  // ---------- each frame (field.js) ----------
+  P.update = function (f) {
+    if (!G.state) return;
+    if (f.mapId !== 'casa' && st().sleep) st().sleep = false; // out of the house: he's up
+    const n = P.npc(f); if (!n) return;
+    if (!n.drawSelf) n.drawSelf = drawSelf;
+    if (n.pa && G.frame - n.pa.f0 >= n.pa.len) n.pa = null;
+    if (n.slide) { // gliding over to beside you
+      const step = v => v - Math.sign(v) * Math.min(Math.abs(v), Math.max(1, Math.ceil(Math.abs(v) * 0.22))); n.ox = step(n.ox); n.oy = step(n.oy);
+      if (!n.ox && !n.oy) n.slide = false;
+    }
+    if (P.sleeping(f) && !n.pa && !n.moving && !n.slide && (n.x !== P.BED[0] || n.y !== P.BED[1])) { n.ox += (n.x - P.BED[0]) * T; n.oy += (n.y - P.BED[1]) * T; n.x = P.BED[0]; n.y = P.BED[1]; n.slide = true; n.dir = 'left'; }
+    if (!f.locked && G.top() === f && !P.sleeping(f) && f.petAwake && !n.pa) f.petAwake = false; // the menu closed: back to bed (at night)
+  };
+  // Canelo comes to stand beside you, left or right if he can (above the menu's cards)
+  P.place = function (f, n) {
+    const p = f.player, cand = [[p.x - 1, p.y], [p.x + 1, p.y], [p.x, p.y - 1], [p.x - 1, p.y - 1], [p.x + 1, p.y - 1], [p.x, p.y + 1]];
+    if (cand.some(([x, y]) => x === n.x && y === n.y) && (n.y <= p.y)) { n.dir = towardP(n, { px: p.x, py: p.y }); return; }
+    const ok = cand.find(([x, y]) => !f.blocked(x, y, n) && !f.exitAt(x, y));
+    if (!ok) return;
+    n.ox = n.ox + (n.x - ok[0]) * T; n.oy = n.oy + (n.y - ok[1]) * T; n.x = ok[0]; n.y = ok[1]; n.slide = true;
+    n.dir = towardP(n, { px: p.x, py: p.y });
+  };
+  P.drawTop = function (f, ctx) {
+    fxStep();
+    const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
+    for (const e of fx) {
+      const k = e.t / e.life, x = Math.round(e.x - cx), y = Math.round(e.y - cy);
+      ctx.globalAlpha = k > 0.7 ? (1 - k) / 0.3 : 1;
+      if (e.k === 'heart') G.text(ctx, '\u0003', x - 2, y, '#f04878', '#401020');
+      else if (e.k === 'dust') { ctx.fillStyle = '#e8dcc0'; const r = 1 + Math.round(k * 2); ctx.fillRect(x - r, y - r, r * 2, r * 2); }
+      else if (e.k === 'crumb') { ctx.fillStyle = '#c89048'; ctx.fillRect(x, y, 2, 2); }
+      else if (e.k === 'drop') { ctx.fillStyle = '#88c8f8'; ctx.fillRect(x, y, 1, 2); }
+      else if (e.k === 'spark') { ctx.fillStyle = '#fff8b0'; ctx.fillRect(x - 2, y, 5, 1); ctx.fillRect(x, y - 2, 1, 5); }
+      else if (e.k === 'q' || e.k === 'ex' || e.k === 'txt') {
+        const s = e.k === 'q' ? '?' : e.k === 'ex' ? '!' : e.s, w = G.textWidth(s) + 8, bob = Math.round(Math.sin(e.t / 5) * 1.5);
+        G.win(ctx, x - w / 2, y - 16 + bob, w, 13, { fill1: '#ffffff', fill2: '#e8e8f0', alpha: 1 });
+        G.text(ctx, s, x - w / 2 + 4, y - 13 + bob, e.k === 'txt' ? '#2860a8' : '#c02020', null);
+      }
+      ctx.globalAlpha = 1;
+    }
+    // learning a trick: a thought bubble over him with its picture and its paw prints (1-2-3)
+    const n = P.npc(f), l = P.learning();
+    if (n && l && !n.pa && !P.sleeping(f) && G.top() === f && !f.locked) {
+      const x = Math.round(n.x * T + n.ox - cx) + 12, y = Math.round(n.y * T + n.oy - cy) - 30 + Math.round(Math.sin(f.t / 8) * 2);
+      G.win(ctx, x - 13, y - 4, 26, 26, { fill1: '#ffffff', fill2: '#e8e8f0', alpha: 1 });
+      G.drawIcon16(ctx, l, x - 8, y - 1);
+      for (let i = 0; i < P.NEED; i++) { ctx.fillStyle = i < P.tries(l) ? '#e85078' : '#c8c0d8'; ctx.fillRect(x - 8 + i * 6, y + 16, 5, 3); }
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 1, y + 22, 3, 3); ctx.fillRect(x, y + 26, 2, 2);
+    }
+  };
+
+  // ---------- playing animations from a script ----------
+  P.play = function* (k, o = {}) {
+    const f = G.field, n = P.npc(f); if (!n) { yield 10; return; }
+    while (n.moving || n.slide) yield 1;
+    const a = start(f, n, k, o);
+    while (n.pa === a && G.frame - a.f0 < a.len) yield 1;
+    if (n.pa === a) n.pa = null;
+  };
+  const ANIM = id => (trick(id) || {}).anim;
+  P.trick = function* (id, o = {}) { yield* P.play(ANIM(id), o); };
+  const dogXY = () => { const f = G.field, n = P.npc(f); return n ? [Math.round(n.x * T + n.ox + 12 - f.cam.x), Math.round(n.y * T + n.oy - f.cam.y)] : [G.W / 2, G.H / 2]; };
+  // a speaking star for saying a command or a care word to Canelo (once per word per day, like say-it-back)
+  function spokeStar(id) {
+    const sb = G.state.sayback || (G.state.sayback = {}), today = G.world.today();
+    if (sb[id] === today) return false;
+    sb[id] = today;
+    const [x, y] = dogXY(); G.mic.award(id, x, y - 8); G.fx.say('¡Bien dicho!', x, y - 26, '#a8f0ff', true);
+    return true;
+  }
+  P.spokeStar = spokeStar;
+  // the other cards of a "¡Dile a Canelo!" question: commands and care words he knows of, sounding different
+  function others(id, pool) {
+    const all = (pool || P.TRICKS.map(t => t.id).concat(['hueso', 'pelota', 'agua', 'cama'])).filter(k => k !== id && G.data.words[k]);
+    return all.filter(k => !(id === 'ven' && k === 'bien'));
+  }
+  // one question: "¡Dile a Canelo!" (picture cards; say it or tap it) -> true if right on the first try
+  P.ask = function* (id, o = {}) {
+    const c = G.wordChoices(id, [id].concat(others(id, o.pool)), 3, { label: k => LABEL[k] || null });
+    return yield* G.ask({ prompt: o.prompt || '¡Dile a Canelo!', en: o.en || 'Tell Canelo! (say the trick, or tap it)', show: o.show === false ? null : id, choices: c.choices, answer: c.answer, layout: 'cards', who: 'canelo' });
+  };
+  // for errands (a show): ask for any trick, then he does it
+  P.command = function* (id, o = {}) { const first = yield* P.ask(id, o); yield* P.trick(id, { amp: P.knows(id) ? 1 : 0.7 }); return first; };
+  // one good try at the trick he's learning; spoken: it was said straight at the menu (no question)
+  P.practice = function* (id, spoken) {
+    id = id || P.learning(); if (!id) return;
+    if (!spoken) { const first = yield* P.ask(id); S.practiced(id, first); }
+    const p = st(); p.learning = id; p.tricks[id] = Math.min(P.NEED, (p.tricks[id] | 0) + 1);
+    const k = p.tricks[id], [x, y] = dogXY();
+    S.autosave();
+    if (k === 1) { yield* P.play('huh'); yield* P.trick(id, { amp: 0.35 }); }
+    else if (k === 2) yield* P.trick(id, { amp: 0.7 });
+    else yield* P.trick(id, { amp: 1 });
+    if (k < P.NEED) { puff('txt', x + G.field.cam.x, y + G.field.cam.y - 6, { s: k + '/' + P.NEED, life: 70 }); G.audio.sfx('select'); yield 30; return; }
+    // learned!
+    p.learning = null; S.autosave();
+    P.sound('tada'); G.fx.confetti(x - 30, y + 10, -1, 16); G.fx.confetti(x + 30, y + 10, 1, 16);
+    G.fx.say('¡' + G.baseForm(id).replace(/^¡|!$/g, '') + '!', x, y - 30, '#f8e060', true);
+    if (G.hearts) G.hearts.add('canelo', 1, 'trick');
+    yield 50;
+    yield G.learnWords([id]);
+    if (G.hearts) yield* G.hearts.milestones('canelo');
+  };
+  // the teaching scene: the teacher says it, Canelo does it for them, then your first try
+  const tsay = (who, ...pages) => G.say(pages, { portrait: G.portraitOf(who), name: G.nameOf(who), who });
+  P.teach = function* (id, who) {
+    const f = G.field, n = P.npc(f), p = st();
+    p.learning = id; p.tricks[id] = p.tricks[id] | 0; S.see(id); S.autosave();
+    if (n) { while (n.moving) yield 1; P.place(f, n); }
+    yield tsay(who, TT('¡Mira! Canelo... ¡[' + id + ']!', 'Look! Canelo... (watch what he does)'));
+    yield* P.trick(id, { amp: 1 });
+    yield tsay(who, TT('¡Muy bien, Canelo! ¡Ahora tú, {name}!', 'Good dog! Now you, {name}!'));
+    yield* P.practice(id, false);
+    yield tsay(who, TT('¡Otra vez! Toca a Canelo. ¡[' + id + ']!', 'Again! Tap Canelo and practice: three times.'));
+  };
+  // Mamá gives you Canelo (her "!" after the Saludos errand), the Mi perro page and his first trick
+  P.start = function* (f) {
+    f = f || G.field;
+    F().canelo = true; F().petStart = true; S.autosave();
+    let n = P.npc(f);
+    if (!n) {
+      const def = (G.maps[f.mapId].npcs || []).find(d => d.id === 'canelo') || { id: 'canelo', npc: 'canelo', x: 4, y: 5, dir: 'up' };
+      n = f.addNpc(Object.assign({}, def, { x: 4, y: 5 })); n.ghost = true;
+    }
+    yield tsay('mama', TT('¡{name}! ¡Mira!', '{name}! Look!'));
+    P.place(f, n); yield 16; yield* P.play('dance');
+    yield tsay('mama', TT('¡Canelo es tu [perro]!', 'Canelo is your dog!'));
+    if (G.animals) G.animals.meet('perro');
+    yield* P.play('pet');
+    yield tsay('mama', TT('¡Para ti!', 'For you! (a page about Canelo)'));
+    if (!S.hasPage('mascota')) yield* G.findPage('mascota');
+    yield* P.teach('sientate', 'mama');
+  };
+
+  // ---------- the pet menu ----------
+  const LABEL = { pata: 'la pata' };
+  const W = id => G.data.words[id];
+  class PetMenu {
+    constructor(w) {
+      G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; this.won = null;
+      const C = this.cards(), k = C.findIndex(c => c.st === 'learn');
+      this.sel = k >= 0 ? k : Math.max(0, C.findIndex(c => c.st === 'known'));
+      if (this.sel < 0 || C[this.sel].st === 'lock') this.sel = 5;
+      this.mic = G.mic && G.mic.on() ? new G.MicBtn(this, { rect: () => this.micRect(), ready: () => this.t > 10 && !this.won, heard: a => this.heard(a) }) : null;
+    }
+    onEnter() { if (this.mic) this.mic.arm(); }
+    onExit() { if (this.mic) this.mic.off(); }
+    home() { return !!G.field && G.field.mapId === 'casa'; }
+    cards() {
+      const l = P.learning(), nx = P.TRICKS.find(t => !P.knows(t.id) && t.id !== l);
+      return P.TRICKS.map(tr => ({ id: tr.id, row: 0, by: tr.by, st: P.knows(tr.id) ? 'known' : l === tr.id ? 'learn' : nx && nx.id === tr.id ? 'next' : 'lock' }))
+        .concat(P.CARE.map(id => ({ id, row: 1, st: id === 'cama' && !this.home() ? 'away' : 'care' })));
+    }
+    rect(k) { return k < 5 ? { x: 9 + k * 54, y: 136, w: 52, h: 46 } : { x: 10 + (k - 5) * 44, y: 184, w: 40, h: 38 }; }
+    micRect() { return { x: 279, y: 140, w: 36, h: 36 }; }
+    closeXY() { return [G.W - 26, 6]; }
+    hintXY() { const k = this.cards().findIndex(c => c.st === 'learn'); if (k < 0) return null; const r = this.rect(k); return [r.x + r.w / 2, r.y + r.h / 2]; }
+    usable(c) { return c.st === 'known' || c.st === 'learn' || c.st === 'care' || c.st === 'away'; }
+    heard(alts) {
+      const C = this.cards(), targets = C.map(c => (c.st === 'known' || c.st === 'learn' || c.st === 'care') && W(c.id) ? G.mic.target({ word: c.id }) : null);
+      const k = G.mic.best(targets, alts, C.findIndex(c => c.st === 'learn'));
+      if (k < 0) { this.mic.miss(); return; }
+      this.mic.win(); this.pick(k, true);
+    }
+    pick(k, spoken) {
+      const c = this.cards()[k]; this.sel = k;
+      if (!this.usable(c)) { G.audio.sfx('boop'); const r = this.rect(k); G.fx.say('?', r.x + r.w / 2, r.y - 6, '#ffd8a8'); return; }
+      G.audio.sfx('ok');
+      if (!spoken && c.st !== 'learn' && W(c.id)) G.speak((c.row === 0 ? '¡' + G.baseForm(c.id) + '!' : G.baseForm(c.id)));
+      this.won = { k, t: 0, v: { id: c.id, spoken: !!spoken, st: c.st } };
+    }
+    update() {
+      this.t++;
+      if (this.won) { if (this.mic) { this.mic.t++; if (this.mic.pop) this.mic.pop--; } if (++this.won.t >= (this.won.v.spoken ? 24 : 10)) { G.pop(); this.w.resolve(this.won.v); } return; }
+      if (this.mic && this.mic.update()) return;
+      const C = this.cards(), d = G.input.repDir(14, 6);
+      if (d === 'left' || d === 'right') { const row = this.sel < 5 ? [0, 5] : [5, 11], n = row[1] - row[0]; this.sel = row[0] + ((this.sel - row[0] + (d === 'left' ? -1 : 1) + n) % n); G.audio.sfx('cursor'); }
+      if (d === 'up' || d === 'down') { // the card nearest above / below
+        const r = this.rect(this.sel), cx = r.x + r.w / 2, want = d === 'up' ? [0, 5] : [5, 11];
+        if ((d === 'up') === (this.sel >= 5)) { let b = want[0], bd = 1e9; for (let k = want[0]; k < want[1]; k++) { const q = this.rect(k), dd = Math.abs(q.x + q.w / 2 - cx); if (dd < bd) { bd = dd; b = k; } } this.sel = b; G.audio.sfx('cursor'); }
+      }
+      if (G.input.p('C') && W(C[this.sel].id)) G.speak(G.baseForm(C[this.sel].id));
+      if (G.input.tap()) {
+        if (G.closeHit(...this.closeXY())) { this.close(); return; }
+        const k = C.findIndex((c, k) => G.tapIn(this.rect(k)));
+        if (k >= 0) { this.pick(k); return; }
+        const tp = G.input.tap(); if (tp.y < 128 && !G.tapIn(4, 4, 104, 28)) { this.close(); return; } // a tap on the map above closes it
+        return;
+      }
+      if (G.input.p('A')) this.pick(this.sel);
+      else if (G.input.p('B')) this.close();
+    }
+    close() { G.audio.sfx('cancel'); G.pop(); this.w.resolve(null); }
+    draw(ctx) {
+      const C = this.cards(), slide = Math.round(Math.max(0, 1 - this.t / 8) * 40);
+      ctx.save(); ctx.translate(0, slide);
+      G.win(ctx, 4, 130, G.W - 8, 92);
+      C.forEach((c, k) => {
+        const r = this.rect(k), sel = k === this.sel, mine = this.won && this.won.k === k, bob = sel && !this.won ? Math.round(Math.sin(this.t / 6) * 1.5) : 0;
+        const y = r.y - bob, lock = c.st === 'lock' || c.st === 'next';
+        if (mine) { ctx.fillStyle = (this.won.t >> 2) & 1 ? '#fff8c0' : (this.won.v.spoken ? '#70e0ff' : '#f8d040'); ctx.fillRect(r.x - 2, y - 2, r.w + 4, r.h + 4); }
+        const fill = lock ? { fill1: '#3a3e58', fill2: '#24263a' } : c.st === 'learn' ? { fill1: '#c04880', fill2: '#802858' } : sel ? { fill1: '#3a56c8', fill2: '#1c2c8c' } : c.row ? { fill1: '#2c7a4a', fill2: '#14502a' } : {};
+        G.win(ctx, r.x, y, r.w, r.h, Object.assign({ alpha: 1 }, fill));
+        if (sel) { ctx.strokeStyle = '#f8e060'; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, y + 0.5, r.w - 1, r.h - 1); }
+        if (c.row === 0) {
+          if (c.st === 'lock') G.bigText(ctx, '?', r.x + r.w / 2, y + 12, 2, '#6a6e90', null);
+          else if (c.st === 'next') { // who teaches it next: their little face, and the trick, faded
+            ctx.globalAlpha = 0.35; G.drawIcon16(ctx, c.id, r.x + 9, y + 4, 2); ctx.globalAlpha = 1;
+            ctx.drawImage(G.unitSprite(G.data.npcs[c.by].map, 'down', (this.t >> 5) & 1), r.x + r.w - 26, y + r.h - 28);
+            G.text(ctx, '?', r.x + 6, y + r.h - 12, '#f8e060');
+          } else {
+            G.drawIcon16(ctx, c.id, r.x + 9, y + 2, 2);
+            const lab = LABEL[c.id] || G.baseForm(c.id);
+            G.textC(ctx, lab, r.x + r.w / 2, y + 35, c.st === 'known' ? '#f8d860' : '#ffffff');
+            if (c.st === 'learn') for (let i = 0; i < P.NEED; i++) drawPaw(ctx, r.x + 6 + i * 14, y + 4, i < P.tries(c.id));
+            if (c.st === 'known') G.text(ctx, '\u0005', r.x + r.w - 9, y + 3, '#f8d040');
+          }
+        } else {
+          ctx.globalAlpha = c.st === 'away' ? 0.45 : 1;
+          if (c.id === 'mimo') { G.drawIcon16(ctx, 'perro', r.x + 4, y + 3, 2); G.text(ctx, '\u0003', r.x + r.w - 12, y + 4, '#f04878', '#401020'); G.text(ctx, '\u0003', r.x + r.w - 16, y + 10, '#f87898', '#401020'); }
+          else G.drawIcon16(ctx, c.id, r.x + 4, y + 3, 2);
+          ctx.globalAlpha = 1;
+          if (c.st === 'away') G.drawIcon16(ctx, 'casa', r.x + r.w - 15, y + r.h - 15);
+        }
+        if (sel && !this.won && (this.t >> 3) % 4 !== 3) G.textC(ctx, '\u0001', r.x + r.w / 2, y - 9, '#f8e060');
+      });
+      ctx.restore();
+      // his name and hearts, top left
+      G.win(ctx, 4, 4, 104, 28);
+      G.drawIcon16(ctx, 'perro', 9, 10);
+      G.text(ctx, 'Canelo', 28, 9, '#f8e060');
+      if (G.hearts) G.hearts.row(ctx, 'canelo', 28, 19);
+      G.closeBtn(ctx, ...this.closeXY());
+      if (this.mic && slide === 0 && (!this.won || this.won.v.spoken)) this.mic.draw(ctx);
+    }
+  }
+  function drawPaw(ctx, x, y, on) {
+    const c = on ? '#ffe070' : 'rgba(255,255,255,0.35)';
+    ctx.fillStyle = c; ctx.fillRect(x + 2, y + 4, 5, 4); ctx.fillRect(x + 1, y + 5, 7, 2);
+    ctx.fillRect(x, y + 2, 2, 2); ctx.fillRect(x + 3, y, 2, 3); ctx.fillRect(x + 7, y + 2, 2, 2);
+  }
+  P.openMenu = function () { const w = new G.Wait(); G.push(new PetMenu(w)); return w; };
+
+  // the whole thing, from Canelo's talk (field locked): the menu, what was picked, again, until closed
+  P.menu = function* (f, n) {
+    f = f || G.field; n = n || P.npc(f); if (!n) return;
+    while (n.moving) yield 1;
+    if (G.animals) G.animals.meet('perro');
+    if (P.sleeping(f)) { f.petAwake = true; yield* P.play('wake'); }
+    P.place(f, n); yield 10;
+    lift(f, n);
+    if (G.hearts && G.hearts.best('canelo') && !f.petDanced) { f.petDanced = true; yield* P.play('dance'); } else P.sound('bark');
+    while (true) {
+      const r = yield P.openMenu(); const v = r.result;
+      if (!v) break;
+      const end = yield* P.act(v);
+      if (end) break;
+      P.place(f, n); lift(f, n);
+    }
+    f.camShift = 0;
+  };
+  // the menu covers the bottom of the screen: lift the view so you and Canelo stay in sight above it
+  function lift(f, n) {
+    f.camShift = 0;
+    const cam = f.camTarget(), bottom = Math.max(n.y, f.player.y) * T + T - cam.y;
+    f.camShift = bottom > 118 ? Math.min(96, bottom - 116) : 0;
+  }
+  const careHeart = () => { if (G.hearts) G.hearts.add('canelo', 1, 'care'); };
+  // one thing from the menu (or said to Canelo) -> true when the menu shouldn't come back (he went to sleep)
+  P.act = function* (v) {
+    const f = G.field, id = v.id, spoken = !!v.spoken;
+    if (trick(id)) {
+      if (P.knows(id)) { if (spoken) spokeStar(id); yield* P.trick(id); careHeart(); G.fx.say('¡Muy bien!', ...dogXY().map((q, i) => q - (i ? 26 : 0)), '#f8e060', true); yield 10; }
+      else if (id === P.learning()) { if (spoken) spokeStar(id); yield* P.practice(id, spoken); }
+      if (G.hearts) yield* G.hearts.milestones('canelo');
+      return false;
+    }
+    if (W(id)) S.see(id);
+    let learnIt = false;
+    if (spoken) { spokeStar(id); learnIt = !S.knows(id); }
+    if (id === 'hueso' || id === 'galleta') { yield* P.play('eat', { item: id }); if (!(G.hearts && G.hearts.gift('canelo', id))) careHeart(); }
+    else if (id === 'agua') { yield* P.play('drink'); careHeart(); }
+    else if (id === 'pelota') { yield* P.play('fetch'); careHeart(); }
+    else if (id === 'mimo') { yield* P.play('pet'); careHeart(); }
+    else if (id === 'cama') {
+      if (f.mapId !== 'casa') { yield* P.play('huh'); const [x, y] = dogXY(); puff('txt', x + f.cam.x, y + f.cam.y - 6, { s: 'la casa', life: 70 }); yield 30; }
+      else {
+        const n = P.npc(f); st().sleep = true; f.petAwake = false; S.autosave();
+        if (n) { n.ox += (n.x - P.BED[0]) * T; n.oy += (n.y - P.BED[1]) * T; n.x = P.BED[0]; n.y = P.BED[1]; n.slide = true; }
+        yield 24; P.sound('snore');
+        if (learnIt) yield G.learnWords(['cama'], { noMic: true });
+        return true;
+      }
+    }
+    if (learnIt) yield G.learnWords([id], { noMic: true });
+    if (G.hearts) yield* G.hearts.milestones('canelo');
+    return false;
+  };
+
+  // ---------- the night (day.js): asleep on his cushion; up again in the morning ----------
+  P.night = function (f) { if (!G.state || !P.mine()) return; st().sleep = true; const n = P.npc(f); if (n) { n.pa = null; n.x = P.BED[0]; n.y = P.BED[1]; n.ox = n.oy = 0; n.dir = 'left'; } };
+  P.morning = function (f) { if (!G.state || !P.mine()) return; st().sleep = false; const n = P.npc(f); if (n) start(f, n, 'wake'); };
+})();
+
+</script>
+<script>/* src/album.js */
+// ===== Round B: the animal album (from the field menu's paw) and the Amigos page (everyone's hearts) =====
+// One card per animal in G.animals.list() order. Not met yet: a dark silhouette and "? ? ?". Met: its picture, its
+// name ("el gato") and its sound ("¡Miau!"); a little mic once its name was said out loud (say-it-back), a gold star
+// once it was counted (Luna's animal count: G.album.count(id)). Tap a met card (or A on it): it hops and you hear its
+// name and its sound. "7/11" at the top, and a bar that fills; the day the last one is met the album throws a party
+// (confetti, a fanfare) and its title becomes "¡Amig{o/a} de los animales!" with a gold ribbon.
+// The twelfth card is "Amigos": a page with everyone's face, name and hearts (and a sticker / a gold photo frame for
+// the 3- and 5-heart surprises, hearts.js). Back (or B) goes back to the animals; the close button (or B) closes.
+// API: G.album(start?) -> Wait (start: 'amigos' opens the friends page), G.album.count(id) (a gold star, for the animal
+// count errand), G.album.counted(id), G.album.full(), G.album.metCount().
+'use strict';
+(function () {
+  const AN = () => G.animals, T = (t, en) => ({ t, en });
+  const rec = id => (G.state && G.state.album && G.state.album[id]) || null;
+  const cry = id => (AN().KINDS[id] || {}).cry;
+  class Album {
+    constructor(w, start) {
+      G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; this.sel = 0; this.hop = {}; this.page = start === 'amigos' ? 'amigos' : 'animales'; this.fi = 0;
+      this.party = 0;
+    }
+    onEnter() {
+      if (G.album.full() && !G.state.flags.albumFull) { // the last animal: a party, once
+        G.state.flags.albumFull = true; G.st.autosave(); this.party = 1;
+        G.audio.jingle('promote');
+      }
+    }
+    ids() { return AN().list(); }
+    cell(k) { return { x: 14 + (k % 4) * 74, y: 34 + Math.floor(k / 4) * 62, w: 70, h: 58 }; }
+    friendRect(k) { return { x: 12 + (k % 2) * 150, y: 32 + Math.floor(k / 2) * 31, w: 146, h: 29 }; }
+    closeXY() { return [G.W - 28, 6]; }
+    backXY() { return [8, 6]; }
+    hintXY() { return null; }
+    tapCard(k) {
+      this.sel = k;
+      if (k === 11) { G.audio.sfx('ok'); this.page = 'amigos'; this.fi = 0; return; }
+      const id = this.ids()[k], w = G.data.words[AN().KINDS[id].word];
+      if (!rec(id)) { G.audio.sfx('boop'); this.hop[k] = { t: 0, no: true }; return; }
+      this.hop[k] = { t: 0 }; AN().cry(id);
+      G.speak(w.es.split(' / ')[0] + (cry(id) ? '. ' + cry(id) : ''));
+      const r = this.cell(k); for (let i = 0; i < 3; i++) G.fx.twinkle(r.x + 10 + Math.random() * 50, r.y + 6 + Math.random() * 30);
+    }
+    update() {
+      this.t++;
+      for (const k in this.hop) if (++this.hop[k].t > 24) delete this.hop[k];
+      if (this.party && this.party < 200) {
+        this.party++;
+        if (this.party % 30 === 2) { G.fx.confetti(30 + Math.random() * 40, 200, -1, 16); G.fx.confetti(G.W - 30 - Math.random() * 40, 200, 1, 16); }
+        if (this.party === 2) G.speak(G.fill('¡Amig{o/a} de los animales!'));
+      }
+      const tap = G.input.tap(), d = G.input.repDir(14, 6);
+      if (this.page === 'amigos') {
+        const n = G.hearts ? G.hearts.WHO.length : 0;
+        if ((tap && (G.btnHit(...this.backXY()) || G.closeHit(...this.closeXY()))) || G.input.p('B')) { G.audio.sfx('cancel'); this.page = 'animales'; return; }
+        if (d) { this.fi = G.clamp(this.fi + (d === 'left' ? -1 : d === 'right' ? 1 : d === 'up' ? -2 : 2), 0, n - 1); G.audio.sfx('cursor'); }
+        const k = tap ? Array.from({ length: n }, (_, i) => i).find(i => G.tapIn(this.friendRect(i))) : -1;
+        if (k != null && k >= 0) this.fi = k;
+        if ((k != null && k >= 0) || G.input.p('A') || G.input.p('C')) { const who = G.hearts.WHO[this.fi]; G.speak(who === 'canelo' ? 'Canelo' : (G.nameOf(who) || '')); G.audio.sfx('cursor'); }
+        return;
+      }
+      if ((tap && G.closeHit(...this.closeXY())) || G.input.p('B')) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); return; }
+      if (d) {
+        const n = 12, dx = d === 'left' ? -1 : d === 'right' ? 1 : d === 'up' ? -4 : 4;
+        this.sel = (this.sel + dx + n) % n; G.audio.sfx('cursor');
+      }
+      if (tap) { for (let k = 0; k < 12; k++) if (G.tapIn(this.cell(k))) { this.tapCard(k); return; } }
+      if (G.input.p('A') || G.input.p('C')) this.tapCard(this.sel);
+    }
+    draw(ctx) {
+      G.win(ctx, 6, 4, G.W - 12, G.H - 8, { fill1: '#f4ecd8', fill2: '#e0d4b8', alpha: 1 });
+      if (this.page === 'amigos') { this.drawFriends(ctx); return; }
+      const ids = this.ids(), met = ids.filter(id => rec(id)).length, full = met === ids.length;
+      // the title: a paw, "Mis animales" (or the badge), the count and a bar that fills
+      if (full) {
+        ctx.fillStyle = '#c03030'; ctx.fillRect(40, 8, G.W - 104, 18); ctx.fillStyle = '#e85050'; ctx.fillRect(40, 8, G.W - 104, 2);
+        ctx.fillStyle = '#801818'; ctx.beginPath(); ctx.moveTo(40, 8); ctx.lineTo(32, 17); ctx.lineTo(40, 26); ctx.fill(); ctx.beginPath(); ctx.moveTo(G.W - 64, 8); ctx.lineTo(G.W - 56, 17); ctx.lineTo(G.W - 64, 26); ctx.fill();
+        G.textC(ctx, G.fill('¡Amig{o/a} de los animales!'), (G.W - 24) / 2, 13, '#fff070', '#401010');
+      } else {
+        G.drawIcon16(ctx, 'pata', 14, 9);
+        G.text(ctx, 'Mis animales', 34, 10, '#a05020', null);
+        G.text(ctx, met + '/' + ids.length, 110, 10, '#2860a8', null);
+        const bw = 120; ctx.fillStyle = '#7a4a20'; ctx.fillRect(140, 11, bw + 2, 7); ctx.fillStyle = '#e8dcc0'; ctx.fillRect(141, 12, bw, 5);
+        ctx.fillStyle = '#e8a020'; ctx.fillRect(141, 12, Math.round(bw * met / ids.length), 5); ctx.fillStyle = '#f8d870'; ctx.fillRect(141, 12, Math.round(bw * met / ids.length), 1);
+        for (let i = 1; i < ids.length; i++) { ctx.fillStyle = 'rgba(122,74,32,0.35)'; ctx.fillRect(141 + Math.round(bw * i / ids.length), 12, 1, 5); }
+      }
+      G.closeBtn(ctx, ...this.closeXY());
+      if (G.enVisible()) G.text(ctx, 'Animals met', 16, 26, '#a09070', null);
+      for (let k = 0; k < 12; k++) {
+        const r = this.cell(k), sel = k === this.sel, h = this.hop[k], hop = h && !h.no ? Math.round(Math.sin(h.t / 24 * Math.PI) * -5) : 0, wob = h && h.no ? Math.round(Math.sin(h.t * 1.5) * 2 * (1 - h.t / 24)) : 0;
+        const x = r.x + wob, y = r.y;
+        if (k === 11) { // Amigos: a heart and three little faces
+          ctx.fillStyle = sel ? '#f8d080' : '#f8e4ec'; ctx.fillRect(x, y, r.w, r.h); ctx.strokeStyle = sel ? '#c06000' : '#d090a8'; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, r.w - 1, r.h - 1);
+          if (G.hearts) { G.hearts.heart(ctx, x + r.w / 2 - 10, y + 6, true, 3); }
+          G.textC(ctx, 'Amigos', x + r.w / 2, y + 36, '#a03060', null);
+          if (G.hearts) G.textC(ctx, String(G.hearts.WHO.reduce((s, n) => s + G.hearts.get(n), 0)) + ' \u0003', x + r.w / 2, y + 46, '#c04870', null);
+          continue;
+        }
+        const id = this.ids()[k], R = rec(id), w = G.data.words[AN().KINDS[id].word];
+        ctx.fillStyle = sel ? '#f8e0a0' : R ? '#fffaf0' : '#d8ccb0'; ctx.fillRect(x, y, r.w, r.h);
+        ctx.strokeStyle = sel ? '#c06000' : '#b09068'; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, r.w - 1, r.h - 1);
+        if (R) {
+          G.drawIcon16(ctx, w, x + r.w / 2 - 16, y + 3 + hop, 2);
+          G.textC(ctx, w.es.split(' / ')[0], x + r.w / 2, y + 37, G.st.knows(w ? AN().KINDS[id].word : id) ? '#a06008' : '#2860a8', null);
+          if (cry(id)) G.textC(ctx, cry(id), x + r.w / 2, y + 47, '#e06010', null);
+          if (R.said) G.mic.glyph(ctx, x + r.w - 10, y + 3, '#2a8a9a');
+          if (R.counted) G.text(ctx, '\u0005', x + 3, y + 3, '#e0a010', '#5a2c04');
+        } else {
+          ctx.globalAlpha = 0.8; ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(G.tinted(G.icon(w), '#3a3048', 'albsil' + id), x + r.w / 2 - 16, y + 3, 32, 32); ctx.globalAlpha = 1;
+          G.textC(ctx, '? ? ?', x + r.w / 2, y + 40, '#a08868', null);
+        }
+      }
+    }
+    drawFriends(ctx) {
+      G.iconBtn(ctx, 'back', ...this.backXY());
+      G.hearts.heart(ctx, G.W / 2 - 40, 10, true, 1);
+      G.textC(ctx, 'Amigos', G.W / 2, 10, '#a03060', null);
+      G.hearts.heart(ctx, G.W / 2 + 33, 10, true, 1);
+      G.closeBtn(ctx, ...this.closeXY());
+      G.hearts.WHO.forEach((who, k) => {
+        const r = this.friendRect(k), sel = k === this.fi, best = G.hearts.photo(who);
+        ctx.fillStyle = best ? '#f8d050' : sel ? '#f8e0a0' : '#fffaf0'; ctx.fillRect(r.x, r.y, r.w, r.h);
+        ctx.strokeStyle = best ? '#b07000' : sel ? '#c06000' : '#d0b898'; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
+        ctx.fillStyle = '#5a3810'; ctx.fillRect(r.x + 2, r.y + 2, 25, 25);
+        G.hearts.face(ctx, who, r.x + 3, r.y + 3, 23, this.t);
+        const nm = who === 'canelo' ? 'Canelo' : (G.nameOf(who) || who).replace('Profesora ', 'Prof. ').replace(' el cartero', '').replace(' la panadera', '').replace('Señor ', 'Sr. ').replace('Abuela ', '');
+        G.text(ctx, nm, r.x + 31, r.y + 5, '#604020', null);
+        G.hearts.row(ctx, who, r.x + 31, r.y + 17);
+        if (G.hearts.sticker(who)) { ctx.fillStyle = '#f8c820'; ctx.beginPath(); ctx.arc(r.x + r.w - 10, r.y + 10, 6, 0, Math.PI * 2); ctx.fill(); G.text(ctx, '\u0005', r.x + r.w - 13, r.y + 7, '#ffffff', '#a06000'); }
+      });
+    }
+  }
+  G.album = function (start) { const w = new G.Wait(); G.push(new Album(w, start)); return w; };
+  G.album.metCount = () => AN().list().filter(id => rec(id)).length;
+  G.album.full = () => G.album.metCount() === AN().list().length;
+  G.album.counted = id => !!(rec(id) && rec(id).counted);
+  G.album.count = function (id) { if (!AN().KINDS[id]) return false; if (!rec(id)) AN().meet(id); const r = rec(id); if (r.counted) return false; r.counted = true; G.st.autosave(); return true; };
+  void T;
+})();
+
+</script>
 <script>/* src/mapdata.js */
 // Generated by tools/mapgen.py - original map layouts
 'use strict';
@@ -9564,13 +10528,22 @@ G.MAPDATA = {
   const W = id => G.data.words[id];
 
   // ---------- helpers ----------
-  function* say(who, ...pages) { yield G.say(pages, { portrait: G.portraitOf(who), name: G.nameOf(who) }); }
+  function* say(who, ...pages) { yield G.say(pages, { portrait: G.portraitOf(who), name: G.nameOf(who), who }); }
+  // Round B (hearts.js): the first talk of the day starts with their greeting, answered by voice or a tap (+1 heart),
+  // and any 3- or 5-heart surprise that's due
+  function* hello(who) { if (G.hearts) { yield* G.hearts.greet(who); yield* G.hearts.milestones(who); } }
+  // Round B (pet.js): the trick someone would teach Canelo now (its picture shows in their thought bubble)
+  const teaches = who => !!G.pet && G.pet.canTeach(who);
   function* ask(who, prompt, en, choices, answer, learn, extra = {}) {
     return yield* G.ask(Object.assign({ prompt, en, choices, answer, learn, who, layout: 'list' }, extra));
   }
   const words = (...ids) => ids.map(id => ({ word: id }));
   function* newQuest(id) { S.startQuest(id); yield G.questCard(id); }
-  function* finishQuest(id) { S.finishQuest(id); yield G.badge(id); }
+  function* finishQuest(id) {
+    S.finishQuest(id); yield G.badge(id);
+    const giver = G.data.quests[id] && G.data.quests[id].giver; // Round B: finishing someone's errand, +2 hearts
+    if (G.hearts && giver && G.hearts.add(giver, 2, 'errand')) { yield 40; yield* G.hearts.milestones(giver); }
+  }
   const ball = col => ({ icon: 'pelota', col: W(col).col });
   const townOpen = () => S.done('saludos');
   const allBadges = () => ['saludos', 'mercado', 'pelota', 'carta'].every(S.done);
@@ -9611,30 +10584,25 @@ G.MAPDATA = {
     npcs: [
       { id: 'pepe', npc: 'pepe', x: P('villa', 'pepe')[0], y: P('villa', 'pepe')[1], dir: 'down', fixed: true,
         alert: () => !F().pepeSiNo ? true : S.active('mercado') && !F().compra ? [['manzana', 3], ['platano', 2]] : false,
-        talk: function* () { yield* pepeTalk(); } },
+        talk: function* () { yield* hello('pepe'); yield* pepeTalk(); } },
       { id: 'rosa', npc: 'rosa', x: 7, y: 7, dir: 'down', wander: 1,
         alert: () => townOpen() && (!S.quest('mercado') ? true : F().compra && !S.done('mercado') ? [['manzana', 3], ['platano', 2]] : false),
-        talk: function* () { yield* rosaTalk(); } },
+        talk: function* () { yield* hello('rosa'); yield* rosaTalk(); } },
       { id: 'tomas', npc: 'tomas', x: 20, y: 12, dir: 'down', // his mail round (ambient.js): the plaza, beside the bakery door, Rosa's
         route: [[20, 12, 'down', 150], [28, 7, 'up', 120], [4, 7, 'up', 120]],
         alert: () => townOpen() && (!S.quest('carta') ? 'carta' : F().cartaDada && !S.done('carta') ? true : false),
-        talk: function* () { yield* tomasTalk(); } },
+        talk: function* () { yield* hello('tomas'); yield* tomasTalk(); } },
       { id: 'gomez', npc: 'gomez', x: 8, y: 11, dir: 'right', wander: 1,
         alert: () => S.active('saludos') && !F().sal_gomez && 'hola', talk: function* () { yield* greet('gomez'); } },
       { id: 'lucia', npc: 'lucia', x: 27, y: 12, dir: 'left', wander: 2,
         alert: () => S.active('saludos') && !F().sal_lucia && 'hola', talk: function* () { yield* greet('lucia'); } },
       { id: 'nico', npc: 'nico', x: 15, y: 15, dir: 'down', wander: 2,
-        alert: () => S.active('saludos') && !F().sal_nico && 'hola', talk: function* () { yield* greet('nico'); } },
+        alert: () => (S.active('saludos') && !F().sal_nico && 'hola') || teaches('nico'), talk: function* () { yield* greet('nico'); } },
       { id: 'sofia', npc: 'sofia', x: P('villa', 'sofia')[0], y: P('villa', 'sofia')[1], dir: 'down',
-        alert: () => townOpen() && (!S.quest('pelota') ? 'pelota' : F().pelotaRoja && !S.done('pelota') ? true : false),
-        talk: function* () { yield* sofiaTalk(); } },
+        alert: () => townOpen() && (!S.quest('pelota') ? 'pelota' : F().pelotaRoja && !S.done('pelota') ? true : teaches('sofia')),
+        talk: function* () { yield* hello('sofia'); yield* sofiaTalk(); } },
       { id: 'canelo', npc: 'canelo', x: 19, y: 9, dir: 'left', wander: 3, follow: () => F().canelo, // tags along once you've met
-        talk: function* (f, n) {
-          // a friend already: a hop, a heart, a bark, and "el perro / ¡Guau, guau!" (Round B: the word bubble, the album)
-          if (F().canelo && G.ambient) { G.ambient.happy(n, G.animals ? null : '¡Guau!'); if (G.animals) G.animals.tap('perro', n.x * G.TILE + 12, n.y * G.TILE - 6, { silent: true }); yield 20; return; }
-          G.audio.sfx('select'); yield G.say(T('¡Guau, guau!', 'Woof, woof!'), { name: 'Canelo' }); F().canelo = true; if (G.ambient) G.ambient.happy(n);
-          if (G.animals) G.animals.tap('perro', n.x * G.TILE + 12, n.y * G.TILE - 6, { silent: true });
-        } },
+        talk: function* (f, n) { yield* caneloTalk(f, n); } },
     ],
     searches: {
       [P('villa', 'arbusto1').join(',')]: { cond: () => S.quest('pelota'), run: function* () { yield* findBall('azul'); }, emptyText: T('[pelota] [azul]', 'A blue ball.') },
@@ -9644,9 +10612,20 @@ G.MAPDATA = {
     },
   };
 
+  // Canelo: before he's yours, a bark and his name; once Mamá gives him to you, the pet menu (pet.js)
+  function* caneloTalk(f, n) {
+    if (G.pet && G.pet.mine()) { yield* G.pet.menu(f, n); return; }
+    // a friend already: a hop, a heart, a bark, and "el perro / ¡Guau, guau!" (Round B: the word bubble, the album)
+    if (F().canelo && G.ambient) { G.ambient.happy(n, G.animals ? null : '¡Guau!'); if (G.animals) G.animals.tap('perro', n.x * G.TILE + 12, n.y * G.TILE - 6, { silent: true }); yield 20; return; }
+    G.audio.sfx('select'); yield G.say(T('¡Guau, guau!', 'Woof, woof!'), { name: 'Canelo' }); F().canelo = true; if (G.ambient) G.ambient.happy(n);
+    if (G.animals) G.animals.tap('perro', n.x * G.TILE + 12, n.y * G.TILE - 6, { silent: true });
+  }
+
   // ---------- Errand 1: Saludos (recall: these words were met at home and at school) ----------
   function* greet(who) {
     if (!S.active('saludos') || F()['sal_' + who]) {
+      yield* hello(who);
+      if (teaches(who)) { yield* G.pet.teach(G.pet.canTeach(who), who); return; }
       yield* say(who, { gomez: T('¡[hola], {name}!', 'Hi, {name}!'), lucia: T('¡[hola]! ¿[comoestas]?', 'Hi! How are you?'), nico: T('¡[hola]! ¡Al [parque]!', 'Hi! To the park!') }[who]);
       return;
     }
@@ -9715,6 +10694,7 @@ G.MAPDATA = {
       yield* newQuest('pelota');
       return;
     }
+    if (teaches('sofia') && !(F().pelotaRoja && !S.done('pelota'))) { yield* G.pet.teach(G.pet.canTeach('sofia'), 'sofia'); return; } // Round B: dame la pata, salta
     if (S.done('pelota')) { yield* say('sofia', T('¡Mi [pelota] [rojo:roja]! ¡[gracias]!', 'My red ball! Thanks!')); return; }
     if (!F().pelotaRoja) { yield* say('sofia', T('Mi [pelota] [rojo:roja]... ¿[porfavor]?', 'My red ball... please?')); return; }
     yield* say('sofia', T('¡Ah!', 'Oh!'));
@@ -9757,7 +10737,7 @@ G.MAPDATA = {
   // ---------- Mi casa ----------
   G.maps.casa = {
     name: 'Mi casa', icon: 'casa', rows: MD.casa.rows, music: 'headquarters',
-    things: {}, pages: { '2,1': 'mascota' }, // world.js: the bed says "la cama"; a page about Canelo on the shelf
+    things: { at: { '7,5': 'cama' } }, // world.js: the beds say "la cama" (yours, and Canelo's cushion); Mamá hands you the Mi perro page (pet.js)
     onEnter: function* (f) { if (G.day) yield* G.day.evening(f); }, // home after sunset: good night, Hoy, a new morning
     exits: [Object.assign(exitAt('casa', 'casaDoor'), {
       run: function* () {
@@ -9766,13 +10746,19 @@ G.MAPDATA = {
       } })],
     npcs: [
       { id: 'mama', npc: 'mama', x: P('casa', 'mama')[0], y: P('casa', 'mama')[1], dir: 'down', fixed: true,
-        alert: () => !F().intro || !!(G.day && G.day.over()),
+        alert: () => !F().intro || !!(G.day && G.day.over()) || !!(G.pet && G.pet.startReady()) || teaches('mama'),
         talk: function* (f) {
           if (!F().intro) { yield* G.story.mamaIntro(); return; }
           if (G.day && G.day.over()) { yield* G.day.evening(f); return; } // already home when the sun went down
+          yield* hello('mama');
+          if (G.pet && G.pet.startReady()) { yield* G.pet.start(f); return; } // Round B: "¡Canelo es tu perro!"
+          if (teaches('mama')) { yield* G.pet.teach(G.pet.canTeach('mama'), 'mama'); return; }
           if (S.done('fiesta')) yield* say('mama', T('¡{name}! ¡Muy bien!', '{name}! Well done!'));
           else yield* say('mama', T('La [escuela]. ¡Vamos!', 'The school. Off you go!'));
         } },
+      // Canelo lives here too once he's yours: he follows you in, and sleeps on his cushion at night (pet.js)
+      { id: 'canelo', npc: 'canelo', x: 7, y: 5, dir: 'left', cond: () => !!(G.pet && G.pet.mine()),
+        follow: () => !!F().canelo && !(G.pet && G.pet.sleeping()), talk: function* (f, n) { yield* caneloTalk(f, n); } },
     ],
   };
 
@@ -9784,7 +10770,7 @@ G.MAPDATA = {
     npcs: [
       { id: 'luna', npc: 'luna', x: P('escuela', 'luna')[0], y: P('escuela', 'luna')[1], dir: 'down', fixed: true,
         alert: () => !S.quest('saludos') || (S.active('saludos') && greeted() === 3) || (allBadges() && !S.done('fiesta')),
-        talk: function* () { yield* lunaTalk(); } },
+        talk: function* () { if (S.done('saludos')) yield* hello('luna'); yield* lunaTalk(); } },
       { id: 'kid1', npc: 'nico', x: 3, y: 5, dir: 'up', cond: () => S.done('fiesta'), talk: [T('¡Fiesta!', 'Party!')] },
       { id: 'kid2', npc: 'lucia', x: 9, y: 5, dir: 'up', cond: () => S.done('fiesta'), talk: [T('¡Muy bien, {name}!', 'Well done, {name}!')] },
       { id: 'kid3', npc: 'sofia', x: 9, y: 7, dir: 'up', cond: () => S.done('fiesta'), talk: [T('¡Mi [pelota] [rojo:roja]!', 'My red ball!')] },
@@ -9835,6 +10821,7 @@ G.MAPDATA = {
       { id: 'marta', npc: 'marta', x: P('panaderia', 'marta')[0], y: P('panaderia', 'marta')[1], dir: 'down', fixed: true,
         alert: () => S.active('carta') && !F().cartaDada && 'carta',
         talk: function* () {
+          yield* hello('marta');
           if (S.active('carta') && !F().cartaDada) {
             yield* say('marta', T('¿Una [carta]? ¡Para mí!', 'A letter? For me!'));
             const c = G.wordChoices('pan', ['pan', 'carta', 'casa'], 3, { text: true });
@@ -9856,6 +10843,7 @@ G.MAPDATA = {
     npcs: [
       { id: 'ines', npc: 'ines', x: P('biblioteca', 'ines')[0], y: P('biblioteca', 'ines')[1], dir: 'down', fixed: true,
         talk: function* () {
+          yield* hello('ines');
           if (S.active('carta') && !F().cartaDada) { yield* say('ines', T('Shhh... ¿Una [carta]? [no], [no]. La [biblioteca].', 'Shhh... A letter? No, no. This is the library.'), T('La [panaderia]: ¡[pan]!', 'The bakery has bread!')); return; }
           yield* say('ines', T('Shhh... La [biblioteca].', 'Shhh... The library.'));
         } },
@@ -9871,7 +10859,7 @@ G.MAPDATA = {
   const F = () => G.state.flags, S = G.st;
   const T = (t, en) => ({ t, en });
   const ST = G.story = {};
-  function* say(who, ...pages) { yield G.say(pages, { portrait: G.portraitOf(who), name: G.nameOf(who) }); }
+  function* say(who, ...pages) { yield G.say(pages, { portrait: G.portraitOf(who), name: G.nameOf(who), who }); }
   const words = (...ids) => ids.map(id => ({ word: id }));
 
   // ---------- Mamá: the very first words ----------
@@ -10050,10 +11038,12 @@ G.MAPDATA = {
     G.audio.play('inn', true); // a little lullaby
     yield G.fadeTo(1, 0.03, '#080a26');
     Object.assign(f.player, { x: BED[0], y: BED[1], dir: 'left', ox: 0, oy: 0 }); f.snapCam();
+    if (G.pet) G.pet.night(f); // Canelo curls up on his cushion (pet.js)
     yield DY.night(); // the night sky, then the sunrise (it fades itself in and out)
     newDay();
     G.audio.play(f.def.music || 'town', true);
     yield G.fadeTo(0, 0.04, '#fff2d0'); // out of the morning light (the night left the fade there)
+    if (G.pet) G.pet.morning(f); // and Canelo hops up
     yield 16;
     yield* G.ask({ prompt: '¡[buenosdias], {name}!', en: 'Good morning, {name}! (say it back)', layout: 'cards', who: 'mama', choices: [{ word: 'buenosdias' }, { word: 'adios' }], answer: 0, learn: 'buenosdias' });
     f.locked = false; f.evening = false;
@@ -10126,6 +11116,8 @@ G.MAPDATA = {
       G.drawIcon16(ctx, 'sol', G.W / 2 - 54, y + 8);
       ctx.drawImage(moon(7), G.W / 2 + 38, y + 8);
       G.bigText(ctx, '¡Hoy!', G.W / 2, y + 12, 2, '#f8e060');
+      const hh = G.hearts ? G.hearts.today() : 0; // Round B: hearts from friends today (hearts.js)
+      if (hh) { G.hearts.heart(ctx, b.x + 10, y + 9, true, 2); G.text(ctx, String(hh), b.x + 27, y + 13, '#f8a8c8'); }
       ctx.globalAlpha = 1;
       if (!this.words.length) { // nothing new today: your smile anyway
         ctx.fillStyle = '#f8e060'; ctx.fillRect(G.W / 2 - 27, y + 37, 54, 54);
@@ -10265,7 +11257,7 @@ G.MAPDATA = {
     if (TAP_ON[name]) return place(G.W / 2, G.H - 32, true); // a tap anywhere goes on: below the card
     return null;
   }
-  const TAP_ON = { WordCard: 1, BadgeCard: 1, QuestCard: 1, Diploma: 1 };
+  const TAP_ON = { WordCard: 1, BadgeCard: 1, QuestCard: 1, Diploma: 1, FriendCard: 1 };
   const busy = () => G.input.ptr.down || !!G.input.tap() || Object.keys(G.pressed).length > 0 || Object.keys(G.keys).some(k => G.keys[k]);
 
   // ---------- every frame (core.js step, before input is cleared) ----------

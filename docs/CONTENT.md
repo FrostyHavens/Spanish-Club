@@ -69,11 +69,19 @@ things: {
 3. Give it a home in a map definition: `animals: [{ kind: 'id', n: 2, area: 'tag' }]`, where `tag` is a `[x, y, w, h]` area added in `tools/mapgen.py` (`t.pos['tag'] = [...]`).
 Tapping it then does the rest: its reaction, the word bubble with its sound, the album (`G.state.album[id]`) and say-it-back. An animal drawn elsewhere (like the birds in ambient.js) calls `G.animals.tap(id, x, y)` when tapped.
 
+## Hearts, greetings and Canelo (`src/hearts.js`, `src/pet.js`)
+- A townsperson's talk starts with `yield* hello('id')` (maps.js): their once-a-day voice greeting and any 3- or 5-heart surprise. Use `say(who, ...)` so their hearts show over the portrait.
+- Hearts: `G.hearts.add(npc, n, why)` (`'greet'`, `'gift'`, `'care'`, `'errand'`, `'trick'`), then `yield* G.hearts.milestones(npc)`. `finishQuest(id)` already gives the giver +2. A new person needs adding to `G.hearts.WHO` (and `LIKES`).
+- A 3-heart secret of your own: `G.hearts.secrets.rosa = function* () { ... }`.
+- Canelo: `G.pet.knows('salta')`; `yield* G.pet.command('salta')` asks "¡Dile a Canelo!" and he does it; `yield* G.pet.play('fetch')` for any of his animations. A new trick: its word (with a picture) in `D.words`, an entry in `G.pet.TRICKS` (`{id, by, anim}`), and an animation case in `pose()`.
+- The album's gold star: `G.album.count('pato')`.
+
 ## A new screen
 Most play is on an iPad, so every screen works with taps as well as keys:
 - Read taps with `G.tapIn(x, y, w, h)` (this frame's tap, in game pixels). Touch targets are at least 20×20 game pixels.
 - A screen that waits for A also goes on with a tap; one that waits for B shows a back or close button (`G.iconBtn(ctx, 'back', x, y)` drawn, `G.btnHit(x, y)` tested).
 - Spoken lines get the speaker button (`G.speakerBtn`), same as C.
+- A screen that the test harness should simply close when it pops up mid-drive (like the pet menu) returns its close button from `closeXY()` and is listed in `Game.drive` in `tools/harness.js`.
 - Give the screen `hintXY()` returning `[x, y]` if a stuck child should be shown where to tap (the hand in `src/hint.js`). Never point at a right answer.
 - Ripples, bursts and confetti come from `G.fx` (`src/fx.js`); they're drawn above every screen, so a screen doesn't draw its own.
 

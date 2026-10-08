@@ -15,7 +15,14 @@ async function town(g, x, y, dir, o = {}) {
 }
 // screen point (game px) of something at world px x, y
 const onScreen = (g, x, y) => g.ev(([x, y]) => [x - Math.round(G.field.cam.x), y - Math.round(G.field.cam.y)], [x, y]);
-const talking = (g, who) => g.until(n => G.top().constructor.name === 'TextBox' && G.top().opts.name === G.nameOf(n), who, who + ' to talk', 30000);
+// (after the Saludos errand, the first talk of the day starts with their greeting, hearts.js: answered here)
+const talking = async (g, who) => {
+  await g.until(n => (G.top().constructor.name === 'TextBox' && G.top().opts.name === G.nameOf(n)) || (G.top().constructor.name === 'Choice' && G.top().o.who === n), who, who + ' to talk', 30000);
+  if (await g.ev(() => G.top().constructor.name === 'Choice')) {
+    await g.ev(() => { G.debug.greeted = G.top().o.who; });
+    await g.drive(() => G.top().constructor.name === 'TextBox' && G.top().opts.who === G.debug.greeted, who + ' after the greeting');
+  }
+};
 
 // ---------- iPad: critters ----------
 async function critters(browser) {
