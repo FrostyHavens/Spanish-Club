@@ -24,6 +24,10 @@
       name: null,         // the player's name, typed after the creator
       album: {},          // Round B (animals.js): animal id -> {first: ms, map, n: times tapped, said: name said out loud}
       sayback: {},        // Round B (world.js): word id -> 'YYYY-M-D' it last earned a say-it-back star (one a day)
+      pet: { tricks: {}, learning: null, sleep: false }, // Round B (pet.js): Canelo's tricks (good tries 0..3), the one he's learning
+      hearts: {},         // Round B (hearts.js): npc -> 0..5
+      heartlog: {},       // Round B (hearts.js): today's hearts {d: 'YYYY-M-D', n, all, why}
+      friends: {},        // Round B (hearts.js): npc -> {m3: secret + sticker given, m5: best-friend photo}
     };
   }
   function devicePrefs(s) {

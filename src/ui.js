@@ -130,6 +130,12 @@
         const py = top ? 6 : G.H - 60 - 6;
         G.win(ctx, 6, py, 60, 60);
         G.drawPortrait(ctx, this.opts.portrait, 10, py + 4, this.t);
+        const who = this.opts.who; // Round B: their hearts, over the portrait (hearts.js)
+        if (who && G.hearts && G.hearts.shows(who)) {
+          const hy = top ? py + 61 : py - 11, pl = G.hearts.pulse(who) && (this.t >> 3) & 1;
+          G.win(ctx, 6, hy, 60, 12, { fill1: pl ? '#ffe0ec' : '#fff4f8', fill2: '#f8d8e4', alpha: 1 });
+          G.hearts.row(ctx, who, 16, hy + 3);
+        }
       }
       G.win(ctx, this.boxX, y, this.boxW, h);
       const name = this.opts.name;
@@ -381,6 +387,7 @@
     book: ['.rrrr.cccc.', 'rRRRRrcCCCc', 'rRwwRrcwwCc', 'rRRRRrcCCCc', 'rRwwRrcwwCc', 'rRRRRrcCCCc', 'rRRRRrcCCCc', '.rrrrwcccc.', '.....w.....'],
     quest: ['.bbbbbbbb.', 'b........b', '.wwwwwwww.', '.wWWWWWWw.', '.wwwwwwww.', '.wWWWWWw..', '.wwwwwwww.', 'b........b', '.bbbbbbbb.'],
     save: ['........ys', '.......yy.', '......yy..', '.....yy...', '....yy....', '...yy.....', '..yy......', '.bb.......', 'bb........'],
+    album: ['...ss.ss...', '..ssssssss.', '..ssssssss.', 's..ss.ss..s', 'ss.......ss', 'ss..sss..ss', '...sssss...', '..sssssss..', '..sssssss..', '...sssss...'], // a paw (the animal album)
     gear: ['...gg.gg...', '..gWWgWWg..', '.gWWWWWWWg.', '..gWWgWWg..', 'gWWg...gWWg', '..gWWgWWg..', '.gWWWWWWWg.', '..gWWgWWg..', '...gg.gg...'],
     quit: ['w........w', '.w......w.', '..w....w..', '...w..w...', '....ww....', '...w..w...', '..w....w..', '.w......w.', 'w........w'],
   };

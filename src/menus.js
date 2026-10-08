@@ -37,20 +37,23 @@
       const r = yield G.kidMenu();
       if (r.result === 'book') yield G.notebook();
       else if (r.result === 'quest') yield G.questLog();
+      else if (r.result === 'album') yield G.album();
       else return;
     }
   };
-  // Two big picture buttons, Cuaderno and Misiones, plus a small gear that opens the grown-ups menu only after
-  // a 2 s press-and-hold (keyboard: move onto it and hold Z). Resolves 'book', 'quest' or null.
-  const KIDS = ['book', 'quest', 'gear'];
+  // Three big picture buttons, Cuaderno, Misiones and the animal album (a paw, Round B), plus a small gear that opens
+  // the grown-ups menu only after a 2 s press-and-hold (keyboard: move onto it and hold Z). Resolves 'book', 'quest',
+  // 'album' or null.
+  const KIDS = ['book', 'quest', 'album', 'gear'], TILES = ['book', 'quest', 'album'];
+  const KID_LABEL = { book: 'Cuaderno', quest: 'Misiones', album: 'Animales' };
   class FieldMenu {
     constructor(w) { this.transparent = true; this.w = w; this.t = 0; this.sel = 'book'; this.gear = new G.Hold(120); }
-    // tap areas (shared with draw): the 'book' and 'quest' tiles, the 'gear' (and its padded hold area), close
-    box() { return { x: 64, y: 46, w: 192, h: 132 }; }
+    // tap areas (shared with draw): the 'book', 'quest' and 'album' tiles, the 'gear' (and its padded hold area), close
+    box() { return { x: 22, y: 46, w: 276, h: 132 }; }
     rect(k) {
       const b = this.box();
       if (k === 'gear') return { x: b.x + b.w - 32, y: b.y + b.h - 28, w: 24, h: 20 };
-      return { x: b.x + 14 + (k === 'quest' ? 88 : 0), y: b.y + 14, w: 76, h: 82 };
+      return { x: b.x + 14 + TILES.indexOf(k) * 86, y: b.y + 14, w: 76, h: 82 };
     }
     gearHit() { const r = this.rect('gear'); return { x: r.x - 4, y: r.y - 4, w: r.w + 8, h: r.h + 8 }; }
     closeXY() { return [G.W - 26, 6]; } // where the map's menu button was
@@ -61,11 +64,11 @@
       if (this.gear.update(this.gearHit(), this.sel === 'gear')) { G.audio.sfx('ok'); G.grownUps(); return; }
       if (G.input.tap()) {
         if (G.closeHit(...this.closeXY())) { this.close(); return; }
-        for (const k of ['book', 'quest']) if (G.tapIn(this.rect(k))) { this.sel = k; this.pick(k); return; }
+        for (const k of TILES) if (G.tapIn(this.rect(k))) { this.sel = k; this.pick(k); return; }
       }
       const d = G.input.repDir(14, 6);
       if (d) {
-        const i = KIDS.indexOf(this.sel), n = d === 'down' ? 2 : d === 'up' ? (i === 2 ? 1 : i) : (i + (d === 'left' ? 2 : 1)) % 3;
+        const i = KIDS.indexOf(this.sel), n = d === 'down' ? 3 : d === 'up' ? (i === 3 ? 2 : i) : (i + (d === 'left' ? 3 : 1)) % 4;
         if (n !== i) { this.sel = KIDS[n]; G.audio.sfx('cursor'); }
       }
       if (G.input.p('A') && this.sel !== 'gear') this.pick(this.sel);
@@ -74,12 +77,13 @@
     draw(ctx) {
       const b = this.box();
       G.win(ctx, b.x, b.y, b.w, b.h);
-      ['book', 'quest'].forEach(k => {
+      TILES.forEach(k => {
         const r = this.rect(k), sel = this.sel === k, bob = sel ? Math.round(Math.sin(this.t / 6) * 1.5) : 0;
         G.win(ctx, r.x, r.y - bob, r.w, r.h, sel ? { fill1: '#3a56c8', fill2: '#1c2c8c' } : { alpha: 0.55 });
         const big = G.cached('kidbtn_' + k + (sel ? 1 : 0), 24, 20, c => G.drawIcon(c, k, 0, 0, sel));
         ctx.drawImage(big, r.x + (r.w - 48) / 2, r.y + 10 - bob, 48, 40);
-        G.textC(ctx, k === 'book' ? 'Cuaderno' : 'Misiones', r.x + r.w / 2, r.y + 62 - bob, sel ? '#f8e060' : '#ffffff');
+        G.textC(ctx, KID_LABEL[k], r.x + r.w / 2, r.y + 62 - bob, sel ? '#f8e060' : '#ffffff');
+        if (k === 'album' && G.state && G.animals) { const n = G.animals.list().filter(G.animals.met).length; G.textC(ctx, n + '/' + G.animals.list().length, r.x + r.w / 2, r.y + 72 - bob, '#a8d8ff'); }
         if (sel && (this.t >> 3) % 4 !== 3) G.textC(ctx, '\u0001', r.x + r.w / 2, r.y - 9 - bob, '#f8e060');
       });
       const g = this.rect('gear');

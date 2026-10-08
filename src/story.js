@@ -4,7 +4,7 @@
   const F = () => G.state.flags, S = G.st;
   const T = (t, en) => ({ t, en });
   const ST = G.story = {};
-  function* say(who, ...pages) { yield G.say(pages, { portrait: G.portraitOf(who), name: G.nameOf(who) }); }
+  function* say(who, ...pages) { yield G.say(pages, { portrait: G.portraitOf(who), name: G.nameOf(who), who }); }
   const words = (...ids) => ids.map(id => ({ word: id }));
 
   // ---------- Mamá: the very first words ----------

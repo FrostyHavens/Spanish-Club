@@ -53,7 +53,7 @@
     if (TAP_ON[name]) return place(G.W / 2, G.H - 32, true); // a tap anywhere goes on: below the card
     return null;
   }
-  const TAP_ON = { WordCard: 1, BadgeCard: 1, QuestCard: 1, Diploma: 1 };
+  const TAP_ON = { WordCard: 1, BadgeCard: 1, QuestCard: 1, Diploma: 1, FriendCard: 1 };
   const busy = () => G.input.ptr.down || !!G.input.tap() || Object.keys(G.pressed).length > 0 || Object.keys(G.keys).some(k => G.keys[k]);
 
   // ---------- every frame (core.js step, before input is cleared) ----------

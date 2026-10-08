@@ -51,6 +51,7 @@
       const mw = this.map.w * T, mh = this.map.h * T;
       cx = mw <= G.W ? (mw - G.W) / 2 : G.clamp(cx, 0, mw - G.W);
       cy = mh <= G.H ? (mh - G.H) / 2 : G.clamp(cy, 0, mh - G.H);
+      if (this.camShift) cy += this.camShift; // a menu over the bottom of the map (pet.js) lifts the view a little
       return { x: cx, y: cy };
     }
     snapCam() { this.cam = this.camTarget(); }
@@ -236,6 +237,8 @@
       }
       this.tasks.update();
       if (G.ambient) G.ambient.update(this); // the living town (ambient.js): critters, people who look at you, walkers
+      if (G.pet) G.pet.update(this); // Canelo, your dog: his tricks and his bed (pet.js)
+      if (G.hearts) G.hearts.update(this); // friends call you by name as you pass (hearts.js)
       if (G.animals) G.animals.update(this); // ducks, hens, the fish, the frog, the rabbit, the horse, the goat (animals.js)
       const ct = this.camTarget(); this.cam.x += (ct.x - this.cam.x) * 0.3; this.cam.y += (ct.y - this.cam.y) * 0.3;
       if (Math.abs(ct.x - this.cam.x) < 0.5) this.cam.x = ct.x; if (Math.abs(ct.y - this.cam.y) < 0.5) this.cam.y = ct.y;
@@ -273,10 +276,12 @@
       }
       if (G.ambient) G.ambient.draw(this, ctx, 'ground'); // birds on the ground, shadows
       if (G.animals) G.animals.draw(this, ctx, 'ground'); // lily pads, ripples, swimmers, shadows
+      if (G.pet) G.pet.drawUnder(this, ctx); // Canelo's cushion and bowl at home
       const ents = this.npcs.filter(n => n.spec && !n.hidden).concat([this.player]);
       const zoo = G.animals ? G.animals.ents(this) : []; // land animals, drawn in order with the people
       for (const e of ents.concat(zoo).sort((a, b) => (a.sy != null ? a.sy : a.y * T + a.oy) - (b.sy != null ? b.sy : b.y * T + b.oy))) {
         if (e.draw) { e.draw(ctx, cx, cy); continue; }
+        if (e.drawSelf && e.drawSelf(ctx, cx, cy)) continue; // Canelo doing a trick, or asleep (pet.js)
         const moving = e.moving || e.ox || e.oy;
         const fr = moving ? Math.floor(this.t / 6) % 2 : Math.floor((this.t + (e.x || 0) * 13) / 24) % 2;
         const img = G.unitSprite(e.spec, e.dir, fr), bob = Math.abs(e.ox + e.oy) >= 6 && Math.abs(e.ox + e.oy) <= 18 ? 1 : 0; // a hop mid-step
@@ -284,6 +289,8 @@
       }
       if (G.ambient) G.ambient.draw(this, ctx, 'air'); // birds in flight, butterflies, the cat
       if (G.animals) G.animals.drawTop(this, ctx); // hearts and splashes
+      if (G.pet) G.pet.drawTop(this, ctx); // Canelo's hearts, dust, crumbs; the trick he's learning
+      if (G.hearts) G.hearts.drawTop(this, ctx); // a friend's hearts rising
       if (G.day) G.day.drawField(ctx, this, cx, cy); // the sunset (over the critters too), lit windows, the moon over home (day.js)
       // "!" bubbles over people who have something for the player (kids always know where to go next)
       for (const e of ents) {

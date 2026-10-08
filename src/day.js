@@ -103,10 +103,12 @@
     G.audio.play('inn', true); // a little lullaby
     yield G.fadeTo(1, 0.03, '#080a26');
     Object.assign(f.player, { x: BED[0], y: BED[1], dir: 'left', ox: 0, oy: 0 }); f.snapCam();
+    if (G.pet) G.pet.night(f); // Canelo curls up on his cushion (pet.js)
     yield DY.night(); // the night sky, then the sunrise (it fades itself in and out)
     newDay();
     G.audio.play(f.def.music || 'town', true);
     yield G.fadeTo(0, 0.04, '#fff2d0'); // out of the morning light (the night left the fade there)
+    if (G.pet) G.pet.morning(f); // and Canelo hops up
     yield 16;
     yield* G.ask({ prompt: '¡[buenosdias], {name}!', en: 'Good morning, {name}! (say it back)', layout: 'cards', who: 'mama', choices: [{ word: 'buenosdias' }, { word: 'adios' }], answer: 0, learn: 'buenosdias' });
     f.locked = false; f.evening = false;
@@ -179,6 +181,8 @@
       G.drawIcon16(ctx, 'sol', G.W / 2 - 54, y + 8);
       ctx.drawImage(moon(7), G.W / 2 + 38, y + 8);
       G.bigText(ctx, '¡Hoy!', G.W / 2, y + 12, 2, '#f8e060');
+      const hh = G.hearts ? G.hearts.today() : 0; // Round B: hearts from friends today (hearts.js)
+      if (hh) { G.hearts.heart(ctx, b.x + 10, y + 9, true, 2); G.text(ctx, String(hh), b.x + 27, y + 13, '#f8a8c8'); }
       ctx.globalAlpha = 1;
       if (!this.words.length) { // nothing new today: your smile anyway
         ctx.fillStyle = '#f8e060'; ctx.fillRect(G.W / 2 - 27, y + 37, 54, 54);

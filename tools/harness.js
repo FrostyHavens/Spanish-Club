@@ -71,7 +71,7 @@ class Game {
         const r = { name: s.constructor.name, t: s.t };
         if (r.name === 'Choice') Object.assign(r, { answer: s.o.answer == null ? 0 : s.o.answer, rects: s.rects(), off: s.ch.map(c => !!c.off), cards: s.cards, i: s.i, spk: s.spk() });
         if (r.name === 'TextBox') Object.assign(r, { pi: s.pi, shown: s.shown, all: s.chars(0, s.scroll + 3), spk: s.spk(), noVoice: !!s.opts.noVoice });
-        if (r.name === 'Notebook') r.close = s.closeXY();
+        if (r.name === 'Notebook' || r.name === 'PetMenu' || r.name === 'Album') r.close = s.closeXY();
         return r;
       });
       const first = s.name && !this.seen.has(s.name + (s.cards ? 'c' : ''));
@@ -108,13 +108,16 @@ class Game {
           }
           break;
         }
-        case 'WordCard': case 'BadgeCard': case 'QuestCard': case 'KeyHint': case 'Diploma': case 'QuestLog': {
-          const ready = { WordCard: 20, BadgeCard: 40, QuestCard: 30, KeyHint: 30, Diploma: 60, QuestLog: 0 }[s.name];
+        case 'WordCard': case 'BadgeCard': case 'QuestCard': case 'KeyHint': case 'Diploma': case 'QuestLog': case 'FriendCard': {
+          const ready = { WordCard: 20, BadgeCard: 40, QuestCard: 30, KeyHint: 30, Diploma: 60, QuestLog: 0, FriendCard: 30 }[s.name];
           if (s.t <= ready) { await this.frames(ready + 2 - s.t); break; }
           if (first) { await this.shot(s.name); this.seen.add(s.name); }
           if (this.touch) await this.tap(150, 200); else await this.press('z');
           break;
         }
+        case 'PetMenu': case 'Album': // Round B screens nobody asked for here: just close them
+          if (this.touch) await this.tapBtn(s.close); else await this.press('x');
+          break;
         case 'Notebook':
           if (first) { await this.frames(4); await this.shot('notebook'); this.seen.add('Notebook'); }
           if (this.touch) await this.tapBtn(s.close); else await this.press('x');
