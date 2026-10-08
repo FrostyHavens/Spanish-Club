@@ -4,7 +4,7 @@ Playtest (age 7, iPad, Safari 15.6, es-MX mic works well): *"Bored that there's 
 
 Round B puts animals at the heart of Villa Sol. Canelo becomes your dog and learns tricks by voice. Every animal and many things in town can be tapped: they say their Spanish word, and you can say it back for a speaking star. Eight longer story errands (5-10 min each) mix walking, finding, tapping and speaking. Townsfolk become friends (hearts), and an album fills up as you meet animals.
 
-**Status.** Built: the foundation (the words, pictures, map, animals, tap-anything, say-it-back, album records) and stage 2a (Canelo as your dog with his tricks and care, hearts with voice greetings, the album screen with the Amigos page). Next: the errands (§7). The APIs are listed at the end.
+**Status.** All built: the foundation (the words, pictures, map, animals, tap-anything, say-it-back, album records), stage 2a (Canelo as your dog with his tricks and care, hearts with voice greetings, the album screen with the Amigos page) and stage 2b (the eight story errands, the bag, presents, the shops and the side jobs, the animal party as the game's ending: `src/errands.js`, §7). The APIs are listed at the end.
 
 Language rules: [CONTENT.md](CONTENT.md). Mexican Spanish, present tense, a few words per line, `{o/a}` for the player.
 
@@ -118,77 +118,58 @@ A third big button in the menu, *Animales* (a paw) with *7/11* under it, next to
 - The twelfth card, *Amigos* (a big heart and the total of everyone's hearts): a page of everyone's face, name and five hearts, a gold sticker mark at 3, a gold frame at 5. Back (or B) returns to the animals.
 - Taps and keys: arrows move, A or C says the card, B closes.
 
-## 7. The eight story errands (next: errands agents)
+## 7. The eight story errands (built: `src/errands.js`)
 
-Each takes 5-10 minutes, has 4-6 steps, sends you to at least 3 places, and uses the mic at least 3 times (always optional: tapping works too). Add them to `D.quests` / `D.questOrder`, with a badge each. Order of unlocking: 1 → 2 → 3, then any.
+Each is a little story of 5-10 minutes for a 7-year-old: walking across town, finding things (a picture bubble floats over every place to go, and the hint hand points there), tapping animals, and lots of **speaking**: every question is a `G.ask` with `{word}` picture cards, so the mic is always there (tapping always works too). Each has its quest card, a badge (`BADGE_COL` / `BADGE_ICON` in learn.js), a Misiones row with its steps ticked off (`G.errands.parts(id)`), and gives its giver +2 hearts.
 
-### 1. ¿Dónde está Canelo? (Canelo is missing) — Mamá, then Gómez, Lucía, Tomás
-1. Morning at home: Mamá — *¡Ay! ¿Y Canelo?* Canelo's bed is empty (picture card: *la cama*, *el perro*). Quest card: *el perro ?*
-2. In town, three neighbors each give a picture clue (a thought bubble). Ask by voice: the mic bubble on each person says *¿El perro?* — say *el perro* (or tap). Gómez: *¡Guau! ... el parque*. Lucía: *Una pelota... la fuente*. Tomás: *¡Uy! La granja*.
-3. Follow the clues: in the park, a paw print by the bench (*el banco*: tap it); at the fountain, Canelo's ball (*la pelota*); at the farm, barking from the barn.
-4. At the barn door: say **¡Canelo, ven!** (or tap *ven*). He bursts out of the hay with **the goat**, his new friend. *¡Guau!* *¡Beee!*
-5. Walk him home (he follows). Mamá: *¡Canelo! ¡Qué feliz!* → *feliz* is asked (feliz / triste). Badge: a paw print.
-Words: perro, ven, cama, banco, fuente, pelota, granja, feliz, triste. Mic: 3 neighbors, *ven*, *feliz*.
+**How they unlock** (`UNLOCK` in errands.js), so there are usually 2-3 to choose from:
+| Errand | Opens when |
+| --- | --- |
+| `canelo` ¿Dónde está Canelo? | Canelo is yours and one Round A errand (mercado, pelota, carta) is done |
+| `picnic` / `show` / `cansado` | `canelo` is done, and the same person's Round A errand (Rosa's mercado / Sofía's pelota / Tomás's carta) |
+| `cuenta` | 3 Round B errands done |
+| `sonidos`, `flores` | 4 done |
+| `fiestab` (the party, the ending) | all of Round A and 6 of the 7 |
 
-### 2. El día de campo de Abuela Rosa (the picnic) — Rosa
-1. Rosa: *¡Un día de campo! ¿Me ayudas?* Quest card: five foods (*el pan, el queso, el huevo, la leche, el agua*).
-2. Bakery: Marta asks *¿Qué quieres?* (cards; say *el pan*).
-3. Market: Don Pepe has *el queso* (say it; he asks *¿Cuántos?* → *uno*).
-4. Rosa's hens: search the hay bale → *¡Un huevo!* The hen clucks. Say *el huevo*.
-5. The farm: the goat's bucket by the barn → *la leche* (the goat says *¡Beee!*).
-6. The fountain: fill the bottle → *el agua*.
-7. Back to Rosa: she lays a blanket in the park; she asks for each food by picture (*¿El queso?* sí/no, then say it). The ducks come over for crumbs. Badge: a basket.
-Words: the *campo* page, plus gracias, por favor. Mic: every food once.
+An errand that's open shows its picture over the giver (Mamá "!", Rosa a basket, Sofía a ribbon, Tomás *cansado*, Luna "?", Nico a music note, Lucía *triste*, Luna a star). A new errand comes before a trick to teach; an errand's step for someone comes before their Round A lines (`G.errands.urgent`).
 
-### 3. El show de mascotas de Sofía (the pet show) — Sofía, Nico, Luna
-1. Sofía: *¡Un show de perros! Canelo, ¿sí?* Quest card: *siéntate, salta, dame la pata*.
-2. Teach Canelo the three tricks (§4) anywhere in town (3 good tries each).
-3. Nico has a cat in the show (*¡Mi gato!*); you can tap and name it.
-4. Show time at the park (an audience of townsfolk on the benches): Luna calls each trick in Spanish; you say it to Canelo. Each trick done: applause, a ribbon colour (*azul, rojo, amarillo*).
-5. Luna: *¡Canelo es el campeón!* Ribbon colour question. Badge: a ribbon.
-Words: sientate, salta, pata, perro, gato, colours. Mic: every trick (Canelo only does it when said or tapped).
+### 1. ¿Dónde está Canelo? (Mamá; Gómez, Lucía, Tomás) — paw-print badge
+Mamá calls you home; Canelo barks and **runs out of the door**. *¿Qué buscas?* (say *el perro*). Quest card: dog + "?". One clue at a time, a dog bubble over the next neighbour: you ask *"¡Hola! ¿Y mi...?"* (say *el perro*). Gómez: *el parque, el banco* → a paw-print bubble over the park bench: *¿Dónde está?* (*el banco*). Lucía: *¡la fuente!* → his ball in the fountain (*la pelota*, into the bag). Tomás: *¡la granja!* → the barn door barks (*¡Guau!* bubbles); **say *¡ven!*** and Canelo bursts out, dancing, with **the goat** (who trots back to her paddock): *¿Y ella?* (*la cabra*). Home: Mamá: *¿Cómo está Canelo?* (*feliz*), his ball back (he fetches it). Mic: perro ×4, banco, pelota, ven, cabra, feliz.
 
-### 4. ¿Cuántos animales? (the animal count) — Profesora Luna
-1. Luna: *¿Cuántos animales hay en Villa Sol?* She gives a clipboard with pictures: patos, gallinas, pájaros, peces, conejos, caballos, cabras.
-2. Tap each animal to count it (a number pops: *uno, dos, tres*...). Ducks 3, hens 2, the fish 1, the rabbit 1, the horse 1, the goat 1, birds: count those on the plaza (they fly off, come back!).
-3. Back to Luna: for each picture, *¿Cuántos patos?* — answer with numbers to *diez* (cards + mic). Total: *¡Diez animales!* (or the real total).
-Words: animals, numbers 1-10 (introduces *seis ... diez*). Mic: every answer. Album: counted animals get a gold star.
+### 2. El día de campo (Rosa) — basket badge
+*¿Me ayudas?* (*sí*). Five foods, any order, each into the bag: Marta (*¿Qué quieres?* *el pan*, *gracias*), Don Pepe (*el queso*, *¿Cuántos?* *uno*), the hay bale by the hens (*¡Coc, coc!* *el huevo*), the goat's pail by the paddock gate (*la leche*), the fountain (*el agua*). Back to Rosa: a fade to a red checked blanket in the park; she holds out her hand for each food by picture (say it), and they appear on the blanket; a cookie for Canelo. Mic: about 13.
 
-### 5. ¿Qué dicen? (Nico's sound game) — Nico
-1. Nico: *¡Un juego! Escucha...* He plays a sound (the procedural cry): *¡Cuac, cuac!*
-2. Find the animal that says it and tap it (the duck at the farm pond). Back to Nico: *¿Qué dice el pato?* — say *cuac*.
-3. Four rounds: cuac (pato), croac (rana), bee (cabra), miau (gato, napping on the fence: wake her up gently).
-4. Nico's last round: he barks *¡Guau!* and Canelo answers. Badge: a music note.
-Words: the *sonidos* page, the animals. Mic: say each sound.
+### 3. El show de perros (Sofía, Nico, Luna) — ribbon badge
+*¿Y Canelo? ¿Sí?* Quest card: *siéntate, dame la pata, salta*. Gated on the tricks: until Canelo knows all three, Sofía (and Mamá for *ven*, which comes before them) teach them as usual and remind you (*¡Toca a Canelo y practica!*; the hint hand points at Canelo while he's learning). Then Nico brings his cat (*¡Miau! ¿Quién es?* *el gato*), and the show: a fade to the park with an audience (Luna judging, Nico, Rosa, Gómez, Lucía, Don Pepe; no thought bubbles in the crowd). For each trick Luna calls it, you **say it to Canelo** (`G.pet.command`), applause, confetti, and a ribbon: *¿De qué color?* (azul, rojo, amarillo). *¡Canelo es el campeón!*
 
-### 6. Las flores de Lucía (Lucía's flowers) — Lucía
-1. Lucía is **triste**: *Mi mamá... su cumpleaños.* She wants a bouquet: *una flor rosa, una flor blanca, una flor amarilla*.
-2. Flowers of different colours grow around town (new flower spots of each colour; tap → *la flor ... rosa*). Pick the right ones (sí/no on colour).
-3. A butterfly sits on the last one: wait, or say *mariposa* and it flies off.
-4. Lucía: *¡Qué bonitas! Estoy feliz.* Feelings question (*feliz / triste*). Badge: a flower.
-Words: flor, blanco, rosa, amarillo, negro / café (distractors), feliz, triste, mariposa.
+### 4. Tomás está cansado (Tomás) — winged-envelope badge
+While it's open or on, Tomás sits by the plaza bench (off his mail round). *¿Cómo está Tomás?* (*cansado*), *¿Me ayudas?*: three letters in the bag. Rosa (*¿Dónde estás?* *la casa*), Inés in the library (*la biblioteca*), the barn door (*la granja*): **the horse trots up and eats the letter!** An apple bubble over the paddock; Don Pepe shows an apple (*la manzana*); give it to the horse (*¿Qué quiere?* *la manzana*), he gives the letter back. Tomás: *¿Cómo está?* (*feliz*), back on his round.
 
-### 7. Tomás está cansado (Tomás is tired) — Tomás
-1. Tomás sits on a bench: *Estoy cansado...* (feelings card). He has 3 letters.
-2. Deliver them: to Abuela Rosa (*la casa*), to the barn (*la granja*: the horse eats the letter's corner!), to Inés (*la biblioteca*). At each door, say where you are.
-3. The horse letter: give the horse *una manzana* so it gives it back.
-4. Back to Tomás: *¡Gracias! ¡Ya no estoy cansado!* He gives you *agua* to drink. Badge: an envelope with wings.
-Words: cansado, casa, granja, biblioteca, caballo, manzana, puerta, ventana (Inés waves from the window).
+### 5. ¿Cuántos animales? (Profesora Luna) — "10" badge
+*¿Cuántos animales hay en Villa Sol?* A clipboard under the bag (each animal's picture and dots) while you **tap the animals**: each tap shows and says the next number (*¡uno!*, *¡dos!*...) instead of the name; ducks 3, hens 2, horse, goat, rabbit, frog, and the fish (a fish bubble over the fountain: it jumps). A full row gives the album's gold star (`G.album.count`). Back to Luna: *¿Cuántos patos? / ¿Cuántas gallinas?...* (numbers, by voice), she counts to nine, *¿Cuántos animales?* — **diez**.
 
-### 8. La fiesta de los animales (the animal party) — everyone
-Unlocks when 6 of the errands are done.
-1. Luna: *¡Una fiesta en la granja!* Invite 5 friends by voice (*¡Hola! ¿Vienes a la fiesta?* → they answer *sí*).
-2. Decorate: hang ribbons in 4 colours (tap colour cards / say them).
-3. Feed the animals: *el pan* for the ducks, *la galleta* for Canelo, *el agua* for the horse, corn for the hens (tap).
-4. The show: Canelo does all his tricks while you say them; every animal does its sound in a chorus.
-5. Everyone at 5 hearts appears in a group photo for the album. Diploma: *¡Amig{o/a} de los animales!*
+### 6. ¿Qué dicen? (Nico) — music-note badge
+*¡Un juego! ¡Escucha!* — a cry (*¡Cuac, cuac!*). Nico **tags along** and makes the sound again now and then (a speech bubble); the hint hand points at the right animal. Tap the duck: *¿Qué dice el pato?* (*cuac*); the frog (*croac*), the goat (*bee*), the cat on the park fence (*miau*; asleep or not). A wrong animal: *¡No! ¡Escucha!* Last: Nico barks *¡Guau, guau!*, Canelo answers with a dance: *¿Quién dice guau?* (*el perro*).
 
-### Small side jobs (1-2 min, repeatable, any time)
-- **Feed the ducks**: buy *pan* from Marta, tap the pond: the ducks swim over (a heart each).
-- **Find an egg**: the hens hide one egg a day in the hay (search); give it to Rosa (+1 heart).
-- **Canelo's water**: his bowl at home is empty after a long walk; fill it at the fountain (*el agua*).
-- **Pet the horse**: hold a tap on him; he nuzzles. *Say caballo* for the star.
-- **The sleepy cat**: when she naps, tiptoe up (walk slowly) and say *gato* to wake her.
+### 7. Las flores de Lucía (Lucía) — flower badge
+A *triste* bubble. *¿Cómo está Lucía?* (*triste*): her mom's birthday; she wants *una flor rosa, blanca y amarilla* (her bubble shows the ones still missing). Nine big coloured flowers grow around town (pink ×2, white ×2, yellow ×2, red ×2, blue). Each: *¿De qué color?* (say it), then *¿Para Lucía?* (sí / no). A butterfly sits on the last one she needs: *¿Qué es?* (*la mariposa*), and it flutters away. Back: *¡Qué bonitas!*, *¿Cómo está?* (*feliz*). Afterwards the flowers can be picked once a day as presents. **Lucía's 3-heart secret** (replacing the page one): a golden flower in the wheat field (3 stars, and a present).
+
+### 8. La fiesta de los animales (Luna) — the ending, star badge
+*¡Una fiesta en la granja! ¡Para los animales!* Invite five friends (any five of Rosa, Pepe, Sofía, Nico, Lucía, Gómez, Tomás: an invitation bubble over each): you say **¡hola!**, they ask *¿Para mí?*, you say *sí*. Then four ribbons on the barn (*¿De qué color?* ×4; bunting appears on the roof), food in the bag, and feeding: bread for the ducks, water for the horse, corn for the hens (*¿Quiénes son?* *las gallinas*). Everyone gathers in front of the barn (the invited, every best friend at 5 hearts, Luna, Mamá). Tap the star over the door: Canelo shows every trick he knows as you say them, a cookie, the animals' song (every cry in turn), confetti, *¿Estás feliz?*, a flash and a **group photo** (you, Canelo and your best friends), the badge, and the **diploma**.
+
+Round A's old ending (Luna's party with a review game) is folded into this one: after the Round A errands Luna offers the replayable *¿Repaso?* instead, and a save that already had that party keeps its badge.
+
+**The diploma** (`G.story.diploma`): your portrait and name, *¡Amig{o/a} de los animales!*, words learned, stars, speaking stars, animals met (n/11), a badge (or an empty ring) for every errand, and your best friends' faces.
+
+### The bag, presents and the shops
+`G.state.bag.items` (drawn top-left on the map, and in Misiones): errand things carry `q` and can't be given away; your own things can. **Shops**: Marta (*el pan*, *la galleta*) and Don Pepe (*la manzana*, *el queso*) ask *¿Qué quieres?* when there's nothing else to say: a free choice with the mic (say any of them, or *no*), one of each at a time. **Presents**: someone who likes something you carry (`G.hearts.LIKES`; Lucía only pink flowers) shows it in their bubble; talking to them: *¿Un regalo? ¿Para mí?* — *sí* gives it (+1 heart, once a day).
+
+### Small side jobs (once a day each: a star; Misiones shows today's)
+- **Feed the ducks**: with bread from Marta a bread bubble floats over the pond; the ducks swim over, *¿Cuántos patos?* (*tres*).
+- **The hens' egg** (after the picnic): the hay bale by the hens (*el huevo*), then give it to Rosa (+1 heart).
+- **Canelo's water**: his bowl at home is empty every day (an *agua* bubble on it); fill a bottle at the fountain (*el agua*), pour it: he drinks (+1 heart).
+- **Pet the horse**: tap him from close by: hearts, a star.
+- **The sleepy cat**: she naps when nobody's near, and now stays asleep until you're right beside her; tap her: *¡Shh!* *¿Quién duerme?* (*el gato*) and she wakes, purring.
 
 ## 8. APIs
 
@@ -199,5 +180,6 @@ Unlocks when 6 of the errands are done.
 - **Canelo** (`src/pet.js`): `G.pet.TRICKS` `[{id, by, anim}]`; `mine()` (he's yours: `flags.petStart`); `knows(id)` (3 good tries: use this to check a trick is learned); `tries(id)`; `learning()`; `known()`; `canTeach(who)`; generators `teach(id, who)`, `practice(id)`, `ask(id, o)` (a "¡Dile a Canelo!" question: `o.prompt`, `o.pool`), `command(id, o)` (ask, then he does it: for the pet show), `trick(id, {amp})`, `play(kind, o)` (sit come paw jump spin huh eat drink fetch pet dance wake; `{item: 'hueso'}` for eat), `menu()`, `start()`; `npc(f)`, `sleeping(f)`, `spokeStar(id)`. Saved: `G.state.pet = {tricks: {id: 0..3}, learning, sleep}`.
 - **Hearts** (`src/hearts.js`): `G.hearts.WHO`, `LIKES`, `get(npc)`, `add(npc, n, why)` (why: `greet` and `gift` once a day; `care`; `errand` and `trick` skip the daily cap; returns the hearts added), `canAddToday(npc, why)`, `did(npc, why)`, `today(npc?)`, `gift(npc, word)`, `best(npc)`, `greeting(npc)`, generators `greet(npc)` and `milestones(npc)` (call after adding hearts outside a normal talk), `secrets[npc] = function* () {...}` to replace a 3-heart secret, `sticker(npc)`, `photo(npc)`, `row(ctx, npc, x, y, scale)`, `face(ctx, npc, x, y, w)`. Saved: `G.state.hearts`, `G.state.heartlog` (today), `G.state.friends` (`m3`, `m5`). In maps.js, `hello(who)` (greeting + milestones) starts every townsperson's talk; `finishQuest(id)` gives the giver +2.
 - **Album** (`src/album.js`): `G.album(start?)` (opens it; `'amigos'` for the friends page), `G.album.count(id)` (the gold star for Luna's count), `counted(id)`, `metCount()`, `full()`.
+- **Errands** (`src/errands.js`): `G.errands.talk(who, f)` / `alert(who)` / `urgent(who)` (maps.js), `SPOTS` (places: `{id, map, at, icon(), run, quiet, nohint()}`) with `spotAt`, `runSpot`, `targets(f)` (hint.js), `waitsIn(map)`, `bag` (`list, has(id, {col, q, to}), add, take, icon`), `jobDone(id)`, `unlocked(id)`, `offer(id)`, `fl(id)` (an errand's saved flags, `G.state.flags['e_' + id]`), `parts(id)` (Misiones), `lost()`, `bowlEmpty()`, `tomasTired()`, `nicoFollows()`, `catTap(f)`, `guests()`, `photoCard(ids)`. It wraps `G.animals.tapped` (counting, the sound game, petting the horse) and `G.world.nameTile`. `G.animals.react(f, a)`, `G.ambient.wake(f)`, `G.drawAlert(ctx, al, x, y, t)` (a thought bubble), `G.choose({mic: true})` (a free choice with the mic). Saved: `G.state.bag`, `G.state.jobs`, `flags.e_<errand>`, `flags.e_picked`, `flags.e_gold`.
 - **Hooks** for scenes: `G.say(pages, {portrait, name, who})` shows `who`'s hearts over the portrait; a map NPC can draw itself with `n.drawSelf(ctx, cx, cy)` (true = drawn); `field.camShift` lifts the view (px).
 

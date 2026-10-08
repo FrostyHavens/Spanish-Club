@@ -34,6 +34,13 @@ Choice options are `{ word: id }`, drawn as picture plus blue word until learned
 
 Use a word in a sentence or on a notebook page first (that marks it *seen*), then ask about it soon after.
 
+## A Round B errand (`src/errands.js`)
+1. Its entry in `D.quests` / `D.questOrder` / `D.badgeOrder` (data.js), a badge in `BADGE_COL` / `BADGE_ICON` (learn.js), and its unlock rule in `UNLOCK`.
+2. `START[id]` (the giver's first talk: ends with `newQuest(id)`), `STEP[id](who, f)` (a generator returning true when it handled that person: an errand step), `REMIND[id](who)` (what the giver says meanwhile), `ALERT[id](who)` (their bubble for a step) and `OFFER_ICON[id]` (the giver's bubble while it's waiting to start). Keep its progress in `fl(id)` (saved in `G.state.flags`), finish with `finishQuest(id)`.
+3. Places to go are `SPOTS`: `{ id, map, at: [x, y], icon: () => picture or null when inactive, run: function* (f) {...} }` (a picture bubble over the tile; a tap walks there and runs it; `quiet: true` draws no bubble, `nohint()` keeps the hint hand away).
+4. Things to carry go in the bag: `B.add('carta', { q: id, to: 'casa' })` / `B.take(...)`; things without `q` can be given as presents.
+5. `parts(id)` lists its steps for Misiones. Every question is a `q(who, prompt, en, answer, pool)` (picture cards with the mic).
+
 ## A notebook page
 Add it to `D.pages` / `D.pageOrder` in `src/data.js`, then place it with `pages: { 'x,y': 'pageId' }` in a map definition. The tile sparkles until it's found by searching it.
 
@@ -75,6 +82,7 @@ Tapping it then does the rest: its reaction, the word bubble with its sound, the
 - A 3-heart secret of your own: `G.hearts.secrets.rosa = function* () { ... }`.
 - Canelo: `G.pet.knows('salta')`; `yield* G.pet.command('salta')` asks "¡Dile a Canelo!" and he does it; `yield* G.pet.play('fetch')` for any of his animations. A new trick: its word (with a picture) in `D.words`, an entry in `G.pet.TRICKS` (`{id, by, anim}`), and an animation case in `pose()`.
 - The album's gold star: `G.album.count('pato')`.
+- Who likes what as a present: `G.hearts.LIKES` (errands.js offers it when you carry it).
 
 ## A new screen
 Most play is on an iPad, so every screen works with taps as well as keys:

@@ -115,9 +115,10 @@
     // A thing with a word (world.js) carries it as `name`: it names itself when you get there. (Animals: update.)
     tapTarget(tap) {
       const T = G.TILE, wx = tap.x + Math.round(this.cam.x), wy = tap.y + Math.round(this.cam.y), tx = Math.floor(wx / T), ty = Math.floor(wy / T);
-      const talker = (x, y) => this.npcs.find(n => n.talk && n.spec && !n.hidden && n.x === x && n.y === y);
+      const ppl = this.npcs.filter(n => !n.ghost).concat(this.npcs.filter(n => n.ghost)); // (someone tagging along, a ghost, gives way)
+      const talker = (x, y) => ppl.find(n => n.talk && n.spec && !n.hidden && n.x === x && n.y === y);
       // a person where they are drawn (mid-step too, sliding between tiles), or `up` tiles above that (the head)
-      const drawn = up => this.npcs.find(n => n.talk && n.spec && !n.hidden && wx >= n.x * T + n.ox && wx < n.x * T + n.ox + T && wy >= (n.y - up) * T + n.oy && wy < (n.y - up + 1) * T + n.oy);
+      const drawn = up => ppl.find(n => n.talk && n.spec && !n.hidden && wx >= n.x * T + n.ox && wx < n.x * T + n.ox + T && wy >= (n.y - up) * T + n.oy && wy < (n.y - up + 1) * T + n.oy);
       const c = this.map.get(tx, ty);
       let n = drawn(0) || talker(tx, ty) || drawn(1) || talker(tx, ty + 1);
       if (!n && COUNTER.includes(c)) n = DIR4.map(d => talker(tx + G.DIRS[d][0], ty + G.DIRS[d][1])).find(Boolean);

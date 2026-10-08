@@ -1,5 +1,7 @@
-// Full tap-only playthrough on an iPad context: new game -> intro -> every errand -> sunset/evening -> fiesta -> diploma,
-// with a reload midway to confirm autosave. Taps only, choosing what to do next like the hint hand does.
+// Full tap-only playthrough on an iPad context: new game -> intro -> the Round A errands -> Canelo -> all eight Round B
+// errands (src/errands.js) -> sunset/evening -> the animal party -> diploma, with a reload midway to confirm autosave.
+// Taps only, choosing what to do next like the hint hand does (people with bubbles, errand places, animals to count or
+// find, a trick to practise with Canelo).
 //   NODE_PATH=$(npm root -g) node tools/test-playthrough.js [screenshot dir]
 'use strict';
 const { open, check, run } = require('./harness');
@@ -9,10 +11,15 @@ async function nextTap(g) {
   return g.ev(() => {
     const f = G.field, p = f.player, T = G.TILE, cx = Math.round(f.cam.x), cy = Math.round(f.cam.y), S = G.st, F = G.state.flags;
     const alerting = n => { try { return !!(n.alert && n.alert()); } catch (e) { return false; } };
-    const waits = id => { const m = G.maps[id]; return !!m && (m.npcs || []).some(n => (!n.cond || n.cond()) && alerting(n)); };
+    const waits = id => { const m = G.maps[id]; return !!m && ((m.npcs || []).some(n => (!n.cond || n.cond()) && alerting(n)) || G.errands.waitsIn(id)); };
     let tgt = null, why = '';
     const take = (x, y, w, kind) => { const d = Math.abs(x - p.x) + Math.abs(y - p.y); if (!tgt || d < tgt.d) { tgt = { x, y, d, kind }; why = w; } };
     for (const n of f.npcs) if (n.spec && !n.hidden && alerting(n)) take(n.x, n.y, 'npc ' + n.id, 'npc');
+    for (const t of G.errands.targets(f)) { // errand places, animals to count or find, the cat, Canelo to practise a trick
+      const kind = t.npc ? 'npc' : t.animal || t.cat ? 'animal' : 'search';
+      const tx = Math.floor(t.x / T), ty = Math.floor(t.y / T), d = Math.abs(tx - p.x) + Math.abs(ty - p.y);
+      if (!tgt || d < tgt.d) { tgt = { x: tx, y: ty, d, kind, wx: t.x, wy: t.y, animal: t.animal, cat: t.cat }; why = 'errand ' + (t.spot || t.animal || (t.cat && 'cat') || t.npc); }
+    }
     const home = G.day.homeDoor(f); if (home) take(home[0], home[1], 'home door (sunset)', 'exit');
     if (!tgt && f.mapId === 'villa' && S.active('pelota') && !F.pelotaRoja) {
       window.__searched = window.__searched || {};
@@ -22,6 +29,7 @@ async function nextTap(g) {
     if (!tgt && f.mapId !== 'villa') for (const ex of f.def.exits || []) if (ex.to === 'villa') take(ex.x, ex.y, 'back to town', 'exit');
     if (!tgt) return null;
     const on = (x, y) => x * T >= cx && (x + 1) * T <= cx + G.W && y * T >= cy + 32 && (y + 1) * T <= cy + G.H;
+    if (tgt.kind === 'animal' && on(tgt.x, tgt.y)) return { sx: Math.round(tgt.wx) - cx, sy: Math.round(tgt.wy) - cy, why, tile: [tgt.x, tgt.y], kind: tgt.kind, direct: true, animal: tgt.animal };
     if (on(tgt.x, tgt.y)) return { sx: tgt.x * T + 12 - cx, sy: tgt.y * T + 12 - cy, why, tile: [tgt.x, tgt.y], kind: tgt.kind, direct: true };
     // off screen: the visible plain tile nearest the target
     let best = null;
@@ -43,8 +51,16 @@ async function settle(g, what) {
     if (s.n === 'TodayCard') { if (!g.seen.has('TodayCard')) { await g.frames(150); await g.shot('hoy'); g.seen.add('TodayCard'); } await g.tap(160, 200); continue; }
     if (s.n === 'Night') { if (!g.seen.has('Night')) { await g.frames(60); await g.shot('night'); g.seen.add('Night'); } await g.frames(10); continue; }
     if (s.n === 'Field') { await g.frames(4); continue; }
+    if (s.n === 'PetMenu') { // Canelo's menu: practise the trick he's learning (the dog show needs it), else close it
+      const r = await g.ev(() => { const m = G.top(), k = m.cards().findIndex(c => c.st === 'learn'); return m.t > 12 ? (k >= 0 ? m.rect(k) : { close: m.closeXY() }) : null; });
+      if (!r) { await g.frames(4); continue; }
+      if (r.close) { await g.tapBtn(r.close); continue; }
+      await g.tapRect(r);
+      await g.drive(() => G.top().constructor.name === 'PetMenu' || (G.top() === G.field && !G.field.locked), 'practising a trick');
+      continue;
+    }
     if (s.n === 'Diploma' && !g.seen.has('Diploma')) { await g.frames(80); await g.shot('diploma'); }
-    await g.drive(() => { const t = G.top(); return t === G.field || ['TodayCard', 'Night'].includes(t.constructor.name); }, what);
+    await g.drive(() => { const t = G.top(); return t === G.field || ['TodayCard', 'Night', 'PetMenu'].includes(t.constructor.name); }, what);
   }
   throw new Error('never settled: ' + what);
 }
@@ -68,11 +84,13 @@ run('Full tap playthrough (iPad)', async browser => {
     check('play: intro done, free at home', await g.ev(() => G.state.flags.intro || G.field.mapId === 'casa'));
     await g.shot('home_free');
 
-    const shotsAt = {}; let reloaded = false, sunset = false;
-    for (let step = 0; step < 400; step++) {
+    const shotsAt = {}; let reloaded = false, sunset = false, lastDone = -1;
+    for (let step = 0; step < 3000; step++) {
       await settle(g, 'step ' + step);
-      const st = await g.ev(() => ({ map: G.field.mapId, q: Object.assign({}, G.state.quests), fiesta: G.st.done('fiesta') }));
+      const st = await g.ev(() => ({ map: G.field.mapId, q: Object.assign({}, G.state.quests), fiesta: G.st.done('fiestab') }));
       if (st.fiesta) break;
+      const nq = Object.keys(st.q).filter(k => st.q[k] === 'done').length;
+      if (nq !== lastDone) { lastDone = nq; console.log('    errands done: ' + Object.keys(st.q).filter(k => st.q[k] === 'done').join(' ') + ' (step ' + step + ')'); }
       if (!shotsAt[st.map]) { shotsAt[st.map] = 1; await g.frames(30); await g.shot('map_' + st.map); }
       const doneN = ['saludos', 'mercado', 'pelota', 'carta'].filter(k => st.q[k] === 'done').length;
       // reload midway: after two errands, on the map
@@ -100,12 +118,12 @@ run('Full tap playthrough (iPad)', async browser => {
       const t = await nextTap(g);
       if (!t) throw new Error('nothing to do on ' + st.map + ' quests ' + JSON.stringify(st.q));
       if (t.direct && t.kind === 'search') await g.ev(k => { window.__searched[k] = 1; }, t.tile.join(','));
-      if (step < 3 || step % 7 === 0) console.log('    tap', t.why, 'on', st.map);
+      if (step < 3 || step % 25 === 0) console.log('    tap', t.why, 'on', st.map);
       await g.tap(t.sx, t.sy);
       await g.until(() => G.top() !== G.field || G.field.locked || (!G.field.route && !G.field.player.moving), null, 'the walk', 30000);
     }
     await settle(g, 'the end');
-    check('play: the fiesta is done', await g.ev(() => G.st.done('fiesta')));
+    check('play: every errand is done, Round A and Round B, and the animal party', await g.ev(() => G.data.badgeOrder.every(G.st.done)), await g.ev(() => JSON.stringify(G.state.quests)));
     check('play: diploma seen', g.seen.has('Diploma'));
     await g.frames(30); await g.shot('end');
     check('play: no console errors', !g.errors.length, g.errors.join('\n'));
