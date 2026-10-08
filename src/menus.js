@@ -291,7 +291,7 @@
       } else if (r.id === 'dpad') { G.setDpad(!G.prefs.dpad); G.audio.sfx('ok'); }
       else if (r.id === 'speak') {
         if (r.off) { G.audio.sfx('error'); return; }
-        G.audio.setPref('mic', !r.on); G.mic.blocked = false; G.audio.sfx('ok');
+        G.audio.setPref('mic', !r.on); G.mic.blocked = false; G.mic.strikes = 0; G.audio.sfx('ok');
       }
       else if (r.id === 'mic') {
         if (r.off) { G.audio.sfx('error'); return; }

@@ -199,6 +199,12 @@ async function ipad(browser) {
     await ask(g, { prompt: '¡[no]!', layout: 'cards', choices: cards('si', 'no'), answer: 1, learn: 'no' });
     await choiceUp(g);
     await g.ev(() => { window.__c = G.top(); });
+    await speak(g, { error: 'audio-capture', delay: 50 });
+    await micIdle(g);
+    check('speak: a busy mic (audio-capture) just says ¡Otra vez! and stays', await g.ev(() => G.mic.on() && window.__c.mic.shown() && window.__c.mic.sad > 0));
+    await speak(g, { error: 'not-allowed', delay: 50 });
+    await micIdle(g);
+    check('speak: one refusal keeps the mic (iPad refuses now and then)', await g.ev(() => G.mic.on() && window.__c.mic.shown() && !G.mic.blocked));
     await speak(g, { error: 'not-allowed', delay: 50 });
     await g.until(() => G.mic.blocked && !window.__c.mic.listening(), null, 'the block');
     check('speak: a blocked mic hides the button at once (no error shown to the child)', await g.ev(() => !G.mic.on() && !window.__c.mic.shown() && !window.__c.won));
