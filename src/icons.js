@@ -236,10 +236,51 @@
       p.disc(8.5, 6.5, 6, '#40a838'); p.disc(4, 8.5, 3.2, '#40a838'); p.disc(13, 8.5, 3, '#40a838'); p.shade(8.5, 6.5, 6.5, '#2a7a28');
       p.put(6, 3, '#90e070'); p.put(5, 4, '#90e070'); p.put(7, 3, '#90e070');
     },
-    flor(p) {
+    flor(p, w) { // pink, unless the word or picture carries a colour (Lucía's flowers: {icon: 'flor', col})
+      const c = (w && w.col) || '#f070a8', mid = c === '#f8d030' ? '#e07818' : '#f8d030';
       p.rect(7, 9, 2, 7, '#38a040'); p.ell(4.5, 12.5, 2.5, 1.2, '#38a040'); p.ell(11.5, 13, 2.5, 1.2, '#38a040');
-      [[8, 2.5], [11.6, 5.3], [10.2, 9.3], [5.8, 9.3], [4.4, 5.3]].forEach(([x, y]) => p.disc(x, y, 2.4, '#f070a8'));
-      p.disc(8, 6.5, 2.2, '#f8d030'); p.put(7, 5, '#fff8c0');
+      [[8, 2.5], [11.6, 5.3], [10.2, 9.3], [5.8, 9.3], [4.4, 5.3]].forEach(([x, y]) => p.disc(x, y, 2.4, c));
+      p.disc(8, 6.5, 2.2, mid); p.put(7, 5, '#fff8c0');
+    },
+    // ----- pictures that aren't words (badges, the bag, Misiones) -----
+    canasta(p) { // a picnic basket with a red cloth
+      for (let a = Math.PI; a <= Math.PI * 2; a += 0.05) p.put(8 + Math.cos(a) * 5.5 - 0.5, 7 + Math.sin(a) * 5 - 0.5, '#8a5022');
+      p.rect(2, 7, 12, 7, '#c88a40'); p.rect(3, 14, 10, 1, '#8a5022');
+      for (let y = 8; y < 14; y += 2) p.rect(2, y, 12, 1, '#a86a28');
+      p.tri(2, 7, 9, 7, 4, 11, '#e03838'); p.put(4, 8, '#ffffff'); p.put(6, 7, '#ffffff');
+    },
+    cinta(p, w) { // a prize ribbon (its colour from w.col)
+      const c = (w && w.col) || '#3068e0';
+      p.tri(4, 9, 8, 9, 3, 16, c); p.tri(8, 9, 12, 9, 13, 16, c);
+      p.disc(8, 6, 5.5, c); p.disc(8, 6, 3.5, '#f8d030'); p.put(7, 5, '#fff8c0'); p.shade(8, 6, 5.5, G.shade ? G.shade(c, 0.75) : c);
+    },
+    nota(p) { // a music note
+      p.rect(9, 2, 2, 10, '#5a3a8a'); p.rect(11, 2, 3, 2, '#5a3a8a'); p.rect(13, 4, 1, 2, '#5a3a8a');
+      p.ell(7, 12.5, 3.4, 2.4, '#7a50c0'); p.put(6, 11, '#c0a0f0');
+      p.rect(1, 4, 1, 1, '#f8d030'); p.rect(3, 2, 1, 1, '#f8d030'); p.rect(2, 7, 1, 1, '#f8d030');
+    },
+    sobre(p) { // an envelope with wings
+      p.ell(3, 6, 3, 2, '#ffffff'); p.ell(13, 6, 3, 2, '#ffffff'); p.ell(2.5, 8, 2.5, 1.5, '#e0e8f8'); p.ell(13.5, 8, 2.5, 1.5, '#e0e8f8');
+      p.rect(4, 6, 8, 7, '#f8f0d8'); p.tri(4, 6, 12, 6, 8, 10, '#e8d8b0'); p.put(8, 9, '#e03838');
+    },
+    estrella(p) { // a gold star
+      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+        const dx = x + 0.5 - 8, dy = y + 0.5 - 8.5, a = Math.atan2(dy, dx), r = Math.hypot(dx, dy);
+        const k = Math.cos(5 * (a + Math.PI / 2)), lim = 3.6 + 3.8 * Math.max(0, k);
+        if (r <= lim) p.put(x, y, dy > 1 ? '#f0b020' : '#f8d838');
+      }
+      p.put(7, 5, '#fff8c0');
+    },
+    bolsa(p) { // a cloth bag
+      for (let a = Math.PI * 1.05; a <= Math.PI * 1.95; a += 0.05) p.put(8 + Math.cos(a) * 3.5 - 0.5, 6 + Math.sin(a) * 3.5 - 0.5, '#8a5022');
+      p.ell(8, 11, 6, 4.6, '#d89a50'); p.rect(4, 6, 8, 3, '#d89a50'); p.shade(8, 11, 6, '#b07030'); p.rect(4, 7, 8, 1, '#a86028'); p.put(6, 9, '#f8d8a0');
+    },
+    huella(p) { // a paw print on the ground
+      p.ell(8, 11, 3.6, 3, '#6a4020'); [[3.6, 6.8], [6.6, 4.6], [9.6, 4.6], [12.4, 6.8]].forEach(([x, y]) => p.ell(x, y, 1.5, 1.8, '#6a4020'));
+    },
+    cubeta(p) { // a pail of milk
+      p.rect(3, 6, 10, 9, '#a0a8b8'); p.rect(3, 6, 10, 2, '#e8ecf4'); p.rect(4, 7, 8, 1, '#ffffff'); p.shade(8, 10, 8, '#808898');
+      for (let a = Math.PI; a <= Math.PI * 2; a += 0.06) p.put(8 + Math.cos(a) * 5 - 0.5, 6 + Math.sin(a) * 4 - 0.5, '#606878');
     },
     fuente(p) {
       p.ell(8, 12.5, 7.5, 3, '#b8b8c8'); p.ell(8, 12, 6, 1.8, '#4a90e8'); p.rect(7, 6, 2, 6, '#b8b8c8'); p.ell(8, 6.5, 4, 1.4, '#b8b8c8'); p.ell(8, 6.2, 2.6, 0.8, '#4a90e8');

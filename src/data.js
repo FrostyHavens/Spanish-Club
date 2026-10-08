@@ -150,9 +150,20 @@
     mercado: { name: 'El mercado', en: 'The market: three apples and two bananas', giver: 'rosa', goal: [['manzana', 3], ['platano', 2]] },
     pelota: { name: 'La pelota roja', en: 'The red ball: find Sofía\'s ball', giver: 'sofia', goal: [['pelota', 1]] },
     carta: { name: 'La carta', en: 'The letter: take it to the bakery', giver: 'tomas', goal: [['carta', 1], '>', ['panaderia', 1]] },
-    fiesta: { name: 'La fiesta', en: 'The party at the school', giver: 'luna', goal: [['escuela', 1]] },
+    fiesta: { name: 'La fiesta', en: 'The party at the school (older games)', giver: 'luna', goal: [['escuela', 1]] },
+    // Round B: the story errands (src/errands.js; how they unlock: docs/ROUND_B_PLAN.md section 7)
+    canelo: { name: '¿Dónde está Canelo?', en: 'Where is Canelo? Follow the clues and find him', giver: 'mama', goal: [['perro', 1], ['pregunta', 1]] },
+    picnic: { name: 'El día de campo', en: 'Grandma Rosa\'s picnic: five foods from around town', giver: 'rosa', goal: [['pan', 1], ['queso', 1], ['huevo', 1], ['leche', 1], ['agua', 1]] },
+    show: { name: 'El show de perros', en: 'Sofía\'s dog show: teach Canelo three tricks, then show them', giver: 'sofia', goal: [['sientate', 1], ['pata', 1], ['salta', 1]] },
+    cuenta: { name: '¿Cuántos animales?', en: 'Count the animals of Villa Sol for Profesora Luna', giver: 'luna', goal: [['pato', 1], ['gallina', 1], ['caballo', 1], ['cabra', 1], ['conejo', 1], ['rana', 1], ['pez', 1]] },
+    sonidos: { name: '¿Qué dicen?', en: 'Nico\'s sound game: find the animal that makes each sound', giver: 'nico', goal: [['cuac', 1], ['croac', 1], ['bee', 1], ['miau', 1], ['guau', 1]] },
+    flores: { name: 'Las flores de Lucía', en: 'Lucía\'s flowers: a pink, a white and a yellow one for her mom', giver: 'lucia', goal: [[{ icon: 'flor', col: '#f878b8' }, 1], [{ icon: 'flor', col: '#f8f8f4' }, 1], [{ icon: 'flor', col: '#f8d030' }, 1]] },
+    cansado: { name: 'Tomás está cansado', en: 'Tomás is tired: deliver his three letters', giver: 'tomas', goal: [['carta', 1], '>', ['casa', 1], ['granja', 1], ['biblioteca', 1]] },
+    fiestab: { name: 'La fiesta de los animales', en: 'The animal party at the farm (the finale)', giver: 'luna', goal: [['hola', 5], '>', ['granja', 1]] },
   };
-  D.questOrder = ['saludos', 'mercado', 'pelota', 'carta', 'fiesta'];
+  // Misiones and the badge rows: Round A, then Round B. 'fiesta' (Round A's old ending) only shows in older games that have it.
+  D.questOrder = ['saludos', 'mercado', 'pelota', 'carta', 'canelo', 'picnic', 'show', 'cansado', 'cuenta', 'sonidos', 'flores', 'fiestab', 'fiesta'];
+  D.badgeOrder = ['saludos', 'mercado', 'pelota', 'carta', 'canelo', 'picnic', 'show', 'cansado', 'cuenta', 'sonidos', 'flores', 'fiestab'];
 
   // ---------- Player (chosen in the character creator at the start of a new game) ----------
   D.player = { name: 'Alex' };

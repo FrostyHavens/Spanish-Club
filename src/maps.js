@@ -13,8 +13,13 @@
   // Round B (hearts.js): the first talk of the day starts with their greeting, answered by voice or a tap (+1 heart),
   // and any 3- or 5-heart surprise that's due
   function* hello(who) { if (G.hearts) { yield* G.hearts.greet(who); yield* G.hearts.milestones(who); } }
-  // Round B (pet.js): the trick someone would teach Canelo now (its picture shows in their thought bubble)
-  const teaches = who => !!G.pet && G.pet.canTeach(who);
+  // Round B (errands.js): the story errands, the tricks someone teaches Canelo, presents and the shops. EA(who): their
+  // thought bubble from that (an errand step, a trick, a new errand, a present); ET(who, f): their part of a talk, true
+  // when it said something
+  const EA = who => (G.errands ? G.errands.alert(who) : false);
+  function* ET(who, f) { return !!G.errands && (yield* G.errands.talk(who, f)); }
+  const EU = who => (G.errands ? G.errands.urgent(who) : null); // an errand step that comes before Round A's lines
+  function* first(who, f) { return !!EU(who) && (yield* ET(who, f)); }
   function* ask(who, prompt, en, choices, answer, learn, extra = {}) {
     return yield* G.ask(Object.assign({ prompt, en, choices, answer, learn, who, layout: 'list' }, extra));
   }
@@ -64,25 +69,26 @@
     things: { areas: { escuelaArea: 'escuela', rosaArea: 'casa', casaArea: 'casa', panaderiaArea: 'panaderia', bibliotecaArea: 'biblioteca', granja: 'granja' } },
     npcs: [
       { id: 'pepe', npc: 'pepe', x: P('villa', 'pepe')[0], y: P('villa', 'pepe')[1], dir: 'down', fixed: true,
-        alert: () => !F().pepeSiNo ? true : S.active('mercado') && !F().compra ? [['manzana', 3], ['platano', 2]] : false,
-        talk: function* () { yield* hello('pepe'); yield* pepeTalk(); } },
+        alert: () => !F().pepeSiNo ? true : EU('pepe') || (S.active('mercado') && !F().compra ? [['manzana', 3], ['platano', 2]] : EA('pepe')),
+        talk: function* (f) { yield* hello('pepe'); yield* pepeTalk(f); } },
       { id: 'rosa', npc: 'rosa', x: 7, y: 7, dir: 'down', wander: 1,
-        alert: () => townOpen() && (!S.quest('mercado') ? true : F().compra && !S.done('mercado') ? [['manzana', 3], ['platano', 2]] : false),
-        talk: function* () { yield* hello('rosa'); yield* rosaTalk(); } },
+        alert: () => townOpen() && (EU('rosa') || !S.quest('mercado') ? EU('rosa') || true : F().compra && !S.done('mercado') ? [['manzana', 3], ['platano', 2]] : EA('rosa')),
+        talk: function* (f) { yield* hello('rosa'); yield* rosaTalk(f); } },
       { id: 'tomas', npc: 'tomas', x: 20, y: 12, dir: 'down', // his mail round (ambient.js): the plaza, beside the bakery door, Rosa's
         route: [[20, 12, 'down', 150], [28, 7, 'up', 120], [4, 7, 'up', 120]],
-        alert: () => townOpen() && (!S.quest('carta') ? 'carta' : F().cartaDada && !S.done('carta') ? true : false),
-        talk: function* () { yield* hello('tomas'); yield* tomasTalk(); } },
+        alert: () => townOpen() && (EU('tomas') || !S.quest('carta') ? EU('tomas') || 'carta' : F().cartaDada && !S.done('carta') ? true : S.active('carta') ? false : EA('tomas')),
+        talk: function* (f) { yield* hello('tomas'); yield* tomasTalk(f); } }, // (tired, he sits by the plaza bench: errands.js)
       { id: 'gomez', npc: 'gomez', x: 8, y: 11, dir: 'right', wander: 1,
-        alert: () => S.active('saludos') && !F().sal_gomez && 'hola', talk: function* () { yield* greet('gomez'); } },
+        alert: () => (S.active('saludos') && !F().sal_gomez && 'hola') || EA('gomez'), talk: function* (f) { yield* greet('gomez', f); } },
       { id: 'lucia', npc: 'lucia', x: 27, y: 12, dir: 'left', wander: 2,
-        alert: () => S.active('saludos') && !F().sal_lucia && 'hola', talk: function* () { yield* greet('lucia'); } },
-      { id: 'nico', npc: 'nico', x: 15, y: 15, dir: 'down', wander: 2,
-        alert: () => (S.active('saludos') && !F().sal_nico && 'hola') || teaches('nico'), talk: function* () { yield* greet('nico'); } },
+        alert: () => (S.active('saludos') && !F().sal_lucia && 'hola') || EA('lucia'), talk: function* (f) { yield* greet('lucia', f); } },
+      { id: 'nico', npc: 'nico', x: 15, y: 15, dir: 'down', wander: 2, follow: () => !!G.errands && G.errands.nicoFollows(), // (his sound game: he tags along)
+        alert: () => (S.active('saludos') && !F().sal_nico && 'hola') || EA('nico'), talk: function* (f) { yield* greet('nico', f); } },
       { id: 'sofia', npc: 'sofia', x: P('villa', 'sofia')[0], y: P('villa', 'sofia')[1], dir: 'down',
-        alert: () => townOpen() && (!S.quest('pelota') ? 'pelota' : F().pelotaRoja && !S.done('pelota') ? true : teaches('sofia')),
-        talk: function* () { yield* hello('sofia'); yield* sofiaTalk(); } },
+        alert: () => townOpen() && (EU('sofia') || !S.quest('pelota') ? EU('sofia') || 'pelota' : F().pelotaRoja && !S.done('pelota') ? true : EA('sofia')),
+        talk: function* (f) { yield* hello('sofia'); yield* sofiaTalk(f); } },
       { id: 'canelo', npc: 'canelo', x: 19, y: 9, dir: 'left', wander: 3, follow: () => F().canelo, // tags along once you've met
+        cond: () => !(G.errands && G.errands.lost()), // (not while he's lost: errands.js)
         talk: function* (f, n) { yield* caneloTalk(f, n); } },
     ],
     searches: {
@@ -103,10 +109,10 @@
   }
 
   // ---------- Errand 1: Saludos (recall: these words were met at home and at school) ----------
-  function* greet(who) {
+  function* greet(who, f) {
     if (!S.active('saludos') || F()['sal_' + who]) {
       yield* hello(who);
-      if (teaches(who)) { yield* G.pet.teach(G.pet.canTeach(who), who); return; }
+      if (yield* ET(who, f)) return;
       yield* say(who, { gomez: T('¡[hola], {name}!', 'Hi, {name}!'), lucia: T('¡[hola]! ¿[comoestas]?', 'Hi! How are you?'), nico: T('¡[hola]! ¡Al [parque]!', 'Hi! To the park!') }[who]);
       return;
     }
@@ -124,7 +130,7 @@
   }
 
   // ---------- Errand 2: El mercado (sí/no, fruit, numbers, por favor) ----------
-  function* pepeTalk() {
+  function* pepeTalk(f) {
     if (!F().pepeSiNo) {
       // Pepe teaches sí and no by holding up fruit
       yield* say('pepe', T('¡[hola]! ¡Fruta!', 'Hello! Fruit!'));
@@ -133,7 +139,9 @@
       yield* say('pepe', T('¡No! [naranja]. ¡Muy bien!', 'No! An orange. Very good!'));
       F().pepeSiNo = true;
     }
+    if (yield* first('pepe', f)) return;
     if (!S.active('mercado') || F().compra) {
+      if (yield* ET('pepe', f)) return;
       yield* say('pepe', S.done('mercado') ? T('¡[hola]! ¡[manzana:Manzanas], [uvas]...!', 'Hello! Apples, grapes...!') : T('¡Fruta! [manzana] [platano] [naranja] [uvas]', 'Fruit!'));
       return;
     }
@@ -150,15 +158,16 @@
     yield* say('pepe', T('¡De nada, amig{o/a}! ¡Y [uvas] para ti! ¡[adios]!', 'You\'re welcome, friend! And grapes for you! Goodbye!'));
     F().compra = true;
   }
-  function* rosaTalk() {
+  function* rosaTalk(f) {
     if (!townOpen()) { yield* say('rosa', T('¡[hola]! Mi [casa].', 'Hello! My house.')); return; }
+    if (yield* first('rosa', f)) return;
     if (!S.quest('mercado')) {
       yield* say('rosa', T('¡[hola], {name}! Mi [casa].', 'Hello, {name}! My house.'),
         T('[tres] [manzana:manzanas] y [dos] [platano:plátanos], ¿[porfavor]?', 'Three apples and two bananas, please?'));
       yield* newQuest('mercado');
       return;
     }
-    if (S.done('mercado')) { yield* say('rosa', T('¡Mmm! [manzana:Manzanas]. ¡[gracias]!', 'Mmm! Apples. Thank you!')); return; }
+    if (S.done('mercado')) { if (yield* ET('rosa', f)) return; yield* say('rosa', T('¡Mmm! [manzana:Manzanas]. ¡[gracias]!', 'Mmm! Apples. Thank you!')); return; }
     if (!F().compra) { yield* say('rosa', T('[tres] [manzana:manzanas] y [dos] [platano:plátanos], ¿[porfavor]?', 'Three apples and two bananas, please?'), T('Don Pepe: ¡la fruta!', 'Don Pepe has the fruit!')); return; }
     yield* say('rosa', T('¡La fruta!', 'The fruit!'));
     const c = G.wordChoices('dos', G.data.numberWords, 3, { text: true });
@@ -168,14 +177,15 @@
   }
 
   // ---------- Errand 3: La pelota roja (colors, through sí/no) ----------
-  function* sofiaTalk() {
+  function* sofiaTalk(f) {
     if (!townOpen()) { yield* say('sofia', T('¡[hola]! ¿Eres nuev{o/a}?', 'Hi! Are you new?')); return; }
+    if (yield* first('sofia', f)) return;
     if (!S.quest('pelota')) {
       yield* say('sofia', T('¡Ay! Mi [pelota]... Mi [pelota] [rojo:roja].', 'Oh no! My ball... My red ball.'));
       yield* newQuest('pelota');
       return;
     }
-    if (teaches('sofia') && !(F().pelotaRoja && !S.done('pelota'))) { yield* G.pet.teach(G.pet.canTeach('sofia'), 'sofia'); return; } // Round B: dame la pata, salta
+    if (!(F().pelotaRoja && !S.done('pelota')) && (yield* ET('sofia', f))) return; // Round B: dame la pata, salta, the dog show
     if (S.done('pelota')) { yield* say('sofia', T('¡Mi [pelota] [rojo:roja]! ¡[gracias]!', 'My red ball! Thanks!')); return; }
     if (!F().pelotaRoja) { yield* say('sofia', T('Mi [pelota] [rojo:roja]... ¿[porfavor]?', 'My red ball... please?')); return; }
     yield* say('sofia', T('¡Ah!', 'Oh!'));
@@ -196,14 +206,15 @@
   }
 
   // ---------- Errand 4: La carta (places, by picture signs) ----------
-  function* tomasTalk() {
+  function* tomasTalk(f) {
     if (!townOpen()) { yield* say('tomas', T('¡[hola]! Soy Tomás.', 'Hi! I\'m Tomás.')); return; }
+    if (yield* first('tomas', f)) return;
     if (!S.quest('carta')) {
       yield* say('tomas', T('¡[hola]! Una [carta]... para la [panaderia].', 'Hi! A letter... for the bakery.'), T('¿[porfavor]?', 'Please?'));
       yield* newQuest('carta');
       return;
     }
-    if (S.done('carta')) { yield* say('tomas', T('¡[gracias], {name}!', 'Thanks, {name}!')); return; }
+    if (S.done('carta')) { if (yield* ET('tomas', f)) return; yield* say('tomas', T('¡[gracias], {name}!', 'Thanks, {name}!')); return; }
     if (!F().cartaDada) { yield* say('tomas', T('La [carta]: ¡la [panaderia]!', 'The letter: the bakery!')); return; }
     const c = G.wordChoices('panaderia', ['panaderia', 'biblioteca', 'parque'], 3);
     yield* G.ask({ prompt: '¿La [carta]?', en: 'The letter? Where did it go?', show: 'carta', choices: c.choices, answer: c.answer, layout: 'cards', learn: ['panaderia', 'carta'], who: 'tomas' });
@@ -227,18 +238,19 @@
       } })],
     npcs: [
       { id: 'mama', npc: 'mama', x: P('casa', 'mama')[0], y: P('casa', 'mama')[1], dir: 'down', fixed: true,
-        alert: () => !F().intro || !!(G.day && G.day.over()) || !!(G.pet && G.pet.startReady()) || teaches('mama'),
+        alert: () => !F().intro || !!(G.day && G.day.over()) || !!(G.pet && G.pet.startReady()) || EA('mama'),
         talk: function* (f) {
           if (!F().intro) { yield* G.story.mamaIntro(); return; }
           if (G.day && G.day.over()) { yield* G.day.evening(f); return; } // already home when the sun went down
           yield* hello('mama');
           if (G.pet && G.pet.startReady()) { yield* G.pet.start(f); return; } // Round B: "¡Canelo es tu perro!"
-          if (teaches('mama')) { yield* G.pet.teach(G.pet.canTeach('mama'), 'mama'); return; }
-          if (S.done('fiesta')) yield* say('mama', T('¡{name}! ¡Muy bien!', '{name}! Well done!'));
+          if (yield* ET('mama', f)) return; // Round B: siéntate and ven; Canelo goes missing (errands.js)
+          if (S.done('fiestab') || S.done('fiesta')) yield* say('mama', T('¡{name}! ¡Muy bien!', '{name}! Well done!'));
           else yield* say('mama', T('La [escuela]. ¡Vamos!', 'The school. Off you go!'));
         } },
       // Canelo lives here too once he's yours: he follows you in, and sleeps on his cushion at night (pet.js)
-      { id: 'canelo', npc: 'canelo', x: 7, y: 5, dir: 'left', cond: () => !!(G.pet && G.pet.mine()),
+      { id: 'canelo', npc: 'canelo', x: 7, y: 5, dir: 'left', cond: () => !!(G.pet && G.pet.mine()) && !(G.errands && G.errands.lost()),
+        alert: () => !!G.errands && G.errands.caneloAlert(), // his bowl is empty (a side job, errands.js)
         follow: () => !!F().canelo && !(G.pet && G.pet.sleeping()), talk: function* (f, n) { yield* caneloTalk(f, n); } },
     ],
   };
@@ -250,14 +262,14 @@
     exits: [exitAt('escuela', 'escuelaDoor')],
     npcs: [
       { id: 'luna', npc: 'luna', x: P('escuela', 'luna')[0], y: P('escuela', 'luna')[1], dir: 'down', fixed: true,
-        alert: () => !S.quest('saludos') || (S.active('saludos') && greeted() === 3) || (allBadges() && !S.done('fiesta')),
-        talk: function* () { if (S.done('saludos')) yield* hello('luna'); yield* lunaTalk(); } },
-      { id: 'kid1', npc: 'nico', x: 3, y: 5, dir: 'up', cond: () => S.done('fiesta'), talk: [T('¡Fiesta!', 'Party!')] },
-      { id: 'kid2', npc: 'lucia', x: 9, y: 5, dir: 'up', cond: () => S.done('fiesta'), talk: [T('¡Muy bien, {name}!', 'Well done, {name}!')] },
-      { id: 'kid3', npc: 'sofia', x: 9, y: 7, dir: 'up', cond: () => S.done('fiesta'), talk: [T('¡Mi [pelota] [rojo:roja]!', 'My red ball!')] },
+        alert: () => !S.quest('saludos') || (S.active('saludos') && greeted() === 3) || EA('luna'),
+        talk: function* (f) { if (S.done('saludos')) yield* hello('luna'); yield* lunaTalk(f); } },
+      { id: 'kid1', npc: 'nico', x: 3, y: 5, dir: 'up', cond: () => S.done('fiesta') || S.done('fiestab'), talk: [T('¡Fiesta!', 'Party!')] },
+      { id: 'kid2', npc: 'lucia', x: 9, y: 5, dir: 'up', cond: () => S.done('fiesta') || S.done('fiestab'), talk: [T('¡Muy bien, {name}!', 'Well done, {name}!')] },
+      { id: 'kid3', npc: 'sofia', x: 9, y: 7, dir: 'up', cond: () => S.done('fiesta') || S.done('fiestab'), talk: [T('¡Mi [pelota] [rojo:roja]!', 'My red ball!')] },
     ],
   };
-  function* lunaTalk() {
+  function* lunaTalk(f) {
     if (!S.quest('saludos')) {
       yield* say('luna', T('¡[hola]! Soy Luna. ¡Bienvenid{o/a} a la [escuela]!', 'Hello! I\'m Luna. Welcome to the school!'));
       yield* ask('luna', '¿[comoestas]?', 'How are you?', words('manzana', 'bien', 'adios'), 1, ['comoestas', 'bien']);
@@ -273,9 +285,9 @@
       yield* finishQuest('saludos');
       return;
     }
+    if (yield* ET('luna', f)) return; // Round B: the animal count, the animal party (errands.js)
     if (!allBadges()) { yield* say('luna', T('¡Ayuda al pueblo!', 'Help the town!')); return; }
-    if (!S.done('fiesta')) { yield* G.story.fiesta(); return; }
-    // after the party: a replayable review that fills in the notebook
+    // once the Round A errands are done: a replayable review that fills in the notebook (the party is errands.js's finale)
     const left = Object.keys(G.data.words).filter(id => !S.knows(id)).length;
     if (!left) { yield* say('luna', T('¡[hola], {name}! ¡Todo el cuaderno!', 'Hi, {name}! You learned the whole notebook!')); return; }
     yield* say('luna', T('¡[hola], {name}!', 'Hi, {name}!'));
@@ -300,8 +312,8 @@
     exits: [exitAt('panaderia', 'panaderiaDoor')],
     npcs: [
       { id: 'marta', npc: 'marta', x: P('panaderia', 'marta')[0], y: P('panaderia', 'marta')[1], dir: 'down', fixed: true,
-        alert: () => S.active('carta') && !F().cartaDada && 'carta',
-        talk: function* () {
+        alert: () => (S.active('carta') && !F().cartaDada && 'carta') || EA('marta'),
+        talk: function* (f) {
           yield* hello('marta');
           if (S.active('carta') && !F().cartaDada) {
             yield* say('marta', T('¿Una [carta]? ¡Para mí!', 'A letter? For me!'));
@@ -311,6 +323,7 @@
             F().cartaDada = true;
             return;
           }
+          if (yield* ET('marta', f)) return; // Round B: the picnic's bread, the shop (errands.js)
           yield* say('marta', T('¡[hola]! ¡[pan]!', 'Hello! Bread!'));
         } },
     ],
@@ -323,9 +336,11 @@
     pages: { '2,1': 'pueblo' }, things: {},
     npcs: [
       { id: 'ines', npc: 'ines', x: P('biblioteca', 'ines')[0], y: P('biblioteca', 'ines')[1], dir: 'down', fixed: true,
-        talk: function* () {
+        alert: () => EA('ines'),
+        talk: function* (f) {
           yield* hello('ines');
           if (S.active('carta') && !F().cartaDada) { yield* say('ines', T('Shhh... ¿Una [carta]? [no], [no]. La [biblioteca].', 'Shhh... A letter? No, no. This is the library.'), T('La [panaderia]: ¡[pan]!', 'The bakery has bread!')); return; }
+          if (yield* ET('ines', f)) return; // Round B: Tomás's letter (errands.js)
           yield* say('ines', T('Shhh... La [biblioteca].', 'Shhh... The library.'));
         } },
     ],

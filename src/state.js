@@ -28,6 +28,8 @@
       hearts: {},         // Round B (hearts.js): npc -> 0..5
       heartlog: {},       // Round B (hearts.js): today's hearts {d: 'YYYY-M-D', n, all, why}
       friends: {},        // Round B (hearts.js): npc -> {m3: secret + sticker given, m5: best-friend photo}
+      bag: { items: [] }, // Round B (errands.js): what you carry: [{id: word id, col: colour word id (flowers), q: errand it belongs to, to: where (letters)}]
+      jobs: {},           // Round B (errands.js): side job id -> 'YYYY-M-D' it was last done (once a day each)
     };
   }
   function devicePrefs(s) {

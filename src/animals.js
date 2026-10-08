@@ -92,7 +92,7 @@
     caballo: { pal: { b: '#a0602c', d: '#844a20', m: '#3a2010', w: '#f0e0c8', e: '#101010', h: '#4a3020' },
       stand: ['................mm..', '...............mbb..', '..............mbbeb.', '..............mbbbbb', '.............mbbb.wb', '............mbbb....', '.mbbbbbbbbbbbbbb....', 'mmbbbbbbbbbbbbbd....', 'm.bbbbbbbbbbbbbd....', 'm.dbbbbbbbbbbbd.....', '..db.db....bd.db....', '..db.db....bd.db....', '..db.db....bd.db....', '..hh.hh....hh.hh....'],
       graze: ['....................', '....................', '....................', '....................', '....................', '.mbbbbbbbbbbbbb.....', 'mmbbbbbbbbbbbbbbm...', 'm.bbbbbbbbbbbbbbbm..', 'm.dbbbbbbbbbbbd.bbm.', '..db.db....bd.db.bbb', '..db.db....bd.db.bebb', '..db.db....bd.db..bwb', '..db.db....bd.db.....', '..hh.hh....hh.hh.....'],
-      rear: ['..............mm....', '.............mbb....', '............mbbeb...', '............mbbbbb..', '...........mbbb.wb..', '..........mbbbb.....', '........bbbbbbbd....', '......bbbbbbbbbd.d..', '....mbbbbbbbbb.db...', '...mmbbbbbbbbd..b...', '..m.bbbbbbdd........', '..m.db.db...........', '....db.db...........', '....hh.hh...........'] },
+      rear: ['..............mm....', '.............mbb....', '............mbbeb...', '............mbbbbb..', '...........mbbb.wb..', '..........mbbbb.....', '........bbbbbbbd....', '......bbbbbbbbbbdb..', '....mbbbbbbbbbb..db.', '...mmbbbbbbbbdb..hh.', '..m.bbbbbbdd...db...', '..m.db.db......hh...', '....db.db...........', '....hh.hh...........'] },
     cabra: { pal: { w: '#ece8e0', s: '#c8c2b6', h: '#8a7a60', e: '#201008', y: '#f0c040', p: '#d8a8a8', k: '#4a4038' },
       stand: ['.........h.h.', '..........hh.', '.........wwww', '..ww....wwwye', '.wwwwwwwwwwwp', 'wwwwwwwwwwsww', '.wwwwwwwwws.w', '.swwwwwwwss..', '..w.w...w.w..', '..w.w...w.w..', '..k.k...k.k..'],
       graze: ['.............', '.............', '.............', '..ww.........', '.wwwwwwwwwh.h', 'wwwwwwwwwwwhh', '.wwwwwwwwwwww', '.swwwwwwwswye', '..w.w...w.wwp', '..w.w...w.w.w', '..k.k...k.k..'],
@@ -409,5 +409,6 @@
   AN.find = function (kind, f) { f = f || G.field; if (!f) return null; if (!f.zoo) setup(f); return f.zoo.list.find(a => a.kind === kind && !a.baby) || null; };
   AN.screen = function (a, f) { f = f || G.field; const img = frameOf(a); return [a.x - Math.round(f.cam.x), a.y - a.z - img.height / 2 - Math.round(f.cam.y)]; };
   AN.sheet = SPR; // the pictures, for tools
+  AN.react = react; // its reaction to a tap, without the naming (errands.js: counting, the sound game)
   AN.frame = frameOf;
 })();

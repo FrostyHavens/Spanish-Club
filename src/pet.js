@@ -245,7 +245,7 @@
     ctx.fillStyle = '#c04040'; ctx.beginPath(); ctx.ellipse(x + 12, y + 16, 11, 6, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#f0dcb8'; ctx.beginPath(); ctx.ellipse(x + 12, y + 17, 8, 4, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#e06060'; ctx.fillRect(x + 4, y + 11, 6, 1);
-    const [wx, wy] = P.BOWL; drawBowl(ctx, wx * T - cx + 12, wy * T - cy + 18, 'agua', 1);
+    const [wx, wy] = P.BOWL; drawBowl(ctx, wx * T - cx + 12, wy * T - cy + 18, 'agua', G.errands && G.errands.bowlEmpty() ? 0 : 1); // (errands.js: empty until you fill it, once a day)
   };
 
   // ---------- each frame (field.js) ----------

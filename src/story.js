@@ -37,40 +37,45 @@
     }
   };
 
-  // ---------- La fiesta: a review game, then the diploma ----------
-  ST.fiesta = function* () {
-    yield* say('luna', T('¡{name}! ¡Muy bien! ¡Fiesta!', '{name}! Well done! Party time!'), T('¿List{o/a}? ¡[uno], [dos], [tres], [cuatro], [cinco]!', 'Ready? A game first: five questions!'));
-    yield* ST.review(5);
-    yield* say('luna', T('¡Bravo, {name}!', 'Bravo, {name}!'));
-    S.finishQuest('fiesta');
-    yield G.badge('fiesta');
-    G.audio.play('victory');
-    yield ST.diploma();
-    G.audio.play('town', true);
-    yield G.fadeTo(1, 0.06);
-    G.goto('escuela', 6, 4, 'down');
-  };
-
   // ---------- Diploma ----------
+  // The end of the game (errands.js: after the animal party): everything the child did, on one page. Words learned,
+  // stars, speaking stars, animals met (the album), and a badge for every errand (a faint ring for one not done yet).
   class Diploma {
     constructor(w) { G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; }
     update() { this.t++; if (this.t > 60 && (G.input.p('A') || G.input.p('B') || G.input.tap())) { G.pop(); this.w.resolve(); } }
     draw(ctx) {
-      const x = 24, y = 14, w = G.W - 48, h = G.H - 28;
+      const x = 24, y = 10, w = G.W - 48, h = G.H - 20, cx = G.W / 2;
       ctx.fillStyle = '#5a3810'; ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
       ctx.fillStyle = '#f8f0d0'; ctx.fillRect(x, y, w, h);
       ctx.strokeStyle = '#c09040'; ctx.strokeRect(x + 4.5, y + 4.5, w - 9, h - 9);
-      G.bigText(ctx, 'DIPLOMA', G.W / 2, y + 18, 2, '#a05020', null);
-      G.textC(ctx, 'Club de Español', G.W / 2, y + 34, '#604020', null);
-      G.bigText(ctx, G.st.playerName(), G.W / 2, y + 58, 2, '#203080', null);
-      ctx.fillStyle = '#5a3810'; ctx.fillRect(x + 15, y + 15, 54, 54); G.drawPortrait(ctx, G.st.playerSpec().portrait, x + 16, y + 16, this.t);
-      G.drawIcon(ctx, 'book', G.W / 2 - 70, y + 76); G.text(ctx, String(G.st.learnedCount()), G.W / 2 - 42, y + 82, '#604020', null);
-      G.text(ctx, '\u0005 ' + G.state.stars, G.W / 2 + 26, y + 82, '#c08010', null);
-      const said = G.st.micStars(); if (said) { G.mic.glyph(ctx, G.W / 2 + 62, y + 81, '#2a8a9a'); G.text(ctx, String(said), G.W / 2 + 72, y + 82, '#2a8a9a', null); } // speaking stars
-      ['saludos', 'mercado', 'pelota', 'carta', 'fiesta'].forEach((id, k) => G.drawBadge(ctx, id, G.W / 2 - 92 + k * 40, y + 108, this.t + k * 15));
-      G.textC(ctx, 'Luna', G.W / 2 + 50, y + h - 24, '#203080', null);
-      ctx.fillStyle = '#806040'; ctx.fillRect(G.W / 2 + 14, y + h - 14, 72, 1);
-      if (G.enVisible()) G.textC(ctx, 'Words learned and stars earned', G.W / 2, y + 96, '#a07030', null);
+      G.bigText(ctx, 'DIPLOMA', cx + 20, y + 16, 2, '#a05020', null);
+      G.textC(ctx, 'Club de Español', cx + 20, y + 32, '#604020', null);
+      G.bigText(ctx, G.st.playerName(), cx + 20, y + 50, 2, '#203080', null);
+      ctx.fillStyle = '#5a3810'; ctx.fillRect(x + 11, y + 11, 54, 54); G.drawPortrait(ctx, G.st.playerSpec().portrait, x + 12, y + 12, this.t);
+      const S = G.st, animals = G.animals ? G.animals.list().filter(G.animals.met).length : 0, all = G.animals ? G.animals.list().length : 11;
+      if (S.done('fiestab')) G.textC(ctx, G.fill('¡Amig{o/a} de los animales!'), cx + 20, y + 68, '#c03030', null);
+      // words learned, stars, speaking stars, animals met
+      const row = y + 84, items = [['book', S.learnedCount()], ['star', G.state.stars], ['mic', S.micStars()], ['pata', animals + '/' + all]];
+      items.forEach(([ic, n], k) => {
+        const ix = x + 14 + k * 66;
+        if (ic === 'book') G.drawIcon(ctx, 'book', ix, row - 6);
+        else if (ic === 'star') G.text(ctx, '\u0005', ix + 6, row, '#c08010', null);
+        else if (ic === 'mic') G.mic.glyph(ctx, ix + 6, row - 1, '#2a8a9a');
+        else G.drawIcon16(ctx, 'pata', ix + 2, row - 5);
+        G.text(ctx, String(n), ix + 24, row, ic === 'mic' ? '#2a8a9a' : ic === 'star' ? '#c08010' : '#604020', null);
+      });
+      // a badge for every errand
+      const ids = G.data.badgeOrder.concat(S.done('fiesta') ? ['fiesta'] : []), per = Math.min(22, Math.floor((w - 16) / ids.length)), bx = cx - (ids.length * per) / 2 + (per - 16) / 2;
+      ids.forEach((id, k) => {
+        if (S.done(id)) G.drawBadge(ctx, id, bx + k * per, y + 106, this.t + k * 12);
+        else { ctx.strokeStyle = '#d8c8a0'; ctx.beginPath(); ctx.arc(bx + k * per + 8, y + 114, 9, 0, Math.PI * 2); ctx.stroke(); }
+      });
+      // best friends
+      const best = G.hearts ? G.hearts.WHO.filter(n => G.hearts.best(n)) : [];
+      best.slice(0, 8).forEach((n, k) => { ctx.fillStyle = '#5a3810'; ctx.fillRect(x + 13 + k * 22, y + h - 37, 20, 20); G.hearts.face(ctx, n, x + 14 + k * 22, y + h - 36, 18, this.t); });
+      G.textC(ctx, 'Luna', cx + 70, y + h - 24, '#203080', null);
+      ctx.fillStyle = '#806040'; ctx.fillRect(cx + 34, y + h - 14, 72, 1);
+      if (G.enVisible()) G.textC(ctx, 'Words, stars, speaking stars, animals; a badge per errand', cx, y + 136, '#a07030', null);
     }
   }
   ST.diploma = function () { const w = new G.Wait(); G.push(new Diploma(w)); return w; };

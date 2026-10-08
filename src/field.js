@@ -127,7 +127,7 @@
       if (door) return { exit: true, x: door.x, y: door.y }; // the wall or sign around a door, the dark just outside one
       const pg = (this.def.pages || {})[key(tx, ty)];
       const name = G.world ? G.world.wordAt(this, tx, ty) : null;
-      const special = !!((pg && !G.st.hasPage(pg)) || (this.def.searches || {})[key(tx, ty)]); // these win over an animal on them
+      const special = !!((pg && !G.st.hasPage(pg)) || (this.def.searches || {})[key(tx, ty)] || (G.errands && G.errands.spotAt(this, tx, ty))); // these win over an animal on them
       if (special || THING.includes(c)) return { search: true, x: tx, y: ty, name, special };
       if (name) return this.blocked(tx, ty, this.player) && !(this.player.x === tx && this.player.y === ty) ? { search: true, x: tx, y: ty, name } : { x: tx, y: ty, name };
       return { x: tx, y: ty };
@@ -186,6 +186,8 @@
     }
     *search(fx, fy) {
       if (fx === undefined) [fx, fy] = this.facing();
+      const sp = G.errands && G.errands.spotAt(this, fx, fy); // a place an errand sends you (errands.js)
+      if (sp) { yield* G.errands.runSpot(this, sp); return; }
       const pg = (this.def.pages || {})[key(fx, fy)];
       if (pg && !G.st.hasPage(pg)) { yield* G.findPage(pg); return; }
       const k = this.mapId + ':' + key(fx, fy);
@@ -240,6 +242,7 @@
       if (G.pet) G.pet.update(this); // Canelo, your dog: his tricks and his bed (pet.js)
       if (G.hearts) G.hearts.update(this); // friends call you by name as you pass (hearts.js)
       if (G.animals) G.animals.update(this); // ducks, hens, the fish, the frog, the rabbit, the horse, the goat (animals.js)
+      if (G.errands) G.errands.update(this); // Round B errands: who stands where, Canelo lost, Nico tagging along (errands.js)
       const ct = this.camTarget(); this.cam.x += (ct.x - this.cam.x) * 0.3; this.cam.y += (ct.y - this.cam.y) * 0.3;
       if (Math.abs(ct.x - this.cam.x) < 0.5) this.cam.x = ct.x; if (Math.abs(ct.y - this.cam.y) < 0.5) this.cam.y = ct.y;
       if (this.banner) this.banner.t--;
@@ -277,6 +280,7 @@
       if (G.ambient) G.ambient.draw(this, ctx, 'ground'); // birds on the ground, shadows
       if (G.animals) G.animals.draw(this, ctx, 'ground'); // lily pads, ripples, swimmers, shadows
       if (G.pet) G.pet.drawUnder(this, ctx); // Canelo's cushion and bowl at home
+      if (G.errands) G.errands.drawUnder(this, ctx); // Lucía's flowers, the picnic blanket, the party ribbons (errands.js)
       const ents = this.npcs.filter(n => n.spec && !n.hidden).concat([this.player]);
       const zoo = G.animals ? G.animals.ents(this) : []; // land animals, drawn in order with the people
       for (const e of ents.concat(zoo).sort((a, b) => (a.sy != null ? a.sy : a.y * T + a.oy) - (b.sy != null ? b.sy : b.y * T + b.oy))) {
@@ -293,21 +297,10 @@
       if (G.hearts) G.hearts.drawTop(this, ctx); // a friend's hearts rising
       if (G.day) G.day.drawField(ctx, this, cx, cy); // the sunset (over the critters too), lit windows, the moon over home (day.js)
       // "!" bubbles over people who have something for the player (kids always know where to go next)
+      if (G.errands) G.errands.drawTop(this, ctx); // Round B errands: picture bubbles over places to go (errands.js)
       for (const e of ents) {
         const al = e.alert && e.alert(); if (!al) continue;
-        // a thought bubble with a picture of what they want (or "!" when it's just "come talk")
-        const bob = Math.round(Math.sin(this.t / 8) * 2), ex = Math.round(e.x * T + e.ox - cx), ey = Math.round(e.y * T + e.oy - cy);
-        if (al === true) {
-          G.win(ctx, ex + 7, ey - 16 + bob, 11, 13, { fill1: '#f8f0c0', fill2: '#f8d860', alpha: 1 });
-          G.text(ctx, '!', ex + 11, ey - 13 + bob, '#c02020', null);
-        } else {
-          const goal = Array.isArray(al) ? al : [[al, 1]];
-          const gw = G.goalWidth(goal);
-          const bw = gw + 8, bx = ex + 12 - bw / 2, by = ey - 26 + bob;
-          G.win(ctx, bx, by, bw, 22, { fill1: '#ffffff', fill2: '#e8e8f0', alpha: 1 });
-          ctx.fillStyle = '#ffffff'; ctx.fillRect(ex + 10, by + 21, 3, 2); ctx.fillRect(ex + 11, by + 23, 1, 1);
-          G.drawGoal(ctx, goal, bx + 4, by + 3);
-        }
+        G.drawAlert(ctx, al, Math.round(e.x * T + e.ox - cx), Math.round(e.y * T + e.oy - cy), this.t);
       }
       if (G.world) G.world.draw(this, ctx); // the word bubble of a thing just named, and its say-it-back mic
       if (this.banner && G.top() !== this) this.banner.t = Math.min(this.banner.t, 0); // a talk or a card opened over the map: the name has done its job
@@ -319,9 +312,26 @@
         G.textC(ctx, this.banner.text, G.W / 2 + (ic ? 10 : 0), 17, '#f8e060'); ctx.globalAlpha = 1;
       }
       if (!this.locked && G.top() === this) G.iconBtn(ctx, 'menu', ...HUD);
+      if (G.errands) G.errands.drawHud(this, ctx); // what you carry, Luna's clipboard (errands.js)
     }
   }
   G.Field = Field;
+  // a thought bubble over a person or a place (ex, ey: the top-left of its tile on screen): "!" (al === true) or the
+  // picture(s) of what they want (a word id, or a goal like [['manzana', 3]])
+  G.drawAlert = function (ctx, al, ex, ey, t) {
+    const bob = Math.round(Math.sin(t / 8) * 2);
+    if (al === true) {
+      G.win(ctx, ex + 7, ey - 16 + bob, 11, 13, { fill1: '#f8f0c0', fill2: '#f8d860', alpha: 1 });
+      G.text(ctx, '!', ex + 11, ey - 13 + bob, '#c02020', null);
+      return;
+    }
+    const goal = Array.isArray(al) ? al : [[al, 1]];
+    const gw = G.goalWidth(goal);
+    const bw = gw + 8, bx = ex + 12 - bw / 2, by = ey - 26 + bob;
+    G.win(ctx, bx, by, bw, 22, { fill1: '#ffffff', fill2: '#e8e8f0', alpha: 1 });
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(ex + 10, by + 21, 3, 2); ctx.fillRect(ex + 11, by + 23, 1, 1);
+    G.drawGoal(ctx, goal, bx + 4, by + 3);
+  };
   // found a notebook page: open the notebook right at it
   G.findPage = function* (id) {
     G.audio.jingle('item');

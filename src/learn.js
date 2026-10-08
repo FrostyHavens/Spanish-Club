@@ -107,7 +107,8 @@
       opts = Object.assign({}, opts, { prompt: G.fill(opts.prompt), en: G.fill(opts.en), choices: opts.choices.map(c => c.label ? Object.assign(c, { label: G.fill(c.label) }) : c) });
       this.transparent = true; this.o = opts; this.w = w; this.t = 0; this.i = 0; this.won = null; this.miss = null;
       this.ch = opts.choices; this.cards = opts.layout === 'cards';
-      const word = opts.answer != null && opts.onWrong && !opts.noMic && this.ch[opts.answer] && this.ch[opts.answer].word;
+      // (opts.mic: a free choice, no right answer, like the shops in errands.js: saying any choice picks it, with a star)
+      const word = (opts.answer != null && opts.onWrong && !opts.noMic && this.ch[opts.answer] && this.ch[opts.answer].word) || (opts.mic && opts.answer == null && this.ch.some(c => c.word));
       this.mic = word && G.mic && G.mic.on() ? new G.MicBtn(this, { rect: () => this.micRect(), ready: () => !this.won && this.t > 8 && (!this.miss || this.miss.t > 8), heard: a => this.heard(a) }) : null;
       while (this.ch[this.i] && this.ch[this.i].off) this.i++;
       G.richIds(opts.prompt || '').forEach(id => S().see(id));
@@ -145,7 +146,10 @@
       const o = this.o, c = this.ch[k], R = this.rects(), r = R[k];
       if (c.off) { G.audio.sfx('boop'); return; }
       this.i = k;
-      if (o.answer == null || (k !== o.answer && !o.onWrong)) { G.pop(); this.w.resolve(k); return; }
+      if (o.answer == null || (k !== o.answer && !o.onWrong)) {
+        if (spoken && c.word && this.mic) { const m = this.micRect(); this.mic.win(); G.mic.award(c.word, m.x + m.w / 2, m.y + m.h / 2); G.fx.say('¡Bien dicho!', r.x + r.w / 2, r.y - 12, '#a8f0ff', true); }
+        G.pop(); this.w.resolve(k); return;
+      }
       const x = r.x + r.w / 2, y = (this.cards ? r.y : R[0].y - 4) - 12; // just above the card (or the list)
       if (k === o.answer) { // resolved now; the scene stays up for the pop, then closes itself (see update)
         this.won = { k, t: 0, spoken: !!spoken }; this.w.resolve(k);
@@ -284,8 +288,10 @@
       if (G.enVisible()) G.textC(ctx, q.en, G.W / 2, y + 84, '#f8d8a0');
     }
   }
-  const BADGE_COL = { saludos: '#e85060', mercado: '#e89030', pelota: '#3a78e0', carta: '#40a848', fiesta: '#b050d0' };
-  const BADGE_ICON = { saludos: 'hola', mercado: 'manzana', pelota: 'pelota', carta: 'carta', fiesta: 'sol' };
+  const BADGE_COL = { saludos: '#e85060', mercado: '#e89030', pelota: '#3a78e0', carta: '#40a848', fiesta: '#b050d0',
+    canelo: '#b87038', picnic: '#e05a30', show: '#3a56c8', cansado: '#2a9a9a', cuenta: '#8a50c8', sonidos: '#e0a020', flores: '#e060a0', fiestab: '#c03030' };
+  const BADGE_ICON = { saludos: 'hola', mercado: 'manzana', pelota: 'pelota', carta: 'carta', fiesta: 'sol',
+    canelo: 'pata', picnic: 'canasta', show: 'cinta', cansado: 'sobre', cuenta: 'diez', sonidos: 'nota', flores: 'flor', fiestab: 'estrella' };
   G.drawBadge = function (ctx, id, x, y, t, scale = 1) {
     const s = 16 * scale, col = BADGE_COL[id] || '#888';
     ctx.fillStyle = '#201008'; ctx.beginPath(); ctx.arc(x + s / 2, y + s / 2, s / 2 + 3 * scale, 0, Math.PI * 2); ctx.fill();
