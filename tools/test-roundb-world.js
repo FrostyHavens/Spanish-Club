@@ -74,7 +74,7 @@ async function ipad(browser) {
   const { ctx, g } = await openFake(browser, 'rb-world', true);
   try {
     // a duck on the farm pond
-    await town(g, 39, 19, 'down');
+    await town(g, 36, 20, 'right'); // (beside the duck pond)
     const live = await g.ev(() => G.animals.here().map(a => a.kind));
     check('animals: ducks, hens, the fish, the frog, the rabbit, the horse and the goat live in Villa Sol', ['pato', 'gallina', 'pez', 'rana', 'conejo', 'caballo', 'cabra'].every(k => live.includes(k)), live.join(','));
     await g.shot('farm');

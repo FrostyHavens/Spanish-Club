@@ -220,7 +220,7 @@
     if (f.mapId !== 'villa') return out;
     // the dog show: a trick to practise with Canelo
     const dog = G.pet && G.pet.npc(f);
-    if (S.active('show') && dog && G.pet.learning() && ['sientate', 'pata', 'salta'].includes(G.pet.learning())) out.push({ x: dog.x * T + 12, y: dog.y * T + 12, npc: 'canelo' });
+    if (S.active('show') && !showReady() && dog && G.pet.learning()) out.push({ x: dog.x * T + 12, y: dog.y * T + 12, npc: 'canelo' });
     if (S.active('cuenta') && !countDone() && G.animals) {
       for (const [k, n] of E.COUNT) if (counted(k) < n) {
         if (k === 'pez') continue; // (the fountain's own bubble)
@@ -676,6 +676,7 @@
   }
   function* partySpot(f) {
     yield* fade(1);
+    if (f.partyWait) { unstage(f, f.partyWait); f.partyWait = null; } // (everyone back where they were, then onto the stage)
     const p = f.player, dog = G.pet.npc(f);
     p.x = 40; p.y = 8; p.dir = 'up'; p.ox = p.oy = 0;
     if (dog) { dog.x = 41; dog.y = 8; dog.ox = dog.oy = 0; dog.dir = 'up'; }
@@ -960,7 +961,7 @@
     },
     cuenta: who => (who === 'luna' && countDone() ? true : null),
     sonidos: () => null, // (Nico walks with you and makes the sound again now and then)
-    flores: who => (who !== 'lucia' ? null : !wishLeft().length ? true : wishLeft().map(c => [flowerPic(c), 1])),
+    flores: who => (who === 'lucia' && !wishLeft().length ? true : null), // (the flowers she still wants shine around town)
     fiestab: who => (INVITE.includes(who) && invited() < 5 && !fb().inv[who] ? 'carta' : null),
   };
   // an errand step that should come before someone's Round A lines (Tomás's clue while his letter errand waits...)

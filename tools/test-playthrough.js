@@ -84,10 +84,10 @@ run('Full tap playthrough (iPad)', async browser => {
     check('play: intro done, free at home', await g.ev(() => G.state.flags.intro || G.field.mapId === 'casa'));
     await g.shot('home_free');
 
-    const shotsAt = {}; let reloaded = false, sunset = false, lastDone = -1;
+    const shotsAt = {}; let reloaded = false, sunset = false, lastDone = -1, lastWhy = '', same = 0;
     for (let step = 0; step < 3000; step++) {
       await settle(g, 'step ' + step);
-      const st = await g.ev(() => ({ map: G.field.mapId, q: Object.assign({}, G.state.quests), fiesta: G.st.done('fiestab') }));
+      const st = await g.ev(() => ({ map: G.field.mapId, q: Object.assign({}, G.state.quests), fiesta: G.data.badgeOrder.every(G.st.done) })); // (the party can come before the 7th errand: play on until all are done)
       if (st.fiesta) break;
       const nq = Object.keys(st.q).filter(k => st.q[k] === 'done').length;
       if (nq !== lastDone) { lastDone = nq; console.log('    errands done: ' + Object.keys(st.q).filter(k => st.q[k] === 'done').join(' ') + ' (step ' + step + ')'); }
@@ -96,7 +96,7 @@ run('Full tap playthrough (iPad)', async browser => {
       // reload midway: after two errands, on the map
       if (doneN >= 2 && !reloaded) {
         reloaded = true;
-        const before = await g.ev(() => ({ map: G.field.mapId, x: G.field.player.x, y: G.field.player.y, q: JSON.stringify(G.state.quests), stars: G.state.stars, name: G.state.name }));
+        const before = await g.ev(() => ({ map: G.field.mapId, x: G.field.player.x, y: G.field.player.y, q: JSON.stringify(G.state.quests), stars: G.state.stars, name: G.state.name, home: G.field.npcs.some(n => n.home && n.home[0] === G.field.player.x && n.home[1] === G.field.player.y) }));
         await g.page.reload();
         await g.until(() => window.G && G.top && G.top() && G.top().constructor.name === 'Title' && G.top().t > 32, null, 'the title after reload');
         await g.tap(160, 180);
@@ -105,7 +105,7 @@ run('Full tap playthrough (iPad)', async browser => {
         await g.tapRect(await g.ev(() => G.top().cardRect(0)));
         await g.until(() => G.field && G.top() === G.field && G.fade.a === 0, null, 'back in the game');
         const after = await g.ev(() => ({ map: G.field.mapId, x: G.field.player.x, y: G.field.player.y, q: JSON.stringify(G.state.quests), stars: G.state.stars, name: G.state.name }));
-        check('play: autosave survived a reload mid-game (same errands, stars, map; spot within 3 tiles)', before.q === after.q && before.stars === after.stars && before.name === after.name && before.map === after.map && Math.abs(before.x - after.x) + Math.abs(before.y - after.y) <= 3, JSON.stringify({ before, after }));
+        check('play: autosave survived a reload mid-game (same errands, stars, map; spot within 3 tiles, unless it was someone\'s own spot, which is never saved)', before.q === after.q && before.stars === after.stars && before.name === after.name && before.map === after.map && (Math.abs(before.x - after.x) + Math.abs(before.y - after.y) <= 3 || before.home), JSON.stringify({ before, after }));
         await g.shot('resumed');
         continue;
       }
@@ -116,9 +116,12 @@ run('Full tap playthrough (iPad)', async browser => {
         check('play: the evening ran (Hoy card, night, a new morning) and the game was saved', g.seen.has('TodayCard') && g.seen.has('Night') && await g.ev(() => { const s = JSON.parse(localStorage.getItem('spanishclub_slot1') || 'null'); return !!s && s.loc && s.loc.map === 'casa'; }));
       }
       const t = await nextTap(g);
-      if (!t) throw new Error('nothing to do on ' + st.map + ' quests ' + JSON.stringify(st.q));
+      if (!t) throw new Error('nothing to do on ' + st.map + ' quests ' + JSON.stringify(st.q) + ' ' + await g.ev(() => JSON.stringify({ learning: G.pet.learning(), tricks: G.state.pet.tricks, next: G.pet.next(), dog: !!G.pet.npc(), sofia: G.field.npc('sofia') && G.field.npc('sofia').alert(), lost: G.errands.lost() })));
       if (t.direct && t.kind === 'search') await g.ev(k => { window.__searched[k] = 1; }, t.tile.join(','));
       if (step < 3 || step % 25 === 0) console.log('    tap', t.why, 'on', st.map);
+      if (process.env.DBG && t.direct && t.why === lastWhy && ++same > 4) { console.log('    DBG', t.why, JSON.stringify(t), await g.ev(() => JSON.stringify({ q: G.state.quests, p: [G.field.player.x, G.field.player.y], n: G.field.npcs.filter(n => !n.hidden).map(n => n.id + ':' + n.x + ',' + n.y + (n.ghost ? 'g' : '') + ':' + JSON.stringify(n.alert && n.alert())), learning: G.pet.learning(), tricks: G.state.pet.tricks }))); await g.shot('dbg_loop'); if (same > 6) throw new Error('loop'); }
+      if (t.why !== lastWhy) same = 0;
+      lastWhy = t.why;
       await g.tap(t.sx, t.sy);
       await g.until(() => G.top() !== G.field || G.field.locked || (!G.field.route && !G.field.player.moving), null, 'the walk', 30000);
     }

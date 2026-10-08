@@ -376,7 +376,7 @@ async function errandFlores(browser) {
     await play(g, 'villa', 26, 14, 'up', { quests: Object.assign({ canelo: 'done', picnic: 'done', show: 'done', cansado: 'done' }, A_DONE) });
     check('flores: Lucía looks sad (a "triste" bubble)', await g.ev(() => G.field.npc('lucia').alert() === 'triste'));
     await talk(g, 'lucia', 'Lucía\'s flowers');
-    check('flores: started; her bubble shows the three flowers; coloured flowers grow around town', await g.ev(() => Array.isArray(G.field.npc('lucia').alert()) && G.errands.spots(G.field).filter(s => s.flower).length === 9));
+    check('flores: started; coloured flowers grow around town; the hand would point at the ones she wants', await g.ev(() => G.errands.spots(G.field).filter(s => s.flower).length === 9 && G.errands.targets(G.field).filter(t => /^flor/.test(t.spot)).length === 6));
     await beside(g, 31, 9); await g.frames(10); await g.shot('flowers');
     await spot(g, 'flor3_11', 'a red flower (not one she wants)');
     check('flores: a red one: "no", not picked', await g.ev(() => !G.errands.bag.has('flor')));

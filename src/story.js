@@ -72,10 +72,11 @@
       });
       // best friends
       const best = G.hearts ? G.hearts.WHO.filter(n => G.hearts.best(n)) : [];
-      best.slice(0, 8).forEach((n, k) => { ctx.fillStyle = '#5a3810'; ctx.fillRect(x + 13 + k * 22, y + h - 37, 20, 20); G.hearts.face(ctx, n, x + 14 + k * 22, y + h - 36, 18, this.t); });
+      if (best.length) { G.hearts.heart(ctx, x + 16, y + 140, true, 2); G.text(ctx, 'Amigos', x + 34, y + 142, '#a03060', null); }
+      best.slice(0, 8).forEach((n, k) => { ctx.fillStyle = '#5a3810'; ctx.fillRect(x + 81 + k * 26, y + 134, 24, 24); G.hearts.face(ctx, n, x + 82 + k * 26, y + 135, 22, this.t); });
       G.textC(ctx, 'Luna', cx + 70, y + h - 24, '#203080', null);
       ctx.fillStyle = '#806040'; ctx.fillRect(cx + 34, y + h - 14, 72, 1);
-      if (G.enVisible()) G.textC(ctx, 'Words, stars, speaking stars, animals; a badge per errand', cx, y + 136, '#a07030', null);
+      if (G.enVisible()) G.textC(ctx, 'Words, stars, speaking stars, animals; a badge per errand', cx, y + 126, '#a07030', null);
     }
   }
   ST.diploma = function () { const w = new G.Wait(); G.push(new Diploma(w)); return w; };
