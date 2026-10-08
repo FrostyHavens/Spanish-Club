@@ -5,7 +5,7 @@
   const key = (x, y) => x + ',' + y;
   const HUD = [G.W - 26, 6];          // the field menu button (= B), top-right
   const COUNTER = 'etaY';             // people are talked to across these (see interact)
-  const THING = 'rlkgPLYZteauj';      // objects a tap walks up to and searches (fences, walls, trees, water: just walk)
+  const THING = 'rlkgPLYZteaujJO';      // objects a tap walks up to and searches (fences, walls, trees, water: just walk)
   const DIR4 = ['up', 'down', 'left', 'right'];
 
   class Field {
@@ -83,9 +83,10 @@
           const pl = this.plan(this.route);
           if (pl && pl.dir) d = pl.dir;
           else { // arrived (or can't get any closer): face the target, then talk / search like A
-            this.route = null;
+            const r = this.route; this.route = null;
             if (pl && pl.face) p.dir = pl.face;
             if (pl && pl.act) { this.locked = true; yield* this.interact(); this.locked = false; continue; }
+            if (pl && r.name && G.world) G.world.arrive(this, r); // a thing with a word: it names itself (world.js)
           }
         }
         if (d) {
@@ -110,6 +111,7 @@
     // ---------- tap-to-walk ----------
     // What a tap on the map means: talk to someone (their tile, the tile above where the head and bubble are,
     // or a counter in front of them), go through a door (or its sign), search a sparkle / object, or walk there.
+    // A thing with a word (world.js) carries it as `name`: it names itself when you get there. (Animals: update.)
     tapTarget(tap) {
       const T = G.TILE, wx = tap.x + Math.round(this.cam.x), wy = tap.y + Math.round(this.cam.y), tx = Math.floor(wx / T), ty = Math.floor(wy / T);
       const talker = (x, y) => this.npcs.find(n => n.talk && n.spec && !n.hidden && n.x === x && n.y === y);
@@ -123,7 +125,9 @@
       const door = (G.TERRAIN[c] || G.TERRAIN['.']).wall && DIR4.map(d => this.exitAt(tx + G.DIRS[d][0], ty + G.DIRS[d][1])).find(Boolean);
       if (door) return { exit: true, x: door.x, y: door.y }; // the wall or sign around a door, the dark just outside one
       const pg = (this.def.pages || {})[key(tx, ty)];
-      if ((pg && !G.st.hasPage(pg)) || (this.def.searches || {})[key(tx, ty)] || THING.includes(c)) return { search: true, x: tx, y: ty };
+      const name = G.world ? G.world.wordAt(this, tx, ty) : null;
+      if ((pg && !G.st.hasPage(pg)) || (this.def.searches || {})[key(tx, ty)] || THING.includes(c)) return { search: true, x: tx, y: ty, name };
+      if (name) return this.blocked(tx, ty, this.player) && !(this.player.x === tx && this.player.y === ty) ? { search: true, x: tx, y: ty, name } : { x: tx, y: ty, name };
       return { x: tx, y: ty };
     }
     // Next step of a tap route, re-planned every step (people move): a breadth-first search over walkable
@@ -193,6 +197,7 @@
         return;
       }
       if (G.ambient && G.ambient.poke(this, fx, fy)) return; // pet the cat on the fence
+      if (G.world && G.world.nameTile(this, fx, fy)) return; // a thing with a word says it (world.js)
       yield G.say({ t: '...', en: 'Nothing here.' }, { noVoice: true });
     }
     // ---------- NPC wandering ----------
@@ -215,16 +220,22 @@
       }
     }
     start() { this.tasks.add(this.playerWalk()); this.tasks.add(this.npcAI()); }
+    onExit() { if (G.world) G.world.leave(this); }
     update() {
       this.t++;
+      if (G.world && G.world.update(this)) G.input.eat(); // the say-it-back mic used this frame's tap or key (world.js)
       // keys win over a tap walk, and a cutscene (the field locked) ends it rather than pausing it
       if (this.route && (this.locked || G.input.dir() || ['up', 'down', 'left', 'right', 'A', 'B'].some(k => G.input.p(k)))) this.route = null;
       if (!this.locked && G.input.tap()) { // the menu button (= B, eats the tap), else tap-to-walk (field tasks still see the tap)
         if (G.btnHit(...HUD)) { G.input.eat(); this.menuReq = true; this.route = null; }
-        else { this.route = this.tapTarget(G.input.tap()); this.plan(this.route); }
+        else { // tap-to-walk; a tap on an animal (animals.js, not over a person or a door) names it and walks toward it
+          const tap = G.input.tap(), tt = this.tapTarget(tap), an = !tt.npc && !tt.exit && G.animals && G.animals.hit(this, tap);
+          this.route = an ? G.animals.tapped(this, an) : tt; this.plan(this.route);
+        }
       }
       this.tasks.update();
       if (G.ambient) G.ambient.update(this); // the living town (ambient.js): critters, people who look at you, walkers
+      if (G.animals) G.animals.update(this); // ducks, hens, the fish, the frog, the rabbit, the horse, the goat (animals.js)
       const ct = this.camTarget(); this.cam.x += (ct.x - this.cam.x) * 0.3; this.cam.y += (ct.y - this.cam.y) * 0.3;
       if (Math.abs(ct.x - this.cam.x) < 0.5) this.cam.x = ct.x; if (Math.abs(ct.y - this.cam.y) < 0.5) this.cam.y = ct.y;
       if (this.banner) this.banner.t--;
@@ -251,6 +262,7 @@
         const [px, py] = k.split(',').map(Number), ph = (this.t + px * 7) % 60;
         if (ph < 30) { const sx = px * T - cx + 12, sy = py * T - cy + 8 - (ph >> 3); ctx.fillStyle = '#ffffff'; ctx.fillRect(sx - 2, sy, 5, 1); ctx.fillRect(sx, sy - 2, 1, 5); ctx.fillStyle = '#f8e060'; ctx.fillRect(sx, sy, 1, 1); }
       }
+      if (G.world) G.world.drawUnder(this, ctx); // a named thing wiggles
       if (this.route && this.route.end) { // where a tap is taking you: pulsing corner marks
         const [ex, ey] = this.route.end, i = 3 + ((this.t >> 3) & 1), mx = ex * T - cx, my = ey * T - cy, s = T - 1 - 2 * i;
         for (const [col, o] of [['#10102a', 1], ['#f8e060', 0]]) {
@@ -259,14 +271,18 @@
         }
       }
       if (G.ambient) G.ambient.draw(this, ctx, 'ground'); // birds on the ground, shadows
-      const ents = this.npcs.filter(n => n.spec && !n.hidden).concat([this.player]).sort((a, b) => (a.y * T + a.oy) - (b.y * T + b.oy));
-      for (const e of ents) {
+      if (G.animals) G.animals.draw(this, ctx, 'ground'); // lily pads, ripples, swimmers, shadows
+      const ents = this.npcs.filter(n => n.spec && !n.hidden).concat([this.player]);
+      const zoo = G.animals ? G.animals.ents(this) : []; // land animals, drawn in order with the people
+      for (const e of ents.concat(zoo).sort((a, b) => (a.sy != null ? a.sy : a.y * T + a.oy) - (b.sy != null ? b.sy : b.y * T + b.oy))) {
+        if (e.draw) { e.draw(ctx, cx, cy); continue; }
         const moving = e.moving || e.ox || e.oy;
         const fr = moving ? Math.floor(this.t / 6) % 2 : Math.floor((this.t + (e.x || 0) * 13) / 24) % 2;
         const img = G.unitSprite(e.spec, e.dir, fr), bob = Math.abs(e.ox + e.oy) >= 6 && Math.abs(e.ox + e.oy) <= 18 ? 1 : 0; // a hop mid-step
         ctx.drawImage(img, Math.round(e.x * T + e.ox - cx), Math.round(e.y * T + e.oy - cy - 3) - bob);
       }
       if (G.ambient) G.ambient.draw(this, ctx, 'air'); // birds in flight, butterflies, the cat
+      if (G.animals) G.animals.drawTop(this, ctx); // hearts and splashes
       if (G.day) G.day.drawField(ctx, this, cx, cy); // the sunset (over the critters too), lit windows, the moon over home (day.js)
       // "!" bubbles over people who have something for the player (kids always know where to go next)
       for (const e of ents) {
@@ -285,6 +301,7 @@
           G.drawGoal(ctx, goal, bx + 4, by + 3);
         }
       }
+      if (G.world) G.world.draw(this, ctx); // the word bubble of a thing just named, and its say-it-back mic
       if (this.banner && G.top() !== this) this.banner.t = Math.min(this.banner.t, 0); // a talk or a card opened over the map: the name has done its job
       if (this.banner && this.banner.t > 0) {
         const a = Math.min(1, this.banner.t / 30), ic = this.banner.icon;

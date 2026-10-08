@@ -11,8 +11,18 @@
     numeros: { name: 'Los números', en: 'Numbers' },
     colores: { name: 'Los colores', en: 'Colors' },
     pueblo: { name: 'El pueblo', en: 'Around town' },
+    // Round B (docs/ROUND_B_PLAN.md)
+    numeros2: { name: 'Más números', en: 'More numbers' },
+    campo: { name: 'El día de campo', en: 'The picnic' },
+    colores2: { name: 'Más colores', en: 'More colors' },
+    cosas: { name: 'En el pueblo', en: 'Things in town' },
+    animales: { name: 'Los animales', en: 'Animals' },
+    granja: { name: 'La granja', en: 'The farm and the pond' },
+    sonidos: { name: '¿Qué dicen?', en: 'What do they say?' },
+    mascota: { name: 'Mi perro', en: 'My dog' },
+    sentir: { name: 'Así me siento', en: 'Feelings' },
   };
-  D.topicOrder = ['saludos', 'numeros', 'comida', 'colores', 'pueblo'];
+  D.topicOrder = ['saludos', 'numeros', 'comida', 'colores', 'pueblo', 'animales', 'granja', 'sonidos', 'mascota', 'cosas', 'numeros2', 'campo', 'colores2', 'sentir'];
 
   // icon: picture drawn in icons.js. n: number value (for dice pictures). say: text for speech, if different.
   D.words = {
@@ -50,8 +60,67 @@
     panaderia: { es: 'la panadería', en: 'the bakery', topic: 'pueblo', icon: 'panaderia' },
     biblioteca: { es: 'la biblioteca', en: 'the library', topic: 'pueblo', icon: 'biblioteca' },
     carta: { es: 'la carta', en: 'the letter', topic: 'pueblo', icon: 'carta' },
+
+    // ----- Round B (docs/ROUND_B_PLAN.md). alt: more ways of saying it that the mic accepts (say-it-back) -----
+    seis: { es: 'seis', en: 'six', topic: 'numeros2', icon: 'dado', n: 6 },
+    siete: { es: 'siete', en: 'seven', topic: 'numeros2', icon: 'diez', n: 7 },
+    ocho: { es: 'ocho', en: 'eight', topic: 'numeros2', icon: 'diez', n: 8 },
+    nueve: { es: 'nueve', en: 'nine', topic: 'numeros2', icon: 'diez', n: 9 },
+    diez: { es: 'diez', en: 'ten', topic: 'numeros2', icon: 'diez', n: 10 },
+
+    leche: { es: 'la leche', en: 'the milk', topic: 'campo', icon: 'leche' },
+    queso: { es: 'el queso', en: 'the cheese', topic: 'campo', icon: 'queso' },
+    huevo: { es: 'el huevo', en: 'the egg', topic: 'campo', icon: 'huevo', pl: 'huevos' },
+    agua: { es: 'el agua', en: 'the water', topic: 'campo', icon: 'agua' },
+    galleta: { es: 'la galleta', en: 'the cookie', topic: 'campo', icon: 'galleta', pl: 'galletas' },
+
+    blanco: { es: 'blanco / blanca', en: 'white', topic: 'colores2', icon: 'color', col: '#f8f8f4' },
+    negro: { es: 'negro / negra', en: 'black', topic: 'colores2', icon: 'color', col: '#383848' },
+    cafe: { es: 'café', en: 'brown', topic: 'colores2', icon: 'color', col: '#94582a' },
+    rosa: { es: 'rosa', en: 'pink', topic: 'colores2', icon: 'color', col: '#f878b8', alt: 'rosado / rosada' },
+
+    arbol: { es: 'el árbol', en: 'the tree', topic: 'cosas', icon: 'arbol', pl: 'árboles' },
+    flor: { es: 'la flor', en: 'the flower', topic: 'cosas', icon: 'flor', pl: 'flores' },
+    fuente: { es: 'la fuente', en: 'the fountain', topic: 'cosas', icon: 'fuente' },
+    banco: { es: 'el banco', en: 'the bench', topic: 'cosas', icon: 'banco' },
+    puerta: { es: 'la puerta', en: 'the door', topic: 'cosas', icon: 'puerta' },
+    ventana: { es: 'la ventana', en: 'the window', topic: 'cosas', icon: 'ventana' },
+    granja: { es: 'la granja', en: 'the farm', topic: 'cosas', icon: 'granja' },
+
+    perro: { es: 'el perro', en: 'the dog', topic: 'animales', icon: 'perro', pl: 'perros' },
+    gato: { es: 'el gato', en: 'the cat', topic: 'animales', icon: 'gato', pl: 'gatos' },
+    pajaro: { es: 'el pájaro', en: 'the bird', topic: 'animales', icon: 'pajaro', pl: 'pájaros' },
+    mariposa: { es: 'la mariposa', en: 'the butterfly', topic: 'animales', icon: 'mariposa', pl: 'mariposas' },
+    pez: { es: 'el pez', en: 'the fish', topic: 'animales', icon: 'pez', pl: 'peces', alt: 'pescado / pescadito / pecesito' },
+    conejo: { es: 'el conejo', en: 'the rabbit', topic: 'animales', icon: 'conejo', pl: 'conejos', alt: 'conejito' },
+
+    pato: { es: 'el pato', en: 'the duck', topic: 'granja', icon: 'pato', pl: 'patos', alt: 'patito' },
+    rana: { es: 'la rana', en: 'the frog', topic: 'granja', icon: 'rana', pl: 'ranas', alt: 'ranita' },
+    gallina: { es: 'la gallina', en: 'the hen', topic: 'granja', icon: 'gallina', pl: 'gallinas' },
+    caballo: { es: 'el caballo', en: 'the horse', topic: 'granja', icon: 'caballo', pl: 'caballos' },
+    cabra: { es: 'la cabra', en: 'the goat', topic: 'granja', icon: 'cabra', pl: 'cabras', alt: 'chiva / chivo' },
+
+    guau: { es: 'guau', en: 'woof', topic: 'sonidos', icon: 'guau', alt: 'guau guau / wow / guao' },
+    miau: { es: 'miau', en: 'meow', topic: 'sonidos', icon: 'miau', alt: 'miau miau / meow' },
+    pio: { es: 'pío', en: 'tweet', topic: 'sonidos', icon: 'pio', alt: 'pío pío / pio pio' },
+    cuac: { es: 'cuac', en: 'quack', topic: 'sonidos', icon: 'cuac', alt: 'cuac cuac / quack / cuak' },
+    croac: { es: 'croac', en: 'ribbit', topic: 'sonidos', icon: 'croac', alt: 'croac croac / croak' },
+    bee: { es: 'bee', en: 'baa', topic: 'sonidos', icon: 'bee', alt: 'be / beee / mee' },
+
+    hueso: { es: 'el hueso', en: 'the bone', topic: 'mascota', icon: 'hueso', pl: 'huesos' },
+    cama: { es: 'la cama', en: 'the bed', topic: 'mascota', icon: 'cama' },
+    sientate: { es: 'siéntate', en: 'sit!', topic: 'mascota', icon: 'sientate', alt: 'sentado / siéntese / sienta' },
+    ven: { es: 'ven', en: 'come!', topic: 'mascota', icon: 'ven', alt: 'ven acá / ven aquí / vente' },
+    salta: { es: 'salta', en: 'jump!', topic: 'mascota', icon: 'salta', alt: 'brinca / salte' },
+    pata: { es: 'dame la pata', en: 'shake! (give me your paw)', topic: 'mascota', icon: 'pata', alt: 'la pata / pata / dame la patita' },
+    gira: { es: 'gira', en: 'spin!', topic: 'mascota', icon: 'gira', alt: 'gira gira / da la vuelta / vuelta' },
+
+    feliz: { es: 'feliz', en: 'happy', topic: 'sentir', icon: 'feliz', alt: 'contento / contenta' },
+    triste: { es: 'triste', en: 'sad', topic: 'sentir', icon: 'triste' },
+    cansado: { es: 'cansado / cansada', en: 'tired', topic: 'sentir', icon: 'cansado' },
   };
-  D.numberWords = ['uno', 'dos', 'tres', 'cuatro', 'cinco'];
+  D.numberWords = ['uno', 'dos', 'tres', 'cuatro', 'cinco']; // the market's numbers (Round A)
+  D.numberWords10 = ['uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'];
 
   // ---------- Notebook pages (found around town, like a game manual) ----------
   // Each page pictures one topic. Finding a page marks its words as seen.
@@ -61,8 +130,18 @@
     comida: { topic: 'comida', words: ['manzana', 'platano', 'naranja', 'uvas', 'pan'] },
     colores: { topic: 'colores', words: ['rojo', 'azul', 'verde', 'amarillo', 'pelota'] },
     pueblo: { topic: 'pueblo', words: ['casa', 'escuela', 'parque', 'panaderia', 'biblioteca', 'carta'] },
+    // Round B pages, hidden around town (maps.js `pages`; where: docs/ROUND_B_PLAN.md)
+    animales: { topic: 'animales', words: ['perro', 'gato', 'pajaro', 'mariposa', 'pez', 'conejo'] },
+    granja: { topic: 'granja', words: ['pato', 'rana', 'gallina', 'caballo', 'cabra'] },
+    sonidos: { topic: 'sonidos', words: ['guau', 'miau', 'pio', 'cuac', 'croac', 'bee'] },
+    mascota: { topic: 'mascota', words: ['hueso', 'cama', 'sientate', 'ven', 'salta', 'pata', 'gira'] },
+    cosas: { topic: 'cosas', words: ['arbol', 'flor', 'fuente', 'banco', 'puerta', 'ventana', 'granja'] },
+    numeros2: { topic: 'numeros2', words: ['seis', 'siete', 'ocho', 'nueve', 'diez'] },
+    campo: { topic: 'campo', words: ['leche', 'queso', 'huevo', 'agua', 'galleta'] },
+    colores2: { topic: 'colores2', words: ['blanco', 'negro', 'cafe', 'rosa'] },
+    sentir: { topic: 'sentir', words: ['feliz', 'triste', 'cansado'] },
   };
-  D.pageOrder = ['saludos', 'numeros', 'comida', 'colores', 'pueblo'];
+  D.pageOrder = ['saludos', 'numeros', 'comida', 'colores', 'pueblo', 'animales', 'granja', 'sonidos', 'mascota', 'cosas', 'numeros2', 'campo', 'colores2', 'sentir'];
 
   // ---------- Errands ----------
   // goal: what the Misiones screen pictures — [word, count] pairs, '>' draws an arrow ("take this there").

@@ -11,9 +11,9 @@
   // corners, the picture bounces and sparkles, and the word is spoken. With the mic on (mic.js), a mic beside the
   // picture lets the child say the new word for a speaking star (once per word); a tap anywhere else still goes on.
   class WordCard {
-    constructor(ids, w) {
+    constructor(ids, w, o) {
       G.toastT = 0; this.transparent = true; this.ids = ids; this.i = 0; this.w = w; this.t = 0;
-      this.mic = G.mic && G.mic.on() ? new G.MicBtn(this, { rect: () => this.micRect(), ready: () => this.t >= 20, heard: a => this.heard(a), again: () => G.speak(G.baseForm(this.ids[this.i])) }) : null;
+      this.mic = !(o && o.noMic) && G.mic && G.mic.on() ? new G.MicBtn(this, { rect: () => this.micRect(), ready: () => this.t >= 20, heard: a => this.heard(a), again: () => G.speak(G.baseForm(this.ids[this.i])) }) : null;
       this.open();
     }
     onEnter() { if (this.mic) this.mic.arm(); }
@@ -74,13 +74,14 @@
       if (this.mic && this.t >= 20) this.mic.draw(ctx);
     }
   }
-  // Mark words learned; celebrates the ones that are new. Yieldable.
-  G.learnWords = function (ids) {
+  // Mark words learned; celebrates the ones that are new. Yieldable. o.noMic: the card has no mic (the word was just
+  // said out loud, world.js's say-it-back)
+  G.learnWords = function (ids, o) {
     ids = (Array.isArray(ids) ? ids : [ids]).filter(id => D().words[id] && S().learn(id));
     const w = new G.Wait();
     if (!ids.length) { w.resolve(); return w; }
     G.audio.jingle('item');
-    G.push(new WordCard(ids, w)); return w;
+    G.push(new WordCard(ids, w, o)); return w;
   };
 
   // ---------- Choice screen ----------

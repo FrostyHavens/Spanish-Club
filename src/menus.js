@@ -97,8 +97,8 @@
     words() { return D().pages[this.page()].words; }
     // tap areas (shared with draw): word k on the page, the < > page buttons around the page dots, close
     cellRect(k) { return { x: 18 + (k % 3) * 96, y: 34 + Math.floor(k / 3) * 58, w: 92, h: 56 }; }
-    prevXY() { return [G.W / 2 - 60, 4]; }
-    nextXY() { return [G.W / 2 + 36, 4]; }
+    prevXY() { return [G.W / 2 - 82, 4]; } // the page dots sit between these (14 pages since Round B)
+    nextXY() { return [G.W / 2 + 62, 4]; }
     closeXY() { return [G.W - 30, 8]; }
     turn(dx) { this.pi = (this.pi + dx + D().pageOrder.length) % D().pageOrder.length; this.wi = 0; G.audio.sfx('select'); }
     update() {
@@ -125,10 +125,11 @@
       const pid = this.page(), found = S().hasPage(pid);
       G.iconBtn(ctx, 'back', ...this.prevXY()); G.iconBtn(ctx, 'next', ...this.nextXY()); G.closeBtn(ctx, ...this.closeXY());
       // page dots
+      const n = D().pageOrder.length, step = Math.min(14, Math.floor(118 / n)), dw = Math.max(5, step - 3);
       D().pageOrder.forEach((p, k) => {
-        const x = G.W / 2 - 34 + k * 14;
+        const x = Math.round(G.W / 2 - (n * step - (step - dw)) / 2 + k * step);
         ctx.fillStyle = k === this.pi ? '#a05020' : S().hasPage(p) ? '#c8a070' : '#e8dcc0';
-        ctx.fillRect(x, 11, 8, 6); ctx.fillStyle = '#7a4a20'; ctx.fillRect(x, 17, 8, 1);
+        ctx.fillRect(x, 11, dw, 6); ctx.fillStyle = '#7a4a20'; ctx.fillRect(x, 17, dw, 1);
       });
       if (!found) {
         ctx.globalAlpha = 0.35; G.drawIcon16(ctx, 'pagina', G.W / 2 - 24, 64, 3); ctx.globalAlpha = 1;

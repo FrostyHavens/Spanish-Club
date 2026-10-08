@@ -34,9 +34,25 @@
       door('panaderiaDoor', 'panaderia', 5, 6),
       door('bibliotecaDoor', 'biblioteca', 5, 7),
     ],
-    signs: [sign('casaDoor', 'casa'), sign('escuelaDoor', 'escuela'), sign('rosaDoor', 'casa'), sign('panaderiaDoor', 'panaderia'), sign('bibliotecaDoor', 'biblioteca')],
-    pages: { [P('villa', 'fuente').join(',')]: 'numeros', '21,20': 'colores' },
+    signs: [sign('casaDoor', 'casa'), sign('escuelaDoor', 'escuela'), sign('rosaDoor', 'casa'), sign('panaderiaDoor', 'panaderia'), sign('bibliotecaDoor', 'biblioteca'), sign('granjaDoor', 'granja')],
+    pages: { [P('villa', 'fuente').join(',')]: 'numeros', '21,20': 'colores',
+      // Round B pages (docs/ROUND_B_PLAN.md): a flower in the park, the barn door, a bench, out in the country
+      '13,19': 'animales', '43,19': 'granja', [P('villa', 'granjaDoor').join(',')]: 'sonidos', [P('villa', 'banco1').join(',')]: 'cosas',
+      '44,4': 'numeros2', '44,8': 'colores2' },
     ambient: { birds: 8, butterflies: 5, cat: [16, 17] }, // ambient.js: birds, butterflies, a cat on the park fence
+    // Round B (animals.js): where the animals live (G.MAPDATA.villa.pos areas, made by tools/mapgen.py)
+    animals: [
+      { kind: 'pato', n: 3, area: 'estanque' },   // a duck and two ducklings on the farm pond
+      { kind: 'gallina', n: 2, area: 'gallinero' }, // Abuela Rosa's hens, beside her house
+      { kind: 'pez', at: 'fuentePez' },             // the goldfish in the plaza fountain
+      { kind: 'rana', area: 'rana' },               // the frog on the park pond's lily pads
+      { kind: 'conejo', area: 'conejo' },           // the rabbit on the park lawn
+      { kind: 'caballo', area: 'corral' },          // the horse and the goat in the paddock
+      { kind: 'cabra', area: 'corral' },
+    ],
+    // Round B (world.js): tap anything. Tile words come from G.world.TILES (trees, flowers, the fountain, benches,
+    // windows, water, the barn door); a building's roof and walls say the building
+    things: { areas: { escuelaArea: 'escuela', rosaArea: 'casa', casaArea: 'casa', panaderiaArea: 'panaderia', bibliotecaArea: 'biblioteca', granja: 'granja' } },
     npcs: [
       { id: 'pepe', npc: 'pepe', x: P('villa', 'pepe')[0], y: P('villa', 'pepe')[1], dir: 'down', fixed: true,
         alert: () => !F().pepeSiNo ? true : S.active('mercado') && !F().compra ? [['manzana', 3], ['platano', 2]] : false,
@@ -59,8 +75,10 @@
         talk: function* () { yield* sofiaTalk(); } },
       { id: 'canelo', npc: 'canelo', x: 19, y: 9, dir: 'left', wander: 3, follow: () => F().canelo, // tags along once you've met
         talk: function* (f, n) {
-          if (F().canelo && G.ambient) { G.ambient.happy(n, '¡Guau!'); yield 20; return; } // a friend already: a hop, a heart, a bark
+          // a friend already: a hop, a heart, a bark, and "el perro / ¡Guau, guau!" (Round B: the word bubble, the album)
+          if (F().canelo && G.ambient) { G.ambient.happy(n, G.animals ? null : '¡Guau!'); if (G.animals) G.animals.tap('perro', n.x * G.TILE + 12, n.y * G.TILE - 6, { silent: true }); yield 20; return; }
           G.audio.sfx('select'); yield G.say(T('¡Guau, guau!', 'Woof, woof!'), { name: 'Canelo' }); F().canelo = true; if (G.ambient) G.ambient.happy(n);
+          if (G.animals) G.animals.tap('perro', n.x * G.TILE + 12, n.y * G.TILE - 6, { silent: true });
         } },
     ],
     searches: {
@@ -184,6 +202,7 @@
   // ---------- Mi casa ----------
   G.maps.casa = {
     name: 'Mi casa', icon: 'casa', rows: MD.casa.rows, music: 'headquarters',
+    things: {}, pages: { '2,1': 'mascota' }, // world.js: the bed says "la cama"; a page about Canelo on the shelf
     onEnter: function* (f) { if (G.day) yield* G.day.evening(f); }, // home after sunset: good night, Hoy, a new morning
     exits: [Object.assign(exitAt('casa', 'casaDoor'), {
       run: function* () {
@@ -205,6 +224,7 @@
   // ---------- La escuela (club) ----------
   G.maps.escuela = {
     name: 'La escuela', icon: 'escuela', rows: MD.escuela.rows, music: 'church',
+    things: {}, pages: { '3,1': 'sentir' },
     exits: [exitAt('escuela', 'escuelaDoor')],
     npcs: [
       { id: 'luna', npc: 'luna', x: P('escuela', 'luna')[0], y: P('escuela', 'luna')[1], dir: 'down', fixed: true,
@@ -247,13 +267,14 @@
   G.maps.rosa = {
     name: 'La casa de Rosa', icon: 'casa', rows: MD.rosa.rows, music: 'inn',
     exits: [exitAt('rosa', 'rosaDoor')],
-    pages: { '1,1': 'comida' },
+    pages: { '1,1': 'comida' }, things: {},
     npcs: [],
   };
 
   // ---------- La panadería ----------
   G.maps.panaderia = {
     name: 'La panadería', icon: 'panaderia', rows: MD.panaderia.rows, music: 'inn',
+    things: {}, pages: { '2,1': 'campo' },
     exits: [exitAt('panaderia', 'panaderiaDoor')],
     npcs: [
       { id: 'marta', npc: 'marta', x: P('panaderia', 'marta')[0], y: P('panaderia', 'marta')[1], dir: 'down', fixed: true,
@@ -276,7 +297,7 @@
   G.maps.biblioteca = {
     name: 'La biblioteca', icon: 'biblioteca', rows: MD.biblioteca.rows, music: 'castle',
     exits: [exitAt('biblioteca', 'bibliotecaDoor')],
-    pages: { '2,1': 'pueblo' },
+    pages: { '2,1': 'pueblo' }, things: {},
     npcs: [
       { id: 'ines', npc: 'ines', x: P('biblioteca', 'ines')[0], y: P('biblioteca', 'ines')[1], dir: 'down', fixed: true,
         talk: function* () {

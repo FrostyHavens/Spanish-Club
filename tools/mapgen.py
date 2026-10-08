@@ -38,9 +38,11 @@ class M:
 
 out = {}
 
-# ---------------- Villa Sol (town) 36x28 ----------------
-t = M(36, 28)
-t.rect(0, 0, 36, 2, 'T'); t.border('T', 1)
+# ---------------- Villa Sol (town) 48x28 ----------------
+# x 0..35 is the Round A town (unchanged, so saved spots and townsfolk keep their places); Round B adds the
+# countryside east of a farm fence (x 36..46): la granja, the paddock (horse, goat), the duck pond and a wheat field.
+t = M(48, 28)
+t.rect(0, 0, 48, 2, 'T'); t.border('T', 1)
 for x, y in [(1,2),(2,2),(1,3),(33,2),(34,2),(34,3),(1,25),(1,26),(34,25),(34,26),(2,26),(33,26)]: t.put(x, y, 'f')
 # la escuela (the club meets here) - top centre
 t.church(14, 2, 'escuelaDoor')
@@ -87,6 +89,49 @@ t.vline(29, 18, 21, ','); t.hline(25, 29, 21, ','); t.vline(25, 14, 21, ',')
 for x, y in [(8,3),(9,8),(26,8),(31,9),(3,11),(8,12),(31,12),(3,23),(7,24),(28,24),(32,22)]: t.put(x, y, 'o')
 t.put(2, 12, 'P'); t.put(33, 12, 'P'); t.put(7, 25, 'P'); t.put(29, 25, 'P')
 t.mark('casaFront', 5, 18); t.mark('start', 5, 18)
+
+# ----- Round B: animals, benches, flowers, the farm (docs/ROUND_B_PLAN.md) -----
+# benches (el banco): two in the plaza, one in the park
+for tag, (x, y) in {'banco1': (13, 12), 'banco2': (22, 12), 'banco3': (20, 18)}.items(): t.put(x, y, 'J'); t.mark(tag, x, y)
+# more flowers in town
+for x, y in [(1,9),(3,8),(32,10),(34,8),(9,26),(14,26),(22,26),(26,26),(30,26),(12,15),(23,15)]: t.put(x, y, 'o')
+# Abuela Rosa's hens scratch about on the grass beside her house (an area: x, y, w, h)
+t.pos['gallinero'] = [1, 7, 4, 4]
+t.put(1, 7, 'O')                     # a hay bale by the hens
+# the park: the frog's pond (the old pool, a little bigger) and the rabbit's lawn
+t.rect(19, 21, 4, 2, 'w'); t.put(22, 21, 'w'); t.put(22, 22, '.')
+t.pos['rana'] = [19, 21, 4, 2]       # lily pads on these water tiles
+t.pos['conejo'] = [12, 18, 12, 7]    # the park lawn
+t.mark('fuentePez', 18, 11)          # the fish lives in the fountain
+# the farm fence: the town's east edge, with two gates (the bakery road and the library road)
+t.vline(35, 2, 26, 'F'); t.put(35, 10, ','); t.put(35, 21, ',')
+t.mark('gateFarm', 35, 10); t.mark('gatePond', 35, 21)
+for x, y in [(34, 2), (34, 3), (33, 2), (34, 25), (34, 26), (33, 26)]: t.put(x, y, 'f')
+# la granja (a red barn; its door is closed) with hay bales
+t.house(38, 2, 6, 'R', 'granjaDoor', door=3, walls='WNWDNW')
+t.rect(38, 2, 6, 2, 'R')
+t.put(44, 4, 'O'); t.put(45, 4, 'O'); t.put(37, 4, 'O')
+t.pos['granja'] = [38, 2, 6, 3]      # the barn's roof and walls
+# roads: from the bakery road to the barn, then down to the paddock gate; and to the pond
+t.hline(30, 41, 10, ','); t.vline(41, 5, 12, ',')
+t.hline(30, 36, 21, ',')
+# the paddock (el caballo, la cabra): fenced, a gate at the top
+t.rect(37, 12, 10, 1, 'F'); t.rect(37, 12, 1, 7, 'F'); t.rect(46, 12, 1, 7, 'F'); t.rect(37, 18, 10, 1, 'F')
+t.put(41, 12, ','); t.mark('paddockGate', 41, 12)
+t.rect(38, 13, 8, 5, '.')
+t.pos['corral'] = [38, 13, 8, 5]
+t.put(45, 13, 'O')
+# the duck pond (el agua): ducks swim here
+for y, (x0, x1) in {20: (38, 41), 21: (37, 42), 22: (37, 42), 23: (37, 42), 24: (38, 41)}.items(): t.hline(x0, x1, y, 'w')
+t.pos['estanque'] = [37, 20, 6, 5]
+# a wheat field and flowers out in the country
+t.rect(44, 20, 3, 6, 'y')
+for x, y in [(36, 6), (39, 7), (44, 8), (45, 6), (37, 9), (43, 10), (36, 15), (36, 24), (39, 26), (42, 25), (43, 19), (36, 19)]: t.put(x, y, 'o')
+for x, y in [(46, 2), (46, 3), (45, 2), (46, 26), (45, 26), (46, 25)]: t.put(x, y, 'f')
+t.put(36, 13, 'P'); t.put(43, 7, 'P')
+# named buildings (tap-anything: a tap on a roof or wall names the building), as x, y, w, h
+t.pos['escuelaArea'] = [14, 2, 7, 3]; t.pos['rosaArea'] = [3, 4, 5, 3]; t.pos['panaderiaArea'] = [27, 4, 6, 3]
+t.pos['casaArea'] = [3, 15, 5, 3]; t.pos['bibliotecaArea'] = [26, 15, 7, 3]
 out['villa'] = t
 
 # ---------------- Interiors ----------------

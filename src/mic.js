@@ -3,6 +3,7 @@
 //   G.mic.on()                  mic buttons show: speech recognition here, the grown-ups' "Speaking (mic)" switch on
 //                               (G.prefs.mic, per device, on unless turned off) and not blocked this session
 //   G.mic.target(choice)        what a choice sounds like: its label plus every form of its word ('rojo / roja', ...)
+//                               and the word's `alt` forms (data.js, Round B: 'patito' for el pato)
 //   G.mic.best(targets, alts, prefer)  the index of the best PASSING target (G.speech.match), or -1; a tie goes to prefer
 //   G.mic.award(id, x, y)       a speaking star: words[id].said++, the speaking-star total and a star that flies from x, y
 //   new G.MicBtn(scene, o)      the button. o: {rect() (its tap area, game px), ready() (may listen now),
@@ -21,7 +22,7 @@
   const BLOCK = ['not-allowed', 'service-not-allowed', 'language-not-supported', 'audio-capture', 'unsupported'];
   M.blocked = false;
   M.on = () => !!G.speech && G.speech.supported() && G.prefs.mic !== false && !M.blocked;
-  M.target = c => { const w = c && c.word && G.data.words[c.word]; return [c && c.label, w && w.es].filter(Boolean).join(' / ') || null; };
+  M.target = c => { const w = c && c.word && G.data.words[c.word]; return [c && c.label, w && w.es, w && w.alt].filter(Boolean).join(' / ') || null; };
   M.best = function (targets, alts, prefer) {
     let k = -1, sc = 0;
     targets.forEach((t, i) => {

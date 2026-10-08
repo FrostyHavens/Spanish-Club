@@ -181,6 +181,7 @@
       if (c.blink > 0) c.blink--; else if (ri(260) === 0) c.blink = 7;
       const dx = px - (c.x * T + 12), near = Math.abs(dx) < 3 * T && Math.abs(py - (c.y * T + 12)) < 3 * T;
       const want = near && Math.abs(dx) > 8 ? Math.sign(dx) : 0;
+      if (near || c.happy) c.nap = 0; else c.nap = (c.nap || 0) + 1; // nobody about for ~8 s: a nap (Round B)
       if (want !== c.look && ++c.lookT > 10) { c.look = want; c.lookT = 0; } else if (want === c.look) c.lookT = 0;
     }
     a.fx = a.fx.filter(e => ++e.t < e.life);
@@ -239,9 +240,9 @@
     fl.tx = fl.hx; fl.ty = fl.hy; fl.t = 90; fl.sp = 1.5; fl.flee = 40;
   }
   function pet(a) {
-    const c = a.cat; if (c.happy > 30) return;
+    const c = a.cat; c.nap = 0; if (c.happy > 30) return;
     c.happy = 80; meow();
-    a.fx.push({ kind: 'say', s: '¡Miau!', x: c.x * T + 12, y: c.y * T - 9, dx: -8, t: 0, life: 70 }); // the bubble up-left,
+    if (!G.animals) a.fx.push({ kind: 'say', s: '¡Miau!', x: c.x * T + 12, y: c.y * T - 9, dx: -8, t: 0, life: 70 }); // the bubble up-left (Round B: the word bubble says it),
     a.fx.push({ kind: 'heart', x: c.x * T + 22, y: c.y * T - 4, t: 0, life: 50 });                    // a heart rising on the right
   }
   function catHit(c, wx, wy) { const x = c.x * T + 12, y = c.y * T; return wx >= x - 10 && wx < x + 11 && wy >= y - 9 && wy < y + 12; }
@@ -310,11 +311,13 @@
     if (!f.amb) setup(f);
     sync(f);
     const tap = G.input.tap(), a = f.amb, p = f.player;
-    if (tap) { // poke a critter (the tap still walks you there)
+    if (tap) { // poke a critter (the tap still walks you there); Round B: it says its name too (animals.js)
       const wx = tap.x + Math.round(f.cam.x), wy = tap.y + Math.round(f.cam.y), [px, py] = center(p);
-      for (const b of a.birds) if ((b.st === 'ground' || b.st === 'land') && Math.hypot(b.x - wx, b.y - b.z - 3 - wy) < 12) scare(f, a, b, px, py);
-      for (const fl of a.flies) if (Math.hypot(fl.x - wx, fl.y - fl.z - wy) < 12) flee(f, a, fl);
-      if (a.cat && catHit(a.cat, wx, wy)) pet(a);
+      let named = null;
+      for (const b of a.birds) if ((b.st === 'ground' || b.st === 'land') && Math.hypot(b.x - wx, b.y - b.z - 3 - wy) < 12) { scare(f, a, b, px, py); named = named || ['pajaro', b.x, b.y - b.z - 8]; }
+      for (const fl of a.flies) if (Math.hypot(fl.x - wx, fl.y - fl.z - wy) < 12) { flee(f, a, fl); named = named || ['mariposa', fl.x, fl.y - fl.z - 4]; }
+      if (a.cat && catHit(a.cat, wx, wy)) { pet(a); named = ['gato', a.cat.x * T + 12, a.cat.y * T - 8]; }
+      if (named && G.animals) G.animals.tap(named[0], named[1], named[2], { silent: true });
     }
     for (const n of f.npcs) {
       const m = meet(n);
@@ -350,11 +353,12 @@
     }
     const c = a.cat; // on its fence post, in front of anyone standing behind the fence
     if (c && vis(c.x * T, c.y * T)) {
-      const x = c.x * T + 9 - cx, y = c.y * T - 5 - cy, tail = CAT_TAIL[[0, 1, 2, 1][(c.t >> (c.happy ? 2 : 4)) & 3]], shut = c.blink || c.happy > 10;
+      const nap = (c.nap || 0) > 480, x = c.x * T + 9 - cx, y = c.y * T - 5 - cy, tail = CAT_TAIL[nap ? 0 : [0, 1, 2, 1][(c.t >> (c.happy ? 2 : 4)) & 3]], shut = c.blink || c.happy > 10 || nap;
       ctx.fillStyle = OL; for (const [tx, ty] of tail) ctx.fillRect(x + tx - 1, y + ty - 1, 3, 3);
       ctx.fillStyle = CAT_PAL.b; for (const [tx, ty] of tail) ctx.fillRect(x + tx, y + ty, 1, 1);
       ctx.drawImage(pix('catbody', CAT_BODY, CAT_PAL), x - 1, y + 5);
-      ctx.drawImage(pix(shut ? 'cathead2' : 'cathead', shut ? CAT_HEAD_SHUT : CAT_HEAD, CAT_PAL), x - 1 + c.look, y - 1);
+      ctx.drawImage(pix(shut ? 'cathead2' : 'cathead', shut ? CAT_HEAD_SHUT : CAT_HEAD, CAT_PAL), x - 1 + c.look, y - 1 + (nap ? 1 : 0));
+      if (nap) for (let i = 0; i < 2; i++) { const k = ((c.t + i * 50) % 100) / 100; ctx.globalAlpha = 1 - k; G.text(ctx, 'z', x + 8 + Math.round(k * 6), y - 4 - Math.round(k * 12), '#ffffff', '#303060'); ctx.globalAlpha = 1; }
     }
     for (const b of a.birds) if ((b.st === 'fly' || b.st === 'land') && vis(b.x, b.y - b.z)) drawBird(b);
     for (const fl of a.flies) {
@@ -372,7 +376,9 @@
     }
   };
   // A pressed facing a tile: the cat purrs and meows (true = handled, so the search says nothing)
-  A.poke = function (f, x, y) { const a = f.amb; if (a && a.cat && a.cat.x === x && a.cat.y === y) { pet(a); return true; } return false; };
+  A.poke = function (f, x, y) { const a = f.amb; if (a && a.cat && a.cat.x === x && a.cat.y === y) { pet(a); if (G.animals) G.animals.tap('gato', x * T + 12, y * T - 8, { silent: true }); return true; } return false; };
+  A.sfx = { meow, yip, flutter }; // for animals.js
+  A.napping = f => !!(f && f.amb && f.amb.cat && (f.amb.cat.nap || 0) > 480);
   // a happy hop, a heart and a yip (Canelo, when you talk to him), and a little speech bubble if `say` is given
   A.happy = function (n, say) {
     const m = meet(n), a = G.field && G.field.amb; m.hop = 24; yip();

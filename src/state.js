@@ -22,6 +22,8 @@
       opts: { english: false },
       look: null,         // the player's avatar, from the character creator
       name: null,         // the player's name, typed after the creator
+      album: {},          // Round B (animals.js): animal id -> {first: ms, map, n: times tapped, said: name said out loud}
+      sayback: {},        // Round B (world.js): word id -> 'YYYY-M-D' it last earned a say-it-back star (one a day)
     };
   }
   function devicePrefs(s) {

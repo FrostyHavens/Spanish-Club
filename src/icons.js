@@ -48,6 +48,59 @@
     p.put(5, 6, '#ffffff'); p.put(10, 6, '#ffffff');
   }
 
+  // pixel rows (one letter per pixel, '.' = empty) painted with a palette, at x0, y0 (flip: mirrored)
+  function rows(p, x0, y0, rs, pal, flip) {
+    rs.forEach((r, y) => { for (let x = 0; x < r.length; x++) { const c = pal[r[flip ? r.length - 1 - x : x]]; if (c) p.put(x0 + x, y0 + y, c); } });
+  }
+  // sound waves: arcs going up and right from cx, cy (an animal making its sound)
+  function waves(p, cx, cy, col, radii = [3.5, 6]) {
+    for (const r of radii) for (let a = -1.35; a <= 0.15; a += 0.08) p.put(cx + Math.cos(a) * r, cy + Math.sin(a) * r, col);
+  }
+  // little faces for the sound words (about 9x9, bottom left)
+  const MINI = {
+    perro(p) { p.ell(5, 11, 3.8, 3.4, '#c07838'); p.ell(1.6, 11, 1.3, 2.6, '#7a4420'); p.ell(8.4, 11, 1.3, 2.6, '#7a4420'); p.ell(5, 13, 2, 1.5, '#f0d8b0'); p.rect(3, 10, 1, 1, '#201010'); p.rect(6, 10, 1, 1, '#201010'); p.rect(4, 12, 2, 1, '#201010'); p.rect(4, 14, 2, 1, '#f07080'); },
+    gato(p) { p.tri(1, 10, 3, 6, 5, 9, '#f09840'); p.tri(9, 10, 7, 6, 5, 9, '#f09840'); p.ell(5, 11.5, 4, 3.4, '#f09840'); p.rect(4, 8, 2, 1, '#b8601c'); p.ell(5, 13.5, 1.6, 1, '#fff0d8'); p.rect(3, 11, 1, 1, '#2a7020'); p.rect(6, 11, 1, 1, '#2a7020'); p.put(4.5, 12, '#f07890'); },
+    pajaro(p) { p.ell(5, 12, 4, 3, '#4a7ee0'); p.disc(6.5, 9, 2.6, '#4a7ee0'); p.ell(5, 13, 2.5, 1.5, '#f4a060'); p.tri(8.5, 8, 8.5, 10.5, 11, 9, '#f0b040'); p.put(7, 8, '#101010'); p.tri(0, 10, 2, 11, 1, 14, '#22408c'); },
+    pato(p) { p.ell(5, 12.5, 4.2, 2.6, '#ffffff'); p.disc(7, 8.5, 2.4, '#ffffff'); p.rect(9, 8.5, 2.5, 1.3, '#f89020'); p.put(7, 8, '#101010'); p.shade(5, 12.5, 4.2, '#d0d0e0'); p.rect(0, 15, 10, 1, '#68b0f0'); },
+    rana(p) { p.ell(5, 12, 4.4, 3, '#58b840'); p.disc(2.5, 9, 1.8, '#58b840'); p.disc(7.5, 9, 1.8, '#58b840'); p.put(2.5, 9, '#101010'); p.put(7.5, 9, '#101010'); p.rect(2, 13, 6, 1, '#2a6a20'); p.ell(5, 14, 2.5, 0.8, '#b8e890'); },
+    cabra(p) { p.tri(2.5, 9, 3.5, 9, 1.5, 5, '#8a7a60'); p.tri(6.5, 9, 7.5, 9, 8.5, 5, '#8a7a60'); p.ell(5, 11, 2.8, 3.2, '#ece8e0'); p.ell(1, 10, 1.6, 0.8, '#ece8e0'); p.ell(9, 10, 1.6, 0.8, '#ece8e0'); p.rect(3, 10, 1, 1, '#302010'); p.rect(6, 10, 1, 1, '#302010'); p.ell(5, 13.2, 1.3, 0.9, '#d8a8a8'); p.tri(4, 14, 6, 14, 5, 16, '#d8d4cc'); },
+  };
+  const BROWN = '#c07838', BROWN2 = '#8a5022', CREAM = '#f0d8b0', INK = '#201010';
+  // Canelo, the town's dog, sitting and facing left (sientate) or other poses
+  function dogSit(p, ox = 0, oy = 0) {
+    rows(p, ox, oy, [
+      '....ddbb.......',
+      '...dbbbbb......',
+      '..ddbkbbbd.....',
+      'kwwbbbbbdd.....',
+      'wwwwbbbbdd.....',
+      '.wpwbbbb.......',
+      '...wwbbb.......',
+      '...wwbbbb...b..',
+      '...wwbbbbb..b..',
+      '...wwbbbbbb.b..',
+      '...wwbbbbbbbb..',
+      '...wb.wbbbbb...',
+      '...wb.wbbbbb...',
+      '..wwb.wwbbbb...',
+    ], { b: BROWN, d: BROWN2, w: CREAM, k: INK, p: '#f07080' });
+  }
+  function dogRun(p, ox = 0, oy = 0, legs = 0) {
+    rows(p, ox, oy, [
+      '..dd...........',
+      '.dbbbd.........',
+      'dbkbbd.........',
+      'wwbbbb.........',
+      'kwwbbbbbbbbbb.b',
+      '..wbbbbbbbbbbbb',
+      '...wbbbbbbbbbb.',
+      '...wwbbbbbbbb..',
+      legs ? '...wb.....bw...' : '..wb.......wb..',
+      legs ? '....wb...bw....' : '.wb.........wb.',
+    ], { b: BROWN, d: BROWN2, w: CREAM, k: INK });
+  }
+  function smiley(p, col, sh) { p.disc(8, 8.5, 6.5, col); p.shade(8, 8.5, 6.5, sh); }
+
   const DRAW = {
     hola(p) { hand(p, false); [[1, 2], [2, 4], [0, 4]].forEach(([x, y]) => p.put(x, y, '#f8d030')); p.put(1, 3, '#f8d030'); },
     adios(p) { hand(p, true); for (let y = 3; y < 9; y += 2) { p.put(15, y, '#68b0f0'); p.put(14, y + 1, '#68b0f0'); } },
@@ -85,7 +138,7 @@
     flecha(p) { p.rect(2, 7, 8, 3, '#f8e060'); p.tri(9, 3.5, 9, 13.5, 15, 8.5, '#f8e060'); },
     dado(p, w) {
       p.rect(2, 2, 12, 12, '#f8f8f0'); p.rect(2, 13, 12, 1, '#c8c8d0'); p.rect(13, 2, 1, 12, '#c8c8d0');
-      const pos = { 1: [[7, 7]], 2: [[4, 4], [10, 10]], 3: [[4, 4], [7, 7], [10, 10]], 4: [[4, 4], [10, 4], [4, 10], [10, 10]], 5: [[4, 4], [10, 4], [7, 7], [4, 10], [10, 10]] }[w.n] || [];
+      const pos = { 1: [[7, 7]], 2: [[4, 4], [10, 10]], 3: [[4, 4], [7, 7], [10, 10]], 4: [[4, 4], [10, 4], [4, 10], [10, 10]], 5: [[4, 4], [10, 4], [7, 7], [4, 10], [10, 10]], 6: [[4, 3], [10, 3], [4, 7], [10, 7], [4, 11], [10, 11]] }[w.n] || [];
       pos.forEach(([x, y]) => p.rect(x, y, 2, 2, '#d02838'));
     },
     manzana(p) {
@@ -154,6 +207,189 @@
       for (let i = 0; i < 7; i++) { p.put(1 + i, 4 + i * 0.7, '#a8a8b8'); p.put(14 - i, 4 + i * 0.7, '#a8a8b8'); }
       p.disc(8, 9, 1.8, '#d02838');
     },
+    // ===================== Round B =====================
+    diez(p, w) { // 7..10: a ten frame (two rows of five), the right number of red dots filled in
+      p.rect(0, 3, 16, 10, '#f8f8f0'); p.rect(0, 12, 16, 1, '#c8c8d0');
+      for (let k = 0; k < 10; k++) { const x = 1 + (k % 5) * 3, y = k < 5 ? 4 : 8; p.rect(x, y, 2, 3, k < w.n ? '#d02838' : '#bcbcca'); }
+      p.rect(0, 7, 16, 1, '#c8c8d0');
+    },
+    leche(p) {
+      p.tri(3, 5, 13, 5, 8, 1, '#e8eef8'); p.rect(3, 5, 10, 10, '#ffffff'); p.rect(11, 5, 2, 10, '#d8e0ec');
+      p.rect(3, 8, 10, 3, '#3a78e0'); p.rect(11, 8, 2, 3, '#2a58b0'); p.rect(7, 1, 2, 1, '#3a78e0');
+      p.disc(6, 13, 1, '#3a78e0');
+    },
+    queso(p) {
+      p.tri(1, 7, 15, 4, 15, 7, '#fff090'); p.rect(1, 7, 15, 7, '#f8d040'); p.rect(1, 13, 15, 1, '#d8a820');
+      [[4, 9, 1.4], [9, 11, 1.2], [12, 8.5, 1], [6, 12, 0.8]].forEach(([x, y, r]) => p.disc(x, y, r, '#d8a020'));
+    },
+    huevo(p) { p.ell(8, 9, 5, 6.5, '#fff6e4'); p.shade(8, 9, 6.6, '#e6d2b0'); p.put(6, 5, '#ffffff'); p.put(5, 6, '#ffffff'); p.put(5, 7, '#ffffff'); },
+    agua(p) {
+      p.disc(8, 10.5, 4.8, '#3a90f0'); p.tri(3.6, 9, 12.4, 9, 8, 0.5, '#3a90f0'); p.shade(8, 10.5, 4.8, '#2060c0');
+      p.put(6, 8, '#d0f0ff'); p.put(5, 9, '#d0f0ff'); p.put(5, 10, '#d0f0ff'); p.put(7, 6, '#a0d8ff');
+    },
+    galleta(p) {
+      p.disc(8, 8.5, 6.5, '#d8a058'); p.shade(8, 8.5, 6.5, '#b88038');
+      [[5, 6], [9, 5], [11, 9], [6, 10], [9, 12], [4, 9]].forEach(([x, y]) => { p.rect(x, y, 2, 1, '#5a3010'); p.put(x, y + 1, '#5a3010'); });
+    },
+    arbol(p) {
+      p.rect(7, 10, 3, 6, '#8a5028'); p.put(6, 15, '#8a5028'); p.put(10, 15, '#8a5028'); p.rect(9, 10, 1, 6, '#6a3818');
+      p.disc(8.5, 6.5, 6, '#40a838'); p.disc(4, 8.5, 3.2, '#40a838'); p.disc(13, 8.5, 3, '#40a838'); p.shade(8.5, 6.5, 6.5, '#2a7a28');
+      p.put(6, 3, '#90e070'); p.put(5, 4, '#90e070'); p.put(7, 3, '#90e070');
+    },
+    flor(p) {
+      p.rect(7, 9, 2, 7, '#38a040'); p.ell(4.5, 12.5, 2.5, 1.2, '#38a040'); p.ell(11.5, 13, 2.5, 1.2, '#38a040');
+      [[8, 2.5], [11.6, 5.3], [10.2, 9.3], [5.8, 9.3], [4.4, 5.3]].forEach(([x, y]) => p.disc(x, y, 2.4, '#f070a8'));
+      p.disc(8, 6.5, 2.2, '#f8d030'); p.put(7, 5, '#fff8c0');
+    },
+    fuente(p) {
+      p.ell(8, 13, 7.5, 2.6, '#a8a8b8'); p.ell(8, 12.6, 6, 1.6, '#4a90e8'); p.rect(7, 6, 2, 6, '#a8a8b8'); p.ell(8, 6.5, 3.5, 1.3, '#a8a8b8');
+      for (const s of [-1, 1]) for (let t = 0; t <= 1; t += 0.12) p.put(8 + s * (1 + t * 5), 5 - Math.sin(t * Math.PI) * 4 + t * 5, '#68c0ff');
+      p.rect(7, 1, 2, 4, '#68c0ff'); p.put(7, 1, '#ffffff');
+    },
+    banco(p) {
+      p.rect(1, 3, 14, 2, '#c07838'); p.rect(1, 6, 14, 2, '#c07838'); p.rect(0, 9, 16, 2, '#d89048'); p.rect(0, 10, 16, 1, '#a05a28');
+      p.rect(2, 11, 2, 4, '#404048'); p.rect(12, 11, 2, 4, '#404048'); p.rect(2, 2, 1, 7, '#404048'); p.rect(13, 2, 1, 7, '#404048');
+    },
+    puerta(p) {
+      p.rect(3, 4, 10, 12, '#a05a28'); p.disc(8, 4.5, 5, '#a05a28'); p.rect(3, 15, 10, 1, '#a05a28');
+      p.rect(5, 4, 2, 10, '#8a4a20'); p.rect(9, 4, 2, 10, '#8a4a20'); p.rect(8, 1, 0, 0, '#000'); p.rect(4, 6, 1, 1, '#c07838');
+      p.disc(11, 10, 1, '#f8d030');
+    },
+    ventana(p) {
+      p.rect(2, 2, 12, 12, '#f0e8d8'); p.rect(3, 3, 10, 10, '#78c0f8'); p.rect(7, 3, 2, 10, '#f0e8d8'); p.rect(3, 7, 10, 2, '#f0e8d8');
+      p.put(4, 4, '#e0f4ff'); p.put(5, 4, '#e0f4ff'); p.put(4, 5, '#e0f4ff'); p.put(10, 4, '#e0f4ff');
+      p.rect(1, 13, 14, 2, '#a05a28'); p.rect(0, 2, 2, 11, '#d84040'); p.rect(14, 2, 2, 11, '#d84040');
+    },
+    granja(p) {
+      p.tri(0, 7, 16, 7, 8, 1, '#c03028'); p.rect(2, 7, 12, 8, '#d84030'); p.rect(2, 14, 12, 1, '#a02820');
+      p.rect(5, 9, 6, 6, '#f8f0e0'); for (let i = 0; i < 6; i++) { p.put(5 + i, 9 + i, '#f8f0e0'); }
+      p.rect(6, 10, 4, 5, '#8a2018'); for (let i = 0; i < 4; i++) { p.put(6 + i, 10 + i, '#f8f0e0'); p.put(9 - i, 10 + i, '#f8f0e0'); }
+      p.rect(7, 4, 2, 2, '#f8f0e0');
+    },
+    perro(p) {
+      p.ell(8, 8.5, 5.5, 5.2, BROWN); p.shade(8, 8.5, 5.5, '#a86028');
+      p.ell(2.6, 9.5, 1.9, 4.4, BROWN2); p.ell(13.4, 9.5, 1.9, 4.4, BROWN2);
+      p.ell(8, 11.5, 3.4, 2.5, CREAM); p.rect(7, 9, 2, 2, INK); p.rect(7, 11, 2, 1, INK);
+      p.rect(7, 12, 2, 2, '#f07080'); p.put(8, 13, '#d04860');
+      p.rect(5, 6, 1, 2, INK); p.rect(10, 6, 1, 2, INK); p.put(5, 6, '#ffffff'); p.put(10, 6, '#ffffff');
+    },
+    gato(p) {
+      p.tri(1, 9, 3, 1, 8, 5, '#f09840'); p.tri(15, 9, 13, 1, 8, 5, '#f09840'); p.tri(3, 6, 3.6, 3, 5.5, 5, '#f8a0b0'); p.tri(13, 6, 12.4, 3, 10.5, 5, '#f8a0b0');
+      p.ell(8, 9.5, 6.4, 5, '#f09840'); p.shade(8, 9.5, 6.4, '#d07828');
+      p.rect(7, 5, 2, 2, '#b8601c'); p.put(5, 5, '#b8601c'); p.put(10, 5, '#b8601c');
+      p.ell(8, 12.2, 2.8, 1.8, '#fff0d8'); p.rect(7, 11, 2, 1, '#f07890');
+      p.rect(4, 8, 2, 2, '#58c040'); p.rect(10, 8, 2, 2, '#58c040'); p.rect(5, 8, 1, 2, '#101010'); p.rect(10, 8, 1, 2, '#101010');
+      p.put(0, 11, '#fff8f0'); p.put(1, 11, '#fff8f0'); p.put(15, 11, '#fff8f0'); p.put(14, 11, '#fff8f0');
+    },
+    pajaro(p) {
+      p.tri(0, 7, 4, 8, 2, 12, '#22408c'); p.ell(7.5, 9.5, 5, 3.8, '#4a7ee0'); p.disc(11, 6, 3.2, '#4a7ee0');
+      p.ell(8.5, 11, 3.6, 2.2, '#f4a060'); p.ell(6, 9, 3, 2, '#2a4ca0'); p.tri(13.5, 5, 13.5, 7.5, 16, 6.3, '#f0b040');
+      p.put(12, 5, '#101010'); p.put(11, 4, '#ffffff'); p.rect(7, 13, 1, 2, '#806040'); p.rect(9, 13, 1, 2, '#806040');
+    },
+    mariposa(p) {
+      for (const f of [false, true]) {
+        const X = x => f ? 16 - x : x;
+        p.ell(X(4.2), 5.5, 3.8, 3.6, '#f88c28'); p.ell(X(5), 11.2, 2.8, 2.8, '#f8a838');
+        p.disc(X(3.5), 4.5, 1, '#3a1808'); p.put(X(4.5) - (f ? 1 : 0), 11, '#ffffff');
+      }
+      p.rect(7, 3, 2, 11, '#3a2418'); p.put(6, 1, '#3a2418'); p.put(5, 0, '#3a2418'); p.put(9, 1, '#3a2418'); p.put(10, 0, '#3a2418');
+    },
+    pez(p) {
+      p.tri(10, 8, 15.5, 3, 15.5, 13, '#f8a040'); p.ell(7, 8, 5.5, 4, '#f88828'); p.tri(5, 4.5, 9, 4.5, 8, 2, '#f8a040');
+      p.shade(7, 8, 5.5, '#d06818'); p.disc(4, 7, 1.2, '#ffffff'); p.put(4, 7, '#101010'); p.put(1, 9, '#c05010');
+      [[7, 8], [9, 7], [9, 9]].forEach(([x, y]) => p.put(x, y, '#ffc080'));
+      p.disc(2, 2, 1, '#a8d8ff');
+    },
+    conejo(p) {
+      p.ell(5, 4.5, 1.8, 4.5, '#e8e0ec'); p.ell(11, 4.5, 1.8, 4.5, '#e8e0ec'); p.ell(5, 4.5, 0.7, 3.2, '#f8a0b8'); p.ell(11, 4.5, 0.7, 3.2, '#f8a0b8');
+      p.ell(8, 11, 5.5, 4.4, '#ece6f0'); p.shade(8, 11, 5.5, '#c8c0d4');
+      p.rect(5, 10, 1, 2, '#201828'); p.rect(10, 10, 1, 2, '#201828'); p.put(5, 10, '#ffffff'); p.put(10, 10, '#ffffff');
+      p.rect(7, 12, 2, 1, '#f070a0'); p.put(3, 12, '#f8b0c8'); p.put(12, 12, '#f8b0c8');
+    },
+    pato(p) {
+      p.rect(0, 14, 16, 1, '#68b0f0'); p.ell(9, 11, 6.5, 3.2, '#ffffff'); p.tri(13, 11, 16, 6.5, 15, 11, '#ffffff');
+      p.rect(4, 5, 3, 6, '#ffffff'); p.disc(5, 4.5, 3, '#ffffff'); p.rect(0, 4.5, 3, 2, '#f89020'); p.put(0, 6, '#f89020');
+      p.shade(9, 11, 6.6, '#cfd2e4'); p.ell(10, 10, 3, 1.4, '#dcdeec'); p.put(5, 3, '#101010'); p.rect(1, 15, 14, 1, '#3a88e0');
+    },
+    rana(p) {
+      p.disc(4, 5, 3, '#58b840'); p.disc(12, 5, 3, '#58b840'); p.ell(8, 10, 7.2, 4.8, '#58b840'); p.shade(8, 10, 7.2, '#3a9030');
+      p.disc(4, 5, 1.8, '#ffffff'); p.disc(12, 5, 1.8, '#ffffff'); p.rect(4, 5, 1, 1, '#101010'); p.rect(11, 5, 1, 1, '#101010');
+      p.rect(4, 11, 8, 1, '#1a5a18'); p.put(3, 10, '#1a5a18'); p.put(12, 10, '#1a5a18'); p.put(2, 9, '#f890a0'); p.put(13, 9, '#f890a0');
+      p.ell(8, 13.5, 3.5, 1, '#b8e890');
+    },
+    gallina(p) {
+      p.tri(10, 9, 15, 3, 15.5, 10, '#8a4820'); p.ell(8.5, 10.5, 6, 4.5, '#c87838'); p.disc(5, 5.5, 2.8, '#c87838'); p.rect(4, 6, 3, 4, '#c87838');
+      p.disc(4, 2.6, 1.1, '#e83030'); p.disc(5.6, 2.3, 1.1, '#e83030'); p.rect(3, 8, 1, 2, '#e83030');
+      p.tri(0.5, 5.5, 2.6, 4.6, 2.6, 6.6, '#f0b040'); p.put(4, 5, '#101010');
+      p.ell(10, 10.5, 3.4, 2, '#a05828'); p.ell(6, 12, 2.6, 2, '#e0a060'); p.rect(7, 15, 1, 1, '#f0b040'); p.rect(10, 15, 1, 1, '#f0b040');
+    },
+    caballo(p) {
+      p.tri(6, 16, 15, 16, 12, 4, '#a0602c'); p.rect(9, 6, 5, 10, '#a0602c');
+      p.disc(9.5, 4.5, 3, '#a0602c'); p.ell(5, 7, 4, 2.5, '#a0602c'); p.ell(2.6, 8, 2.4, 2.2, '#b87848');
+      p.tri(9, 2.5, 11.5, 2.5, 11, -0.5, '#a0602c'); p.shade(10, 10, 9, '#844a20');
+      for (let y = 2; y < 16; y++) { const x = 11.5 + y * 0.28; p.rect(x, y, 2, 1, '#3a2010'); }
+      p.rect(8, 2, 2, 1, '#3a2010'); p.put(8, 4, '#101010'); p.put(1, 8, '#4a2810'); p.rect(7, 6, 1, 1, '#d8a878');
+    },
+    cabra(p) {
+      p.tri(4.5, 5, 6.5, 5, 2.5, 0.5, '#8a7a60'); p.tri(9.5, 5, 11.5, 5, 13.5, 0.5, '#8a7a60');
+      p.ell(2.5, 6.5, 2.4, 1.2, '#ece8e0'); p.ell(13.5, 6.5, 2.4, 1.2, '#ece8e0'); p.put(2, 6.5, '#e8b0b0'); p.put(13, 6.5, '#e8b0b0');
+      p.ell(8, 8.5, 4, 5, '#ece8e0'); p.shade(8, 8.5, 4.5, '#ccc6ba');
+      p.rect(5, 7, 2, 1, '#f0c040'); p.rect(9, 7, 2, 1, '#f0c040'); p.put(6, 7, '#201008'); p.put(9, 7, '#201008');
+      p.ell(8, 11.6, 2.2, 1.4, '#d8a8a8'); p.put(7, 11, '#806060'); p.put(9, 11, '#806060');
+      p.tri(6.5, 13, 9.5, 13, 8, 16, '#d8d4cc');
+    },
+    guau(p) { MINI.perro(p); waves(p, 7, 9, '#f8a020', [4, 6.5]); },
+    miau(p) { MINI.gato(p); waves(p, 7, 9, '#f8a020', [4, 6.5]); },
+    pio(p) { MINI.pajaro(p); waves(p, 7, 9, '#f8a020', [4.5, 7]); },
+    cuac(p) { MINI.pato(p); waves(p, 8, 9, '#f8a020', [4.5, 7]); },
+    croac(p) { MINI.rana(p); waves(p, 7, 10, '#f8a020', [4.5, 7]); },
+    bee(p) { MINI.cabra(p); waves(p, 7, 9, '#f8a020', [4.5, 7]); },
+    hueso(p) {
+      for (let t = 0; t <= 1; t += 0.05) p.disc(4 + t * 8, 12 - t * 8, 1.6, '#f8f0dc');
+      p.disc(2.5, 11.2, 2, '#f8f0dc'); p.disc(4.8, 13.5, 2, '#f8f0dc'); p.disc(11.2, 2.5, 2, '#f8f0dc'); p.disc(13.5, 4.8, 2, '#f8f0dc');
+      p.shade(8, 8, 9, '#dccaa4'); p.put(10, 3, '#ffffff'); p.put(2, 10, '#ffffff');
+    },
+    cama(p) {
+      p.rect(1, 3, 3, 12, '#8a5028'); p.rect(1, 3, 3, 1, '#a86838'); p.rect(4, 11, 11, 3, '#8a5028'); p.rect(13, 9, 2, 6, '#8a5028');
+      p.rect(4, 8, 10, 3, '#ffffff'); p.rect(7, 7, 7, 4, '#5080e0'); p.rect(7, 10, 7, 1, '#3860b8'); p.ell(5.5, 7.5, 1.8, 1.3, '#ffffff');
+      p.rect(4, 14, 1, 1, '#6a3818');
+    },
+    sientate(p) { dogSit(p, 0, 1); },
+    ven(p) {
+      dogRun(p, 1, 3, 1);
+      p.rect(0, 14, 3, 1, '#c8b890'); p.put(14, 4, '#f8a020'); p.put(15, 5, '#f8a020'); p.put(14, 6, '#f8a020');
+    },
+    salta(p) { // Canelo in the air over a little hurdle
+      p.rect(3, 11, 1, 5, '#e8e8f0'); p.rect(12, 11, 1, 5, '#e8e8f0'); p.rect(2, 11, 12, 2, '#e03838'); p.rect(5, 11, 2, 2, '#f8f8f8'); p.rect(9, 11, 2, 2, '#f8f8f8');
+      dogRun(p, 1, 0, 0);
+    },
+    pata(p) {
+      p.ell(8, 11, 4.2, 3.6, BROWN); p.shade(8, 11, 4.4, '#a86028');
+      [[3.2, 6.4], [6.4, 3.8], [9.8, 3.8], [12.8, 6.4]].forEach(([x, y]) => p.ell(x, y, 1.7, 2, BROWN));
+      p.ell(8, 11.5, 2.4, 1.8, '#3a2010'); [[3.2, 6.6], [6.4, 4], [9.8, 4], [12.8, 6.6]].forEach(([x, y]) => p.disc(x, y, 0.9, '#3a2010'));
+    },
+    gira(p) {
+      for (let a = 0.5; a < Math.PI * 1.75; a += 0.06) p.put(8 + Math.cos(a) * 6.8 - 0.5, 8 + Math.sin(a) * 6.8 - 0.5, '#f8a020');
+      p.tri(11, 0, 15, 3.5, 10.5, 5.5, '#f8a020');
+      p.ell(8, 9, 3.4, 2.4, BROWN); p.disc(6, 6.5, 2, BROWN); p.put(5, 6, INK); p.put(3.5, 7, INK); p.ell(7, 5, 0.8, 1.3, BROWN2); p.rect(10, 7, 2, 1, BROWN);
+    },
+    feliz(p) {
+      smiley(p, '#f8d030', '#e0b018');
+      p.put(4, 7, '#302018'); p.put(5, 6, '#302018'); p.put(6, 7, '#302018'); p.put(9, 7, '#302018'); p.put(10, 6, '#302018'); p.put(11, 7, '#302018');
+      p.rect(4, 10, 8, 1, '#302018'); p.rect(5, 11, 6, 2, '#a02838'); p.rect(6, 12, 4, 1, '#f07080');
+      p.rect(2, 9, 2, 1, '#f09080'); p.rect(12, 9, 2, 1, '#f09080');
+    },
+    triste(p) {
+      smiley(p, '#88b8f0', '#6890d0');
+      p.rect(5, 6, 2, 2, '#302018'); p.rect(10, 6, 2, 2, '#302018'); p.put(4, 5, '#302018'); p.put(12, 5, '#302018');
+      p.rect(6, 11, 4, 1, '#302018'); p.put(5, 12, '#302018'); p.put(10, 12, '#302018');
+      p.rect(4, 9, 1, 2, '#e8f8ff'); p.put(4, 11, '#ffffff');
+    },
+    cansado(p) {
+      smiley(p, '#f0c870', '#d0a050');
+      p.rect(4, 7, 3, 1, '#302018'); p.rect(9, 7, 3, 1, '#302018'); p.ell(8, 11, 1.4, 1.6, '#803030');
+      p.rect(11, 0, 3, 1, '#4060c0'); p.put(12, 1, '#4060c0'); p.rect(11, 2, 3, 1, '#4060c0'); p.put(14, 3, '#4060c0'); p.put(15, 3, '#4060c0'); p.put(15, 4, '#4060c0'); p.put(14, 5, '#4060c0'); p.put(15, 5, '#4060c0');
+    },
   };
 
   // G.icon(name | word, size?) -> canvas (cached). A word object may carry n / col params.
@@ -167,6 +403,8 @@
     p.outline();
     return (cache[key] = p.canvas());
   };
+  // true when a word (or icon name) has its own picture, not the plain placeholder tile (tools/test-roundb-world.js)
+  G.iconDrawn = w => { if (typeof w === 'string') w = G.data.words[w] || { icon: w }; return !!(w && DRAW[w.icon]); };
   // draw an icon scaled (pixel-perfect) inside an optional frame
   G.drawIcon16 = function (ctx, w, x, y, scale = 1, frame) {
     const img = G.icon(w), s = S * scale;

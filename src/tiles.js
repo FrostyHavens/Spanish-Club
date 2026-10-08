@@ -139,6 +139,7 @@
     'l': OBSTACLE('Well', 'town'), 'k': OBSTACLE('Barrels', 'town'), 'g': OBSTACLE('Grave', 'grass'),
     'P': OBSTACLE('Shrub', 'grass'), 'L': OBSTACLE('Lamp Post', 'town'), 'Y': OBSTACLE('Stall', 'town'),
     'Z': OBSTACLE('Statue', 'town'),
+    'J': OBSTACLE('Bench', 'town'), 'O': OBSTACLE('Hay', 'grass'), // Round B: el banco, a round hay bale at the farm
     'i': tt('Floor', 0, 1, 1, 1, 1, 'indoor'),
     'I': WALL('Wall', 'indoor'),
     'q': tt('Carpet', 0, 1, 1, 1, 1, 'indoor'),
@@ -155,7 +156,7 @@
   // n[] order: N NE E SE S SW W NW
   const DX = [0, 1, 1, 1, 0, -1, -1, -1], DY = [-1, -1, 0, 1, 1, 1, 0, -1];
   const BASEMAP = { '.': '.', 'o': '.', 'y': '.', 'f': '.', 'h': '.', ',': ',', '=': '=', 'p': 'p', 's': 's', 'x': 'x', 'i': 'i', 'c': 'c' };
-  const OBJ = new Set('rFlkgPLYZteauj'.split(''));
+  const OBJ = new Set('rFlkgPLYZteaujJO'.split(''));
   const INDOOR_OBJ = new Set('teauj'.split(''));
   const BASE_PREF = ['=', 'p', 'x', 'c', 'i', ',', 's', '.'];
   const WATERISH = c => c === 'w' || c === '~' || c === 'b' || c === 'B';
@@ -1042,36 +1043,35 @@
     b.rect(10, 5, 4, 15, P.T2); b.vl(10, 5, 19, P.T4); b.vl(13, 5, 19, P.T1);
     b.hl(10, 13, 4, P.T5); b.hl(10, 13, 19, P.T0);
   }
-  function wellTile(b, I) {
+  // the plaza fountain (la fuente, Round B): a round stone basin of water, a pedestal with a little bowl on top and
+  // water arcing down from it (4 frames); a goldfish lives in it (animals.js)
+  function fountainTile(b, I) {
     drawGround(b, I.base, I);
-    dropShadow(b, 14, 19, 10, 3.5, 0.6);
-    const cx = 12, cy = 11;
-    for (let y = 2; y < 23; y++) for (let x = 1; x < 23; x++) {
+    dropShadow(b, 13, 20, 11, 3, 0.6);
+    const cx = 12, cy = 13;
+    for (let y = 3; y < 24; y++) for (let x = 0; x < 24; x++) {
       const dx = x + 0.5 - cx, dy = y + 0.5 - cy;
-      const top = (dx / 10) ** 2 + (dy / 6.5) ** 2;
-      const side = (dx / 10) ** 2 + ((dy - 5) / 6.5) ** 2;
+      const top = (dx / 11) ** 2 + (dy / 6.5) ** 2, side = (dx / 11) ** 2 + ((dy - 4) / 6.5) ** 2;
       if (top <= 1) {
-        const inner = (dx / 6.5) ** 2 + ((dy + 0.5) / 3.8) ** 2;
-        if (inner <= 1) b.set(x, y, dy < -1 ? P.W0 : (inner < 0.35 && dx < 0 ? P.W3 : P.W1));
-        else {
-          const seg = Math.floor((Math.atan2(dy, dx) + Math.PI) * 2.2);
-          let c = (seg & 1) ? P.K4 : P.K3; if (dy < -2) c = lighten(c, 0.2);
-          if (inner < 1.25) c = P.K1;
-          b.set(x, y, c);
-        }
+        const inner = (dx / 8.6) ** 2 + ((dy + 0.3) / 4.6) ** 2;
+        if (inner <= 1) { let c = dy < -2 ? P.W2 : P.W3; if (((x * 3 + y * 5 + I.af * 7) % 23) === 0) c = P.W5; else if (inner < 0.5 && dx < -2 && dy < 0) c = P.W4; b.set(x, y, c); }
+        else { let c = (Math.floor((Math.atan2(dy, dx) + Math.PI) * 2.6) & 1) ? P.K5 : P.K4; if (dy > 2) c = P.K3; if (inner < 1.22) c = dy < 0 ? P.K2 : P.K5; b.set(x, y, c); }
       } else if (side <= 1 && dy > 0) {
-        const lx = Math.floor(x / 4 + (y > 17 ? 0.5 : 0));
-        let c = (lx & 1) ? P.K2 : P.K3;
-        if (y === 17) c = P.K1;
-        if (side > 0.8) c = P.K1;
+        let c = (Math.floor(x / 4 + (y > 19 ? 0.5 : 0)) & 1) ? P.K3 : P.K4;
+        if (side > 0.82 || y === 19) c = P.K2;
         b.set(x, y, c);
       }
     }
-    // wooden frame + bucket
-    for (const px of [2, 20]) { b.rect(px, 0, 2, 12, P.T2); b.vl(px, 0, 11, P.T4); b.vl(px + 1, 0, 11, P.T1); }
-    b.hl(2, 21, 1, P.T4); b.hl(2, 21, 2, P.T2); b.hl(2, 21, 3, P.T0);
-    b.vl(12, 4, 7, P.P1);
-    b.rect(10, 8, 5, 3, P.T3); b.hl(10, 14, 8, P.K3); b.hl(10, 14, 10, P.T1);
+    // the pedestal and its bowl
+    b.rect(11, 6, 3, 8, P.K4); b.vl(11, 6, 13, P.K5); b.vl(13, 6, 13, P.K2); b.hl(11, 13, 13, P.K2);
+    for (let x = 8; x <= 16; x++) { b.set(x, 6, P.K5); b.set(x, 7, x < 10 || x > 14 ? P.K2 : P.K3); }
+    b.hl(9, 15, 5, P.W4); b.set(12, 5, P.W5);
+    // water falling from the bowl on both sides, the drops moving down frame by frame
+    for (const sgn of [-1, 1]) for (let k = 0; k < 7; k++) {
+      const t = (k + I.af * 0.5) / 7, x = 12 + sgn * (4 + t * 3.5), y = 6 + t * t * 7;
+      b.set(Math.round(x), Math.round(y), (k + I.af) % 2 ? P.W6 : P.W5);
+    }
+    b.vl(12, 1, 4, P.W5); b.set(12, 1 + (I.af % 3), P.W6); b.set(11, 3, P.W4); b.set(13, 2, P.W4);
   }
   function barrelTile(b, I) {
     drawGround(b, I.base, I);
@@ -1244,6 +1244,31 @@
       b.set(x, y, c);
     }
   }
+  // a park bench seen from the front: a slatted back, the seat, iron legs and arms (Round B, 'J')
+  function benchTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 12, 19, 10.5, 2.5, 0.62);
+    for (const x of [3, 20]) { b.rect(x, 5, 2, 15, P.K1); b.vl(x, 5, 19, P.K2); }
+    for (const [y, h] of [[6, 3], [10, 3]]) { b.rect(2, y, 20, h, P.T3); b.hl(2, 21, y, P.T5); b.hl(2, 21, y + h - 1, P.T1); }
+    b.rect(1, 14, 22, 3, P.T4); b.hl(1, 22, 14, P.T5); b.hl(1, 22, 16, P.T2); b.hl(1, 22, 17, P.T0);
+    for (const x of [2, 20]) { b.rect(x, 17, 2, 4, P.K1); b.set(x, 17, P.K3); }
+    b.vl(0, 14, 17, P.T1); b.vl(23, 14, 17, P.T0);
+  }
+  // a round hay bale, rolled, at the farm (Round B, 'O')
+  function hayTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 13, 20, 10, 2.5, 0.6);
+    for (let y = 4; y < 21; y++) for (let x = 2; x < 22; x++) {
+      const end = ((x + 0.5 - 7) / 5.5) ** 2 + ((y + 0.5 - 12.5) / 8) ** 2;
+      if (end <= 1) { const r = Math.hypot((x + 0.5 - 7) / 5.5, (y + 0.5 - 12.5) / 8); b.set(x, y, r > 0.85 ? P.H1 : (Math.round(r * 6) & 1) ? P.H2 : P.H3); continue; }
+      if (x >= 7 && x < 19 && y >= 5 && y < 20 && ((x + 0.5 - 18) / 3.5) ** 2 + ((y + 0.5 - 12.5) / 8) ** 2 <= 1.6) {
+        let c = y < 8 ? P.H4 : y < 15 ? P.H3 : y < 18 ? P.H2 : P.H1;
+        if (hsh(x, y, I.v) < 0.18) c = P.Y1;
+        b.set(x, y, c);
+      }
+    }
+    for (let y = 5; y < 20; y++) { b.set(12, y, P.T2); }
+  }
   function tableTile(b, I) {
     drawGround(b, I.base, I);
     const n = I.n, jw = n[6] === 't', je = n[2] === 't';
@@ -1394,13 +1419,15 @@
   reg('S', { need: 'n', fn: (b, I) => stoneWallTile(b, I, 'S') });
   reg('G', { need: 'n', fn: (b, I) => stoneWallTile(b, I, 'G') });
   reg('K', { need: 'n', fn: (b, I) => stoneWallTile(b, I, 'K') });
-  reg('l', { need: 'g', base: true, fn: wellTile });
+  reg('l', { need: 'g', base: true, anim: 4, spd: 10, fn: fountainTile });
   reg('k', { need: 'g', base: true, fn: barrelTile });
   reg('g', { need: 'g', base: true, fn: graveTile });
   reg('P', { need: 'g', base: true, fn: shrubTile });
   reg('L', { need: 'g', base: true, anim: 4, spd: 14, fn: lampTile });
   reg('Y', { need: 'g', base: true, fn: stallTile });
   reg('Z', { need: 'g', base: true, fn: statueTile });
+  reg('J', { need: 'g', base: true, fn: benchTile });
+  reg('O', { need: 'g', base: true, fn: hayTile });
   reg('I', { need: 'n', fn: iwallTile });
   reg('t', { need: 'g', base: true, fn: tableTile });
   reg('e', { need: 'g', base: true, fn: counterTile });
@@ -1455,7 +1482,7 @@
     'h': '#7aa440', 'M': '#8c6c48', 's': '#dcc080', '~': '#5890e0', 'w': '#2250b4', 'b': '#9c5e2a', 'B': '#9c5e2a', 'r': '#7c7c88',
     'x': '#a09c98', 'X': '#5c5c6c', 'F': '#8c5a28', 'R': '#b43620', 'Q': '#3a5c98', '+': '#3a5c98', 'W': '#d8ccae', 'N': '#d8ccae',
     'D': '#74421e', 'S': '#8a8a96', 'G': '#8a8a96', 'K': '#74421e', 'l': '#6c6c80', 'k': '#9c5e2a', 'g': '#9a9aa4', 'P': '#3c8a2c',
-    'L': '#e8c850', 'Y': '#c8343c', 'Z': '#b4b2b4', 'i': '#a0602c', 'I': '#4c4032', 'q': '#9c1c2c', 't': '#c0823a', 'e': '#74421e',
+    'L': '#e8c850', 'Y': '#c8343c', 'Z': '#b4b2b4', 'J': '#c0823a', 'O': '#e2be46', 'i': '#a0602c', 'I': '#4c4032', 'q': '#9c1c2c', 't': '#c0823a', 'e': '#74421e',
     'a': '#e6e2d8', 'u': '#74421e', 'j': '#d8d8e8', 'v': '#e05818', 'n': '#5c3418', 'c': '#a08c6c', ' ': '#000000',
   };
   G.MINI_COLORS = MINI;

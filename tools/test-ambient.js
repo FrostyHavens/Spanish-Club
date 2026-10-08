@@ -79,7 +79,7 @@ async function critters(browser) {
     await town(g, 12, 15, 'down'); // a few tiles from the cat
     const cat = await g.ev(() => { const c = G.field.amb.cat; return [c.x * 24 + 12, c.y * 24 + 2]; });
     await g.tap(...await onScreen(g, ...cat));
-    check('critters: tapping the cat makes it meow (and walks you over)', await g.ev(() => G.field.amb.cat.happy > 0 && G.field.amb.fx.some(e => e.s === '¡Miau!') && !!G.field.route));
+    check('critters: tapping the cat makes it meow, says "el gato / ¡Miau!" (Round B word bubble) and walks you over', await g.ev(() => G.field.amb.cat.happy > 0 && G.world.bubble && G.world.bubble.id === 'gato' && G.world.bubble.cry === '¡Miau!' && !!G.field.route));
     await g.frames(16); await g.shot('cat_meow');
     check('critters: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
