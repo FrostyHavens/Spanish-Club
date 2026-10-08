@@ -316,6 +316,29 @@ async function desktop(browser) {
     await choiceUp(g);
     await g.press('Enter');
     check('speak keys: Enter answers as before', await g.ev(() => window.__r === null && G.top().won && G.top().w.result === 0));
+    // Space is push-to-talk while a mic is ready: hold to talk, let go to finish; it doesn't answer like A
+    await g.drive(() => window.__r != null, 'the question to finish');
+    await g.fieldIdle('villa');
+    await ask(g, { prompt: '¿Qué quieres?', layout: 'cards', choices: cards('manzana', 'platano', 'uvas'), answer: 0, learn: 'manzana' });
+    await choiceUp(g);
+    await g.ev(() => { window.__c = G.top(); window.__sr.queue.push({ hang: true }); });
+    const n0 = await g.ev(() => window.__sr.starts.length);
+    await g.page.keyboard.down('Space');
+    await g.until(n => window.__sr.starts.length > n, n0, 'Space to start the recognizer');
+    check('speak space: holding Space starts the mic inside the key press', await g.ev(() => window.__sr.starts[window.__sr.starts.length - 1].during === 'keydown'));
+    await g.frames(30);
+    check('speak space: while held it keeps listening and answers nothing', await g.ev(() => window.__c.mic.listening() && !window.__c.won && window.__r === null));
+    await g.page.keyboard.up('Space');
+    await g.until(() => !window.__c.mic.listening(), null, 'letting go of Space to finish');
+    check('speak space: letting go stops listening', await g.ev(() => window.__sr.calls.includes('stop') && !window.__c.won));
+    await micIdle(g);
+    await g.ev(() => { window.__sr.calls.length = 0; window.__sr.queue.push({ hang: true }); });
+    await g.page.keyboard.press('Space'); await g.frames(30);
+    check('speak space: a quick press starts it and it keeps listening, like a tap', await g.ev(() => window.__c.mic.listening() && !window.__sr.calls.includes('stop')));
+    await g.press('v');
+    await micIdle(g);
+    await g.press('Enter');
+    check('speak space: Enter still answers', await g.ev(() => window.__c.won && window.__c.w.result === 0));
     check('speak keys: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
 }

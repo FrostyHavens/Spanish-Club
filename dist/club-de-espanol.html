@@ -53,18 +53,20 @@ const KEYMAP = {
   KeyC: 'C', ShiftLeft: 'C', ShiftRight: 'C', KeyL: 'C',
   KeyM: 'M', KeyV: 'V'
 };
+// Space is push-to-talk (the mic, 'V') while the screen on top has a mic ready, else it's A
+const keyOf = e => e.code === 'Space' && G.spaceTalks && G.spaceTalks() ? 'V' : KEYMAP[e.code];
 window.addEventListener('keydown', e => {
   // while typing a name, printable keys, Backspace and Enter go to the text field instead of the buttons
   if (G.textInput && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Enter')) {
     e.preventDefault(); G.audio && G.audio.unlock(); G.textInput(e.key); return;
   }
-  const k = KEYMAP[e.code]; if (!k) return;
+  const k = keyOf(e); if (!k) return;
   e.preventDefault();
   if (!G.keys[k]) { G.pressed[k] = true; G.repeatT[k] = 0; }
   G.keys[k] = true;
   G.audio && G.audio.unlock(); G.primeSpeech && G.primeSpeech();
 });
-window.addEventListener('keyup', e => { const k = KEYMAP[e.code]; if (k) { G.keys[k] = false; } });
+window.addEventListener('keyup', e => { const k = KEYMAP[e.code]; if (k) { G.keys[k] = false; } if (e.code === 'Space') G.keys.V = false; });
 window.addEventListener('blur', () => { G.keys = {}; G.input.ptr.down = false; });
 
 // ---------- Pointer (touch / mouse / pen), in game pixels ----------
@@ -6853,14 +6855,17 @@ G.store = {
     ctx.fillRect(x, y + 3, 1, 2); ctx.fillRect(x + 6, y + 3, 1, 2); ctx.fillRect(x + 1, y + 5, 5, 1); ctx.fillRect(x + 3, y + 6, 1, 1); ctx.fillRect(x + 1, y + 7, 5, 1);
   };
 
+  // Space talks while the screen on top has a mic that can listen (core.js maps it to 'V' then, else to A)
+  G.spaceTalks = () => { const s = G.top(), m = s && s.mic; return !!(m && m.shown() && (m.can() || m.l || m.started)); };
+
   // ---------- the button ----------
   G.MicBtn = class {
     constructor(scene, o) { this.s = scene; this.o = o; this.t = 0; this.l = null; this.started = null; this.sad = 0; this.done = false; this.pop = 0; }
     shown() { return M.on() || !!this.l; }
     can() { return M.on() && !this.l && !this.done && G.top() === this.s && this.o.ready(); }
-    arm() { if (!this.z) this.z = G.speech.gestureTap(() => this.can() ? this.o.rect() : null, () => { this.started = this.go(); }, { key: () => this.can(), codes: ['KeyV'] }); }
+    arm() { if (!this.z) this.z = G.speech.gestureTap(() => this.can() ? this.o.rect() : null, e => { this.started = this.go(); this.ptt = !!e && e.code === 'Space'; }, { key: () => this.can(), codes: ['KeyV', 'Space'] }); }
     off() { if (this.z) { this.z.off(); this.z = null; } if (this.l) { this.l.abort(); this.l = null; } }
-    reset() { if (this.l) this.l.abort(); this.l = null; this.started = null; this.sad = 0; this.done = false; }
+    reset() { if (this.l) this.l.abort(); this.l = null; this.started = null; this.ptt = false; this.sad = 0; this.done = false; }
     go() { this.sad = 0; return G.speech.listen(OPTS); } // inside the gesture when possible
     begin(l) { this.l = l; this.lt = 0; }
     stop() { if (this.l) { this.l.abort(); this.l = null; } }
@@ -6881,6 +6886,8 @@ G.store = {
           else { if (BLOCK.includes(res.error)) M.blocked = true; else if (res.error !== 'aborted') this.miss(); }
           return true;
         }
+        // push-to-talk: letting go of Space finishes with what was heard (a quick press just starts it, like a tap)
+        if (this.ptt && !G.input.h('V')) { this.ptt = false; if (this.lt > 15) { l.stop(); return true; } }
         if (G.tapIn(r) || G.input.p('V')) { l.stop(); return true; } // done talking: finish with what was heard
         if (G.input.tap() || G.input.p('A') || G.input.p('B')) this.stop(); // a tap anywhere else is a normal tap
         return false;
@@ -9546,7 +9553,7 @@ G.MAPDATA = {
       G.closeBtn(ctx, G.W - 30, 8);
       const L = [['CONTROLES  /  CONTROLS', ''], ['', ''],
         ['Flechas / WASD', 'caminar, elegir - walk, choose'], ['Z / Enter', 'hablar, OK - talk, OK'],
-        ['X / Esc', 'menú, volver - menu, back'], ['C', 'escuchar otra vez - hear it again'], ['M', 'sonido - sound on/off'], ['V', 'el micrófono - say it (mic)'], ['', ''],
+        ['X / Esc', 'menú, volver - menu, back'], ['C', 'escuchar otra vez - hear it again'], ['M', 'sonido - sound on/off'], ['V / Espacio', 'el micrófono - say it (hold Space)'], ['', ''],
         ['Words start as pictures. Use a word right', ''], ['and it turns gold: you learned it!', ''],
         ['Find the notebook pages hidden in town.', ''], ['Progress saves itself. Grown-ups: hold the gear.', '']];
       L.forEach(([a, b], i) => {

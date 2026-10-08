@@ -72,14 +72,17 @@
     ctx.fillRect(x, y + 3, 1, 2); ctx.fillRect(x + 6, y + 3, 1, 2); ctx.fillRect(x + 1, y + 5, 5, 1); ctx.fillRect(x + 3, y + 6, 1, 1); ctx.fillRect(x + 1, y + 7, 5, 1);
   };
 
+  // Space talks while the screen on top has a mic that can listen (core.js maps it to 'V' then, else to A)
+  G.spaceTalks = () => { const s = G.top(), m = s && s.mic; return !!(m && m.shown() && (m.can() || m.l || m.started)); };
+
   // ---------- the button ----------
   G.MicBtn = class {
     constructor(scene, o) { this.s = scene; this.o = o; this.t = 0; this.l = null; this.started = null; this.sad = 0; this.done = false; this.pop = 0; }
     shown() { return M.on() || !!this.l; }
     can() { return M.on() && !this.l && !this.done && G.top() === this.s && this.o.ready(); }
-    arm() { if (!this.z) this.z = G.speech.gestureTap(() => this.can() ? this.o.rect() : null, () => { this.started = this.go(); }, { key: () => this.can(), codes: ['KeyV'] }); }
+    arm() { if (!this.z) this.z = G.speech.gestureTap(() => this.can() ? this.o.rect() : null, e => { this.started = this.go(); this.ptt = !!e && e.code === 'Space'; }, { key: () => this.can(), codes: ['KeyV', 'Space'] }); }
     off() { if (this.z) { this.z.off(); this.z = null; } if (this.l) { this.l.abort(); this.l = null; } }
-    reset() { if (this.l) this.l.abort(); this.l = null; this.started = null; this.sad = 0; this.done = false; }
+    reset() { if (this.l) this.l.abort(); this.l = null; this.started = null; this.ptt = false; this.sad = 0; this.done = false; }
     go() { this.sad = 0; return G.speech.listen(OPTS); } // inside the gesture when possible
     begin(l) { this.l = l; this.lt = 0; }
     stop() { if (this.l) { this.l.abort(); this.l = null; } }
@@ -100,6 +103,8 @@
           else { if (BLOCK.includes(res.error)) M.blocked = true; else if (res.error !== 'aborted') this.miss(); }
           return true;
         }
+        // push-to-talk: letting go of Space finishes with what was heard (a quick press just starts it, like a tap)
+        if (this.ptt && !G.input.h('V')) { this.ptt = false; if (this.lt > 15) { l.stop(); return true; } }
         if (G.tapIn(r) || G.input.p('V')) { l.stop(); return true; } // done talking: finish with what was heard
         if (G.input.tap() || G.input.p('A') || G.input.p('B')) this.stop(); // a tap anywhere else is a normal tap
         return false;

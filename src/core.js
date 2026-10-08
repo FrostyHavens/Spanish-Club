@@ -37,18 +37,20 @@ const KEYMAP = {
   KeyC: 'C', ShiftLeft: 'C', ShiftRight: 'C', KeyL: 'C',
   KeyM: 'M', KeyV: 'V'
 };
+// Space is push-to-talk (the mic, 'V') while the screen on top has a mic ready, else it's A
+const keyOf = e => e.code === 'Space' && G.spaceTalks && G.spaceTalks() ? 'V' : KEYMAP[e.code];
 window.addEventListener('keydown', e => {
   // while typing a name, printable keys, Backspace and Enter go to the text field instead of the buttons
   if (G.textInput && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Enter')) {
     e.preventDefault(); G.audio && G.audio.unlock(); G.textInput(e.key); return;
   }
-  const k = KEYMAP[e.code]; if (!k) return;
+  const k = keyOf(e); if (!k) return;
   e.preventDefault();
   if (!G.keys[k]) { G.pressed[k] = true; G.repeatT[k] = 0; }
   G.keys[k] = true;
   G.audio && G.audio.unlock(); G.primeSpeech && G.primeSpeech();
 });
-window.addEventListener('keyup', e => { const k = KEYMAP[e.code]; if (k) { G.keys[k] = false; } });
+window.addEventListener('keyup', e => { const k = KEYMAP[e.code]; if (k) { G.keys[k] = false; } if (e.code === 'Space') G.keys.V = false; });
 window.addEventListener('blur', () => { G.keys = {}; G.input.ptr.down = false; });
 
 // ---------- Pointer (touch / mouse / pen), in game pixels ----------
