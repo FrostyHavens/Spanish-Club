@@ -181,7 +181,8 @@
       if (c.blink > 0) c.blink--; else if (ri(260) === 0) c.blink = 7;
       const dx = px - (c.x * T + 12), near = Math.abs(dx) < 3 * T && Math.abs(py - (c.y * T + 12)) < 3 * T;
       const want = near && Math.abs(dx) > 8 ? Math.sign(dx) : 0;
-      if (near || c.happy) c.nap = 0; else c.nap = (c.nap || 0) + 1; // nobody about for ~8 s: a nap (Round B)
+      const close = Math.abs(dx) < 1.5 * T && Math.abs(py - (c.y * T + 12)) < 1.5 * T; // once asleep, only a step right beside her wakes her (tiptoe!)
+      if (c.happy || ((c.nap || 0) > 480 ? close : near)) c.nap = 0; else c.nap = (c.nap || 0) + 1; // nobody about for ~8 s: a nap (Round B)
       if (want !== c.look && ++c.lookT > 10) { c.look = want; c.lookT = 0; } else if (want === c.look) c.lookT = 0;
     }
     a.fx = a.fx.filter(e => ++e.t < e.life);

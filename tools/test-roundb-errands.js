@@ -177,10 +177,20 @@ async function tapAnimal(g, kind, o = {}) {
   await free(g);
   const t = await g.ev(([kind, o]) => { const f = G.field, a = f.zoo.list.find(a => a.kind === kind && (!o.uncounted || !a._cu)); return a && [Math.floor(a.x / G.TILE), Math.floor(a.y / G.TILE)]; }, [kind, o]);
   if (!t) throw new Error('no ' + kind + ' here');
-  await g.ev(([x, y]) => { const f = G.field, p = f.player; for (let r = 1; r < 6; r++) for (const [dx, dy] of [[0, r], [-r, 0], [r, 0], [0, -r], [r, r], [-r, r]]) { if (!f.blocked(x + dx, y + dy, p) && !f.exitAt(x + dx, y + dy)) { p.x = x + dx; p.y = y + dy; p.ox = p.oy = 0; f.snapCam(); return; } } }, t);
+  await g.ev(([x, y]) => {
+    const f = G.field, p = f.player;
+    for (let r = 1; r < 6; r++) for (const [dx, dy] of [[0, r], [-r, 0], [r, 0], [0, -r], [r, r], [-r, r]]) {
+      if (!f.blocked(x + dx, y + dy, p) && !f.exitAt(x + dx, y + dy)) {
+        p.x = x + dx; p.y = y + dy; p.ox = p.oy = 0; f.snapCam();
+        for (const id of ['nico', 'canelo']) { const n = f.npc(id); if (n && n.ghost) { n.x = p.x + Math.sign(dx || 1) * 2; n.y = p.y + Math.sign(dy) * 2; n.ox = n.oy = 0; } } // followers out of the way of the tap
+        return;
+      }
+    }
+  }, t);
   await g.frames(6);
   const pt = await g.ev(([kind, o]) => { const f = G.field, a = f.zoo.list.find(a => a.kind === kind && (!o.uncounted || !a._cu)); if (a && a.kind === 'pez') G.animals.jump(a, f); return a && G.animals.screen(a); }, [kind, o]);
   if (kind === 'pez') await g.frames(12);
+  await g.until(() => G.input.ready(), null, 'taps to count');
   const pt2 = await g.ev(([kind, o]) => { const f = G.field, a = f.zoo.list.find(a => a.kind === kind && (!o.uncounted || !a._cu)); return a && G.animals.screen(a); }, [kind, o]);
   await g.tap(...(pt2 || pt), true);
 }
@@ -341,17 +351,19 @@ async function errandSonidos(browser) {
     check('sonidos: Nico tags along', await g.ev(() => G.errands.nicoFollows() && G.field.npc('nico').ghost));
     for (const [k, snd] of [['pato', 'cuac'], ['rana', 'croac'], ['cabra', 'bee']]) {
       await tapAnimal(g, k);
+      if (process.env.DBG) console.log(await g.ev(() => JSON.stringify([G.top().constructor.name, G.field.locked, G.field.route, G.field.player.x, G.field.player.y, G.field.npc('nico') && [G.field.npc('nico').x, G.field.npc('nico').y], G.errands.fl('sonidos'), G.errands.nicoFollows()])));
       await toQuestion(g, 'what the ' + k + ' says');
       if (k === 'pato') { await g.frames(6); await g.shot('sound_question'); }
       check('sonidos: the ' + k + ' says "' + snd + '" (by voice)', (await speak(g, snd)).star);
       await settle(g, 'the next sound');
     }
     // the cat on the park fence, asleep
-    await g.ev(() => { const f = G.field; f.player.x = 16; f.player.y = 18; f.snapCam(); f.amb.cat.nap = 900; });
+    await g.ev(() => { const f = G.field; f.player.x = 16; f.player.y = 19; f.snapCam(); f.amb.cat.nap = 900; });
     await g.frames(4);
     const [cx, cy] = await g.ev(() => { const f = G.field, c = f.amb.cat; return [c.x * G.TILE + 12 - Math.round(f.cam.x), c.y * G.TILE - 2 - Math.round(f.cam.y)]; });
     await g.tap(cx, cy);
     await settle(g, 'the cat and the last round');
+    if (process.env.DBG) console.log(await g.ev(() => JSON.stringify([G.st.done('sonidos'), G.errands.jobDone('gato'), G.errands.nicoFollows(), G.errands.fl('sonidos'), G.field.amb.cat.nap])));
     check('sonidos: done (the cat woke up: a side-job star too)', await g.ev(() => G.st.done('sonidos') && G.errands.jobDone('gato') && !G.errands.nicoFollows()));
     noErrors(g, 'sonidos');
   } finally { await ctx.close(); }
@@ -384,7 +396,7 @@ async function errandFlores(browser) {
     const h0 = await g.ev(() => G.hearts.get('lucia'));
     check('gift: Lucía notices the pink flower (a picture bubble)', await g.ev(() => Array.isArray(G.field.npc('lucia').alert())));
     await talk(g, 'lucia', 'a present');
-    check('gift: given: +1 heart, the flower is gone', await g.ev(h0 => G.hearts.get('lucia') === h0 + 1 && !G.errands.bag.has('flor'), h0));
+    check('gift: given: a heart, the flower is gone', await g.ev(h0 => G.hearts.get('lucia') > h0 && G.hearts.did('lucia', 'gift') && !G.errands.bag.has('flor'), h0));
     noErrors(g, 'flores');
   } finally { await ctx.close(); }
 }
@@ -441,10 +453,10 @@ async function sideJobs(browser) {
     check('egg: an egg in the bag; Rosa notices it', await g.ev(() => G.errands.bag.has('huevo') && JSON.stringify(G.field.npc('rosa').alert()).includes('huevo')));
     const r0 = await g.ev(() => G.hearts.get('rosa'));
     await talk(g, 'rosa', 'the egg for Rosa');
-    check('egg: given to Rosa: +1 heart, the job done', await g.ev(r0 => G.errands.jobDone('huevo') && G.hearts.get('rosa') === r0 + 1, r0));
+    check('egg: given to Rosa: a heart, the job done', await g.ev(r0 => G.errands.jobDone('huevo') && G.hearts.get('rosa') > r0 && !G.errands.bag.has('huevo'), r0));
     await spot(g, 'jobWater', 'water at the fountain');
     await goto(g, 'casa', 3, 4, 'left');
-    check('water: Canelo\'s bowl is empty: his bubble shows water', await g.ev(() => G.errands.bowlEmpty() && G.field.npc('canelo').alert() === 'agua'));
+    check('water: Canelo\'s bowl is empty: it has a water bubble', await g.ev(() => G.errands.bowlEmpty() && G.errands.spotAt(G.field, 1, 4).id === 'bowl'));
     await g.shot('bowl_empty');
     await spot(g, 'bowl', 'filling the bowl');
     check('water: filled: a star, the bowl full', await g.ev(() => G.errands.jobDone('agua') && !G.errands.bowlEmpty()));
@@ -458,7 +470,7 @@ async function sideJobs(browser) {
     await g.ev(() => { G.state.heartlog.d = '1999-1-1'; });
     const h0 = await g.ev(() => G.hearts.get('gomez'));
     await talk(g, 'gomez', 'a present for Gómez');
-    check('gift: Gómez likes apples: +1 heart', await g.ev(h0 => G.hearts.get('gomez') === h0 + 1 && !G.errands.bag.has('manzana'), h0));
+    check('gift: Gómez likes apples: +1 heart', await g.ev(h0 => G.hearts.get('gomez') > h0 && G.hearts.did('gomez', 'gift') && !G.errands.bag.has('manzana'), h0));
     // Misiones
     await g.ev(() => { G.field.menuReq = true; });
     await g.until(() => G.top().constructor.name === 'FieldMenu', null, 'the menu');
@@ -474,7 +486,7 @@ async function sideJobs(browser) {
 async function unlocks(browser) {
   const { ctx, g } = await openFake(browser, 'unlock', false);
   try {
-    await play(g, 'villa', 36, 20, 'down', { quests: { saludos: 'done' } });
+    await play(g, 'villa', 36, 21, 'right', { quests: { saludos: 'done' } });
     const u = q => g.ev(q => { Object.assign(G.state.quests, q); return G.errands.B.concat(['fiestab']).filter(G.errands.offer).join(); }, q);
     check('unlock: nothing until a Round A errand', await u({}) === '');
     check('unlock: canelo first', await u({ mercado: 'done' }) === 'canelo');

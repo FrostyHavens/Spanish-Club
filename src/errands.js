@@ -176,13 +176,15 @@
     { id: 'paw', map: 'villa', at: V('banco3'), icon: () => S.active('canelo') && cl().clue >= 1 && !cl().paw ? 'huella' : null, run: pawSpot },
     { id: 'ball', map: 'villa', at: V('fuente'), icon: () => S.active('canelo') && cl().clue >= 2 && !cl().ball ? 'pelota' : null, run: ballSpot },
     { id: 'barn', map: 'villa', at: V('granjaDoor'), icon: () => S.active('canelo') && cl().clue >= 3 && !cl().found ? 'guau' : null, run: barnSpot },
+    // errand 5: the goldfish in the fountain (tap the fountain and it jumps out: counted)
+    { id: 'fish', map: 'villa', at: V('fuente'), icon: () => S.active('cuenta') && counted('pez') < 1 ? 'pez' : null, run: fishSpot },
     // errand 2: the picnic foods
     { id: 'egg', map: 'villa', at: [1, 7], icon: () => S.active('picnic') && !fl('picnic').huevo ? 'huevo' : null, run: eggSpot },
     { id: 'milk', map: 'villa', at: [39, 12], icon: () => S.active('picnic') && !fl('picnic').leche ? 'cubeta' : null, run: milkSpot },
     { id: 'water', map: 'villa', at: V('fuente'), icon: () => (S.active('picnic') && !fl('picnic').agua) ? 'agua' : null, run: waterSpot },
     // errand 7: Tomás's letter for the barn, and the horse who ate it
     { id: 'letter', map: 'villa', at: V('granjaDoor'), icon: () => S.active('cansado') && !ca().granja ? 'carta' : null, run: barnLetter },
-    { id: 'horse', map: 'villa', at: [42, 12], icon: () => S.active('cansado') && ca().granja === 1 ? 'manzana' : null, run: horseLetter },
+    { id: 'horse', map: 'villa', at: [42, 12], icon: () => S.active('cansado') && ca().granja === 1 ? 'manzana' : null, nohint: () => !B.has('manzana'), run: horseLetter },
     // errand 8: the party
     { id: 'ribbons', map: 'villa', at: V('granjaDoor'), icon: () => S.active('fiestab') && invited() >= 5 && !decorated() ? [[{ icon: 'cinta', col: '#e03028' }, 1], [{ icon: 'cinta', col: '#3068e0' }, 1]] : null, run: ribbonSpot },
     { id: 'feedDucks', map: 'villa', at: [37, 21], icon: () => S.active('fiestab') && decorated() && !fb().fed.patos ? 'pato' : null, run: feedSpot('patos') },
@@ -193,7 +195,7 @@
     { id: 'jobDucks', map: 'villa', at: [37, 21], icon: () => S.done('saludos') && free('pan') && !E.jobDone('patos') ? 'pan' : null, run: ducksJob },
     { id: 'jobEgg', map: 'villa', at: [1, 7], icon: () => S.done('picnic') && !E.jobDone('huevo') && !free('huevo') ? 'huevo' : null, run: eggJob },
     { id: 'jobWater', map: 'villa', at: V('fuente'), icon: () => E.bowlEmpty() && !free('agua') ? 'agua' : null, run: waterJob },
-    { id: 'bowl', map: 'casa', at: [1, 4], icon: () => E.bowlEmpty() ? 'agua' : null, run: bowlJob },
+    { id: 'bowl', map: 'casa', at: [1, 4], icon: () => E.bowlEmpty() ? 'agua' : null, nohint: () => !free('agua'), run: bowlJob },
     { id: 'gold', map: 'villa', at: GOLD, quiet: true, icon: () => F().e_gold === 1 && !picked(GOLD[0], GOLD[1]) ? 'flor' : null, run: goldSpot }, // (no bubble: it shines)
   ];
   // the flower spots (no bubble: the flower itself is drawn, bright and twinkling)
@@ -207,17 +209,21 @@
   };
   E.runSpot = function* (f, sp) { yield* sp.run(f, sp); };
   E.spots = f => E.SPOTS.filter(sp => sp.map === f.mapId && spotIcon(sp));
-  E.waitsIn = map => !!G.state && E.SPOTS.some(sp => sp.map === map && !sp.quiet && spotIcon(sp));
+  const hinted = sp => !sp.quiet && !(sp.nohint && sp.nohint()); // (a bubble that only says "not yet": no hand)
+  E.waitsIn = map => !!G.state && E.SPOTS.some(sp => sp.map === map && hinted(sp) && spotIcon(sp));
 
   // where the hint hand may point (world px): active places, then the animals to find
   E.targets = function (f) {
     if (!G.state || !f) return [];
     const out = [];
-    for (const sp of E.spots(f)) if (!sp.quiet || (S.active('flores') && sp.flower && WISH.includes(sp.flower) && wishLeft().includes(sp.flower))) out.push({ x: sp.at[0] * T + 12, y: sp.at[1] * T + 12, spot: sp.id });
+    for (const sp of E.spots(f)) if (hinted(sp) || (S.active('flores') && sp.flower && WISH.includes(sp.flower) && wishLeft().includes(sp.flower))) out.push({ x: sp.at[0] * T + 12, y: sp.at[1] * T + 12, spot: sp.id });
     if (f.mapId !== 'villa') return out;
+    // the dog show: a trick to practise with Canelo
+    const dog = G.pet && G.pet.npc(f);
+    if (S.active('show') && dog && G.pet.learning() && ['sientate', 'pata', 'salta'].includes(G.pet.learning())) out.push({ x: dog.x * T + 12, y: dog.y * T + 12, npc: 'canelo' });
     if (S.active('cuenta') && !countDone() && G.animals) {
       for (const [k, n] of E.COUNT) if (counted(k) < n) {
-        if (k === 'pez') { const p = V('fuente'); out.push({ x: p[0] * T + 12, y: p[1] * T + 12, animal: 'pez', tile: true }); continue; }
+        if (k === 'pez') continue; // (the fountain's own bubble)
         const a = (f.zoo ? f.zoo.list : []).find(a => a.kind === k && !a._cu); if (a) out.push({ x: Math.round(a.x), y: Math.round(a.y - 6), animal: k });
       }
     }
@@ -389,7 +395,8 @@
       const [x, y, dir] = places[id];
       let n = f.npc(id);
       if (!n) { n = f.addNpc({ id, npc: id.replace(/_.*/, ''), x, y, dir, fixed: true, guest: true }); back.push({ n, add: true }); }
-      else back.push({ n, x: n.x, y: n.y, dir: n.dir, wander: n.wander, route: n.route, home: n.home, ghost: n.ghost });
+      else back.push({ n, x: n.x, y: n.y, dir: n.dir, wander: n.wander, route: n.route, home: n.home, ghost: n.ghost, alert: n.alert });
+      n.alert = null; // (no thought bubbles in the crowd)
       n.x = x; n.y = y; n.ox = n.oy = 0; n.dir = dir; n.wander = 0; n.route = null; n.home = [x, y]; n.moving = false; n.busy = false; n.ghost = true;
     }
     return back;
@@ -397,7 +404,7 @@
   function unstage(f, back) {
     for (const b of back) {
       if (b.add) { f.npcs = f.npcs.filter(n => n !== b.n); continue; }
-      Object.assign(b.n, { x: b.x, y: b.y, dir: b.dir, wander: b.wander, route: b.route, home: b.home, ghost: b.ghost, ox: 0, oy: 0 });
+      Object.assign(b.n, { x: b.x, y: b.y, dir: b.dir, wander: b.wander, route: b.route, home: b.home, ghost: b.ghost, alert: b.alert, ox: 0, oy: 0 });
     }
   }
   const clap = (f, ids) => { G.audio.sfx('coin'); for (const id of ids) { const n = f.npc(id); if (n && G.ambient) G.ambient.happy(n); } };
@@ -407,7 +414,7 @@
     const p = f.player, dog = G.pet.npc(f);
     p.x = 16; p.y = 21; p.dir = 'right'; p.ox = p.oy = 0;
     if (dog) { dog.x = 17; dog.y = 21; dog.ox = dog.oy = 0; dog.dir = 'down'; }
-    const crowd = { luna_show: [17, 19, 'down'], nico: [21, 19, 'left'], rosa: [13, 20, 'right'], gomez: [14, 19, 'right'], lucia: [22, 20, 'left'], pepe: [21, 21, 'left'] };
+    const crowd = { luna_show: [17, 19, 'down'], nico: [21, 19, 'left'], rosa: [13, 20, 'right'], gomez: [14, 19, 'right'], lucia: [22, 20, 'left'], pepe: [21, 20, 'left'] };
     const back = stage(f, crowd); f.snapCam();
     yield* fade(0);
     const who = Object.keys(crowd);
@@ -501,6 +508,12 @@
     if (countDone()) G.toast('\u0005 ¡Luna! \u0005', 120);
     S.autosave();
     return true;
+  }
+  function* fishSpot(f) {
+    const p = V('fuente'), fish = G.animals.find('pez', f);
+    if (fish) G.animals.jump(fish, f);
+    G.animals.meet('pez'); count(f, 'pez', ...tileScr(f, p[0], p[1]));
+    yield 50;
   }
   function* cuentaEnd() {
     yield* say('luna', TT('¡{name}! ¿Cuántos?', '{name}! How many?'));
@@ -721,11 +734,12 @@
       const u = Math.min(1, this.t / 14), s = 0.3 + 0.7 * G.fx.easeBack(u), cx = G.W / 2, cy = 104;
       ctx.globalAlpha = 0.5 * u; ctx.fillStyle = '#080c28'; ctx.fillRect(0, 0, G.W, G.H); ctx.globalAlpha = 1;
       ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s); ctx.rotate(-0.03); ctx.translate(-cx, -cy);
-      const ppl = ['player', 'canelo'].concat(this.who).slice(0, 10), n = ppl.length, fw = n > 6 ? 36 : 44, row = Math.ceil(n / 2), w = row * (fw + 2) + 16;
-      ctx.fillStyle = '#10102a'; ctx.fillRect(cx - w / 2 - 1, cy - 62, w + 2, 132); ctx.fillStyle = '#fffaf0'; ctx.fillRect(cx - w / 2, cy - 61, w, 130);
-      ctx.fillStyle = '#88c8f8'; ctx.fillRect(cx - w / 2 + 6, cy - 55, w - 12, 100); ctx.fillStyle = '#68b048'; ctx.fillRect(cx - w / 2 + 6, cy + 20, w - 12, 25);
-      ppl.forEach((p, k) => { const r = k < row ? 0 : 1, i = r ? k - row : k; G.hearts.face(ctx, p, cx - (row * (fw + 2)) / 2 + i * (fw + 2) + (r ? fw / 2 : 0), cy - 52 + r * (fw - 6), fw, this.t); });
-      G.textC(ctx, G.fill('¡La fiesta de los animales!'), cx, cy + 52, '#a05020', null);
+      const ppl = ['player', 'canelo'].concat(this.who).slice(0, 10), n = ppl.length, rows = n <= 5 ? 1 : 2, per = Math.ceil(n / rows);
+      const w = 232, fw = Math.min(44, Math.floor((w - 20) / per) - 2), ph = rows * (fw + 2) + 16, top = cy - 20 - ph / 2;
+      ctx.fillStyle = '#10102a'; ctx.fillRect(cx - w / 2 - 1, top - 9, w + 2, ph + 36); ctx.fillStyle = '#fffaf0'; ctx.fillRect(cx - w / 2, top - 8, w, ph + 34);
+      ctx.fillStyle = '#88c8f8'; ctx.fillRect(cx - w / 2 + 6, top - 2, w - 12, ph); ctx.fillStyle = '#68b048'; ctx.fillRect(cx - w / 2 + 6, top - 2 + ph * 0.7, w - 12, ph * 0.3);
+      ppl.forEach((p, k) => { const r = Math.floor(k / per), i = k % per, inRow = Math.min(per, n - r * per); G.hearts.face(ctx, p, cx - (inRow * (fw + 2)) / 2 + i * (fw + 2), top + 6 + r * (fw + 2), fw, this.t); });
+      G.textC(ctx, G.fill('¡La fiesta de los animales!'), cx, top + ph + 8, '#a05020', null);
       ctx.restore();
       if (this.t > 40 && (this.t >> 4) % 2 === 0) G.text(ctx, '\u0001', G.W - 22, G.H - 16, '#f8e060');
     }
@@ -928,8 +942,8 @@
     if (!G.state) return false;
     f = f || G.field;
     for (const id of ORDER) if (S.active(id) && STEP[id] && (yield* STEP[id](who, f))) return true;
-    if (G.pet && G.pet.canTeach(who) && !E.lost()) { yield* G.pet.teach(G.pet.canTeach(who), who); return true; }
     for (const id of ORDER) if (D().quests[id].giver === who && E.offer(id)) { yield* START[id](f); return true; }
+    if (G.pet && G.pet.canTeach(who) && !E.lost()) { yield* G.pet.teach(G.pet.canTeach(who), who); return true; }
     if (yield* gift(who)) return true;
     for (const id of ORDER) if (S.active(id) && REMIND[id] && (yield* REMIND[id](who, f))) return true;
     if (yield* shop(who)) return true;
@@ -958,13 +972,13 @@
   E.alert = function (who) {
     if (!G.state) return false;
     for (const id of ORDER) if (S.active(id) && ALERT[id]) { const a = ALERT[id](who); if (a) return a; }
-    if (G.pet && G.pet.canTeach(who) && !E.lost()) return G.pet.canTeach(who);
     for (const id of ORDER) if (D().quests[id].giver === who && E.offer(id)) return OFFER_ICON[id];
+    if (G.pet && G.pet.canTeach(who) && !E.lost()) return G.pet.canTeach(who);
     const g = giftFor(who); if (g) return [[B.icon(g), 1]];
     return false;
   };
   // Canelo's own bubble: his empty bowl at home
-  E.caneloAlert = () => !!G.field && G.field.mapId === 'casa' && E.bowlEmpty() && !(G.pet && G.pet.sleeping()) ? 'agua' : false;
+  E.caneloAlert = () => false; // (his bowl has its own bubble)
 
   // =====================================================================
   //  Hooks: animals tapped, the fountain, every frame

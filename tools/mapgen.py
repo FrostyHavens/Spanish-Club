@@ -122,8 +122,8 @@ t.rect(38, 13, 8, 5, '.')
 t.pos['corral'] = [38, 13, 8, 5]
 t.put(45, 13, 'O')
 # the duck pond (el agua): ducks swim here
-for y, (x0, x1) in {20: (38, 41), 21: (37, 42), 22: (37, 42), 23: (37, 42), 24: (38, 41)}.items(): t.hline(x0, x1, y, 'w')
-t.pos['estanque'] = [37, 20, 6, 5]
+for y, (x0, x1) in {19: (39, 41), 20: (38, 42), 21: (37, 42), 22: (37, 42), 23: (37, 42), 24: (38, 42), 25: (39, 41)}.items(): t.hline(x0, x1, y, 'w')
+t.pos['estanque'] = [37, 19, 6, 7]
 # a wheat field and flowers out in the country
 t.rect(44, 20, 3, 6, 'y')
 for x, y in [(36, 6), (39, 7), (44, 8), (45, 6), (37, 9), (43, 10), (36, 15), (36, 24), (39, 26), (42, 25), (43, 19), (36, 19)]: t.put(x, y, 'o')
