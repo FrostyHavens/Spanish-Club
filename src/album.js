@@ -1,6 +1,6 @@
 // ===== Round B: the animal album (from the field menu's paw) and the Amigos page (everyone's hearts) =====
-// One card per animal in G.animals.list() order. Not met yet: a dark silhouette and "? ? ?". Met: its picture, its
-// name ("el gato") and its sound ("¡Miau!"); a little mic once its name was said out loud (say-it-back), a gold star
+// One card per animal in G.animals.list() order. Not met yet: a dark silhouette and "? ? ?". Seen (tapped) but its word
+// not met yet: its picture and "?". Met: its picture, its name ("el gato") and its sound ("¡Miau!"); a little mic once its name was said out loud (say-it-back), a gold star
 // once it was counted (Luna's animal count: G.album.count(id)). Tap a met card (or A on it): it hops and you hear its
 // name and its sound. "7/11" at the top, and a bar that fills; the day the last one is met the album throws a party
 // (confetti, a fanfare) and its title becomes "¡Amig{o/a} de los animales!" with a gold ribbon.
@@ -36,7 +36,7 @@
       const id = this.ids()[k], w = G.data.words[AN().KINDS[id].word];
       if (!rec(id)) { G.audio.sfx('boop'); this.hop[k] = { t: 0, no: true }; return; }
       this.hop[k] = { t: 0 }; AN().cry(id);
-      G.speak(w.es.split(' / ')[0] + (cry(id) ? '. ' + cry(id) : ''));
+      if (G.st.seen(AN().KINDS[id].word)) G.speak(w.es.split(' / ')[0] + (cry(id) ? '. ' + cry(id) : '')); // (unnamed yet: only its cry)
       const r = this.cell(k); for (let i = 0; i < 3; i++) G.fx.twinkle(r.x + 10 + Math.random() * 50, r.y + 6 + Math.random() * 30);
     }
     update() {
@@ -99,7 +99,8 @@
         ctx.strokeStyle = sel ? '#c06000' : '#b09068'; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, r.w - 1, r.h - 1);
         if (R) {
           G.drawIcon16(ctx, w, x + r.w / 2 - 16, y + 3 + hop, 2);
-          G.textC(ctx, w.es.split(' / ')[0], x + r.w / 2, y + 37, G.st.knows(w ? AN().KINDS[id].word : id) ? '#a06008' : '#2860a8', null);
+          const named = G.st.seen(AN().KINDS[id].word); // seen but its word not met yet: "?" (the story names it)
+          G.textC(ctx, named ? w.es.split(' / ')[0] : '?', x + r.w / 2, y + 37, !named ? '#a08868' : G.st.knows(AN().KINDS[id].word) ? '#a06008' : '#2860a8', null);
           if (cry(id)) G.textC(ctx, cry(id), x + r.w / 2, y + 47, '#e06010', null);
           if (R.said) G.mic.glyph(ctx, x + r.w - 10, y + 3, '#2a8a9a');
           if (R.counted) G.text(ctx, '\u0005', x + 3, y + 3, '#e0a010', '#5a2c04');

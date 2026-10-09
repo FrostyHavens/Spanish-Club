@@ -72,18 +72,24 @@
 
   // ---------- which errands are open ----------
   const aDone = () => A3.filter(S.done).length, bDone = () => E.B.filter(S.done).length;
+  // After the chapters written so far (chapters.js), the older errands run as the tail of the story, one new one a day
+  // (G.chapters.tailGate: a day with room for new words), in this order: mercado (maps.js: Rosa and Don Pepe), then
+  // picnic and show, then flores and sonidos, then cuenta, and the party last. canelo and cansado were replaced by
+  // chapters 7 and 10: they only finish in an older game that has them going.
+  const CHD = () => !!G.chapters && G.chapters.allWrittenDone();
   const UNLOCK = {
-    canelo: () => S.done('saludos') && !!G.pet && G.pet.mine() && aDone() >= 1,
-    picnic: () => S.done('canelo') && S.done('mercado'),
-    show: () => S.done('canelo') && S.done('pelota'),
-    cansado: () => S.done('canelo') && S.done('carta'),
-    cuenta: () => bDone() >= 3,
-    sonidos: () => bDone() >= 4,
-    flores: () => bDone() >= 4,
-    fiestab: () => S.done('saludos') && aDone() === 3 && bDone() >= 6,
+    mercado: () => CHD(),
+    picnic: () => CHD() && S.done('mercado'),
+    show: () => CHD() && S.done('mercado'),
+    flores: () => S.done('picnic') && S.done('show'),
+    sonidos: () => S.done('picnic') && S.done('show'),
+    cuenta: () => S.done('flores') && S.done('sonidos'),
+    fiestab: () => ['mercado', 'picnic', 'show', 'flores', 'sonidos', 'cuenta'].every(S.done),
+    canelo: () => false,
+    cansado: () => false,
   };
   E.unlocked = id => !!(G.state && UNLOCK[id] && UNLOCK[id]());
-  E.offer = id => !!G.state && !S.quest(id) && E.unlocked(id);
+  E.offer = id => !!G.state && !S.quest(id) && E.unlocked(id) && !!G.chapters && G.chapters.tailGate();
   E.bDone = bDone;
 
   // ---------- the bag ----------
@@ -112,11 +118,13 @@
     G.fx.flyStar(sx, sy); G.audio.sfx('star'); G.fx.say('¡Muy bien!', sx, sy - 16, '#f8e060', true);
     S.autosave(); return true;
   }
-  E.bowlEmpty = () => !!G.state && !!G.pet && G.pet.mine() && S.done('saludos') && aDone() >= 1 && !E.jobDone('agua');
+  // the side jobs open with the chapters that teach their words (CURRICULUM.md 2.2)
+  const chDone = id => !!G.chapters && G.chapters.done(id);
+  E.bowlEmpty = () => !!G.state && !!G.pet && G.pet.mine() && chDone('c9') && !E.jobDone('agua');
 
   // ---------- Canelo lost (errand 1) ----------
   const cl = () => fl('canelo');
-  E.lost = () => !!G.state && S.active('canelo') && !cl().found;
+  E.lost = () => !!G.state && ((S.active('canelo') && !cl().found) || (!!G.chapters && G.chapters.lost()));
   // the neighbour who has the next clue
   const clueWho = () => { const c = cl(); return !c.clue ? 'gomez' : c.clue === 1 && c.paw ? 'lucia' : c.clue === 2 && c.ball ? 'tomas' : null; };
 
@@ -149,7 +157,7 @@
   const NUM = D().numberWords10;
 
   // ---------- the sound game (errand 6) ----------
-  const ROUNDS = [['pato', 'cuac', '¡Cuac, cuac!'], ['rana', 'croac', '¡Croac, croac!'], ['cabra', 'bee', '¡Beee!'], ['gato', 'miau', '¡Miau!']];
+  const ROUNDS = [['pato', 'cuac', '¡Cuac, cuac!'], ['rana', 'croac', '¡Croac, croac!'], ['cabra', null, '¡Beee!'], ['gato', 'miau', '¡Miau!']]; // (the goat's cry is a sound, not a word)
   function playSound(f, i) {
     const r = ROUNDS[i]; if (!r) return;
     if (r[0] === 'gato') { if (G.ambient && G.ambient.sfx) G.ambient.sfx.meow(); } else G.animals.cry(r[0]);
@@ -192,7 +200,7 @@
     { id: 'feedHens', map: 'villa', at: [1, 7], icon: () => S.active('fiestab') && decorated() && !fb().fed.gallinas ? 'gallina' : null, run: feedSpot('gallinas') },
     { id: 'party', map: 'villa', at: V('granjaDoor'), icon: () => S.active('fiestab') && decorated() && fedAll() ? 'estrella' : null, run: partySpot },
     // side jobs
-    { id: 'jobDucks', map: 'villa', at: [37, 21], icon: () => S.done('saludos') && free('pan') && !E.jobDone('patos') ? 'pan' : null, run: ducksJob },
+    { id: 'jobDucks', map: 'villa', at: [37, 21], icon: () => chDone('c6') && free('pan') && !E.jobDone('patos') ? 'pan' : null, run: ducksJob },
     { id: 'jobEgg', map: 'villa', at: [1, 7], icon: () => S.done('picnic') && !E.jobDone('huevo') && !free('huevo') ? 'huevo' : null, run: eggJob },
     { id: 'jobWater', map: 'villa', at: V('fuente'), icon: () => E.bowlEmpty() && !free('agua') ? 'agua' : null, run: waterJob },
     { id: 'bowl', map: 'casa', at: [1, 4], icon: () => E.bowlEmpty() ? 'agua' : null, nohint: () => !free('agua'), run: bowlJob },
@@ -210,12 +218,12 @@
   E.runSpot = function* (f, sp) { yield* sp.run(f, sp); };
   E.spots = f => E.SPOTS.filter(sp => sp.map === f.mapId && spotIcon(sp));
   const hinted = sp => !sp.quiet && !(sp.nohint && sp.nohint()); // (a bubble that only says "not yet": no hand)
-  E.waitsIn = map => !!G.state && E.SPOTS.some(sp => sp.map === map && hinted(sp) && spotIcon(sp));
+  E.waitsIn = map => !!G.state && (E.SPOTS.some(sp => sp.map === map && hinted(sp) && spotIcon(sp)) || (!!G.chapters && G.chapters.waitsIn(map)));
 
   // where the hint hand may point (world px): active places, then the animals to find
   E.targets = function (f) {
     if (!G.state || !f) return [];
-    const out = [];
+    const out = G.chapters ? G.chapters.targets(f) : []; // the story's own places, animals and people first (chapters.js)
     for (const sp of E.spots(f)) if (hinted(sp) || (S.active('flores') && sp.flower && WISH.includes(sp.flower) && wishLeft().includes(sp.flower))) out.push({ x: sp.at[0] * T + 12, y: sp.at[1] * T + 12, spot: sp.id });
     if (f.mapId !== 'villa') return out;
     // the dog show: a trick to practise with Canelo
@@ -262,7 +270,7 @@
   const CLUE = {
     gomez: [TT('¡[si]! ¡[guau], [guau]! Un [perro]... ¡en el [parque]!', 'Yes! Woof, woof! A dog... in the park!'), TT('Mira el [banco].', 'Look at the bench.')],
     lucia: [TT('¿Canelo? ¡Una [pelota]! ¡En la [fuente]!', 'Canelo? A ball! At the fountain!')],
-    tomas: [TT('¡Uy! ¡[guau], [guau]! ¡En la [granja]!', 'Oh! Woof, woof! At the farm!'), TT('La [puerta] de la [granja]...', 'The barn door...')],
+    tomas: [TT('¡Uy! ¡[guau], [guau]! ¡En la [granja]!', 'Oh! Woof, woof! At the farm!')],
   };
   function* clueTalk(who) {
     yield* q(who, 'Tú: ¡[hola]! ¿Y mi...?', 'You: Hi! Have you seen my... (say "el perro")', 'perro', ['perro', 'gato', 'pez']);
@@ -301,7 +309,7 @@
     yield* G.pet.play('dance');
     yield* tell(TT('¡[guau], [guau]!', 'Woof, woof!'));
     G.animals.cry('cabra');
-    yield* tell(TT('¡[bee]!', 'Baa!'));
+    yield* tell(TT('¡Beee!', 'Baa!'));
     yield* q(null, '¿Y ella?', 'And who is she?', 'cabra', ['cabra', 'caballo', 'gallina']);
     yield* tell(TT('¡Canelo y la [cabra]: amigos! ¡A [casa]!', 'Canelo and the goat are friends! Now home!'));
   }
@@ -340,7 +348,7 @@
   }
   function* milkSpot(f) {
     G.animals.cry('cabra');
-    yield* tell(TT('¡[bee]! La [cabra]...', 'Baa! The goat...'));
+    yield* tell(TT('¡Beee! La [cabra]...', 'Baa! The goat...'));
     yield* q(null, '¿Qué es?', 'What is in the pail?', 'leche', ['leche', 'agua', 'queso'], { show: 'cubeta' });
     got('leche');
     yield* tell(TT('¡La [leche]! ¡[gracias], [cabra]!', 'The milk! Thank you, goat!'));
@@ -543,7 +551,8 @@
   function* soundFound(f) {
     const i = so().i | 0, [kind, snd] = ROUNDS[i];
     yield* say('nico', TT('¡[si]! ¡El [' + kind + ']!', 'Yes! The ' + W(kind).en.replace('the ', '') + '!'));
-    yield* q('nico', '¿Qué dice ' + (W(kind).es.startsWith('la') ? 'la' : 'el') + ' [' + kind + ']?', 'What does it say?', snd, ROUNDS.map(r => r[1]), { show: kind });
+    if (snd) yield* q('nico', '¿Qué dice ' + (W(kind).es.startsWith('la') ? 'la' : 'el') + ' [' + kind + ']?', 'What does it say?', snd, ROUNDS.map(r => r[1]).filter(Boolean), { show: kind });
+    else yield* q('nico', '¿Quién es?', 'Who is it?', kind, ['cabra', 'caballo', 'gallina', 'pato']);
     so().i = i + 1; S.autosave();
     if (i + 1 < ROUNDS.length) { yield* say('nico', TT('¡Muy bien! ¡Escucha!', 'Well done! Listen!')); playSound(f, i + 1); yield 40; return; }
     // last: Nico barks, and Canelo answers
@@ -791,7 +800,7 @@
     if (!G.state || !f || f.locked || !f.amb || !f.amb.cat) return false;
     const c = f.amb.cat, nap = G.ambient.napping(f), sx = c.x * T + 12 - Math.round(f.cam.x), sy = c.y * T - 6 - Math.round(f.cam.y);
     const game = E.nicoFollows() && f.npc('nico') && ROUNDS[so().i | 0] && ROUNDS[so().i | 0][0] === 'gato';
-    if (!game && !(nap && !E.jobDone('gato') && S.done('saludos'))) return false;
+    if (!game && !(nap && !E.jobDone('gato') && chDone('c2'))) return false;
     scene(f, (function* () {
       if (nap) {
         yield* tell(TT('¡Shh! Zzz... zzz...', 'Shh! The cat is sleeping...'));
@@ -828,7 +837,7 @@
   }
   const SHOP = { marta: ['pan', 'galleta'], pepe: ['manzana', 'queso'] };
   function* shop(who) {
-    if (!SHOP[who] || !S.done('saludos') || B.full()) return false;
+    if (!SHOP[who] || !chDone(who === 'marta' ? 'c6' : 'c4') || B.full()) return false;
     const items = SHOP[who].filter(k => !B.has(k, { q: null })); if (!items.length) return false;
     yield* say(who, TT('¡[hola]! ¿Qué quieres?', 'Hello! What would you like?'));
     const r = yield G.choose({ prompt: '¿Qué quieres?', en: 'What would you like? (or "no")', choices: words(...items, 'no'), layout: 'cards', mic: true, cancel: true });
@@ -854,7 +863,7 @@
       const c = pc();
       if (who === 'marta' && !c.pan) {
         yield* say('marta', TT('¡[hola], {name}! ¿Qué quieres?', 'Hello, {name}! What would you like?'));
-        yield* q('marta', '¿Qué quieres?', 'What would you like? (bread for the picnic)', 'pan', ['pan', 'galleta', 'uvas']);
+        yield* q('marta', '¿Qué quieres?', 'What would you like? (bread for the picnic)', 'pan', ['pan', 'galleta', 'manzana']);
         yield* q('marta', '¡Aquí tienes!', 'Here you are! (say thank you)', 'gracias', ['gracias', 'hola', 'no'], { show: 'pan' });
         got('pan'); return true;
       }
@@ -944,7 +953,7 @@
     if (!G.state) return false;
     f = f || G.field;
     for (const id of ORDER) if (S.active(id) && STEP[id] && (yield* STEP[id](who, f))) return true;
-    for (const id of ORDER) if (D().quests[id].giver === who && E.offer(id)) { yield* START[id](f); return true; }
+    for (const id of ORDER) if (D().quests[id].giver === who && E.offer(id)) { G.chapters.tailStarted(); yield* START[id](f); return true; }
     if (G.pet && G.pet.canTeach(who) && !E.lost()) { yield* G.pet.teach(G.pet.canTeach(who), who); return true; }
     if (yield* gift(who)) return true;
     for (const id of ORDER) if (S.active(id) && REMIND[id] && (yield* REMIND[id](who, f))) return true;
@@ -990,6 +999,7 @@
     G.animals.tapped = function (f, a) {
       const p = f.player, here = { x: p.x, y: p.y, animal: a.kind };
       const [sx, sy] = scr(f, a.x, a.y - 14);
+      if (G.chapters && G.chapters.tapped(a.kind, f)) { G.animals.react(f, a); G.animals.cry(a.kind); return here; } // the story's animal (chapters.js)
       // the sound game: the round's animal, with Nico here
       if (E.nicoFollows() && f.npc('nico') && !f.locked) {
         const r = ROUNDS[so().i | 0];
@@ -1004,7 +1014,7 @@
       }
       const out = orig(f, a);
       // pet the horse: tap him from close by (once a day, a star)
-      if (a.kind === 'caballo' && Math.abs(Math.floor(a.x / T) - p.x) + Math.abs(Math.floor((a.y - 4) / T) - p.y) <= 3 && S.done('saludos') && jobStar(f, 'caballo', sx, sy - 10)) {
+      if (a.kind === 'caballo' && Math.abs(Math.floor(a.x / T) - p.x) + Math.abs(Math.floor((a.y - 4) / T) - p.y) <= 3 && chDone('c10') && jobStar(f, 'caballo', sx, sy - 10)) {
         for (let i = 0; i < 3; i++) f.zoo.fx.push({ k: 'heart', x: a.x - 10 + i * 10, y: a.y - 22 - i * 3, t: -i * 8, life: 60 });
       }
       return out;
@@ -1131,7 +1141,7 @@
       case 'show': return tick(SHOW.map(([t]) => [t, G.pet.knows(t)]).concat([['gato', fl('show').nico]]));
       case 'cansado': { const c = ca(); return tick([['casa', c.rosa], ['granja', c.granja === 2], ['biblioteca', c.ines]]); }
       case 'cuenta': return tick(E.COUNT.map(([k, n]) => [k, counted(k) >= n]));
-      case 'sonidos': return tick(ROUNDS.map(([, s], i) => [s, (so().i | 0) > i]).concat([['guau', (so().i | 0) >= 5]]));
+      case 'sonidos': return tick(ROUNDS.map(([k, s], i) => [s || k, (so().i | 0) > i]).concat([['guau', (so().i | 0) >= 5]]));
       case 'flores': return tick(WISH.map(c => [flowerPic(c), fo().got && fo().got[c]]));
       case 'fiestab': { const c = fb(); return tick([['hola', invited() >= 5], [{ icon: 'cinta', col: '#e03028' }, decorated()], ['pan', c.fed.patos], ['agua', c.fed.caballo], ['gallina', c.fed.gallinas], ['estrella', false]]); }
     }

@@ -1,29 +1,13 @@
-// ===== Story scenes: Mamá's first lesson, the club party, the diploma (original) =====
+// ===== Story scenes: Luna's review and the diploma (the story itself is in chapters: src/chapters.js) =====
 'use strict';
 (function () {
   const F = () => G.state.flags, S = G.st;
   const T = (t, en) => ({ t, en });
   const ST = G.story = {};
   function* say(who, ...pages) { yield G.say(pages, { portrait: G.portraitOf(who), name: G.nameOf(who), who }); }
-  const words = (...ids) => ids.map(id => ({ word: id }));
 
-  // ---------- Mamá: the very first words ----------
-  // No controls card interrupts it: the hand in hint.js shows where to tap when a child is stuck, and keyboard
-  // players get a strip of the keys once it's done. main.js keeps the house locked until it ends; the guard on
-  // the field stops it starting a second time while it runs.
-  ST.mamaIntro = function* () {
-    const f = G.field; if (f && f.introBusy) return;
-    if (f) f.introBusy = true;
-    yield* say('mama', T('¡[hola], {name}! ¡Qué guap{o/a}!', 'Hello, {name}! Don\'t you look nice!'));
-    yield* G.ask({ prompt: '¡[hola]!', en: 'Mom says hello. Say it back!', layout: 'cards', who: 'mama', choices: words('manzana', 'hola', 'pelota'), answer: 1, learn: 'hola' });
-    yield* G.ask({ prompt: '¡[buenosdias]!', en: 'Good morning! (the sun is up)', layout: 'cards', who: 'mama', choices: words('buenosdias', 'uvas', 'carta'), answer: 0, learn: 'buenosdias' });
-    yield* say('mama', T('¡Para ti!', 'For you! (a notebook)'));
-    yield* G.findPage('saludos');
-    yield* say('mama', T('La [escuela]. ¡Vamos!', 'The school. Off you go!'));
-    yield* G.ask({ prompt: '¡[adios], {name}!', en: 'Goodbye, {name}!', layout: 'list', who: 'mama', choices: words('hola', 'adios', 'gracias'), answer: 1, learn: 'adios' });
-    F().intro = true;
-    if (f) f.introBusy = false;
-  };
+  // (Mamá's first lesson is chapter 1 now: content/es/story-c01-c10.js. The old name still starts the story, for tools.)
+  ST.mamaIntro = function* () { yield 1; };
 
   // ---------- Review (Luna's "¿Repaso?"): the words due first (words.js), then the weakest met words ----------
   ST.review = function* (n = 5) {
@@ -47,7 +31,7 @@
       G.bigText(ctx, G.st.playerName(), cx + 20, y + 50, 2, '#203080', null);
       ctx.fillStyle = '#5a3810'; ctx.fillRect(x + 11, y + 11, 54, 54); G.drawPortrait(ctx, G.st.playerSpec().portrait, x + 12, y + 12, this.t);
       const S = G.st, animals = G.animals ? G.animals.list().filter(G.animals.met).length : 0, all = G.animals ? G.animals.list().length : 11;
-      if (S.done('fiestab')) G.textC(ctx, G.fill('¡Amig{o/a} de los animales!'), cx + 20, y + 68, '#c03030', null);
+      if (S.done('fiestab') || S.done('c21')) G.textC(ctx, G.fill('¡Amig{o/a} de los animales!'), cx + 20, y + 68, '#c03030', null);
       // words learned, stars, speaking stars, animals met
       const row = y + 84, items = [['book', S.learnedCount()], ['star', G.state.stars], ['mic', S.micStars()], ['pata', animals + '/' + all]];
       items.forEach(([ic, n], k) => {
@@ -59,15 +43,17 @@
         G.text(ctx, String(n), ix + 24, row, ic === 'mic' ? '#2a8a9a' : ic === 'star' ? '#c08010' : '#604020', null);
       });
       // a badge for every errand
-      const ids = G.data.badgeOrder.concat(S.done('fiesta') ? ['fiesta'] : []), per = Math.min(22, Math.floor((w - 16) / ids.length)), bx = cx - (ids.length * per) / 2 + (per - 16) / 2;
+      const ids = G.data.badgeOrder.concat((G.data.legacyQuests || []).filter(id => S.done(id))), rows = ids.length > 14 ? 2 : 1, n1 = Math.ceil(ids.length / rows);
+      const per = Math.min(22, Math.floor((w - 16) / n1));
       ids.forEach((id, k) => {
-        if (S.done(id)) G.drawBadge(ctx, id, bx + k * per, y + 106, this.t + k * 12);
-        else { ctx.strokeStyle = '#d8c8a0'; ctx.beginPath(); ctx.arc(bx + k * per + 8, y + 114, 9, 0, Math.PI * 2); ctx.stroke(); }
+        const r = Math.floor(k / n1), inRow = Math.min(n1, ids.length - r * n1), bx = cx - (inRow * per) / 2 + (per - 16) / 2, by = y + (rows === 2 ? 100 : 106) + r * 19;
+        if (S.done(id)) G.drawBadge(ctx, id, bx + (k % n1) * per, by, this.t + k * 12);
+        else { ctx.strokeStyle = '#d8c8a0'; ctx.beginPath(); ctx.arc(bx + (k % n1) * per + 8, by + 8, 9, 0, Math.PI * 2); ctx.stroke(); }
       });
       // best friends
       const best = G.hearts ? G.hearts.WHO.filter(n => G.hearts.best(n)) : [];
-      if (best.length) { G.hearts.heart(ctx, x + 16, y + 140, true, 2); G.text(ctx, 'Amigos', x + 34, y + 142, '#a03060', null); }
-      best.slice(0, 8).forEach((n, k) => { ctx.fillStyle = '#5a3810'; ctx.fillRect(x + 81 + k * 26, y + 134, 24, 24); G.hearts.face(ctx, n, x + 82 + k * 26, y + 135, 22, this.t); });
+      if (best.length) { G.hearts.heart(ctx, x + 16, y + 146, true, 2); G.text(ctx, 'Amigos', x + 34, y + 148, '#a03060', null); }
+      best.slice(0, 8).forEach((n, k) => { ctx.fillStyle = '#5a3810'; ctx.fillRect(x + 81 + k * 26, y + 140, 24, 24); G.hearts.face(ctx, n, x + 82 + k * 26, y + 141, 22, this.t); });
       G.textC(ctx, 'Luna', cx + 70, y + h - 24, '#203080', null);
       ctx.fillStyle = '#806040'; ctx.fillRect(cx + 34, y + h - 14, 72, 1);
       if (G.enVisible()) G.textC(ctx, 'Words, stars, speaking stars, animals; a badge per errand', cx, y + 126, '#a07030', null);

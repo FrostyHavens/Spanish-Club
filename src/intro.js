@@ -138,12 +138,23 @@
   const key = (x, y) => x + ',' + y;
   I.find = function* (id, o = {}) {
     if (!D().words[id] || !o.map || !o.at) return false;
-    finds()[id] = { who: o.who || null, map: o.map, at: key(...o.at), wrong: (o.wrong || []).map(p => key(...p)), found: false, how: o.how || 'find' };
+    finds()[id] = { who: o.who || null, map: o.map, at: key(...o.at), wrong: (o.wrong || []).map(p => key(...p)), found: false, how: o.how || 'find', pics: o.pics || null };
     S().autosave();
     if (G.vocabLog) G.vlog('find-start', id, { who: o.who || null });
-    yield sayAs(o.who, [TT(o.prompt || '¿Y mi [' + id + ']?', o.en || 'Where is my...? (find it and tap it)')]);
+    if (!o.silent) yield sayAs(o.who, [TT(o.prompt || '¿Y mi [' + id + ']?', o.en || 'Where is my...? (find it and tap it)')]);
     return true;
   };
+  // o.pics: [[x, y, icon], ...] picture bubbles over the places to choose from (places: the right one shows its own
+  // picture, the others theirs, no words), drawn until it's found
+  I.drawUnder = function (f, ctx) {
+    if (!G.state || !f || G.top() !== f) return;
+    const F = finds();
+    for (const id in F) {
+      const s = F[id]; if (s.found || s.map !== f.mapId || !s.pics) continue;
+      for (const [x, y, ic] of s.pics) G.drawAlert(ctx, ic, x * G.TILE - Math.round(f.cam.x), y * G.TILE - Math.round(f.cam.y) + 4, f.t + x * 7);
+    }
+  };
+  I.clearFind = id => { if (G.state && finds()[id]) delete finds()[id]; };
   I.found = id => !!(G.state && finds()[id] && finds()[id].found);
   I.seeking = who => { if (!G.state) return null; const F = finds(); for (const id in F) if (F[id].who === who && !F[id].found) return id; return null; };
   I.spotAt = function (f, x, y) {
@@ -163,8 +174,7 @@
     s.found = true; f.wig = { x, y, t: 18 };
     const [sx, sy] = [x * G.TILE + 12 - Math.round(f.cam.x), y * G.TILE + 8 - Math.round(f.cam.y)];
     G.audio.sfx('chime'); G.fx.burst(sx, sy);
-    Wd().meet(m.id, s.how || 'find', { who: s.who });
-    yield I.note([m.id]);
+    if (Wd().meet(m.id, s.how || 'find', { who: s.who })) yield I.note([m.id]); // (a word already met: found again, no new card)
     yield 20;
     S().autosave();
   };
@@ -192,15 +202,18 @@
   const pageWords = id => (D().pages[id] ? D().pages[id].words : []);
   P.visible = () => D().pageOrder.filter(p => pageWords(p).some(w => Wd().met(w)));
   P.solvedDay = id => { const v = G.state && G.state.pages[id]; return !v ? null : typeof v === 'object' ? v.d | 0 : 0; };
+  // a page's sparkle waits for 4 of its words KNOWN (stage 2+: picked once without a cue), known before this session
+  // (CURRICULUM.md 5: at the earliest in the next session after the 4th), and comes back on a later day with 2+ due
+  const ripe = w => { const r = Wd().rec(w); return !!r && r.st >= 2 && (r.ms < Wd().sess() || r.how === 'old' || r.how === 'learn'); };
   P.ready = function (id) {
     if (!G.state || !D().pages[id]) return false;
-    const met = pageWords(id).filter(w => Wd().met(w)); if (met.length < 4) return false;
+    const met = pageWords(id).filter(ripe); if (met.length < 4) return false;
     const d = P.solvedDay(id); if (d == null) return true;
     return d < Wd().day() && met.filter(w => Wd().due(w)).length >= 2;
   };
-  // the 4 words to match: due ones first, then the weakest, then the least recently met
+  // the 4 words to match (never one only met): due ones first, then the weakest, then the least recently met
   P.words = function (id) {
-    const met = pageWords(id).filter(w => Wd().met(w));
+    const met = pageWords(id).filter(w => Wd().stage(w) >= 2);
     const sc = w => (Wd().due(w) ? 0 : 10) + Wd().stage(w) * 2 + G.rand();
     return shuffle(met.sort((a, b) => sc(a) - sc(b)).slice(0, 4));
   };

@@ -1,10 +1,9 @@
 // ===== Round B: tap anything. Things in town say their Spanish word; say it back for a speaking star =====
-// A tap on a thing that has a word (a tree, a flower, the fountain, a bench, a window, the barn, the pond...) shows a
-// word bubble over it with its picture and its Spanish word ("el árbol"), says the word and gives the thing a little
-// wiggle and a sparkle. A word not met yet (words.js) is met this way when the new-word budget allows (WD.introOnTap:
-// the child chose to ask "what's this?"; G.intro.note's small celebration); otherwise its bubble shows the picture and
-// "?" and says nothing: it waits for its own puzzle. With the mic on, a small pink mic bubble sits beside a met word
-// for ~5 s: tap it (or press V, or hold Space while you talk) and say the word -> a speaking star (G.mic.award; a cued
+// A tap on a thing that has a word (a tree, a flower, the fountain, a bench, the barn, the pond...) shows a word bubble
+// over it with its picture and its Spanish word ("el árbol"), says the word and gives the thing a little wiggle and a
+// sparkle. A word not met yet (words.js) is never met this way: its bubble shows the picture and "?" (and an animal's
+// cry) and says nothing; it waits for its own puzzle in the story (WD.introOnTap = true would let a tap meet it).
+// With the mic on, a small pink mic bubble sits beside a met word for ~5 s: tap it (or press V, or hold Space while you talk) and say the word -> a speaking star (G.mic.award; a cued
 // retrieval for the word model: it was just heard), and that word gives no more say-it-back stars today (one per
 // word per calendar day, kept in G.state.sayback[id] = 'YYYY-M-D', so it can't be farmed). A miss: "¡Otra vez!", the
 // bubble stays a little longer, no penalty. Animals (animals.js, ambient.js, Canelo) use the same bubble, with their
@@ -45,8 +44,11 @@
 (function () {
   const T = G.TILE, WD = G.world = {};
   const key = (x, y) => x + ',' + y;
-  WD.TILES = { T: 'arbol', f: 'arbol', o: 'flor', l: 'fuente', w: 'agua', J: 'banco', N: 'ventana', D: 'puerta', j: 'cama' };
-  WD.introOnTap = true; // a tap on an unmet thing meets its word when G.budget.canIntro(1) (words.js)
+  WD.TILES = { T: 'arbol', f: 'arbol', o: 'flor', l: 'fuente', w: 'agua', J: 'banco', N: null, D: null, j: 'cama' }; // (windows and doors have no word)
+  // A tap on an unmet thing never meets its word: unmet things stay mysterious (a "?" bubble with its picture and its
+  // cry, no word and no voice) until the story introduces them (docs/CURRICULUM.md 7.3). A find-it puzzle's thing (intro.js)
+  // wins over this, and set this to true to let taps meet words again (budget permitting).
+  WD.introOnTap = false;
   const LIFE = 170, SAY_LIFE = 330, WALK_AGAIN = 20 * 60;
   WD.bubble = null; WD.sayBack = null;
   let speakAt = null, walked = {}; // a line waiting to be spoken {f, text, at}; word -> G.frame it was named by walking onto it
@@ -80,7 +82,7 @@
     const unk = !G.st.seen(id); // not met yet: its picture and "?", and no voice
     const b = WD.bubble = { id, x: wx, y: wy, t: 0, cry: o.cry || null, f, unk };
     if (o.tile) f.wig = { x: o.tile[0], y: o.tile[1], t: 18 };
-    const text = unk ? (o.cry || '') : w.es.split(' / ')[0] + (o.cry ? '. ' + o.cry : '');
+    const text = unk ? '' : w.es.split(' / ')[0] + (o.cry ? '. ' + o.cry : ''); // (an unmet thing says nothing: its cry is only a sound)
     if (!text) speakAt = null; else if (o.delay) speakAt = { f, text, at: G.frame + o.delay }; else { speakAt = null; G.speak(text); }
     if (fresh) G.intro.note([id]);
     G.audio.sfx('cursor');

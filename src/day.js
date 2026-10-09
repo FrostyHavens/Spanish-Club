@@ -14,15 +14,18 @@
   G.sessionTime = 0;
   const HOME = 'casa', TOWN = 'villa', BED = [6, 3]; // where you wake up: beside your bed at home
   const T = (t, en) => ({ t, en });
-  let base = null, today = [], glow = 0;
+  let base = null, today = [], glow = 0, bringAt = null;
 
   // ---------- the session: since the game was started or opened, or since this morning ----------
   function newDay() {
     const st = {}; for (const id in G.data.words) st[id] = G.st.stage(id); // each word's stage this morning (words.js)
     base = { state: G.state, st, stars: G.state.stars | 0, said: G.st.micStars() };
-    today = []; G.sessionTime = 0; glow = 0;
+    today = []; G.sessionTime = 0; glow = 0; bringAt = null;
   }
-  DY.sunsetAt = () => (G.debug && G.debug.sunsetAt != null ? G.debug.sunsetAt : DY.SUNSET_AT);
+  // an evening chapter is next (chapters.js: C9): the sun goes down sec seconds from now (or sooner, as it was)
+  DY.bring = sec => { const at = G.sessionTime + sec; if (bringAt == null || at < bringAt) bringAt = at; };
+  DY.brought = () => bringAt != null;
+  DY.sunsetAt = () => Math.min(G.debug && G.debug.sunsetAt != null ? G.debug.sunsetAt : DY.SUNSET_AT, bringAt == null ? 1e9 : bringAt);
   DY.over = () => !!(G.state && G.state.flags.intro) && G.sessionTime >= DY.sunsetAt();
   // words met or grown a stage today (in that order), stars earned today and how many of them were speaking stars
   const sweep = () => { for (const id in G.state.words) if (today.indexOf(id) < 0 && G.st.stage(id) > (base.st[id] | 0)) today.push(id); };
@@ -99,7 +102,12 @@
     while (G.fade.a > 0) yield 1;
     yield 12;
     f.player.dir = 'up';
-    yield G.say(T('¡Buenas noches, {name}!', 'Good night, {name}!'), { portrait: G.portraitOf('mama'), name: G.nameOf('mama') });
+    const mama = { portrait: G.portraitOf('mama'), name: G.nameOf('mama'), who: 'mama' }, met = id => G.st.seen(id);
+    // the story's evening (chapters.js: C9 teaches agua, cama and buenas noches here), else Mamá's good night
+    if (!(G.chapters && (yield* G.chapters.evening('dusk', f)))) {
+      if (met('buenasnoches')) yield* G.chapters.ask('mama', '¡...!', 'The moon is out: Mom says good night. Say it back!', 'buenasnoches', met('buenosdias') ? ['buenosdias'].concat(met('cama') ? ['cama'] : met('hola') ? ['hola'] : []) : ['hola'], { show: { icon: 'noche' } });
+      else yield G.say(T('¡[buenasnoches], {name}!', 'Good night, {name}!'), mama);
+    }
     yield DY.todayCard();
     G.audio.play('inn', true); // a little lullaby
     yield G.fadeTo(1, 0.03, '#080a26');
@@ -111,7 +119,14 @@
     yield G.fadeTo(0, 0.04, '#fff2d0'); // out of the morning light (the night left the fade there)
     if (G.pet) G.pet.morning(f); // and Canelo hops up
     yield 16;
-    yield* G.ask({ prompt: '¡[buenosdias], {name}!', en: 'Good morning, {name}! (say it back)', layout: 'cards', who: 'mama', choices: [{ word: 'buenosdias' }, { word: 'adios' }], answer: 0, learn: 'buenosdias' });
+    // the morning: the story's (C9's last beat), else Mamá's good morning under the sun, once buenos días is met
+    if (!(G.chapters && (yield* G.chapters.evening('dawn', f)))) {
+      if (met('buenosdias')) {
+        const plain = G.words.list(2).filter(id => G.data.words[id].topic !== 'saludos' && G.iconDrawn(id)).sort(() => G.rand() - 0.5);
+        const others = met('buenasnoches') ? ['buenasnoches'].concat(plain.slice(0, 1)) : plain.slice(0, 2);
+        if (others.length) yield* G.chapters.ask('mama', '¡...!', 'The sun is up: Mom says good morning. Say it back!', 'buenosdias', others, { show: { icon: 'sol' } });
+      } else yield G.say(T('¡{name}!', '{name}! (a new day)'), mama);
+    }
     f.locked = false; f.evening = false;
     if (G.st.autosave) G.st.autosave();
   };

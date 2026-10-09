@@ -30,7 +30,11 @@
     removeNpc(id) { this.npcs = this.npcs.filter(n => n.id !== id); }
     onEnter() {
       G.audio.play(this.def.music || 'town');
-      if (this.def.name && !this.noBanner) { this.banner = { text: this.def.name, icon: this.def.icon, t: 150 }; if (this.def.icon) { if (G.vocabLog) G.vlog('shown', this.def.icon, { via: 'banner' }); G.st.see(this.def.icon); } }
+      if (this.def.name && !this.noBanner) { // the map's name: a place whose word isn't met yet shows only its picture
+        const ic = this.def.icon, word = ic && G.data.words[ic];
+        this.banner = { text: word && !G.st.seen(ic) ? '' : this.def.name, icon: ic, t: 150 };
+        if (word) { if (G.vocabLog) G.vlog('shown', ic, { via: 'banner' }); G.st.see(ic); }
+      }
       if (this.def.onEnter) this.tasks.add(this.def.onEnter(this));
     }
     // ---------- walkability ----------
@@ -121,14 +125,15 @@
       const drawn = up => ppl.find(n => n.talk && n.spec && !n.hidden && wx >= n.x * T + n.ox && wx < n.x * T + n.ox + T && wy >= (n.y - up) * T + n.oy && wy < (n.y - up + 1) * T + n.oy);
       const c = this.map.get(tx, ty);
       let n = drawn(0) || talker(tx, ty) || drawn(1) || talker(tx, ty + 1);
-      if (!n && COUNTER.includes(c)) n = DIR4.map(d => talker(tx + G.DIRS[d][0], ty + G.DIRS[d][1])).find(Boolean);
+      const story = (G.chapters && G.chapters.spotAt(this, tx, ty)) || G.intro.spotAt(this, tx, ty); // a puzzle's thing on a counter is the thing, not the person behind it
+      if (!n && !story && COUNTER.includes(c)) n = DIR4.map(d => talker(tx + G.DIRS[d][0], ty + G.DIRS[d][1])).find(Boolean);
       if (n) return { npc: n, x: n.x, y: n.y };
       if (this.exitAt(tx, ty)) return { exit: true, x: tx, y: ty };
       const door = (G.TERRAIN[c] || G.TERRAIN['.']).wall && DIR4.map(d => this.exitAt(tx + G.DIRS[d][0], ty + G.DIRS[d][1])).find(Boolean);
       if (door) return { exit: true, x: door.x, y: door.y }; // the wall or sign around a door, the dark just outside one
       const pg = (this.def.pages || {})[key(tx, ty)];
       const name = G.world ? G.world.wordAt(this, tx, ty) : null;
-      const special = !!((pg && G.pages.ready(pg)) || (this.def.searches || {})[key(tx, ty)] || (G.errands && G.errands.spotAt(this, tx, ty)) || G.intro.spotAt(this, tx, ty)); // these win over an animal on them
+      const special = !!((pg && G.pages.ready(pg)) || (this.def.searches || {})[key(tx, ty)] || (G.chapters && G.chapters.spotAt(this, tx, ty)) || (G.errands && G.errands.spotAt(this, tx, ty)) || G.intro.spotAt(this, tx, ty)); // these win over an animal on them
       if (special || THING.includes(c)) return { search: true, x: tx, y: ty, name, special };
       if (name) return this.blocked(tx, ty, this.player) && !(this.player.x === tx && this.player.y === ty) ? { search: true, x: tx, y: ty, name } : { x: tx, y: ty, name };
       return { x: tx, y: ty };
@@ -172,9 +177,9 @@
     facing() { const [dx, dy] = G.DIRS[this.player.dir]; return [this.player.x + dx, this.player.y + dy]; }
     *interact() {
       const [fx, fy] = this.facing();
-      let n = this.npcs.find(o => o.x === fx && o.y === fy);
+      let n = this.npcs.find(o => o.x === fx && o.y === fy && !o.hidden); // (someone hidden, like a puppy under the table, isn't there to talk to)
       // talk across counters
-      if (!n) { const t = this.map.get(fx, fy); if (t === 'e' || t === 't' || t === 'a' || t === 'Y') { const [dx, dy] = G.DIRS[this.player.dir]; n = this.npcs.find(o => o.x === fx + dx && o.y === fy + dy); } }
+      if (!n) { const t = this.map.get(fx, fy); if (t === 'e' || t === 't' || t === 'a' || t === 'Y') { const [dx, dy] = G.DIRS[this.player.dir]; n = this.npcs.find(o => o.x === fx + dx && o.y === fy + dy && !o.hidden); } }
       if (n && n.talk) {
         const back = { u: 'down', d: 'up', l: 'right', r: 'left' }[this.player.dir[0]];
         const prev = n.dir; if (!n.fixed) n.dir = back;
@@ -187,6 +192,8 @@
     }
     *search(fx, fy) {
       if (fx === undefined) [fx, fy] = this.facing();
+      const cs = G.chapters && G.chapters.spotAt(this, fx, fy); // a place in the story (chapters.js)
+      if (cs) { yield* G.chapters.runSpot(this, cs); return; }
       const sp = G.errands && G.errands.spotAt(this, fx, fy); // a place an errand sends you (errands.js)
       if (sp) { yield* G.errands.runSpot(this, sp); return; }
       const fd = G.intro.spotAt(this, fx, fy); // a find-it puzzle: the thing someone needs, or not that one (intro.js)
@@ -246,6 +253,7 @@
       if (G.hearts) G.hearts.update(this); // friends call you by name as you pass (hearts.js)
       if (G.animals) G.animals.update(this); // ducks, hens, the fish, the frog, the rabbit, the horse, the goat (animals.js)
       if (G.errands) G.errands.update(this); // Round B errands: who stands where, Canelo lost, Nico tagging along (errands.js)
+      if (G.chapters) G.chapters.update(this); // the story: a chapter's moments that start by themselves (chapters.js)
       const ct = this.camTarget(); this.cam.x += (ct.x - this.cam.x) * 0.3; this.cam.y += (ct.y - this.cam.y) * 0.3;
       if (Math.abs(ct.x - this.cam.x) < 0.5) this.cam.x = ct.x; if (Math.abs(ct.y - this.cam.y) < 0.5) this.cam.y = ct.y;
       if (this.banner) this.banner.t--;
@@ -284,6 +292,8 @@
       if (G.animals) G.animals.draw(this, ctx, 'ground'); // lily pads, ripples, swimmers, shadows
       if (G.pet) G.pet.drawUnder(this, ctx); // Canelo's cushion and bowl at home
       if (G.errands) G.errands.drawUnder(this, ctx); // Lucía's flowers, the picnic blanket, the party ribbons (errands.js)
+      if (G.chapters) G.chapters.draw(this, ctx, 'under'); // a chapter's own things on the ground (chapters.js)
+      if (G.intro && G.intro.drawUnder) G.intro.drawUnder(this, ctx); // a find-it puzzle's picture bubbles (intro.js)
       const ents = this.npcs.filter(n => n.spec && !n.hidden).concat([this.player]);
       const zoo = G.animals ? G.animals.ents(this) : []; // land animals, drawn in order with the people
       for (const e of ents.concat(zoo).sort((a, b) => (a.sy != null ? a.sy : a.y * T + a.oy) - (b.sy != null ? b.sy : b.y * T + b.oy))) {
@@ -305,13 +315,14 @@
         const al = e.alert && e.alert(); if (!al) continue;
         G.drawAlert(ctx, al, Math.round(e.x * T + e.ox - cx), Math.round(e.y * T + e.oy - cy), this.t);
       }
+      if (G.chapters) G.chapters.draw(this, ctx, 'top'); // a chapter's bubbles and pointing arrow (chapters.js)
       if (G.world) G.world.draw(this, ctx); // the word bubble of a thing just named, and its say-it-back mic
       if (this.banner && G.top() !== this) this.banner.t = Math.min(this.banner.t, 0); // a talk or a card opened over the map: the name has done its job
       if (this.banner && this.banner.t > 0) {
         const a = Math.min(1, this.banner.t / 30), ic = this.banner.icon;
-        ctx.globalAlpha = a; const w = G.textWidth(this.banner.text) + 30 + (ic ? 20 : 0);
+        ctx.globalAlpha = a; const w = this.banner.text ? G.textWidth(this.banner.text) + 30 + (ic ? 20 : 0) : 32;
         G.win(ctx, (G.W - w) / 2, 8, w, 26);
-        if (ic) G.drawIcon16(ctx, ic, (G.W - w) / 2 + 12, 13);
+        if (ic) G.drawIcon16(ctx, ic, this.banner.text ? (G.W - w) / 2 + 12 : G.W / 2 - 8, 13);
         G.textC(ctx, this.banner.text, G.W / 2 + (ic ? 10 : 0), 17, '#f8e060'); ctx.globalAlpha = 1;
       }
       if (!this.locked && G.top() === this) G.iconBtn(ctx, 'menu', ...HUD);

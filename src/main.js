@@ -17,8 +17,8 @@
       G.state.look = r.result.look; G.state.name = r.result.name;
       G.st.begin(slot); // this game owns the slot from now on: saved right away, then all the time
       const f = G.goto('casa', 4, 4, 'up');
-      f.locked = true; // from the start, so a quick tap or key can't reach Mamá and start her intro a second time
-      f.tasks.add((function* () { yield 40; yield* G.story.mamaIntro(); f.locked = false; })());
+      f.locked = true; // a moment to look around; then chapter 1 starts by itself (chapters.js: its first beat is automatic)
+      f.tasks.add((function* () { yield 40; f.locked = false; })());
     })());
   }
   // Continue the game in a slot, where the player was

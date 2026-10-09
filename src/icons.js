@@ -108,6 +108,26 @@
       for (let a = 0; a < 8; a++) { const t = a * Math.PI / 4; for (let r = 5.5; r < 7.5; r += 0.5) p.put(8 + Math.cos(t) * r - 0.5, 8 + Math.sin(t) * r - 0.5, '#f8a020'); }
       p.disc(8, 8, 4.5, '#f8d830'); p.shade(8, 8, 4.5, '#f0b020'); p.put(6, 6, '#fff8c0');
     },
+    noche(p) { // buenas noches: a crescent moon and two little stars
+      p.disc(8, 8.5, 6, '#f8e070'); p.shade(8, 8.5, 6, '#e8c040');
+      p.disc(11.2, 6.2, 5.2, null); // (the bite that makes it a crescent)
+      p.put(4, 6, '#fff8c8'); p.put(4, 7, '#fff8c8');
+      for (const [x, y] of [[13, 11], [12, 2]]) { p.put(x, y, '#ffffff'); p.put(x - 1, y, '#c8d8ff'); p.put(x + 1, y, '#c8d8ff'); p.put(x, y - 1, '#c8d8ff'); p.put(x, y + 1, '#c8d8ff'); }
+    },
+    busca(p) { // ¡busca!: Canelo's nose down to the ground, sniffing a trail of paw prints
+      p.ell(9.5, 6.5, 4.5, 3.6, BROWN); p.shade(9.5, 6.5, 4.6, BROWN2);
+      p.ell(13, 4, 1.6, 2.6, BROWN2); // his ear
+      p.tri(6, 5, 6, 9, 1.5, 11, BROWN); p.disc(2, 11, 1.4, INK); // the snout, nose down
+      p.put(8, 5, INK); p.put(8, 4, '#ffffff');
+      for (const [x, y] of [[5, 14], [9, 13], [13, 14]]) { p.disc(x, y, 1, '#a07040'); p.put(x - 1, y - 2, '#a07040'); p.put(x + 1, y - 2, '#a07040'); }
+      p.put(0, 8, '#88b8f0'); p.put(1, 7, '#88b8f0'); p.put(0, 13, '#88b8f0'); p.put(1, 14, '#88b8f0'); // sniff sniff
+    },
+    manana(p) { // "tomorrow": the sun coming up behind a green hill, a little moon going down
+      for (let a = 0; a < 5; a++) { const t = Math.PI + a * Math.PI / 4; for (let r = 5; r < 7; r += 0.5) p.put(8 + Math.cos(t) * r - 0.5, 10 + Math.sin(t) * r - 0.5, '#f8a020'); }
+      p.disc(8, 10, 4, '#f8d830'); p.shade(8, 10, 4, '#f0b020'); p.put(6, 8, '#fff8c0');
+      p.ell(8, 15, 9, 4.5, '#58b048'); p.rect(0, 13, 16, 3, '#58b048'); p.rect(0, 15, 16, 1, '#3a8a30');
+      p.disc(13.5, 2.5, 2, '#e8ecff'); p.disc(14.5, 1.8, 1.6, null);
+    },
     pregunta(p) {
       p.ell(8, 7, 7, 5.5, '#f8f8ff'); p.tri(4, 10, 8, 11, 3, 15, '#f8f8ff');
       p.rect(6, 3, 4, 1, '#3068e0'); p.rect(9, 4, 1, 2, '#3068e0'); p.rect(8, 6, 1, 2, '#3068e0'); p.rect(8, 9, 1, 1, '#3068e0'); p.rect(5, 4, 1, 1, '#3068e0');

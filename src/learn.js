@@ -106,7 +106,7 @@
   // plus a speaking star; a wrong one is just like tapping it; nothing heard or no match: "¡Otra vez!", no penalty.
   const GOLD = '#f8d860', BLUE = '#a8d8ff';
   function view(c, disp, isAns) {
-    const W = D().words[c.word];
+    const W = D().words[c.word] && c.img ? c.img : D().words[c.word]; // (c.img: a picture of its own, e.g. the red ball for rojo)
     if (!W) return { label: c.label, icon: c.icon, col: '#ffffff' };
     const st = S().stage(c.word), label = c.label || G.baseForm(c.word), col = st >= 3 ? GOLD : BLUE;
     const d = c.pic ? 'pic' : c.text ? 'text' : c.look || disp;
@@ -291,6 +291,7 @@
   //   remembered+    'text' when the prompt's picture is the answer (say it / pick its word), else 'pic' with the
   //                  answer heard, not shown (listen -> pick the picture)
   // q.noMic: no mic on this question (say, when saying the answer would only be reading it out).
+  // q.wrongAct(k, word): called on a wrong pick (the story reacting to it: Canelo barks instead of coming).
   // Returns true if right on the first try.
   const PRAISE = ['¡Muy bien!', '¡Excelente!', '¡Perfecto!', '¡Fantástico!', '¡Bravo!'];
   const showOf = sh => (!sh ? null : typeof sh === 'string' ? (D().words[sh] ? sh : null) : Object.keys(D().words).find(id => D().words[id] === sh) || null);
@@ -311,7 +312,7 @@
     let tries = 0, spoken = false, scene = null;
     const wq = G.choose(Object.assign({}, q, {
       choices: ch, display: ad.display, mask: ad.mask,
-      onWrong() { if (!tries && aid) G.words.answerWrong(aid); tries++; G.fx.shake = 4; },
+      onWrong(k) { if (!tries && aid) G.words.answerWrong(aid); tries++; G.fx.shake = 4; if (q.wrongAct) q.wrongAct(k, ch[k] && ch[k].word); }, // (q.wrongAct: what a wrong pick does in the story, chapters.js)
       onRight(rect, x, y, sp) {
         spoken = sp;
         G.fx.say(sp ? '¡Bien dicho!' : PRAISE[G.r(PRAISE.length)], x, y, sp ? '#a8f0ff' : '#f8e060', true);
@@ -372,12 +373,13 @@
     canelo: '#b87038', picnic: '#e05a30', show: '#3a56c8', cansado: '#2a9a9a', cuenta: '#8a50c8', sonidos: '#e0a020', flores: '#e060a0', fiestab: '#c03030' };
   const BADGE_ICON = { saludos: 'hola', mercado: 'manzana', pelota: 'pelota', carta: 'carta', fiesta: 'sol',
     canelo: 'pata', picnic: 'canasta', show: 'cinta', cansado: 'sobre', cuenta: 'diez', sonidos: 'nota', flores: 'flor', fiestab: 'estrella' };
+  const qd = id => (G.data.quests[id] || {}); // a chapter's badge: its own colour and picture (content/es/words.js)
   G.drawBadge = function (ctx, id, x, y, t, scale = 1) {
-    const s = 16 * scale, col = BADGE_COL[id] || '#888';
+    const s = 16 * scale, col = BADGE_COL[id] || qd(id).col || '#888';
     ctx.fillStyle = '#201008'; ctx.beginPath(); ctx.arc(x + s / 2, y + s / 2, s / 2 + 3 * scale, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#f8d040'; ctx.beginPath(); ctx.arc(x + s / 2, y + s / 2, s / 2 + 2 * scale, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x + s / 2, y + s / 2, s / 2 + 0.5 * scale, 0, Math.PI * 2); ctx.fill();
-    const img = G.icon(BADGE_ICON[id]); ctx.imageSmoothingEnabled = false;
+    const img = G.icon(BADGE_ICON[id] || qd(id).icon || 'estrella'); ctx.imageSmoothingEnabled = false;
     ctx.drawImage(img, x + 2 * scale, y + 2 * scale, 12 * scale, 12 * scale);
     if (t != null && (t % 90) < 12) { ctx.fillStyle = '#ffffff'; const k = (t % 90); ctx.fillRect(x + k * scale * 1.2, y + 2, scale, s - 4); }
   };

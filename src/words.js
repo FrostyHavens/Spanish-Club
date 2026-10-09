@@ -14,7 +14,7 @@
 // G.debug.dayShift (whole days added to the real date) let tests and the audit play on later days.
 // Saved per word (G.state.words[id]): {st, box, due (play s; and ds, the session: due anyway in a later one) | dd (day) +
 // dc (calendar day number), fu, met (play s),
-// ms (session met), md (day met), how, last, n (encounters), right, wrong, said, cue (cued right answers), ret (active
+// ms (session met), md (day met), mdate (the calendar date it was met: the chapters' daily budget), how, last, n (encounters), right, wrong, said, cue (cued right answers), ret (active
 // retrievals), ft {date: uncued first-try rights}, star (date of the last star), s3 (day it reached stage 3), gold
 // (its "¡Palabra de oro!" was shown), learned (= st >= 3, for older readers)}.
 //
@@ -119,7 +119,7 @@
     const r = W.rec(id, true); if (!r) return false;
     r.last = W.now(); r.n++;
     if (r.st >= 1) return false;
-    r.st = 1; r.box = 1; r.fu = 1; r.met = W.now(); r.ms = wm().sess; r.md = wm().day; r.how = how || 'meet';
+    r.st = 1; r.box = 1; r.fu = 1; r.met = W.now(); r.ms = wm().sess; r.md = wm().day; r.mdate = G.today(); r.how = how || 'meet';
     schedule(r, W.FOLLOW[0]);
     log('meet', id, { how: r.how, who: o.who || null });
     save();

@@ -317,7 +317,7 @@
       let named = null;
       for (const b of a.birds) if ((b.st === 'ground' || b.st === 'land') && Math.hypot(b.x - wx, b.y - b.z - 3 - wy) < 12) { scare(f, a, b, px, py); named = named || ['pajaro', b.x, b.y - b.z - 8]; }
       for (const fl of a.flies) if (Math.hypot(fl.x - wx, fl.y - fl.z - wy) < 12) { flee(f, a, fl); named = named || ['mariposa', fl.x, fl.y - fl.z - 4]; }
-      if (a.cat && catHit(a.cat, wx, wy) && !(G.errands && G.errands.catTap(f))) { pet(a); named = ['gato', a.cat.x * T + 12, a.cat.y * T - 8]; } // (errands.js: the sleepy cat, the sound game)
+      if (a.cat && !a.cat.away && catHit(a.cat, wx, wy) && !(G.chapters && G.chapters.tapped('cat', f)) && !(G.errands && G.errands.catTap(f))) { pet(a); named = ['gato', a.cat.x * T + 12, a.cat.y * T - 8]; } // (chapters.js: the cat in the story; errands.js: the sleepy cat, the sound game)
       if (named && G.animals) G.animals.tap(named[0], named[1], named[2], { silent: true });
     }
     for (const n of f.npcs) {
@@ -352,8 +352,8 @@
       for (const b of a.birds) if (b.st === 'ground' && vis(b.x, b.y)) drawBird(b);
       return;
     }
-    const c = a.cat; // on its fence post, in front of anyone standing behind the fence
-    if (c && vis(c.x * T, c.y * T)) {
+    const c = a.cat; // on its fence post, in front of anyone standing behind the fence (c.away: off somewhere, chapters.js)
+    if (c && !c.away && vis(c.x * T, c.y * T)) {
       const nap = (c.nap || 0) > 480, x = c.x * T + 9 - cx, y = c.y * T - 5 - cy, tail = CAT_TAIL[nap ? 0 : [0, 1, 2, 1][(c.t >> (c.happy ? 2 : 4)) & 3]], shut = c.blink || c.happy > 10 || nap;
       ctx.fillStyle = OL; for (const [tx, ty] of tail) ctx.fillRect(x + tx - 1, y + ty - 1, 3, 3);
       ctx.fillStyle = CAT_PAL.b; for (const [tx, ty] of tail) ctx.fillRect(x + tx, y + ty, 1, 1);
@@ -377,7 +377,7 @@
     }
   };
   // A pressed facing a tile: the cat purrs and meows (true = handled, so the search says nothing)
-  A.poke = function (f, x, y) { const a = f.amb; if (a && a.cat && a.cat.x === x && a.cat.y === y) { if (G.errands && G.errands.catTap(f)) return true; pet(a); if (G.animals) G.animals.tap('gato', x * T + 12, y * T - 8, { silent: true }); return true; } return false; };
+  A.poke = function (f, x, y) { const a = f.amb; if (a && a.cat && !a.cat.away && a.cat.x === x && a.cat.y === y) { if (G.chapters && G.chapters.tapped('cat', f)) return true; if (G.errands && G.errands.catTap(f)) return true; pet(a); if (G.animals) G.animals.tap('gato', x * T + 12, y * T - 8, { silent: true }); return true; } return false; };
   A.wake = f => { const a = f && f.amb; if (a && a.cat) pet(a); }; // the cat wakes up, purrs and meows (errands.js)
   A.sfx = { meow, yip, flutter }; // for animals.js
   A.napping = f => !!(f && f.amb && f.amb.cat && (f.amb.cat.nap || 0) > 480);

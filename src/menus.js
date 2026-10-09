@@ -177,16 +177,21 @@
   G.notebook = function (start) { const w = new G.Wait(); G.push(new Notebook(w, start)); return w; };
 
   // ---------- Misiones: who asked, and what they want (pictures only) ----------
-  // Up to four rows: the errands going on (their steps ticked off, errands.js parts()), then new ones waiting (the
-  // giver with a "!"); then what's in the bag, today's side jobs (ticked when done) and a badge for every errand.
+  // Up to four rows: the story's chapter going on (its steps ticked off, chapters.js parts()) or the next one (its
+  // giver with a "!", or a sun coming up when it opens tomorrow), then the older errands going on (errands.js parts())
+  // and new ones waiting; then what's in the bag, today's side jobs (ticked when done) and a badge for every chapter
+  // and errand.
   class QuestLog {
     constructor(w) { G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; }
     update() { this.t++; if (G.input.p('A') || G.input.p('B') || G.input.tap()) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); } } // a tap anywhere closes
     rows() {
-      const E = G.errands, act = D().questOrder.filter(id => S().active(id));
-      const fresh = E ? D().questOrder.filter(id => E.offer && E.offer(id)) : [];
-      const done = D().questOrder.filter(id => S().done(id) && D().badgeOrder.indexOf(id) < 0 && id !== 'fiesta');
-      return act.map(id => ({ id, st: 'on' })).concat(fresh.map(id => ({ id, st: 'new' }))).concat(done.map(id => ({ id, st: 'done' }))).slice(0, 4);
+      const E = G.errands, CH = G.chapters, out = [];
+      const cur = CH && CH.current();
+      if (cur) out.push({ id: cur, st: 'on', ch: true });
+      else if (CH) { const nx = CH.next(); if (nx && CH.written(nx)) out.push({ id: nx, st: CH.gate(nx) ? 'wait' : 'new', ch: true }); }
+      const act = D().questOrder.filter(id => S().active(id) && !(CH && CH.def(id)));
+      const fresh = E ? D().questOrder.filter(id => !(CH && CH.def(id)) && E.offer && E.offer(id)) : [];
+      return out.concat(act.map(id => ({ id, st: 'on' })), fresh.map(id => ({ id, st: 'new' }))).slice(0, 4);
     }
     draw(ctx) {
       G.win(ctx, 6, 6, G.W - 12, G.H - 12);
@@ -199,14 +204,16 @@
         ctx.fillStyle = r.st === 'new' ? '#1a2a60' : '#0a1040'; ctx.fillRect(14, y - 2, G.W - 28, 24);
         ctx.drawImage(G.unitSprite(D().npcs[q.giver].map, 'down', (this.t >> 5) & 1), 18, y - 2);
         if (r.st === 'new') { G.win(ctx, 36, y - 4, 11, 13, { fill1: '#f8f0c0', fill2: '#f8d860', alpha: 1 }); G.text(ctx, '!', 40, y - 1, '#c02020', null); }
+        if (r.st === 'wait') G.drawIcon16(ctx, 'manana', 34, y - 4); // it opens tomorrow
+        if (r.ch) { G.drawBadge(ctx, r.id, G.W - 40, y + 2, this.t); } // the chapter's own badge, waiting to be won
         G.drawIcon16(ctx, 'flecha', 48, y + 3);
-        const parts = r.st === 'on' && E && E.parts ? E.parts(r.id) : null;
+        const parts = r.st === 'on' ? (r.ch ? G.chapters.parts(r.id) : E && E.parts ? E.parts(r.id) : null) : null;
         if (parts) parts.forEach((p, i) => {
           const px = 70 + i * 20;
           ctx.globalAlpha = p.done ? 0.55 : 1; G.drawIcon16(ctx, p.icon, px, y + 3); ctx.globalAlpha = 1;
           if (p.done) { ctx.fillStyle = '#10301a'; ctx.fillRect(px + 8, y + 11, 9, 9); ctx.fillStyle = '#50d060'; ctx.fillRect(px + 9, y + 15, 2, 2); ctx.fillRect(px + 11, y + 16, 2, 2); ctx.fillRect(px + 13, y + 12, 2, 4); ctx.fillRect(px + 12, y + 14, 2, 2); }
         });
-        else { ctx.globalAlpha = r.st === 'new' ? 0.7 : 1; G.drawGoal(ctx, q.goal, 70, y + 3); ctx.globalAlpha = 1; }
+        else { ctx.globalAlpha = r.st === 'new' || r.st === 'wait' ? 0.7 : 1; G.drawGoal(ctx, q.goal, 70, y + 3); ctx.globalAlpha = 1; }
         if (r.st === 'done') G.drawIcon16(ctx, 'si', G.W - 36, y + 3);
         if (G.enVisible()) G.textR(ctx, q.en.length > 34 ? q.en.slice(0, 33) + '..' : q.en, G.W - 18, y + 14, '#f8e8b0');
       });
@@ -216,8 +223,8 @@
       if (!bag.length) G.text(ctx, '-', 42, yb + 5, '#404878');
       bag.forEach((it, i) => G.drawIcon16(ctx, E.bag.icon(it), 40 + i * 18, yb));
       // today's side jobs
-      if (E && S().done('saludos')) {
-        const yj = 160;
+      if (E && G.chapters && G.chapters.done('c2')) {
+        const yj = 158;
         G.drawIcon16(ctx, 'sol', 18, yj);
         E.JOBS.forEach((j, i) => {
           const done = E.jobDone(j), px = 40 + i * 22;
@@ -226,9 +233,11 @@
         });
       }
       // a badge for every errand
-      const ids = D().badgeOrder.concat(S().done('fiesta') ? ['fiesta'] : []), per = Math.min(24, Math.floor((G.W - 36) / ids.length)), x0 = G.W / 2 - (ids.length * per) / 2 + (per - 16) / 2;
+      const ids = D().badgeOrder.concat((D().legacyQuests || []).filter(id => S().done(id))), nrow = ids.length > 14 ? 2 : 1, n1 = Math.ceil(ids.length / nrow);
+      const per = Math.min(24, Math.floor((G.W - 36) / n1));
       ids.forEach((id, k) => {
-        const x = x0 + k * per, yy = G.H - 34;
+        const r = Math.floor(k / n1), inRow = Math.min(n1, ids.length - r * n1), x0 = G.W / 2 - (inRow * per) / 2 + (per - 16) / 2;
+        const x = x0 + (k % n1) * per, yy = G.H - (nrow === 2 ? 46 : 34) + r * 20;
         if (S().done(id)) G.drawBadge(ctx, id, x, yy, this.t + k * 18);
         else { ctx.fillStyle = '#0a1040'; ctx.beginPath(); ctx.arc(x + 8, yy + 8, 10, 0, Math.PI * 2); ctx.fill(); G.textC(ctx, '?', x + 8, yy + 4, '#404878'); }
       });

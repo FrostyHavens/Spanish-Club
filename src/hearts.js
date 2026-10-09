@@ -1,8 +1,8 @@
 // ===== Round B: hearts (friendship) with the townsfolk and Canelo; voice greetings; best-friend stickers and photos =====
 // Everyone in town (and Canelo) has 0-5 hearts, saved in G.state.hearts[npc]. Hearts go up:
-//   - a greeting answered (by voice or by tap): once a day per person, +1. After the Saludos errand, the first talk of
-//     the day with someone starts with their greeting ("Don Pepe: ¡Hola, Luz!") as a G.ask question, so the kids'
-//     mic is there: say "hola" (or "buenos días" early in the session, or "bien" to "¿cómo estás?") or tap it;
+//   - a greeting answered (by voice or by tap): once a day per person, +1. From chapter 3 on, the first talk of the
+//     day with someone starts with their greeting as a G.ask question (a sun, a moon or a wave: buenos días, buenas
+//     noches or hola), so the kids' mic is there, then one due word from their pool (H.POOLS);
 //   - a gift they like (G.hearts.gift(npc, word), once a day per person): +1 (LIKES below; Canelo likes el hueso);
 //   - finishing their errand (maps.js finishQuest -> giver): +2, not counted in the daily cap;
 //   - Canelo: care (food, water, the ball, petting, a trick shown) +1 each, and +1 for every trick learned (not capped).
@@ -130,7 +130,8 @@
   };
   H.pulse = npc => { const p = pops[npc]; return !!p && G.frame - p.f0 < 120; };
   // ui.js TextBox: a row of hearts above the portrait of someone who has hearts
-  H.shows = npc => H.WHO.includes(npc) && !!G.state && (H.get(npc) > 0 || G.st.done('saludos'));
+  const greets = () => !!G.chapters && G.chapters.done('c3'); // greetings begin after chapter 3 (CURRICULUM.md 2.2)
+  H.shows = npc => H.WHO.includes(npc) && !!G.state && (H.get(npc) > 0 || greets());
 
   // ---------- 1 heart: they call you by name as you pass ----------
   const waved = {};
@@ -149,29 +150,61 @@
     }
   };
 
-  // ---------- the voice greeting (once a day per person, after the Saludos errand) ----------
-  const POOL = { hola: ['hola', 'adios', 'gracias'], buenosdias: ['buenosdias', 'adios', 'gracias'], bien: ['bien', 'adios', 'no'] };
+  // ---------- the voice greeting (once a day per person, from chapter 3 on) ----------
+  // The person waves under a sun (the morning: the first minutes of a session), a moon (the evening, once buenas noches
+  // is met) or neither, and you answer: [buenos días / buenas noches / hola] when both time-of-day greetings are met,
+  // else the right greeting among known words that aren't greetings (hola is never a card beside buenos días before
+  // buenas noches exists: it would be right too). Then one word that is due from their pool (POOLS: what their trade
+  // shows), asked for its stage (G.review.ask). Once a day each; a heart.
+  H.POOLS = {
+    mama: ['buenosdias', 'buenasnoches', 'perro', 'ven', 'sientate', 'hueso', 'agua', 'cama', 'pelota', 'galleta', 'casa', 'comoestas', 'bien', 'feliz', 'cansado'],
+    pepe: ['hola', 'buenosdias', 'manzana', 'platano', 'naranja', 'queso', 'porfavor', 'gracias', 'si', 'no', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'rojo', 'amarillo', 'verde'],
+    marta: ['hola', 'buenosdias', 'pan', 'galleta', 'leche', 'panaderia', 'porfavor', 'gracias', 'uno', 'dos', 'tres', 'cuatro', 'cinco'],
+    rosa: ['hola', 'buenosdias', 'gallina', 'huevo', 'casa', 'flor', 'blanco', 'rosa', 'manzana', 'uno', 'dos', 'tres', 'gracias'],
+    sofia: ['hola', 'pelota', 'rojo', 'azul', 'amarillo', 'blanco', 'pata', 'salta', 'galleta', 'feliz', 'parque'],
+    nico: ['hola', 'gato', 'pato', 'cabra', 'caballo', 'conejo', 'rana', 'pajaro', 'pez', 'mariposa', 'guau', 'miau', 'cuac', 'croac', 'gira', 'verde'],
+    lucia: ['hola', 'flor', 'rosa', 'amarillo', 'rojo', 'blanco', 'azul', 'mariposa', 'fuente', 'triste', 'feliz', 'bien', 'cansado'],
+    tomas: ['hola', 'adios', 'carta', 'casa', 'escuela', 'parque', 'panaderia', 'biblioteca', 'granja', 'fuente', 'cansado', 'agua'],
+    gomez: ['hola', 'buenosdias', 'parque', 'banco', 'arbol', 'conejo', 'pajaro', 'busca', 'perro'],
+    luna: ['hola', 'buenosdias', 'escuela', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'comoestas', 'bien'],
+    ines: ['hola', 'biblioteca', 'adios', 'gracias'],
+  };
+  const GREET = ['hola', 'buenosdias', 'buenasnoches', 'adios', 'comoestas'];
+  H.greetKind = function () {
+    const met = id => G.st.seen(id);
+    if (G.day && G.day.over() && met('buenasnoches')) return 'noches';
+    if (G.sessionTime < 300 && met('buenosdias')) return 'dias';
+    return 'hola';
+  };
   H.greet = function* (npc) {
-    if (!G.state || !G.st.done('saludos') || npc === 'canelo' || !H.WHO.includes(npc) || H.did(npc, 'greet')) return false;
-    const nm = G.nameOf(npc) || '', dayN = new Date().getDate() + H.WHO.indexOf(npc);
-    const kind = H.best(npc) ? 'best' : G.sessionTime < 240 ? 'dias' : dayN % 2 ? 'hola' : 'como';
+    if (!G.state || !greets() || npc === 'canelo' || !H.WHO.includes(npc) || H.did(npc, 'greet')) return false;
+    const nm = G.nameOf(npc) || '', kind = H.best(npc) ? 'best' : H.greetKind(), met = id => G.st.seen(id);
+    const ans = kind === 'noches' ? 'buenasnoches' : kind === 'dias' ? 'buenosdias' : 'hola';
+    const both = met('buenosdias') && met('buenasnoches') && met('hola');
+    const plain = G.words.list(2).concat(G.words.list(1)).filter((id, i, a) => a.indexOf(id) === i && !GREET.includes(id) && G.data.words[id].topic !== 'saludos' && G.iconDrawn(id));
+    let others = both ? ['buenosdias', 'buenasnoches', 'hola'].filter(k => k !== ans) : plain.sort(() => G.rand() - 0.5).slice(0, 2);
+    if (others.length < 2) others = others.concat(G.words.list(1).filter(k => k !== ans && !others.includes(k) && !(ans === 'buenosdias' && k === 'hola'))).slice(0, 2);
+    const show = kind === 'noches' ? { icon: 'noche' } : kind === 'dias' ? { icon: 'sol' } : { icon: 'hola' };
     const Q = {
-      best: ['¡Mi amig{o/a} {name}!', 'My friend {name}! (say hi back)', 'hola'],
-      dias: ['¡[buenosdias], {name}!', 'Good morning, {name}! (say it back)', 'buenosdias'],
-      hola: ['¡[hola], {name}!', 'Hi, {name}! (say hi back)', 'hola'],
-      como: ['¡[hola]! ¿[comoestas]?', 'Hi! How are you?', 'bien'],
+      best: ['¡Mi amig{o/a} {name}!', 'My friend {name}! (wave back: say hi)'],
+      dias: ['¡...!', 'The sun is up: ' + nm + ' says good morning. Say it back!'],
+      noches: ['¡...!', 'The moon is out: ' + nm + ' says good night. Say it back!'],
+      hola: ['¡...!', nm + ' waves at you. Say hi back!'],
     }[kind];
-    const c = G.wordChoices(Q[2], POOL[Q[2]], 3);
     if (G.vocabLog) G.vlog.greet = npc; // (the dev-only log, vocablog.js: tags the greeting's words)
-    try { yield* G.ask({ prompt: nm + ': ' + Q[0], en: nm + ': ' + Q[1], choices: c.choices, answer: c.answer, layout: 'cards', learn: Q[2], who: npc }); } finally { G.vlog.greet = null; }
+    try { yield* G.chapters.ask(npc, nm + ': ' + Q[0], Q[1], ans, others, { show: kind === 'best' ? null : show }); } finally { if (G.vlog) G.vlog.greet = null; }
     H.add(npc, 1, 'greet'); // (marks today's greeting even when no heart is left to give)
     yield 20;
+    // one word that's due, from what they know about
+    const pool = H.POOLS[npc] || [];
+    const due = G.review.next({ filter: id => pool.includes(id) && !GREET.includes(id) });
+    if (due) { if (G.vocabLog) G.vlog.greet = npc; try { yield* G.review.ask(due, { who: npc }); } finally { if (G.vlog) G.vlog.greet = null; } }
     yield* H.milestones(npc);
     return true;
   };
 
   // ---------- 3 hearts: a secret and a sticker; 5 hearts: a photo together ----------
-  const PAGE_PLACE = { numeros: 'fuente', comida: 'casa', colores: 'parque', pueblo: 'biblioteca', animales: 'parque', granja: 'granja', sonidos: 'granja', cosas: 'banco', numeros2: 'granja', campo: 'panaderia', colores2: 'granja', sentir: 'escuela', mascota: 'casa' };
+  const PAGE_PLACE = { saludos: 'fuente', numeros: 'fuente', comida: 'casa', colores: 'parque', pueblo: 'biblioteca', animales: 'parque', granja: 'granja', sonidos: 'granja', cosas: 'banco', sentir: 'escuela', mascota: 'casa' };
   const T_ = (t, en) => ({ t, en });
   const say = (npc, ...pages) => G.say(pages, { portrait: G.portraitOf(npc), name: G.nameOf(npc) || (npc === 'canelo' ? 'Canelo' : null), who: npc });
   function* secret(npc) {

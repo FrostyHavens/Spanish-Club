@@ -36,7 +36,7 @@
   AN.KINDS = {
     perro: { word: 'perro', sound: 'guau', cry: '¡Guau, guau!' },
     gato: { word: 'gato', sound: 'miau', cry: '¡Miau!' },
-    pajaro: { word: 'pajaro', sound: 'pio', cry: '¡Pío, pío!' },
+    pajaro: { word: 'pajaro', sound: null, cry: '¡Pío, pío!' }, // (pío and bee are cries, not words: CURRICULUM.md 7.1)
     mariposa: { word: 'mariposa', sound: null, cry: null },
     pez: { word: 'pez', sound: null, cry: '¡Glu, glu!' },
     conejo: { word: 'conejo', sound: null, cry: null },
@@ -44,7 +44,7 @@
     rana: { word: 'rana', sound: 'croac', cry: '¡Croac!' },
     gallina: { word: 'gallina', sound: null, cry: '¡Coc, coc!' },
     caballo: { word: 'caballo', sound: null, cry: '¡Iiijii!' },
-    cabra: { word: 'cabra', sound: 'bee', cry: '¡Beee!' },
+    cabra: { word: 'cabra', sound: null, cry: '¡Beee!' },
   };
   const ORDER = Object.keys(AN.KINDS);
   ORDER.forEach((k, i) => { AN.KINDS[k].order = i; });

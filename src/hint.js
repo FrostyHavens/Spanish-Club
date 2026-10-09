@@ -24,7 +24,7 @@
   H.keyboard = () => kb;
 
   // ---------- what to point at ----------
-  const alerting = n => { try { return !!(n.alert && n.alert()); } catch (e) { return false; } };
+  const alerting = n => { try { const a = n.alert && n.alert(); return !!a && !a.wait; } catch (e) { return false; } }; // (a "tomorrow" bubble: nothing to do there today)
   const waitsInside = id => { const m = G.maps[id]; return !!m && ((m.npcs || []).some(n => (!n.cond || n.cond()) && alerting(n)) || !!(G.errands && G.errands.waitsIn(id))); };
   function mapTarget(f) {
     const p = f.player; if (f.locked || p.moving || f.route) return null;
@@ -32,7 +32,7 @@
     let best = null;
     const take = (x, y, ox, oy) => { const d = Math.abs(x - p.x) + Math.abs(y - p.y); if (!best || d < best.d) best = { d, x: x * T + ox + T / 2 - cx, y: y * T + oy + T / 2 - cy }; };
     for (const n of f.npcs) if (n.spec && !n.hidden && alerting(n)) take(n.x, n.y, n.ox || 0, n.oy || 0);
-    if (G.errands) for (const g of G.errands.targets(f)) take(Math.floor(g.x / T), Math.floor(g.y / T), g.x % T - T / 2, g.y % T - T / 2); // errand places, animals to find
+    if (G.errands) for (const g of G.errands.targets(f)) if (!g.secret) take(Math.floor(g.x / T), Math.floor(g.y / T), g.x % T - T / 2, g.y % T - T / 2); // errand places, animals to find (never a puzzle's answer: secret)
     if (G.intro) for (const g of G.intro.targets(f)) take(Math.floor(g.x / T), Math.floor(g.y / T), 0, 0); // a find-it puzzle's thing (intro.js)
     const home = G.day && G.day.homeDoor && G.day.homeDoor(f); if (home) take(home[0], home[1], 0, 0);
     if (!best) for (const ex of f.def.exits || []) if (ex.to && (!ex.cond || ex.cond()) && waitsInside(ex.to)) take(ex.x, ex.y, 0, 0);

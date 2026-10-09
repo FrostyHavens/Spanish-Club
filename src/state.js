@@ -32,6 +32,7 @@
       friends: {},        // Round B (hearts.js): npc -> {m3: secret + sticker given, m5: best-friend photo}
       bag: { items: [] }, // Round B (errands.js): what you carry: [{id: word id, col: colour word id (flowers), q: errand it belongs to, to: where (letters)}]
       jobs: {},           // Round B (errands.js): side job id -> 'YYYY-M-D' it was last done (once a day each)
+      ch: {},             // the story's chapters (chapters.js): the beat each one is on, their own data, when they began
     };
   }
   function devicePrefs(s) {
@@ -115,6 +116,7 @@
     const s = S.read(n); if (!s) return false;
     clearTimeout(timer); timer = 0;
     G.state = devicePrefs(s); S.slot = n; bound = s;
+    if (G.chapters) G.chapters.migrate(); // a game from before the chapters: its errands map onto them (chapters.js)
     if (G.words) G.words.newSession('load'); // a new session (and a new day on a new date)
     return true;
   };

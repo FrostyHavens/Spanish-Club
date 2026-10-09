@@ -30,7 +30,9 @@
   const P = G.pet = {}, T = G.TILE;
   const F = () => G.state.flags, S = G.st;
   const TT = (t, en) => ({ t, en });
-  P.TRICKS = [{ id: 'sientate', by: 'mama', anim: 'sit' }, { id: 'ven', by: 'mama', anim: 'come' }, { id: 'pata', by: 'sofia', anim: 'paw' },
+  // ven and siéntate are learned in the story (chapters 1 and 3); the others are taught by Sofía and Nico (canTeach) for
+  // the older errands after chapter 10, until chapters 14 and 17 teach them
+  P.TRICKS = [{ id: 'ven', by: 'mama', anim: 'come', story: true }, { id: 'sientate', by: 'mama', anim: 'sit', story: true }, { id: 'pata', by: 'sofia', anim: 'paw' },
     { id: 'salta', by: 'sofia', anim: 'jump' }, { id: 'gira', by: 'nico', anim: 'spin' }];
   P.CARE = ['hueso', 'galleta', 'agua', 'pelota', 'mimo', 'cama'];
   P.NEED = 3;
@@ -48,8 +50,11 @@
   P.learning = () => { const l = G.state && st().learning; return l && trick(l) && !P.knows(l) ? l : null; };
   P.known = () => P.TRICKS.filter(t => P.knows(t.id)).map(t => t.id);
   P.next = () => P.TRICKS.find(t => !P.knows(t.id)) || null;
-  P.canTeach = who => { if (!G.state || !P.mine() || P.learning()) return null; const n = P.next(); return n && n.by === who ? n.id : null; };
-  P.startReady = () => !!G.state && !!F().intro && S.done('saludos') && !P.mine();
+  P.canTeach = who => {
+    if (!G.state || !P.mine() || P.learning() || !(G.chapters && G.chapters.allWrittenDone())) return null;
+    const n = P.TRICKS.find(t => !P.knows(t.id) && !t.story); return n && n.by === who ? n.id : null;
+  };
+  P.startReady = () => false; // (Canelo becomes yours in chapter 1 now: content/es/story-c01-c10.js)
   P.npc = (f = G.field) => (f && f.npcs.find(n => n.id === 'canelo' && !n.hidden)) || null;
   P.sleeping = (f = G.field) => !!(f && G.state && f.mapId === 'casa' && P.mine() && (st().sleep || (G.day && G.day.over())) && !f.petAwake);
 
@@ -86,6 +91,7 @@
   // ---------- particles over the map (world px) ----------
   let fx = [], fxF = 0;
   const puff = (k, x, y, o = {}) => fx.push(Object.assign({ k, x, y, t: 0, life: 40, vx: 0, vy: 0 }, o));
+  P.puff = puff; // (chapters.js: hearts, "!", "?" over Canelo in the story)
   function fxStep() { let n = G.frame - fxF; fxF = G.frame; if (n <= 0) return; if (n > 4) n = 4; while (n--) fx = fx.filter(e => { e.t++; e.x += e.vx; e.y += e.vy; if (e.g) e.vy += e.g; return e.t < e.life; }); }
 
   // ---------- Canelo's animations (time from G.frame, so they play under any screen) ----------
@@ -410,7 +416,7 @@
     hintXY() { const k = this.cards().findIndex(c => c.st === 'learn'); if (k < 0) return null; const r = this.rect(k); return [r.x + r.w / 2, r.y + r.h / 2]; }
     usable(c) { return c.st === 'known' || c.st === 'learn' || c.st === 'care' || c.st === 'away'; }
     heard(alts) {
-      const C = this.cards(), targets = C.map(c => (c.st === 'known' || c.st === 'learn' || c.st === 'care') && W(c.id) ? G.mic.target({ word: c.id }) : null);
+      const C = this.cards(), targets = C.map(c => (c.st === 'known' || c.st === 'learn' || c.st === 'care') && W(c.id) && S.seen(c.id) ? G.mic.target({ word: c.id }) : null); // (a word not met yet waits for its chapter)
       const k = G.mic.best(targets, alts, C.findIndex(c => c.st === 'learn'));
       if (k < 0) { this.mic.miss(); return; }
       this.mic.win(); this.pick(k, true);
