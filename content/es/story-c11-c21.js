@@ -942,7 +942,7 @@
       if (f.mapId === 'villa' && c.step === 4) duckToEdge(f);
       if (f.mapId !== 'villa' || !c.data.cat || c.step > 6) return;
       const tr = f.zoo && f.zoo.trail, pt = c.data.cat === 2 ? at(...PEN.gato) : tr && tr[Math.max(0, tr.length - 1 - 8)];
-      if (pt) G.drawIcon16(ctx, 'gato', Math.round(pt[0] - 8 - f.cam.x), Math.round(pt[1] - 16 - f.cam.y));
+      if (pt) { const x = Math.round(pt[0] - 6 - f.cam.x), y = Math.round(pt[1] - 14 - f.cam.y) - (c.data.cat === 1 && (G.frame >> 3) & 1 ? 1 : 0); if (G.ambient && G.ambient.drawCat) G.ambient.drawCat(ctx, x, y, G.frame); else G.drawIcon16(ctx, 'gato', x - 2, y - 2); }
     },
   });
 

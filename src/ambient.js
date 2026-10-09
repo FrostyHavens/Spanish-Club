@@ -380,6 +380,14 @@
   A.poke = function (f, x, y) { const a = f.amb; if (a && a.cat && !a.cat.away && a.cat.x === x && a.cat.y === y) { if (G.chapters && G.chapters.tapped('cat', f)) return true; if (G.errands && G.errands.catTap(f)) return true; pet(a); if (G.animals) G.animals.tap('gato', x * T + 12, y * T - 8, { silent: true }); return true; } return false; };
   A.wake = f => { const a = f && f.amb; if (a && a.cat) pet(a); }; // the cat wakes up, purrs and meows (errands.js)
   A.sfx = { meow, yip, flutter }; // for animals.js
+  // the cat drawn anywhere (screen px of her head's top-left; t: frames, for the tail): chapter 19's cat trotting after you
+  A.drawCat = function (ctx, x, y, t) {
+    const tail = CAT_TAIL[[0, 1, 2, 1][(t >> 3) & 3]];
+    ctx.fillStyle = OL; for (const [tx, ty] of tail) ctx.fillRect(x + tx - 1, y + ty - 1, 3, 3);
+    ctx.fillStyle = CAT_PAL.b; for (const [tx, ty] of tail) ctx.fillRect(x + tx, y + ty, 1, 1);
+    ctx.drawImage(pix('catbody', CAT_BODY, CAT_PAL), x - 1, y + 5);
+    ctx.drawImage(pix('cathead', CAT_HEAD, CAT_PAL), x - 1, y - 1);
+  };
   A.napping = f => !!(f && f.amb && f.amb.cat && (f.amb.cat.nap || 0) > 480);
   // a happy hop, a heart and a yip (Canelo, when you talk to him), and a little speech bubble if `say` is given
   A.happy = function (n, say) {

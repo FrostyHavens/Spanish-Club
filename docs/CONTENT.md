@@ -4,7 +4,7 @@
 Everything Spanish that isn't dialogue is in `content/es/words.js` (`G.content.es`, copied into `G.data` by `src/data.js`):
 the words, topics, number lists, notebook pages and where their puzzles sit (`pagePlaces`), and the chapter table
 (`chapters`: id, title, giver, session, new words, badge icon and colour, `when: 'morning' | 'evening'`). The story of
-chapters 1-10 is `content/es/story-c01-c10.js`. Pictures stay in `src/icons.js`. `index.html` loads `content/es/words.js`
+chapters 1-10 is `content/es/story-c01-c10.js`, of 11-21 `content/es/story-c11-c21.js`. Pictures stay in `src/icons.js`. `index.html` loads `content/es/words.js`
 before `src/data.js`, and the story files after `src/chapters.js`. The plan for all 21 chapters is `docs/CURRICULUM.md`.
 
 ## A new word

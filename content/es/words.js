@@ -165,7 +165,7 @@
     { id: 'c18', title: '¿Cuántos animales?', en: 'Count the animals of Villa Sol with Profesora Luna', giver: 'luna', session: 14, words: ['pez', 'siete', 'ocho'], icon: 'pez', col: '#8a50c8', goal: [['pez', 1], ['pregunta', 1]] },
     { id: 'c19', title: '¡Todos a la granja!', en: 'Call every animal to the farm', giver: 'luna', session: 15, words: ['nueve', 'diez'], icon: 'diez', col: '#5a9a30', when: 'morning', goal: [['granja', 1]] },
     { id: 'c20', title: 'Preparamos la fiesta', en: 'Getting the party ready', giver: 'luna', session: 16, words: [], icon: 'estrella', col: '#c03030', goal: [['carta', 5]] },
-    { id: 'c21', title: 'La fiesta de los animales', en: 'The animal party', giver: 'luna', session: 17, words: [], icon: 'estrella', col: '#f0a020', goal: [['estrella', 1]] },
+    { id: 'c21', title: 'La fiesta de los animales', en: 'The animal party', giver: 'luna', session: 17, words: [], icon: 'estrella', col: '#f0a020', when: 'morning', goal: [['estrella', 1]] },
   ];
   C.chapters.forEach((c, i) => { c.n = i + 1; });
 })();
