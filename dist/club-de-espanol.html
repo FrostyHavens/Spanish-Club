@@ -7096,7 +7096,7 @@ G.store = {
     const r = W.rec(id, true); if (!r) return { stage: 0, up: false, star: false, gold: false };
     const first = o.firstTry !== false, mode = o.mode || 'both', day = G.today(), st0 = r.st, cued = !!o.cued || st0 < 1; // (meeting a word by answering is its puzzle, not a retrieval)
     if (st0 < 1) W.meet(id, o.how || 'answer');
-    r.last = W.now(); r.n++; r.ret++;
+    r.last = W.now(); r.ru = r.last; r.n++; r.ret++; // (ru: the last retrieval, chapters.js nudge)
     if (first) r.right++; // (a miss was counted by answerWrong)
     if (cued) r.cue++;
     let star = false;
@@ -8669,7 +8669,7 @@ G.store = {
       const E = G.errands, CH = G.chapters, out = [];
       const cur = CH && CH.current();
       if (cur) out.push({ id: cur, st: 'on', ch: true });
-      else if (CH) { const nx = CH.next(); if (nx && CH.written(nx)) out.push({ id: nx, st: CH.gate(nx) ? 'wait' : 'new', ch: true }); }
+      else if (CH) { const nx = CH.next(); if (nx && CH.written(nx)) out.push({ id: nx, st: CH.gate(nx) && CH.gate(nx) !== 'soon' ? 'wait' : 'new', ch: true }); }
       const act = D().questOrder.filter(id => S().active(id) && !(CH && CH.def(id)));
       const fresh = E ? D().questOrder.filter(id => !(CH && CH.def(id)) && E.offer && E.offer(id)) : [];
       return out.concat(act.map(id => ({ id, st: 'on' })), fresh.map(id => ({ id, st: 'new' }))).slice(0, 4);
@@ -13107,7 +13107,10 @@ G.MAPDATA = {
 // Opening (gate(id) -> null when it may start, else why not):
 //   'prev'      the chapter before isn't done          'unwritten'  no script yet (chapters 11-21 for now)
 //   'budget'    its new words don't fit today: at most 6 new words a day (G.words.day) and 8 a calendar date
-//   'busy'      10 or more words are still only met (stage 1, never picked without a cue): a review day
+//   'soon'      more than 5 new words would fall inside 5 minutes of play: it opens a few minutes later (no bubble
+//               meanwhile; the evening chapter has the sunset for that)
+//   'busy'      10 or more words are still only met (stage 1, never picked without a cue): a review day (the
+//               reviewer, Luna or Mamá, has a notebook bubble and asks 5 of them: .needsReview(), .review(who))
 //   'morning'   a morning chapter opens only as the first chapter of a session (a new day, a night at home)
 //   'evening'   an evening chapter opens only in the evening at home (after C8 the sunset comes ~5 minutes later)
 // A started chapter can always be finished. While the next chapter waits, its giver shows a "tomorrow" bubble (a sun
@@ -13117,7 +13120,7 @@ G.MAPDATA = {
 //   .next() (the next to open), .gate(id), .ready(id), .start(id), .ctx(id), .beat(id) (the current beat),
 //   .newToday() / .newOnDate() (words met today), .stage1() (words still only met), .parts(id) (Misiones),
 //   .alert(who) / .talk(who, f) (maps.js), .spotAt / .runSpot (field.js), .tapped(kind, f) (animals, the cat, Canelo),
-//   .door(f) (an exit's run), .evening(phase, f) (day.js), .targets(f) (hint.js, tools/playflow.js), .waitsIn(map),
+//   .nudge() / .nudgeRun(f, n) (Canelo's "?": a word just met comes back), .door(f) (an exit's run), .evening(phase, f) (day.js), .targets(f) (hint.js, tools/playflow.js), .waitsIn(map),
 //   .update(f) / .draw(f, ctx, layer) (field.js), .lost() (Canelo away), .tailGate() (the older errands after
 //   chapter 10), .migrate() (older saves), .say / .ask / .K (helpers for scripts: content/es/story-*.js).
 // Saved: G.state.ch = { v, step: {id: beat}, data: {id: {...}}, began: {id: {day, date}}, doneSess: {id: session},
@@ -13128,7 +13131,7 @@ G.MAPDATA = {
   const D = () => G.data, S = G.st, F = () => G.state.flags, T = G.TILE;
   const TT = (t, en) => ({ t, en });
   const scripts = {};
-  CH.LIMITS = { day: 6, date: 8, busy: 10 };
+  CH.LIMITS = { day: 6, date: 8, busy: 10, win: 300, inWin: 5 }; // (at most inWin new words in win seconds of play)
   CH.VERSION = 2;
 
   // ---------- the table and the scripts ----------
@@ -13167,6 +13170,7 @@ G.MAPDATA = {
   CH.newToday = () => { const d = G.words.day(); return recs().filter(r => r.md === d).length; };
   CH.newOnDate = () => { const t = G.today(); return recs().filter(r => r.mdate === t).length; };
   CH.stage1 = () => recs().filter(r => r.st === 1).length;
+  CH.newRecent = sec => { const now = G.words.now(), ss = G.words.sess(); return recs().filter(r => r.met != null && r.ms === ss && now - r.met < sec).length; }; // (this session only)
   CH.newWords = id => { const c = CH.def(id); return c ? c.words.filter(w => !G.words.met(w)) : []; };
   CH.gate = function (id, o = {}) {
     const c = CH.def(id); if (!c || !G.state) return 'none';
@@ -13180,6 +13184,7 @@ G.MAPDATA = {
     const n = CH.newWords(id).length;
     if (n && (CH.newToday() + n > CH.LIMITS.day || CH.newOnDate() + n > CH.LIMITS.date)) return 'budget';
     if (n && CH.stage1() >= CH.LIMITS.busy) return 'busy';
+    if (n && c.when !== 'evening' && CH.newRecent(CH.LIMITS.win) + n > CH.LIMITS.inWin) return 'soon';
     return null;
   };
   CH.ready = (id, o) => !CH.gate(id, o);
@@ -13234,13 +13239,62 @@ G.MAPDATA = {
 
   // ---------- who says what (maps.js) ----------
   // the bubble over someone: the beat waiting for them, the next chapter's giver (or "tomorrow")
+  // a review day (10+ words only met): the teacher (Profesora Luna once her school is met, else Mamá) has a notebook
+  // bubble and asks the oldest of them, so the story can go on (nothing waits on a word that never comes back)
+  CH.reviewer = () => (G.words.met('escuela') ? 'luna' : 'mama');
+  CH.needsReview = () => !!G.state && !CH.current() && CH.stage1() >= CH.LIMITS.busy;
+  CH.review = function* (who, n = 5) {
+    const say = (...p) => G.say(p, { portrait: G.portraitOf(who), name: G.nameOf(who), who, show: { icon: 'pagina' } });
+    yield say(TT('¡[hola], {name}! ¿Y tus palabras?', 'Hi, {name}! Let\'s practise your new words.'));
+    const ids = Object.keys(G.state.words).filter(id => G.words.stage(id) === 1).map(id => [id, G.words.rec(id)])
+      .sort((a, b) => (a[1].met || 0) - (b[1].met || 0)).slice(0, n).map(a => a[0]);
+    for (const id of ids) yield* G.review.ask(id, { who });
+    yield say(TT('¡Muy bien, {name}!', 'Very good, {name}!'));
+    G.st.autosave();
+  };
+  // Canelo's "?": a word met this session a minute or more ago and not used since its puzzle comes back through him
+  // (tap him: a review question for it), so every new word is used again within a minute or two (at most one every
+  // 40 seconds of play)
+  // the next nudge: a word that will put the "?" over Canelo within a minute (tools/playflow.js waits for it)
+  CH.nudgeSoon = function () {
+    if (!G.state || !G.pet || !G.pet.mine()) return false;
+    if (G.errands && G.errands.lost()) return false;
+    const now = G.words.now(), ss = G.words.sess(), s = st(), cool = s.nudgeAt != null && now >= s.nudgeAt && now - s.nudgeAt < 40;
+    return Object.keys(G.state.words).some(id => { const r = G.words.rec(id); return r && r.st >= 1 && r.how !== 'old' && r.ms === ss && r.met != null && (now - r.met < 60 || (cool && now - r.met <= 600)) && (r.ru == null || r.ru - r.met < 20); });
+  };
+  CH.nudge = function () {
+    if (!G.state || !G.pet || !G.pet.mine() || (G.errands && G.errands.lost())) return null;
+    const now = G.words.now(), ss = G.words.sess(), s = st();
+    if (s.nudgeAt != null && now - s.nudgeAt < 40 && now >= s.nudgeAt) return null;
+    let best = null;
+    for (const id of Object.keys(G.state.words)) {
+      const r = G.words.rec(id);
+      if (!r || r.st < 1 || r.how === 'old' || r.ms !== ss || r.met == null) continue;
+      const age = now - r.met;
+      if (age < 60 || age > 600 || (r.ru != null && r.ru - r.met >= 20)) continue;
+      if (!best || r.met < best[1]) best = [id, r.met];
+    }
+    return best && best[0];
+  };
+  CH.nudgeRun = function* (f, n) {
+    const id = CH.nudge(); if (!id) return false;
+    st().nudgeAt = G.words.now();
+    if (n && G.ambient) G.ambient.happy(n);
+    if (G.pet && G.pet.sound) G.pet.sound('bark');
+    yield 16;
+    yield* G.review.ask(id, { who: null });
+    if (n && G.hearts) G.hearts.add('canelo', 1, 'care');
+    return true;
+  };
   CH.alert = function (who) {
     if (!G.state) return null;
     const L = live();
     if (L && L.b.who === who && when(L)) { const bb = L.b.bubble; return typeof bb === 'function' ? bb(CH.ctx(L.id)) : bb != null ? bb : true; }
+    if (who === 'canelo' && CH.nudge()) return 'pregunta';
+    if (CH.needsReview() && who === CH.reviewer()) return 'pagina';
     if (!CH.current()) {
       const nx = CH.next(), c = nx && CH.def(nx), g = nx && CH.gate(nx);
-      if (c && g && c.giver === who && scripts[nx] && g !== 'prev') return g === 'evening' ? { icon: 'noche', wait: true } : { icon: 'manana', wait: true };
+      if (c && g && c.giver === who && scripts[nx] && g !== 'prev' && g !== 'soon') return g === 'evening' ? { icon: 'noche', wait: true } : { icon: 'manana', wait: true };
     }
     return null;
   };
@@ -13249,9 +13303,11 @@ G.MAPDATA = {
     if (!G.state) return false;
     const L = live();
     if (L && L.b.who === who && when(L)) return yield* play(L.id, f || G.field, L.k);
+    if (CH.needsReview() && who === CH.reviewer()) { yield* CH.review(who); return true; }
+    if (who === 'canelo' && CH.nudge()) return yield* CH.nudgeRun(f || G.field, G.pet && G.pet.npc(f || G.field));
     if (!CH.current()) {
       const nx = CH.next(), c = nx && CH.def(nx), g = nx && CH.gate(nx);
-      if (c && g && c.giver === who && scripts[nx] && g !== 'prev') { yield* tomorrow(who, g); return true; }
+      if (c && g && c.giver === who && scripts[nx] && g !== 'prev' && g !== 'soon') { yield* tomorrow(who, g); return true; }
     }
     return false;
   };
@@ -13371,6 +13427,8 @@ G.MAPDATA = {
   };
   // does something wait inside map m (for the hand at a door)?
   CH.waitsIn = function (m) {
+    if (CH.needsReview() && m === (CH.reviewer() === 'luna' ? 'escuela' : 'casa')) return true;
+    if (m === 'villa' && G.field && G.field.mapId !== 'villa' && !(G.pet && G.pet.npc(G.field)) && CH.nudge()) return true; // (Canelo waits outside with his "?")
     const L = live(); if (!L || !when(L)) return false;
     const b = L.b, def = G.maps[m];
     if (spotsOf(b).some(sp => sp.map === m)) return true;
@@ -14168,6 +14226,10 @@ G.MAPDATA = {
       yield* ask(null, '¿...?', 'He looks at you, still panting. What does he want?', 'agua', ['hueso', 'pelota'], { point: n });
       yield* G.pet.play('drink'); K.heart(f, n);
     } },
+    { evening: 'dusk', run: function* (f) { // ¡Buenas noches! (Mamá, as you get ready for bed)
+      yield* sayShow('mama', 'buenasnoches', T('¡[buenasnoches], {name}!', 'Good night, {name}! (the moon is out)'));
+      yield* ask('mama', 'Mamá: ¡...!', 'Answer Mom!', 'buenasnoches', ['buenosdias', 'ven'], { intro: true, how: 'show', look: { buenasnoches: 'text', buenosdias: 'both', ven: 'both' }, show: { icon: 'noche' } });
+    } },
     { evening: 'dusk', run: function* (f, c) { // ¡a la cama! (find your bed), Canelo hops off: tell him
       const n = dog(f);
       yield* say('mama', T('Canelo, ¡a la [cama]!', 'Canelo, to bed!'));
@@ -14182,15 +14244,13 @@ G.MAPDATA = {
       yield* ask(null, '¡Canelo! ¡...!', 'Canelo hopped off his cushion, wide awake! Tell him where to go.', 'cama', ['ven', 'pelota'], { point: tile(7, 5) });
       yield* K.walk(f, n, 7, 5, 3); n.dir = 'left'; G.pet.state().sleep = true; G.pet.sound('snore');
       c.data.bed = 1;
-    } },
-    { evening: 'dusk', run: function* (f) { // ¡Buenas noches!
-      yield* sayShow('mama', 'buenasnoches', T('¡[buenasnoches], {name}!', 'Good night, {name}! (the moon is out)'));
-      yield* ask('mama', 'Mamá: ¡...!', 'Answer Mom!', 'buenasnoches', ['buenosdias', 'ven'], { intro: true, how: 'show', look: { buenasnoches: 'text', buenosdias: 'both', ven: 'both' }, show: { icon: 'noche' } });
+      yield 30;
       yield* ask(null, 'Canelo: ...¡...!', 'Canelo yawns. Say good night to him!', 'buenasnoches', ['buenosdias', 'agua'], { point: dog(f) });
       G.pet.sound('snore');
     } },
     { evening: 'dawn', run: function* (f) { // the next morning
       const n = dog(f);
+      yield* ask(null, '¿...?', 'Canelo stretches on his cushion. Where did he sleep?', 'cama', ['hueso', 'pelota'], { point: tile(7, 5) });
       yield* ask(null, 'Canelo: ¡...!', 'Canelo hops up: the sun is up! Say it!', 'buenosdias', ['buenasnoches', 'cama'], { show: { icon: 'sol' }, point: n });
       bark(f); dogAt(f, 2, 4, 'left'); G.pet.sound('pant');
       yield* ask(null, '¿...?', 'His bowl is empty again. What does he want?', 'agua', ['hueso', 'pelota'], { point: tile(1, 4) });
