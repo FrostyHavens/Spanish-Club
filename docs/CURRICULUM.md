@@ -1062,7 +1062,7 @@ and the flowers). They follow §4 step by step; where the build differs:
 - **C20** is shorter than planned (about 40 answers, not 62: a 7-year-old's quarter of an hour): five invitations in
   order (Marta, Inés, Rosa, Don Pepe, Sofía), each with what they bring (bread and nine cookies, six eggs, eight apples
   and seven bananas, four ribbons and a rehearsal with picture signs), then Nico's song rehearsal and Lucía's flowers.
-- **C21** (about 40 answers) at the barn: where things come from, Sofía's ribbons (hear the colour, tap the ribbon),
+- **C21** (about 40 answers; a morning chapter, so the party is the day after the preparations) at the barn: where things come from, Sofía's ribbons (hear the colour, tap the ribbon),
   feeding the animals, Canelo's show from Luna's picture signs, *¡busca!* finds the cake by a tree, the animals' song,
   how many, the group photo, *buenas noches* to the animals; the badge, then the diploma.
 - **Request bubbles** over people show the thing's picture while its word is new and a "?" once it is known

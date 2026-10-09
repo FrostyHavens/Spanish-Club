@@ -84,6 +84,9 @@ async function story(browser) {
         if (g.errors.length) throw new Error(g.errors.join('\n'));
         const c = await g.ev(() => G.chapters.current());
         if (c && !shots[c]) { shots[c] = 1; await g.frames(10); await g.shot(c + '_start'); }
+        const fd = await g.ev(() => { const t = G.intro.targets(G.field)[0]; return t ? t.find : null; });
+        if (fd && !shots['find_' + fd]) { shots['find_' + fd] = 1; await g.frames(20); await g.shot('find_' + fd); } // (a find-it on the map: the nests, the white hen...)
+        if (c === 'c15' && !shots.flowers && await g.ev(() => (G.state.ch.step.c15 | 0) === 1)) { shots.flowers = 1; await g.frames(20); await g.shot('c15_flowers'); }
         if (c === 'c19' && !shots.parade && await g.ev(() => G.field.zoo && G.field.zoo.list.filter(a => a.follow).length >= 3)) { shots.parade = 1; await g.frames(30); await g.shot('c19_parade'); }
         if (!sawFavor) sawFavor = await g.ev(() => !!(G.favores && G.favores.today().length));
         if (!sawPalabra) sawPalabra = await g.ev(() => !!(G.favores && G.favores.palabraDone()));
