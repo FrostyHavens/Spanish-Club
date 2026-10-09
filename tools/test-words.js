@@ -125,18 +125,18 @@ async function questions(browser) {
   try {
     await game(g, { st: { manzana: 1, platano: 2, naranja: 3, hola: 3 } });
     // speech: an unmet word is its picture only (and stays unmet); met: picture + blue; known: blue; remembered: gold
-    const look = await g.ev(() => { const L = G.richLayout('[uvas] [manzana] [platano] [naranja]', 300); return L[0].items.map(i => i.look); });
+    const look = await g.ev(() => { const L = G.richLayout('[galleta] [manzana] [platano] [naranja]', 300); return L[0].items.map(i => i.look); });
     check('text: unmet -> picture only, met -> picture + word, known -> word, remembered -> gold word', look.join() === 'pic,both,text,gold', look.join());
-    await g.ev(() => { G.field.tasks.add((function* () { yield G.say('¡[uvas]! ¿[uvas]?'); })()); });
+    await g.ev(() => { G.field.tasks.add((function* () { yield G.say('¡[galleta]! ¿[galleta]?'); })()); });
     await g.until(() => G.top().constructor.name === 'TextBox', null, 'a line');
     await g.frames(40); await g.shot('unmet_in_speech');
     await g.drive(() => G.top() === G.field, 'the line');
-    check('text: appearing in a line or on a card never meets a word', await g.ev(() => G.words.stage('uvas') === 0 && !G.st.seen('uvas')));
+    check('text: appearing in a line or on a card never meets a word', await g.ev(() => G.words.stage('galleta') === 0 && !G.st.seen('galleta')));
 
     const disp = await g.ev(() => {
       const q = (ans, prompt, show) => { const c = [{ word: ans }, { word: 'hola' }, { word: 'pan' }]; return G.askDisplay({ prompt, show, choices: c, answer: 0 }); };
       return {
-        unmet: q('uvas', '¿Qué es?'), met: q('manzana', '¿Qué es?'), metIn: q('manzana', '¿[manzana]?'),
+        unmet: q('galleta', '¿Qué es?'), met: q('manzana', '¿Qué es?'), metIn: q('manzana', '¿[manzana]?'),
         known: q('platano', '¿Qué es?', 'platano'), knownIn: q('platano', '¿Y el [platano]?'),
         gold: q('naranja', '¿Qué es?', 'naranja'), goldIn: q('naranja', '¿La [naranja]?'),
         override: G.askDisplay({ prompt: '¿Qué es?', choices: [{ word: 'naranja', text: true }, { word: 'hola' }], answer: 0 }),
@@ -149,11 +149,11 @@ async function questions(browser) {
     check('ask: a choice\'s own text / pic still wins (content overrides)', disp.override.display === null);
 
     // distractors from met words
-    const dist = await g.ev(() => { const r = []; for (let i = 0; i < 20; i++) { const c = G.wordChoices('platano', ['platano', 'uvas', 'manzana', 'naranja', 'pan'], 3); r.push(c.choices.map(x => x.word).filter(w => w !== 'platano').sort().join()); } return [...new Set(r)]; });
+    const dist = await g.ev(() => { const r = []; for (let i = 0; i < 20; i++) { const c = G.wordChoices('platano', ['platano', 'galleta', 'manzana', 'naranja', 'pan'], 3); r.push(c.choices.map(x => x.word).filter(w => w !== 'platano').sort().join()); } return [...new Set(r)]; });
     check('ask: wordChoices picks distractors from met words when there are enough', dist.length && dist.every(s => s === 'manzana,naranja'), dist.join(' | '));
 
     // a met answer in the prompt: masked (a speaker), picture + word cards; answered right -> known, no cue
-    await task(g, `function* () { return yield* G.ask({ prompt: '¿Y la [manzana]?', choices: [{ word: 'hola' }, { word: 'manzana' }, { word: 'uvas' }], answer: 1, layout: 'cards', learn: ['manzana', 'pan'] }); }`);
+    await task(g, `function* () { return yield* G.ask({ prompt: '¿Y la [manzana]?', choices: [{ word: 'hola' }, { word: 'manzana' }, { word: 'galleta' }], answer: 1, layout: 'cards', learn: ['manzana', 'pan'] }); }`);
     await choiceUp(g);
     const c1 = await g.ev(() => { const s = G.top(); return { mask: s.lines[0].items.find(i => i.id === 'manzana').look, views: s.ch.map((c, k) => s.view(k)).map(v => (v.icon ? 'P' : '') + (v.label ? 'W' : '')), cue: s.cue(1) }; });
     check('ask: the met answer\'s word is a speaker in the prompt; its card has picture + word; the unmet distractor only its picture', c1.mask === 'mask' && c1.views.join() === 'PW,PW,P' && !c1.cue.cued, JSON.stringify(c1));
@@ -161,8 +161,8 @@ async function questions(browser) {
     await g.ev(() => { G.words.addTime(100); });
     await g.tapRect(await g.ev(() => G.top().rects()[1]));
     await g.drive(() => window.__r !== undefined, 'the question');
-    const a1 = await g.ev(() => ({ st: G.words.stage('manzana'), pan: G.words.stage('pan'), uvas: G.words.stage('uvas') }));
-    check('ask: right uncued -> known; `learn:` co-listed words are only met; the distractor stays unmet', a1.st === 2 && a1.pan === 1 && a1.uvas === 0, JSON.stringify(a1));
+    const a1 = await g.ev(() => ({ st: G.words.stage('manzana'), pan: G.words.stage('pan'), galleta: G.words.stage('galleta') }));
+    check('ask: right uncued -> known; `learn:` co-listed words are only met; the distractor stays unmet', a1.st === 2 && a1.pan === 1 && a1.galleta === 0, JSON.stringify(a1));
 
     // a cued answer (its picture over the question, picture cards) changes nothing
     await task(g, `function* () { return yield* G.ask({ prompt: '¿...?', show: 'pan', choices: [{ word: 'pan', look: 'both' }, { word: 'hola' }], answer: 0, layout: 'cards' }); }`);
@@ -278,10 +278,14 @@ async function notebook(browser) {
     check('notebook: tap a met word to hear it; an unmet slot is empty and says nothing', await g.ev(() => window.__sp.join() === 'perro'));
     await g.tapBtn(await g.ev(() => G.top().closeXY()));
 
-    // page puzzles: waiting for 4 met words, then a puzzle on the map
+    // page puzzles: waiting for 4 KNOWN words (known before this session), then a puzzle on the map
     check('page: with 3 met words the bench page waits (no sparkle)', await g.ev(() => !G.pages.ready('animales') && !G.pages.ready('cosas')));
     await g.ev(() => ['arbol', 'flor', 'fuente', 'banco'].forEach(id => { G.words.meet(id, 'test'); G.words.rec(id).fu = 0; }));
-    check('page: 4 met words -> its sparkle is a page puzzle', await g.ev(() => G.pages.ready('cosas')));
+    check('page: 4 words only met: still no sparkle (they must be known: picked once without a cue)', await g.ev(() => !G.pages.ready('cosas')));
+    await g.ev(() => ['arbol', 'flor', 'fuente', 'banco'].forEach(id => { const r = G.words.rec(id); r.st = 2; }));
+    check('page: known this session: not yet (at the earliest the next session)', await g.ev(() => !G.pages.ready('cosas')));
+    await g.ev(() => ['arbol', 'flor', 'fuente', 'banco'].forEach(id => { G.words.rec(id).ms = G.words.sess() - 1; }));
+    check('page: 4 words known before this session -> its sparkle is a page puzzle', await g.ev(() => G.pages.ready('cosas')));
     const s0 = await g.ev(() => G.state.stars);
     await g.tapTile(13, 9);
     await g.until(() => G.top().constructor.name === 'PagePuzzle' && G.top().t > 10 && G.input.ready(), null, 'the page puzzle');
@@ -302,22 +306,22 @@ async function notebook(browser) {
     await g.drive(() => G.top() === G.field && !G.field.locked, 'the rest of the puzzle');
     const pr = await g.ev(([s0, wid]) => ({ stars: G.state.stars - s0, solved: G.st.hasPage('cosas'), ready: G.pages.ready('cosas'), st: ['arbol', 'flor', 'fuente', 'banco'].map(G.words.stage), wrong: G.state.words[wid].wrong }), [s0, wrong.id]);
     check('page: all four matched -> one star; the sparkle is gone today', pr.stars === 1 && pr.solved && !pr.ready, JSON.stringify(pr));
-    check('page: first-try matches are retrievals (met -> known); the wrong one isn\'t', pr.st.filter(x => x === 2).length === 3 && pr.wrong === 1, JSON.stringify(pr));
+    check('page: first-try matches are retrievals (known -> remembered); the wrong one isn\'t', pr.st.filter(x => x === 3).length === 3 && pr.wrong === 1, JSON.stringify(pr));
     check('page: on a later day, with 2+ of its words due again, the puzzle comes back', await g.ev(() => { G.debug.dayShift = 5; G.words.newSession('load'); const r = G.pages.ready('cosas'); G.debug.dayShift = 0; return r; }));
 
-    // tap-anything: a thing whose word is unmet is met by asking, while the budget allows
+    // tap-anything: a thing whose word is unmet stays mysterious (its picture and "?"); it waits for its chapter
     await game(g, { x: 22, y: 13 });
+    await g.ev(() => { window.__sp = []; const o = G.speak; G.speak = t => { window.__sp.push(t); o(t); }; });
     await g.tapTile(22, 12);
     await g.until(() => G.world.bubble && G.world.bubble.id === 'banco', null, 'the bench');
-    check('tap: asking "what is this?" meets the word (budget allowing)', await g.ev(() => G.words.stage('banco') === 1 && G.words.rec('banco').how === 'tap' && !G.world.bubble.unk));
-    await g.ev(() => ['pan', 'leche', 'queso', 'huevo', 'agua'].forEach(id => G.words.meet(id, 'test')));
-    await g.until(() => G.top() === G.field && !G.field.locked, null, 'free');
+    await g.frames(30); await g.shot('tap_unmet');
+    check('tap: an unmet thing shows its picture and "?", says nothing, stays unmet, no mic', await g.ev(() => G.world.bubble.unk && G.words.stage('banco') === 0 && !G.world.sayBack && !window.__sp.some(t => /banco/.test(t))));
+    await g.ev(() => { G.world.introOnTap = true; });
     await game(g, { x: 22, y: 13 });
-    await g.ev(() => ['pan', 'leche', 'queso', 'huevo', 'agua', 'uvas'].forEach(id => G.words.meet(id, 'test')));
     await g.tapTile(22, 12);
-    await g.until(() => G.world.bubble && G.world.bubble.id === 'banco', null, 'the bench again');
-    await g.frames(10); await g.shot('tap_unmet');
-    check('tap: with the budget spent, an unmet thing shows its picture and "?", stays unmet, no mic', await g.ev(() => G.world.bubble.unk && G.words.stage('banco') === 0 && !G.world.sayBack));
+    await g.until(() => G.world.bubble && G.world.bubble.id === 'banco' && !G.world.bubble.unk, null, 'the bench again');
+    check('tap: with introOnTap (off by default) asking "what is this?" would meet it', await g.ev(() => G.words.stage('banco') === 1 && G.words.rec('banco').how === 'tap'));
+    await g.ev(() => { G.world.introOnTap = false; });
     check('notebook: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
 }

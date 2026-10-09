@@ -301,7 +301,7 @@ async function desktop(browser) {
   const { ctx, g } = await openWith(browser, 'speak-keys', false, FAKE);
   try {
     await start(g);
-    await ask(g, { prompt: '¿Qué quieres?', layout: 'cards', choices: cards('manzana', 'platano', 'uvas'), answer: 1, learn: 'platano' });
+    await ask(g, { prompt: '¿Qué quieres?', layout: 'cards', choices: cards('manzana', 'platano', 'galleta'), answer: 1, learn: 'platano' });
     await choiceUp(g);
     await g.press('ArrowRight');
     check('speak keys: arrows still move the cursor', await g.ev(() => G.top().i === 1 || G.top().i === 2));
@@ -327,7 +327,7 @@ async function desktop(browser) {
     // Space is push-to-talk while a mic is ready: hold to talk, let go to finish; it doesn't answer like A
     await g.drive(() => window.__r != null, 'the question to finish');
     await g.fieldIdle('villa');
-    await ask(g, { prompt: '¿Qué quieres?', layout: 'cards', choices: cards('manzana', 'platano', 'uvas'), answer: 0, learn: 'manzana' });
+    await ask(g, { prompt: '¿Qué quieres?', layout: 'cards', choices: cards('manzana', 'platano', 'galleta'), answer: 0, learn: 'manzana' });
     await choiceUp(g);
     await g.ev(() => { window.__c = G.top(); window.__sr.queue.push({ hang: true }); });
     const n0 = await g.ev(() => window.__sr.starts.length);

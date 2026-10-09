@@ -52,6 +52,8 @@
   function* tell(...pages) { yield G.say(pages); }
   // a picture-card question: the right word and a few others, shuffled; learned when answered (o.learn: other ids, or null)
   function* q(who, prompt, en, answer, pool, o = {}) {
+    const met = pool.filter(w => w === answer || !G.words || G.words.met(w)); // (no unmet word as a choice)
+    if (met.length >= 2) pool = met;
     const c = G.wordChoices(answer, pool, Math.min(o.n || 3, pool.length));
     return yield* G.ask(Object.assign({ prompt, en, choices: c.choices, answer: c.answer, layout: 'cards', who, learn: o.learn === undefined ? answer : o.learn }, o.show ? { show: o.show } : {}));
   }
@@ -767,7 +769,9 @@
     B.take('pan', { q: null });
     for (let i = 0; i < 6; i++) G.fx.twinkle(...tileScr(f, 38, 21));
     yield 20;
-    yield* q(null, '¿Cuántos [pato:patos]?', 'How many ducks?', 'tres', ['dos', 'tres', 'cuatro', 'cinco'], { show: 'pato' });
+    const W = G.words;
+    if (['dos', 'tres', 'cuatro', 'cinco'].every(n => W.met(n))) yield* q(null, '¿Cuántos [pato:patos]?', 'How many ducks?', 'tres', ['dos', 'tres', 'cuatro', 'cinco'], { show: 'pato' });
+    else yield* q(null, '¿[cuac]?', 'Who says quack?', 'pato', ['pato', 'perro', 'gato'].filter(n => n === 'pato' || W.met(n)), {});
     jobStar(f, 'patos', ...tileScr(f, 38, 21));
     yield 30;
   }

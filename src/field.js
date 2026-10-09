@@ -179,7 +179,8 @@
       const [fx, fy] = this.facing();
       let n = this.npcs.find(o => o.x === fx && o.y === fy && !o.hidden); // (someone hidden, like a puppy under the table, isn't there to talk to)
       // talk across counters
-      if (!n) { const t = this.map.get(fx, fy); if (t === 'e' || t === 't' || t === 'a' || t === 'Y') { const [dx, dy] = G.DIRS[this.player.dir]; n = this.npcs.find(o => o.x === fx + dx && o.y === fy + dy && !o.hidden); } }
+      const story = (G.chapters && G.chapters.spotAt(this, fx, fy)) || G.intro.spotAt(this, fx, fy); // a puzzle's thing on a counter: search it
+      if (!n && !story) { const t = this.map.get(fx, fy); if (t === 'e' || t === 't' || t === 'a' || t === 'Y') { const [dx, dy] = G.DIRS[this.player.dir]; n = this.npcs.find(o => o.x === fx + dx && o.y === fy + dy && !o.hidden); } }
       if (n && n.talk) {
         const back = { u: 'down', d: 'up', l: 'right', r: 'left' }[this.player.dir[0]];
         const prev = n.dir; if (!n.fixed) n.dir = back;

@@ -8,7 +8,7 @@ const GIRL = { gender: 'nina', skin: '#a87050', style: 'braid', hair: '#201010',
 const SAVE = (name, extra) => Object.assign({
   flags: { intro: true }, searched: {}, playTime: 60, loc: { map: 'villa', x: 5, y: 18, dir: 'down' },
   words: { hola: { learned: true, right: 1, wrong: 0 }, adios: { learned: false, right: 0, wrong: 0 } },
-  pages: { saludos: true }, quests: {}, stars: 1, opts: { english: false }, look: null, name, savedAt: 1000,
+  pages: { saludos: true }, quests: { c1: 'done', c2: 'done' }, ch: { v: 2 }, stars: 1, opts: { english: false }, look: null, name, savedAt: 1000, // (the story's first day behind them)
 }, extra || {});
 
 // ---------- helpers ----------
@@ -67,10 +67,11 @@ async function firstLaunch(browser) {
     await g.drive(() => G.st.seen('hola'), 'Mamá\'s first question');
     await g.until(() => { const s = JSON.parse(localStorage.getItem('spanishclub_slot1')); return s.words.hola && s.words.hola.st >= 1; }, null, 'the new word to be saved', 3000);
     check('first: meeting a word saves it (mid-scene, within a second)', true);
-    await g.drive(() => G.state.flags.intro && G.top() === G.field && !G.field.locked, 'the rest of Mamá\'s intro');
-    await g.until(() => JSON.parse(localStorage.getItem('spanishclub_slot1')).flags.intro, null, 'the finished intro to be saved', 3000);
-    check('first: a finished scene saves', true);
+    await g.drive(() => !!G.state.finds.perro && G.top() === G.field && !G.field.locked, 'the rest of chapter 1\'s first scene');
+    await g.until(() => { const s = JSON.parse(localStorage.getItem('spanishclub_slot1')); return s.ch && s.ch.step && s.ch.step.c1 === 1 && s.finds.perro; }, null, 'the finished scene to be saved', 3000);
+    check('first: a finished scene saves (the chapter\'s beat, the puzzle going on)', true);
 
+    await g.ev(() => { Object.assign(G.state.quests, { c1: 'done', c2: 'done' }); Object.assign(G.state.flags, { intro: true, canelo: true, petStart: true }); }); // (on with the story's first day)
     await g.tapTile(...await g.ev(() => [G.maps.casa.exits[0].x, G.maps.casa.exits[0].y]));
     await g.fieldIdle('villa');
     await g.until(() => JSON.parse(localStorage.getItem('spanishclub_slot1')).loc.map === 'villa', null, 'the new map to be saved', 3000);
@@ -92,7 +93,7 @@ async function firstLaunch(browser) {
     await reload(g);
     await g.tap(160, 180);
     await scene(g, 'Slots', 'the slot screen');
-    check('first: after a reload the slot screen shows the saved game', await g.ev(() => { const c = G.top().cards; return c[0] && c[0].name === 'Luz' && c[0].words >= 3 && !c[1] && !c[2] && G.top().i === 0; }));
+    check('first: after a reload the slot screen shows the saved game', await g.ev(() => { const c = G.top().cards; return c[0] && c[0].name === 'Luz' && c[0].words >= 1 && !c[1] && !c[2] && G.top().i === 0; }));
     await g.frames(8); await g.shot('slots_one');
     await g.tapRect(await g.ev(() => G.top().cardRect(0)));
     await g.fieldIdle('villa');

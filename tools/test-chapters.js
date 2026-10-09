@@ -242,7 +242,7 @@ async function oldSaves(browser) {
     await g.frames(20);
     const a = await g.ev(() => ({ q: G.state.quests, v: G.state.ch.v, mine: G.pet.mine(), tricks: G.state.pet.tricks, next: G.chapters.next(), bag: G.state.bag.items.map(i => i.id + (i.q ? ':' + i.q : '')), st: G.words.stage('hola'), map: G.field.mapId }));
     check('old: a Round A + B save loads: its errands map onto chapters 1-10 (saludos -> c8, carta / canelo -> c10...)', a.v === 2 && ['c1', 'c4', 'c7', 'c8', 'c10'].every(k => a.q[k] === 'done'), JSON.stringify(a.q));
-    check('old: the older errand going on (picnic) is let go: its things leave the bag, yours stay', !a.q.picnic && a.bag.join() === 'manzana', JSON.stringify(a));
+    check('old: an older errand going on (picnic) after chapters 1-10 goes on, its things stay in the bag', a.q.picnic === 'active' && a.bag.join() === 'pan:picnic,manzana', JSON.stringify(a));
     check('old: Canelo is still yours, with his tricks; the words keep their stages', a.mine && a.tricks.ven === 3 && a.tricks.sientate === 3 && a.st >= 2, JSON.stringify(a));
     check('old: after chapter 10, the older errands go on (no chapter 11 yet)', a.next === 'c11' && await g.ev(() => G.chapters.gate('c11') === 'unwritten'));
     await g.shot('old_loaded');

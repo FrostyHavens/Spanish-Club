@@ -61,8 +61,8 @@ async function talkToLuna(g, byKeys) {
   await g.until(() => G.top().constructor.name === 'TextBox' && G.top().opts.name === G.nameOf('luna'), null, 'Profesora Luna to talk');
   check(g.name + ': talking to Profesora Luna', true);
   await g.frames(30); await g.shot('luna');
-  await g.drive(() => G.state.quests.saludos === 'active' && G.top() === G.field && !G.field.locked, 'Luna\'s first errand');
-  check(g.name + ': Luna gives the first errand (Saludos)', true);
+  await g.drive(() => G.top() === G.field && !G.field.locked, 'Luna\'s hello');
+  check(g.name + ': Luna says hello (her school is chapter 8)', true);
 }
 
 // ---------- iPad: taps only ----------
@@ -91,22 +91,24 @@ async function touchRun(browser) {
     for (const ch of ['L', 'U', 'X', 'DEL', 'Z']) await tapLetter(ch);
     check('ipad: name typed on the letter grid', await g.ev(() => G.top().name === 'Luz'), await g.ev(() => G.top().name));
     await g.shot('name');
-    await g.ev(() => { const run = G.story.mamaIntro; window.__intros = 0; G.story.mamaIntro = function* () { window.__intros++; yield* run(); }; });
     await tapLetter('OK');
 
     await g.until(() => G.field && G.field.mapId === 'casa' && G.state.name === 'Luz' && G.state.look.gender === 'nina', null, 'the house');
     check('ipad: new game starts at home with the chosen look and name', true);
     await g.tapTile(...await g.ev(() => { const n = G.field.npc('mama'); return [n.x, n.y]; })); // a quick tap on Mamá before her intro starts
-    check('ipad: the house waits for Mamá\'s intro (a tap doesn\'t walk)', await g.ev(() => G.field.locked && !G.field.route));
+    check('ipad: the house waits a moment before chapter 1 (a tap doesn\'t walk)', await g.ev(() => G.field.locked && !G.field.route));
     await g.until(() => G.top().constructor.name === 'TextBox', null, 'Mamá to speak');
-    await g.drive(() => G.state.flags.intro && G.top() === G.field && !G.field.locked, 'Mamá\'s intro', { wrongFirst: true });
-    check('ipad: Mamá\'s intro played (once) by tapping: hola, buenos días and adiós are met', await g.ev(() => ['hola', 'buenosdias', 'adios'].every(G.st.seen) && window.__intros === 1), 'intros: ' + await g.ev(() => window.__intros));
+    await g.drive(() => !!G.state.finds.perro && G.top() === G.field && !G.field.locked, 'chapter 1: Mamá, and a puppy bursts in', { wrongFirst: true });
+    check('ipad: chapter 1 starts by itself: hola met, the puppy hides (a find-it puzzle)', await g.ev(() => G.chapters.active('c1') && G.st.seen('hola') && !G.st.seen('perro') && G.field.npc('canelo').hidden));
     await g.shot('home');
+    await g.tapTile(3, 3); // the table he hides under
+    await g.drive(() => { const b = G.chapters.beat('c1'); return !!b && !!b.door && G.top() === G.field && !G.field.locked; }, 'chapter 1');
+    check('ipad: found him: chapter 1 played by tapping (hola, perro, guau, ven), Canelo is yours', await g.ev(() => ['hola', 'perro', 'guau', 'ven'].every(G.st.seen) && G.pet.mine()));
 
     const door = await g.ev(() => [G.maps.casa.exits[0].x, G.maps.casa.exits[0].y]);
     await g.tapTile(...door);
-    await g.fieldIdle('villa');
-    check('ipad: tapping the door walks out of the house', true);
+    await g.drive(() => G.field && G.field.mapId === 'villa' && (G.state.ch.step.c2 | 0) >= 1 && G.top() === G.field && !G.field.locked && G.fade.a === 0, 'out of the house: Canelo at the door, then the butterfly');
+    check('ipad: tapping the door: Canelo comes along (chapter 1 done), out in town chapter 2 begins', await g.ev(() => G.chapters.done('c1') && G.chapters.active('c2')));
     await g.shot('villa');
 
     // the menu button opens the field menu, without walking
@@ -146,7 +148,12 @@ async function touchRun(browser) {
 async function walkRun(browser) {
   const { ctx, g } = await open(browser, 'ipad-walk', true);
   const go = async (map, x, y, dir, flags) => {
-    await g.ev(([map, x, y, dir, flags]) => { G.st.newGame(); G.state.name = 'Luz'; Object.assign(G.state.flags, flags || {}); G.goto(map, x, y, dir); }, [map, x, y, dir, flags]);
+    await g.ev(([map, x, y, dir, flags]) => {
+      G.st.newGame(); G.state.name = 'Luz'; Object.assign(G.state.flags, flags || {});
+      if (flags && flags.intro) Object.assign(G.state.quests, { c1: 'done', c2: 'done' }); // (the story's first day behind you)
+      else Object.assign(G.state.quests, { c1: 'active' }), G.state.ch.step = { c1: 1 }; // (chapter 1 waiting for its puppy to be found)
+      G.goto(map, x, y, dir);
+    }, [map, x, y, dir, flags]);
     await g.fieldIdle(map);
   };
   const talking = who => g.until(n => G.top().constructor.name === 'TextBox' && G.top().opts.name === G.nameOf(n), who, who + ' to talk');
@@ -159,7 +166,7 @@ async function walkRun(browser) {
   const result = () => g.ev(() => window.__w.done() ? window.__w.result : 'open');
   try {
     await go('casa', 4, 4, 'down');
-    await g.tapTile(4, 7); // the dark just below the door, before Mamá's intro
+    await g.tapTile(4, 7); // the dark just below the door, before chapter 1 is done
     await g.until(() => G.top().constructor.name === 'TextBox', null, 'Mamá calling you back');
     await g.drive(() => G.top() === G.field && !G.field.locked, 'Mamá calling');
     check('walk: a guarded door runs its guard (Mamá calls you back), you stay home', await g.ev(() => G.field.mapId === 'casa' && !G.field.route));
@@ -183,8 +190,8 @@ async function walkRun(browser) {
     check('walk: tapping an object walks up to it and searches it', String(await facing()) === '2,6');
 
     await go('villa', 22, 23, 'up', { intro: true });
-    check('walk: a page puzzle waits until 4 words of its page are met (no sparkle)', await g.ev(() => !G.pages.ready('colores')));
-    await g.ev(() => ['rojo', 'azul', 'verde', 'amarillo'].forEach(id => G.words.meet(id, 'test')));
+    check('walk: a page puzzle waits until 4 words of its page are known (no sparkle)', await g.ev(() => !G.pages.ready('colores')));
+    await g.ev(() => ['rojo', 'azul', 'verde', 'amarillo'].forEach(id => { G.words.meet(id, 'test'); Object.assign(G.words.rec(id), { st: 2, ms: G.words.sess() - 1 }); }));
     await g.tapTile(21, 20); // a notebook page puzzle sparkles here
     await g.until(() => G.top().constructor.name === 'PagePuzzle', null, 'the page puzzle');
     check('walk: tapping a sparkle opens its page puzzle', await g.ev(() => G.top().page === 'colores') && String(await facing()) === '21,20');
@@ -302,12 +309,16 @@ async function keyboardRun(browser) {
     await g.press('Enter');
     await g.until(() => G.field && G.field.mapId === 'casa' && G.state.name === 'Leo', null, 'the house');
     await g.until(() => G.top().constructor.name === 'TextBox', null, 'Mamá to speak');
-    await g.drive(() => G.state.flags.intro && G.top() === G.field && !G.field.locked, 'Mamá\'s intro');
-    check('desktop: Mamá\'s intro played with the keyboard', await g.ev(() => ['hola', 'buenosdias', 'adios'].every(G.st.seen)));
+    await g.drive(() => !!G.state.finds.perro && G.top() === G.field && !G.field.locked, 'chapter 1 by keys');
+    await g.ev(() => { const p = G.field.player; p.x = 3; p.y = 4; p.dir = 'up'; G.field.snapCam(); });
+    await g.press('z'); // facing the table he hides under
+    await g.drive(() => { const b = G.chapters.beat('c1'); return !!b && !!b.door && G.top() === G.field && !G.field.locked; }, 'chapter 1 by keys');
+    check('desktop: chapter 1 played with the keyboard', await g.ev(() => ['hola', 'perro', 'guau', 'ven'].every(G.st.seen)));
+    await g.ev(() => { const p = G.field.player; p.x = 4; p.y = 5; p.dir = 'down'; G.field.snapCam(); });
     await g.page.keyboard.down('ArrowDown');
-    await g.until(() => G.field.mapId === 'villa', null, 'leaving the house');
+    await g.until(() => G.field.mapId === 'villa' || G.top() !== G.field || G.field.locked, null, 'the door');
     await g.page.keyboard.up('ArrowDown');
-    await g.fieldIdle('villa');
+    await g.drive(() => G.field && G.field.mapId === 'villa' && (G.state.ch.step.c2 | 0) >= 1 && G.top() === G.field && !G.field.locked && G.fade.a === 0, 'leaving the house');
     check('desktop: walked out of the house with the arrow keys', true);
     await g.shot('villa');
     await g.press('x');
