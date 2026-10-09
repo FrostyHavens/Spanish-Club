@@ -175,8 +175,9 @@
   // the next nudge: a word that will put the "?" over Canelo within a minute (tools/playflow.js waits for it)
   CH.nudgeSoon = function () {
     if (!G.state || !G.pet || !G.pet.mine()) return false;
-    const now = G.words.now(), ss = G.words.sess();
-    return Object.keys(G.state.words).some(id => { const r = G.words.rec(id); return r && r.st >= 1 && r.how !== 'old' && r.ms === ss && r.met != null && now - r.met < 60 && (r.last == null || r.last - r.met < 20); });
+    if (G.errands && G.errands.lost()) return false;
+    const now = G.words.now(), ss = G.words.sess(), s = st(), cool = s.nudgeAt != null && now >= s.nudgeAt && now - s.nudgeAt < 40;
+    return Object.keys(G.state.words).some(id => { const r = G.words.rec(id); return r && r.st >= 1 && r.how !== 'old' && r.ms === ss && r.met != null && (now - r.met < 60 || (cool && now - r.met <= 600)) && (r.last == null || r.last - r.met < 20); });
   };
   CH.nudge = function () {
     if (!G.state || !G.pet || !G.pet.mine() || (G.errands && G.errands.lost())) return null;
@@ -344,6 +345,7 @@
   // does something wait inside map m (for the hand at a door)?
   CH.waitsIn = function (m) {
     if (CH.needsReview() && m === (CH.reviewer() === 'luna' ? 'escuela' : 'casa')) return true;
+    if (m === 'villa' && G.field && G.field.mapId !== 'villa' && !(G.pet && G.pet.npc(G.field)) && CH.nudge()) return true; // (Canelo waits outside with his "?")
     const L = live(); if (!L || !when(L)) return false;
     const b = L.b, def = G.maps[m];
     if (spotsOf(b).some(sp => sp.map === m)) return true;

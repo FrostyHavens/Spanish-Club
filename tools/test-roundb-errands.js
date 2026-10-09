@@ -303,7 +303,7 @@ async function errandFlores(browser) {
     await settle(g, 'white');
     await beside(g, 39, 7); await g.frames(10); await g.shot('butterfly');
     await spot(g, 'flor39_7', 'yellow, with the butterfly');
-    check('flores: three flowers in the bag, Lucía has a "!"', await g.ev(() => G.state.bag.items.filter(i => i.id === 'flor').length === 3 && G.field.npc('lucia').alert() === true));
+    check('flores: three flowers in the bag, Lucía has a "!"', await g.ev(() => G.state.bag.items.filter(i => i.id === 'flor').length === 3 && G.field.npc('lucia').alert() === true), await g.ev(() => JSON.stringify([G.state.bag.items, G.field.npc('lucia').alert()])));
     await talk(g, 'lucia', 'the bouquet');
     check('flores: done', await g.ev(() => G.st.done('flores') && !G.errands.bag.has('flor')));
     // a pink flower afterwards: a present Lucía likes
