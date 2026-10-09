@@ -10756,6 +10756,8 @@ G.store = {
     for (const n of f.npcs) {
       const id = n.id === 'canelo' ? null : H.WHO.includes(n.id) ? n.id : null;
       if (!id || n.hidden || !n.spec || n.moving || H.get(id) < 1) continue;
+      let bub = null; try { bub = n.alert && n.alert(); } catch (e) { bub = null; }
+      if (bub) continue; // (their own bubble is up: no name call over it)
       const d = Math.abs(n.x - p.x) + Math.abs(n.y - p.y);
       if (d > 2 || d === 0 || (waved[id] != null && G.frame - waved[id] < 3600)) continue;
       if (waved[id] == null && G.frame < 240) { waved[id] = G.frame - 3000; continue; } // not the moment a map opens
