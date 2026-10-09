@@ -209,7 +209,7 @@
     yield sayShow('luna', { icon: 'estrella' }, TT('¡{name}! ¡La palabra del día!', '{name}! The word of the day! Look at the picture: say it out loud (or tap its word).'));
     const pool = G.words.list(1).filter(k => k !== id && G.baseForm(k) !== G.baseForm(id) && G.iconDrawn(k));
     const c = G.wordChoices(id, [id].concat(pool.sort(() => G.rand() - 0.5)), Math.min(4, pool.length + 1));
-    yield* G.ask({ prompt: '¿Qué es?', en: 'The word of the day: what is it? Say it!', show: id, choices: c.choices, answer: c.answer, layout: 'cards', display: 'text', who: 'luna', review: true });
+    yield* G.ask({ prompt: '\u0005 ¡La palabra del día! \u0005', en: 'The word of the day: what is it? Say it!', show: id, choices: c.choices, answer: c.answer, layout: 'cards', display: 'text', who: 'luna', review: true });
     st().pal = G.words.day(); G.st.autosave();
     G.state.stars++; G.fx.flyStar(G.W / 2, 90, 0); G.audio.sfx('star');
     if (G.hearts) G.hearts.add('luna', 1, 'care');

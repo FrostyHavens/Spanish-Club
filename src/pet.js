@@ -477,7 +477,8 @@
           } else {
             G.drawIcon16(ctx, c.id, r.x + 5, y + 2, 2);
             const lab = LABEL[c.id] || G.baseForm(c.id);
-            G.textC(ctx, lab, r.x + r.w / 2, y + 35, c.st === 'known' ? '#f8d860' : '#ffffff');
+            const lw = G.textWidth(lab), sq = Math.min(1, (r.w - 4) / Math.max(1, lw)); // (a long word squeezes into its card)
+            ctx.save(); ctx.translate(r.x + r.w / 2, 0); ctx.scale(sq, 1); G.textC(ctx, lab, 0, y + 35, c.st === 'known' ? '#f8d860' : '#ffffff'); ctx.restore();
             if (c.st === 'learn') for (let i = 0; i < P.NEED; i++) drawPaw(ctx, r.x + 3 + i * 13, y + 4, i < P.tries(c.id));
             if (c.st === 'known') G.text(ctx, '\u0005', r.x + r.w - 9, y + 3, '#f8d040');
           }
