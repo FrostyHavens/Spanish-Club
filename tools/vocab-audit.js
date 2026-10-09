@@ -1,15 +1,21 @@
 // Vocabulary-flow audit: plays the WHOLE game by taps (tools/playflow.js, the same play as tools/test-playthrough.js)
-// with the dev-only word log on (src/vocablog.js: G.vocabLog = []), then measures how every word flows past the child:
-// when and how it first appears, when it is first used, how often it comes back, the gaps, which errands and play
-// sessions it lives in, and where too many new words arrive at once.
-//   NODE_PATH=$(npm root -g) node tools/vocab-audit.js [--speak 0.35] [--wrong 0.12] [--pages 8] [--seed 7] [--out dump.json]
-//   node tools/vocab-audit.js --from dump.json        (analyse a saved run again, no browser)
-// A child's pace is modelled on top of the game's own frames (G.vlog.pace, which also moves the day's clock): time to
-// listen to each line, to think at each question, to look at a card or a new notebook page. Walking is real game time.
-// With --speak p, a fake speech recognizer (as in tools/test-speaking.js) lets the child SAY the answer at a share p of the
-// questions that have a mic (and the new word on a "¡Palabra nueva!" card at p * 0.6); with --wrong p a share of
-// picture-card questions get one wrong tap first; with --pages n (0: never) the child also goes for a notebook page's
-// sparkle when it is on screen within n tiles (the hint hand never points at pages, but sparkles draw children in).
+// with the dev-only word log on (src/vocablog.js: G.vocabLog = []), over SEVERAL DAYS: play sessions of ~15 minutes
+// (--session), each on the next calendar date (G.debug.dayShift; the game is saved, closed to the title and continued,
+// as a child coming back tomorrow), the playthrough first, then free play (greeting everyone in town, Canelo, the page
+// puzzles) until --days sessions have been played. Then it measures how every word flows past the child: when and how
+// it is met, when it is first used, how often it comes back, the gaps, which errands and sessions it lives in, where too
+// many new words arrive at once, and checks the "Measured targets" of docs/LEARNING_DESIGN.md (PASS / FAIL).
+//   NODE_PATH=$(npm root -g) node tools/vocab-audit.js [--quick] [--strict] [--days 5] [--session 15] [--speak 0.35]
+//        [--wrong 0.12] [--pages 8] [--seed 7] [--out dump.json]
+//   node tools/vocab-audit.js --from dump.json [--strict]   (analyse a saved run again, no browser)
+// --quick runs the game 3 times faster (G.speedMul: the same frames, less waiting) and skips the screenshots; --strict
+// exits with 1 when any target fails.
+// A child's pace is modelled on top of the game's own frames (G.vlog.pace, which also moves the day's clock and the word
+// model's clock): time to listen to each line, to think at each question, to look at a card or a page puzzle. Walking is
+// real game time. With --speak p, a fake speech recognizer (as in tools/test-speaking.js) lets the child SAY the answer at
+// a share p of the questions that have a mic (and the word on a gold card at p * 0.6); with --wrong p a share of
+// picture-card questions get one wrong tap first; with --pages n (0: never) the child also goes for a page puzzle's
+// sparkle when it is on screen within n tiles (the hint hand never points at them, but sparkles draw children in).
 // Writes docs/VOCAB_AUDIT.md (only the part between the AUDIT markers: findings written above or below them stay),
 // docs/vocab-timeline.svg and the JSON dump (default: the scratchpad, else the OS temp dir).
 'use strict';
@@ -22,7 +28,9 @@ const SCRATCH = '/tmp/claude-0/-home-user-Spanish-Club/56c6d0c5-5673-5d69-87f4-a
 const OUTDIR = fs.existsSync(SCRATCH) ? SCRATCH : os.tmpdir();
 const DUMP = path.resolve(arg('out', path.join(OUTDIR, 'vocab-audit.json')));
 const REPORT = path.join(ROOT, 'docs', 'VOCAB_AUDIT.md'), SVG = path.join(ROOT, 'docs', 'vocab-timeline.svg');
-const SESSION = 15 * 60;   // a play session, in game seconds
+const SESSION = +arg('session', 15) * 60;   // a play session, in game seconds
+const DAYS = +arg('days', 5);                  // sessions to play, one a day
+const QUICK = ARGS.includes('--quick'), STRICT = ARGS.includes('--strict');
 const OVERLOAD = { win: 5 * 60, n: 8 }; // more than n new words inside win seconds is an overload moment
 const BURST = { win: 30, n: 5 };        // n or more new words inside win seconds is a burst
 const STEP_PACE = 2.5;                  // seconds a child takes to look around and choose where to go, at each tap on the map
@@ -53,8 +61,9 @@ function FAKE() { // a scripted SpeechRecognition: each start() takes the next r
 function rng(seed) { let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
 async function play() {
-  const { open, check, launch } = require('./harness');
-  const { newGame, playToEnd } = require('./playflow');
+  const { open, check, launch, Game } = require('./harness');
+  const { newGame, playToEnd, settle, toward } = require('./playflow');
+  if (QUICK) Game.prototype.shot = async function () {}; // (no screenshots)
   const P_SPEAK = +arg('speak', 0.35), P_WRONG = +arg('wrong', 0.12), R = rng(+arg('seed', 7));
   const browser = await launch();
   const { ctx, g } = await open(browser, 'vocab', true);
@@ -65,7 +74,7 @@ async function play() {
       await g.page.reload();
       await g.until(() => window.G && G.top() && G.top().constructor.name === 'Title' && G.top().t > 32, null, 'the title after reload');
     }
-    await g.ev(() => { G.vocabLog = []; G.vlog.mark('start'); });
+    await g.ev(q => { G.vocabLog = []; G.vlog.mark('start'); if (q) G.speedMul = 3; }, QUICK);
     const pace = s => g.ev(s => G.vlog.pace(s), s);
     // tell the fake recognizer what the child says, tap the mic, and wait for the scene to take it
     const sayIt = async (text, done) => {
@@ -122,8 +131,11 @@ async function play() {
         case 'QuestCard': case 'BadgeCard': case 'FriendCard': case 'Photo':
           if (!info.v.paced) { await mark({ paced: 1 }); await pace(2); }
           return false;
-        case 'Notebook': // a page just found: a look at its pictures
+        case 'Notebook': // the notebook opened (Mamá hands it over): a look at its pictures
           if (!info.v.paced) { await mark({ paced: 1 }); await pace(5); }
+          return false;
+        case 'PagePuzzle': // a page puzzle: a few seconds to look and match each pair
+          if (!info.v.paced) { await mark({ paced: 1 }); await pace(12); }
           return false;
         default: return false;
       }
@@ -131,37 +143,81 @@ async function play() {
     let evenings = 0;
     g.hooks = { scene: async n => { if (n === 'TodayCard' && await g.ev(() => !G.top().__marked && (G.top().__marked = 1))) { evenings++; await g.ev(() => G.vlog.mark('evening')); } } };
     await newGame(g);
-    // a child goes for a notebook page's sparkle when it's close by (the hint hand never points at pages)
+    // a child goes for a page puzzle's sparkle when it's close by (the hint hand never points at them)
     const PAGE_NEAR = +arg('pages', 8);
-    let pagesTaken = 0; const tries = {};
-    await playToEnd(g, { beforeStep: async () => {
-      await pace(STEP_PACE); // looking around and choosing where to go next
-      if (!PAGE_NEAR) return;
+    let pagesTaken = 0, sess = 1, sessT0 = 0, tries = {};
+    const now = () => g.ev(() => G.vlog.time());
+    const walked = () => g.until(() => G.top() !== G.field || G.field.locked || (!G.field.route && !G.field.player.moving), null, 'the walk', 30000);
+    async function sparkle(near) {
       const t = await g.ev(near => {
         const f = G.field, p = f.player, T = G.TILE, cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
         let best = null;
         for (const k in f.def.pages || {}) {
-          if (G.st.hasPage(f.def.pages[k])) continue;
+          if (!G.pages.ready(f.def.pages[k])) continue;
           const [x, y] = k.split(',').map(Number), d = Math.abs(x - p.x) + Math.abs(y - p.y);
           const on = x * T >= cx && (x + 1) * T <= cx + G.W && y * T >= cy + 32 && (y + 1) * T <= cy + G.H;
           if (d <= near && on && (!best || d < best.d)) best = { d, sx: x * T + 12 - cx, sy: y * T + 12 - cy, page: f.def.pages[k] };
         }
         return best;
-      }, PAGE_NEAR);
-      if (!t || (tries[t.page] = (tries[t.page] | 0) + 1) > 3) return; // (three tries each: a page out of reach is left)
-      console.log('    page sparkle: ' + t.page);
-      await g.tap(t.sx, t.sy);
-      await g.until(() => G.top() !== G.field || G.field.locked || (!G.field.route && !G.field.player.moving), null, 'the walk to a page', 30000);
-      if (await g.ev(p => G.st.hasPage(p), t.page)) pagesTaken++;
-      return 'skip';
+      }, near);
+      const key = t && t.page + ':' + sess;
+      if (!t || (tries[key] = (tries[key] | 0) + 1) > 3) return false; // (three tries each: a page out of reach is left)
+      console.log('    page puzzle: ' + t.page);
+      await g.tap(t.sx, t.sy); await walked();
+      await settle(g, 'a page puzzle');
+      if (await g.ev(p => G.st.hasPage(p) && !G.pages.ready(p), t.page)) pagesTaken++;
+      return true;
+    }
+    // the session is over: saved, closed, and continued the next day (a new calendar date)
+    async function nextSession() {
+      sess++;
+      console.log('    --- session ' + sess + ' (the next day) at ' + fmt(await now()));
+      await g.ev(() => { G.st.saveNow(); G.vlog.mark('session-end'); G.debug.dayShift = (G.debug.dayShift || 0) + 1; G.toTitle(); });
+      await g.until(() => G.top().constructor.name === 'Title' && G.top().t > 32, null, 'the title');
+      await g.tap(160, 180);
+      await g.until(() => G.top().constructor.name === 'Slots' && G.input.ready(), null, 'the slot screen');
+      await g.tapRect(await g.ev(() => G.top().cardRect(0)));
+      await g.until(() => G.field && G.top() === G.field && G.fade.a === 0, null, 'back in the game');
+      await pace(5); // (getting going again)
+      sessT0 = await now();
+    }
+    await playToEnd(g, { beforeStep: async () => {
+      await pace(STEP_PACE); // looking around and choosing where to go next
+      if (sess < DAYS && await now() - sessT0 >= SESSION) { await nextSession(); return 'skip'; }
+      if (PAGE_NEAR && await sparkle(PAGE_NEAR)) return 'skip';
     } });
-    stats.pages = pagesTaken;
     check('vocab: every errand done', await g.ev(() => G.data.badgeOrder.every(G.st.done)));
+    // free play for the rest of the days: greet everyone in town (their greeting comes once a day), Canelo, page puzzles
+    const PEOPLE = ['pepe', 'rosa', 'tomas', 'gomez', 'lucia', 'nico', 'sofia', 'canelo'];
+    for (let guard = 0; sess <= DAYS && guard < 3000; guard++) {
+      if (await now() - sessT0 >= SESSION) { if (sess >= DAYS) break; await nextSession(); continue; }
+      await settle(g, 'free play');
+      await pace(STEP_PACE);
+      if (PAGE_NEAR && await sparkle(PAGE_NEAR)) continue;
+      const st = await g.ev(people => {
+        const f = G.field, met = window.__met || (window.__met = {});
+        const day = G.words.day(); if (met.day !== day) { for (const k in met) delete met[k]; met.day = day; }
+        if (f.mapId !== 'villa') { const ex = (f.def.exits || []).find(e => e.to === 'villa'); return { exit: ex && [ex.x, ex.y] }; }
+        const who = people.find(id => !met[id] && f.npc(id) && !f.npc(id).hidden);
+        if (!who) return { done: true };
+        const n = f.npc(who); if ((met[who + 't'] = (met[who + 't'] | 0) + 1) > 12) met[who] = 1; // (someone out of reach is left)
+        return { who, at: [n.x, n.y] };
+      }, PEOPLE);
+      if (st.done) { // everyone greeted today: the day's play is over
+        if (sess >= DAYS) break;
+        await nextSession(); continue;
+      }
+      const at = st.exit || st.at; if (!at) break;
+      const t = await toward(g, at[0], at[1]); if (!t) break;
+      await g.tap(t.sx, t.sy); await walked();
+      if (st.who && t.direct) await g.ev(who => { window.__met[who] = 1; }, st.who); // talked to them (settle plays it)
+    }
+    stats.pages = pagesTaken; stats.sessions = sess;
     const out = await g.ev(() => ({
       log: G.vocabLog, end: G.vlog.time(),
       words: Object.keys(G.data.words).map(id => ({ id, es: G.data.words[id].es, topic: G.data.words[id].topic })),
       pages: G.data.pages, quests: Object.keys(G.data.quests).map(id => ({ id, name: G.data.quests[id].name, giver: G.data.quests[id].giver })),
-      state: { words: G.state.words, stars: G.state.stars },
+      state: { words: G.state.words, stars: G.state.stars, wm: G.state.wm },
     }));
     out.meta = { speak: P_SPEAK, wrong: P_WRONG, seed: +arg('seed', 7), stats, evenings, date: new Date().toISOString(), errors: g.errors };
     check('vocab: no console errors', !g.errors.length, g.errors.join('\n'));
@@ -212,7 +268,12 @@ function analyse(D) {
   const evenings = marks.filter(m => m.label === 'evening').map(m => m.t);
   // the evening episode (Hoy card, night) is labelled as such
   const ctxOf = e => (e.g ? 'greeting' : evenings.some(t => Math.abs(t - e.t) < 20) && e.map === 'casa' && !isQuest(labelOf(e.ep)) ? 'evening' : labelOf(e.ep));
-  const sessOf = t => Math.floor(t / SESSION);
+  // play sessions: from the word model's session events (a new game, each continue on a later day); an older dump
+  // without them is cut every 15 minutes
+  const sessEv = L.filter(e => e.ty === 'session');
+  const starts = sessEv.length ? sessEv.map(e => e.t) : Array.from({ length: Math.max(1, Math.ceil(END / SESSION)) }, (x, k) => k * SESSION);
+  starts[0] = 0;
+  const sessOf = t => { let k = 0; while (k + 1 < starts.length && starts[k + 1] <= t) k++; return k; };
 
   // ---- quests: when they ran ----
   const qStart = {}, qDone = {};
@@ -225,20 +286,22 @@ function analyse(D) {
   for (const w of D.words) {
     const ev = wordEv[w.id], expo = ev.filter(e => PASSIVE.includes(e.ty) || ACTIVE.includes(e.ty));
     const r = W[w.id] = { id: w.id, es: w.es, topic: w.topic, events: ev.length };
-    if (!expo.length) { r.never = true; continue; }
-    const first = expo[0];
-    // how it first came: the first event in that same moment that says where (a page beats the voice reading it)
-    const firstHow = expo.filter(e => e.t - first.t < 0.5).map(e => e.ty === 'shown' ? (e.via || 'shown') : e.ty)[0];
-    r.first = first.t; r.firstHow = firstHow; r.firstCtx = ctxOf(first); r.firstEp = first.ep; r.firstSess = sessOf(first.t);
-    const act = ev.filter(e => ACTIVE.includes(e.ty));
-    r.recognized = ev.filter(e => e.ty === 'recognized').length;
-    r.said = ev.filter(e => e.ty === 'said').length;
+    // the word model (words.js): a word is new when it is MET ('meet'); before that it may only have been shown
+    const meet = ev.find(e => e.ty === 'meet');
+    r.exposedFirst = expo.length ? expo[0] : null;
+    if (!meet) { r.never = true; r.exposedOnly = !!expo.length; continue; }
+    r.first = meet.t; r.firstHow = meet.how || 'meet'; r.firstCtx = ctxOf(meet); r.firstEp = meet.ep; r.firstSess = sessOf(meet.t);
+    // active uses: the model's retrievals of a met word (the answer that met it is its puzzle, not a use)
+    const act = ev.filter(e => e.ty === 'retrieval' && (e.st0 | 0) >= 1);
+    r.recognized = act.filter(e => !e.said).length;
+    r.said = act.filter(e => e.said).length;
     r.wrong = ev.filter(e => e.ty === 'wrong').length;
     r.active = act.length;
-    // cue: echo (the answer is in the prompt), match (the prompt's picture is the answer), else meaning
-    r.cued = ev.filter(e => e.ty === 'recognized' && (e.prompt || e.show)).length;
-    r.firstActive = act.length ? act[0].t : null;
-    r.toActive = act.length ? act[0].t - r.first : null;
+    r.cued = act.filter(e => e.cued).length;
+    const use = act.filter(e => e.t > meet.t + 20); // a real use: after the meeting itself
+    r.firstActive = use.length ? use[0].t : null;
+    r.toActive = use.length ? use[0].t - r.first : null;
+    r.stageEnd = (D.state.words[w.id] || {}).st | 0;
     r.exposures = ev.filter(e => PASSIVE.includes(e.ty)).length;
     // encounters: distinct episodes that touched it (any event)
     const eps = []; const seenEp = new Set();
@@ -251,17 +314,19 @@ function analyse(D) {
     r.ctxs = [...new Set(eps.map(e => e.ctx))];
     r.errands = r.ctxs.filter(isQuest);
     r.sessions = [...new Set(ev.map(e => sessOf(e.t)))].length;
-    const learned = ev.find(e => e.ty === 'learned'); r.learned = learned ? learned.t : null;
+    r.ctxAfter = [...new Set(ev.filter(e => e.t >= r.first && e.ty !== 'meet').map(ctxOf))].length; // contexts it came back in
+    const learned = ev.find(e => e.ty === 'learned' || (e.ty === 'stage' && e.st >= 3)); r.learned = learned ? learned.t : null;
     if (learned) {
       // what learned it: its own answer or saying it (within the same episode), or the answer to ANOTHER word's question
-      const own = ev.filter(e => ACTIVE.includes(e.ty) && e.ep === learned.ep && e.t <= learned.t + 0.01);
-      const otherAct = L.filter(e => e.ep === learned.ep && ACTIVE.includes(e.ty) && e.w !== w.id && e.t <= learned.t + 0.01);
+      const own = ev.filter(e => (ACTIVE.includes(e.ty) || e.ty === 'retrieval') && e.ep === learned.ep && e.t <= learned.t + 0.01);
+      const otherAct = L.filter(e => e.ep === learned.ep && (ACTIVE.includes(e.ty) || e.ty === 'retrieval') && e.w !== w.id && e.t <= learned.t + 0.01);
       r.learnedBy = own.length ? (own[own.length - 1].ty === 'said' ? 'said' : 'answer') : otherAct.length ? 'co-learned with ' + otherAct[otherAct.length - 1].w : 'other';
       r.afterLearn = new Set(ev.filter(e => e.t > learned.t + 2 && e.ep !== learned.ep).map(e => e.ep)).size;
     }
     // recalled after the errand (or moment) that introduced it: an active use in another context, after that one ended
-    const introEnd = isQuest(r.firstCtx) && qDone[r.firstCtx] != null ? qDone[r.firstCtx] : first.t + 1;
+    const introEnd = isQuest(r.firstCtx) && qDone[r.firstCtx] != null ? qDone[r.firstCtx] : r.first + 1;
     r.recalledAfter = act.some(e => e.t > introEnd && ctxOf(e) !== r.firstCtx);
+    r.introEnd = introEnd;
   }
 
   // ---- per context (errand) ----
@@ -271,28 +336,29 @@ function analyse(D) {
     const c = ctxOf(e), C = ctxList[c] || (ctxList[c] = { id: c, words: new Set(), news: new Set(), learned: new Set(), active: 0, cued: 0, wrong: 0, events: 0, t0: e.t, t1: e.t, eps: new Set() });
     C.words.add(e.w); C.events++; C.t1 = Math.max(C.t1, e.t); C.eps.add(e.ep);
     if (W[e.w].firstEp === e.ep && W[e.w].first === e.t) C.news.add(e.w);
-    if (ACTIVE.includes(e.ty)) C.active++;
-    if (e.ty === 'recognized' && (e.prompt || e.show)) C.cued++;
+    if (e.ty === 'retrieval' && (e.st0 | 0) >= 1) { C.active++; if (e.cued) C.cued++; }
     if (e.ty === 'wrong') C.wrong++;
-    if (e.ty === 'learned') C.learned.add(e.w);
+    if (e.ty === 'learned' || (e.ty === 'stage' && e.st >= 3)) C.learned.add(e.w);
   }
   for (const C of Object.values(ctxList)) {
     for (const id of C.words) if (W[id].firstCtx === C.id) C.news.add(id);
     C.reviewed = [...C.words].filter(id => !C.news.has(id) && W[id].first < (isQuest(C.id) && qStart[C.id] != null ? qStart[C.id] : C.t0));
-    C.reviewedActive = new Set(L.filter(e => e.w && ACTIVE.includes(e.ty) && ctxOf(e) === C.id && C.reviewed.includes(e.w)).map(e => e.w)).size;
+    C.reviewedActive = new Set(L.filter(e => e.w && e.ty === 'retrieval' && ctxOf(e) === C.id && C.reviewed.includes(e.w)).map(e => e.w)).size;
     C.start = qStart[C.id]; C.done = qDone[C.id];
   }
 
-  // ---- per session (15 min of game time) ----
-  const nS = Math.max(1, Math.ceil(END / SESSION));
+  // ---- per session ----
+  const nS = starts.length;
   const sessions = [];
   for (let s = 0; s < nS; s++) {
-    const a = s * SESSION, b = a + SESSION, ev = L.filter(e => e.w && e.t >= a && e.t < b);
+    const a = starts[s], b = s + 1 < nS ? starts[s + 1] : END + 1, ev = L.filter(e => e.w && e.t >= a && e.t < b);
     const news = Object.values(firstOf).filter(r => r.first >= a && r.first < b);
     sessions.push({ s: s + 1, from: a, to: Math.min(b, END), news: news.length, newFromPages: news.filter(r => r.firstHow === 'page').length,
-      learned: ev.filter(e => e.ty === 'learned').length, recognized: ev.filter(e => e.ty === 'recognized').length, said: ev.filter(e => e.ty === 'said').length,
+      date: (sessEv[s] || {}).date || '', day: (sessEv[s] || {}).day || s + 1,
+      learned: ev.filter(e => e.ty === 'stage' && e.st === 3).length, recognized: ev.filter(e => e.ty === 'retrieval' && !e.said && (e.st0 | 0) >= 1).length, said: ev.filter(e => e.ty === 'retrieval' && e.said).length,
       wrong: ev.filter(e => e.ty === 'wrong').length, words: new Set(ev.map(e => e.w)).size,
-      reviewed: new Set(ev.filter(e => ACTIVE.includes(e.ty) && W[e.w].first < a).map(e => e.w)).size,
+      prompts: ev.filter(e => e.ty === 'prompt').length, reviewPrompts: ev.filter(e => e.ty === 'prompt' && e.kind === 'review').length,
+      reviewed: new Set(ev.filter(e => e.ty === 'retrieval' && W[e.w].first < a).map(e => e.w)).size,
       errands: [...new Set(L.filter(e => e.ty === 'quest' && e.st === 'done' && e.t >= a && e.t < b).map(e => e.q))] });
   }
 
@@ -301,7 +367,7 @@ function analyse(D) {
   for (let m = 0; m < nM; m++) {
     const a = m * 60, b = a + 60, ev = L.filter(e => e.w && e.t >= a && e.t < b);
     minute.push({ m, news: Object.values(firstOf).filter(r => r.first >= a && r.first < b).length,
-      learned: ev.filter(e => e.ty === 'learned').length, active: ev.filter(e => ACTIVE.includes(e.ty)).length,
+      learned: ev.filter(e => e.ty === 'stage' && e.st === 3).length, active: ev.filter(e => e.ty === 'retrieval' && (e.st0 | 0) >= 1).length,
       seenTot: Object.values(firstOf).filter(r => r.first < b).length, learnedTot: Object.values(W).filter(r => r.learned != null && r.learned < b).length,
       ctx: [...new Set(ev.map(ctxOf))] });
   }
@@ -338,7 +404,39 @@ function analyse(D) {
   P.noReviewAfterLearn = words.filter(r => r.learned != null && !r.afterLearn);
   P.lateFade = words.filter(r => r.endGap > 2 * SESSION);
   P.never = Object.values(W).filter(r => r.never);
-  return { W, ctx: ctxList, sessions, minute, P, qStart, qDone, qName, END, L, evenings, isQuest };
+  const A = { W, ctx: ctxList, sessions, minute, P, qStart, qDone, qName, END, L, evenings, isQuest, starts, ctxOf };
+  A.T = targets(A);
+  return A;
+}
+
+// ---- the measured targets of docs/LEARNING_DESIGN.md ----
+function targets(A) {
+  const L = A.L, W = A.W, ids = Object.keys(W).filter(id => !W[id].never && W[id].firstHow !== 'old' && W[id].firstHow !== 'test');
+  const meetT = ids.map(id => W[id].first).sort((a, b) => a - b);
+  let max5 = 0; meetT.forEach(t => { max5 = Math.max(max5, meetT.filter(u => u >= t && u < t + 300).length); });
+  const firstSess = ids.filter(id => W[id].firstSess === 0).length;
+  const pageFirst = ids.filter(id => W[id].firstHow === 'page' || (W[id].exposedFirst && W[id].exposedFirst.ty === 'page' && W[id].exposedFirst.t < W[id].first));
+  const toUse = ids.map(id => (W[id].toActive == null ? Infinity : W[id].toActive)), med = median(toUse);
+  const in3 = toUse.filter(t => t <= 180).length / Math.max(1, toUse.length);
+  const never = ids.filter(id => !W[id].active), onlyCued = ids.filter(id => W[id].active && W[id].cued === W[id].active);
+  const medAct = median(ids.map(id => W[id].active));
+  const ctx3 = ids.filter(id => W[id].ctxAfter >= 3).length / Math.max(1, ids.length);
+  const prompts = L.filter(e => e.ty === 'prompt'), rev = prompts.filter(e => e.kind === 'review').length / Math.max(1, prompts.length);
+  const wrongFirst = Object.keys(W).filter(id => { const x = W[id].exposedFirst; return x && x.ty === 'choice-shown' && !x.ans && (W[id].never || x.t < W[id].first); });
+  const t = (name, before, target, now, ok, list) => ({ name, before, target, now, ok, list: list || null });
+  const fm = s => (s === Infinity ? 'never' : fmt(s));
+  return [
+    t('Most new words in any 5 minutes', '40', '≤ 5', String(max5), max5 <= 5),
+    t('New words in the first 15-minute session', '65', '≤ 8', String(firstSess), firstSess <= 8),
+    t('Words first met on a notebook page', '43', '0', String(pageFirst.length), !pageFirst.length, pageFirst),
+    t('Median time from meeting to first use', '6:50', '≤ 1:30 (90% ≤ 3:00)', fm(med) + ' (' + Math.round(in3 * 100) + '% ≤ 3:00)', med <= 90 && in3 >= 0.9),
+    t('Words never actively retrieved', '30', '0', String(never.length), !never.length, never),
+    t('Words retrieved only with a cue', '2', '0', String(onlyCued.length), !onlyCued.length, onlyCued),
+    t('Median active retrievals per word', '1', '≥ 5', String(medAct), medAct >= 5),
+    t('Words in ≥ 3 different errands/episodes', '—', '≥ 90%', Math.round(ctx3 * 100) + '%', ctx3 >= 0.9),
+    t('Prompts that review older words', 'low', '40–60%', Math.round(rev * 100) + '% (' + prompts.length + ' prompts)', rev >= 0.4 && rev <= 0.6),
+    t('Words introduced as a wrong answer first', '18', '0', String(wrongFirst.length), !wrongFirst.length, wrongFirst),
+  ];
 }
 
 // ======================================================================================================
@@ -356,7 +454,7 @@ function svgChart(A) {
   for (let v = 0; v <= bmax; v += bstep) s += `<line x1="${pl}" x2="${pl + iw}" y1="${YB(v)}" y2="${YB(v)}" stroke="#e4e3df"/><text x="${pl - 6}" y="${YB(v) + 4}" text-anchor="end" fill="#52514e">${v}</text>\n`;
   s += `<text x="${pl}" y="${b0 - 8}" fill="#0b0b0b">New words met in each minute</text>\n`;
   const vline = (x, col, dash, label, ly) => `<line x1="${x}" x2="${x}" y1="${top}" y2="${b0 + bh}" stroke="${col}" ${dash ? 'stroke-dasharray="3 3"' : 'stroke-width="1.5"'}/><text x="${x + 3}" y="${ly}" fill="${col}">${label}</text>\n`;
-  for (let k = 1; k * SESSION / 60 < M.length; k++) s += vline(X(k * SESSION / 60), '#8a8984', true, 'session ' + (k + 1), top + ih - 6);
+  A.starts.slice(1).forEach((t, k) => { s += vline(X(t / 60), '#8a8984', true, 'day ' + (k + 2), top + ih - 6); });
   for (const t of A.evenings) s += vline(X(t / 60), '#4a3aa7', false, 'evening', top + ih - 20);
   M.forEach((m, i) => { if (!m.news) return; const x0 = X(i) + 1, bw = Math.max(1, X(i + 1) - X(i) - 2); s += `<rect x="${x0.toFixed(1)}" y="${YB(m.news).toFixed(1)}" width="${bw.toFixed(1)}" height="${(b0 + bh - YB(m.news)).toFixed(1)}" rx="1" fill="#eb6834"><title>minute ${i}-${i + 1}: ${m.news} new word${m.news > 1 ? 's' : ''}</title></rect>\n`; });
   s += `<path d="${line('seenTot')}" fill="none" stroke="#2a78d6" stroke-width="2"/>\n<path d="${line('learnedTot')}" fill="none" stroke="#1baf7a" stroke-width="2"/>\n`;
@@ -378,18 +476,29 @@ function report(A, D) {
   const o = [];
   o.push('<!-- AUDIT:BEGIN (generated by tools/vocab-audit.js; edit outside these markers) -->');
   o.push('## Run');
-  o.push(`One full tap playthrough (tools/playflow.js), ${D.meta.date.slice(0, 10)}: every Round A and Round B errand, the animal party and the diploma. ` +
-    `Speaking: ${Math.round(D.meta.speak * 100)}% of mic questions answered by voice (${D.meta.stats.spoken} answers + ${D.meta.stats.spokenCard} new-word cards); ` +
-    `${Math.round(D.meta.wrong * 100)}% of picture-card questions got one wrong tap first (${D.meta.stats.wrongTaps}); notebook-page sparkles picked up when on screen within 8 tiles (${new Set(A.L.filter(e => e.ty === 'page').map(e => e.page)).size} of ${Object.keys(D.pages).length} pages found in all: ${[...new Set(A.L.filter(e => e.ty === 'page').map(e => e.page))].join(', ')}); seed ${D.meta.seed}. ` +
-    `Game time ${fmt(A.END)} (${mins(A.END)} min) with a child's pace added for reading, listening, thinking and looking; ${A.sessions.length} sessions of 15 min; ${D.meta.evenings} evening(s) at home.`);
+  const puzzles = A.L.filter(e => e.ty === 'puzzle');
+  o.push(`One full tap playthrough (tools/playflow.js), ${D.meta.date.slice(0, 10)}, over ${A.sessions.length} play sessions on successive days (about ${Math.round(SESSION / 60)} minutes each; the game saved, closed and continued the next day): every Round A and Round B errand, the animal party and the diploma, then free play (greeting everyone, Canelo, page puzzles) on the days left. ` +
+    `Speaking: ${Math.round(D.meta.speak * 100)}% of mic questions answered by voice (${D.meta.stats.spoken} answers + ${D.meta.stats.spokenCard} gold cards); ` +
+    `${Math.round(D.meta.wrong * 100)}% of picture-card questions got one wrong tap first (${D.meta.stats.wrongTaps}); page puzzles solved when their sparkle was on screen within 8 tiles: ${puzzles.length} (${[...new Set(puzzles.map(e => e.page))].join(', ') || 'none'}); seed ${D.meta.seed}. ` +
+    `Game time ${fmt(A.END)} (${mins(A.END)} min) with a child's pace added for reading, listening, thinking and looking; ${D.meta.evenings} evening(s) at home.`);
+  o.push('');
+  o.push('## Measured targets');
+  o.push('From `docs/LEARNING_DESIGN.md`. *Before*: the game before the redesign (one long run).');
+  o.push('');
+  o.push('| Measure | Before | Target | Now | |');
+  o.push('| --- | --- | --- | --- | --- |');
+  for (const t of A.T) o.push(`| ${t.name} | ${t.before} | ${t.target} | ${t.now}${t.list && t.list.length ? ': ' + wl(t.list, 12) : ''} | ${t.ok ? 'PASS' : '**FAIL**'} |`);
+  o.push('');
+  const stg = [0, 1, 2, 3, 4].map(k => Object.keys(W).filter(id => ((D.state.words[id] || {}).st | 0) === k).length);
+  o.push(`Words by stage at the end: unmet ${stg[0]}, met ${stg[1]}, known ${stg[2]}, remembered ${stg[3]}, solid ${stg[4]}.`);
   o.push('');
   o.push('## Headline numbers');
   o.push('| | |\n| --- | --- |');
   o.push(`| Words in the game | ${N} |`);
-  o.push(`| Met at least once / learned by the end | ${words.length} / ${words.filter(r => r.learned != null).length} |`);
-  o.push(`| First met via | ${Object.entries(howCount).sort((a, b) => b[1] - a[1]).map(([k, v]) => k + ' ' + v).join(', ')} |`);
-  o.push(`| Active retrievals (picked right + said) | ${totalAct} (${totalRec} picked, ${totalSaid} said); ${pct(totalCued, totalRec)} of the picks were cued (the answer was in the prompt's text or picture) |`);
-  o.push(`| Median time from first meeting to first use | ${fmt(median(words.filter(r => r.toActive != null).map(r => r.toActive)))} |`);
+  o.push(`| Met / remembered (gold) by the end | ${words.length} / ${words.filter(r => r.learned != null).length} (never met: ${Object.values(W).filter(r => r.never).length}, of them shown somewhere: ${Object.values(W).filter(r => r.exposedOnly).length}) |`);
+  o.push(`| Met via | ${Object.entries(howCount).sort((a, b) => b[1] - a[1]).map(([k, v]) => k + ' ' + v).join(', ')} |`);
+  o.push(`| Active retrievals of met words (picked right + said) | ${totalAct} (${totalRec} picked, ${totalSaid} said); ${pct(totalCued, totalAct)} cued (the answer could be matched in the prompt's text or picture) |`);
+  o.push(`| Median time from meeting to first use (of the words used) | ${fmt(median(words.filter(r => r.toActive != null).map(r => r.toActive)))} |`);
   o.push(`| Median encounters per word (distinct moments) | ${median(words.map(r => r.encounters))} (min ${Math.min(...words.map(r => r.encounters))}, max ${Math.max(...words.map(r => r.encounters))}) |`);
   o.push(`| Median active retrievals per word | ${median(words.map(r => r.active))} |`);
   o.push(`| Most new words in any 5 minutes | ${P.maxIn5} |`);
@@ -421,10 +530,10 @@ function report(A, D) {
     o.push(`| ${ctxName(C.id)} | ${ran} | ${C.news.size}${C.news.size ? ': ' + [...C.news].join(', ') : ''} | ${C.learned.size} | ${C.reviewed.length} (${C.reviewedActive}) | ${C.active} | ${C.cued} | ${C.wrong} |`);
   }
   o.push('');
-  o.push('## Per 15-minute session');
-  o.push('| Session | Game time | New words (from pages) | Learned | Picked right | Said | Wrong | Older words used | Errands finished |');
-  o.push('| --- | --- | --- | --- | --- | --- | --- | --- | --- |');
-  for (const s of A.sessions) o.push(`| ${s.s} | ${fmt(s.from)}-${fmt(s.to)} | ${s.news} (${s.newFromPages}) | ${s.learned} | ${s.recognized} | ${s.said} | ${s.wrong} | ${s.reviewed} | ${s.errands.join(', ') || '-'} |`);
+  o.push('## Per session (one a day)');
+  o.push('| Session | Date | Game time | New words met | Remembered | Picked right | Said | Wrong | Prompts (review) | Older words used | Errands finished |');
+  o.push('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
+  for (const s of A.sessions) o.push(`| ${s.s} | ${s.date || '-'} | ${fmt(s.from)}-${fmt(s.to)} | ${s.news} | ${s.learned} | ${s.recognized} | ${s.said} | ${s.wrong} | ${s.prompts} (${pct(s.reviewPrompts, s.prompts)}) | ${s.reviewed} | ${s.errands.join(', ') || '-'} |`);
   o.push('');
   o.push('## Timeline (5-minute steps)');
   o.push('`#` = one new word met in that step.');
@@ -439,9 +548,9 @@ function report(A, D) {
   }
   o.push('');
   o.push('## Per word');
-  o.push('*First*: game time and how it first reached the child. *To use*: time from then to its first active use. *Moments*: distinct episodes it appeared in. *Exp*: passive exposures (shown, heard, on a page, named by a tap, on a card). *Act*: picked right + said (cued picks). *Gap*: average / longest time between moments. *Errands*: errands it appeared in. *Sess*: sessions it appeared in. *Recalled*: used again after the errand that introduced it.');
+  o.push('*Met*: game time and how it was met (the word model). *To use*: time from then to its first active use. *Moments*: distinct episodes it appeared in. *Exp*: passive exposures (shown, heard, on a page, named by a tap, on a card). *Act*: picked right + said (cued picks). *Gap*: average / longest time between moments. *Errands*: errands it appeared in. *Sess*: sessions it appeared in. *Recalled*: used again after the errand that introduced it.');
   o.push('');
-  o.push('| Word | First | How | Where | To use | Moments | Exp | Act (said, cued) | Wrong | Gap avg / max | Last | Errands | Sess | Learned (by) | Recalled |');
+  o.push('| Word | Met | How | Where | To use | Moments | Exp | Act (said, cued) | Wrong | Gap avg / max | Last | Errands | Sess | Learned (by) | Recalled |');
   o.push('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
   for (const r of Object.values(W).sort((a, b) => (a.first == null ? 1e9 : a.first) - (b.first == null ? 1e9 : b.first))) {
     if (r.never) { o.push(`| ${r.id} | never | | | | 0 | 0 | 0 | | | | | | | |`); continue; }
@@ -449,13 +558,12 @@ function report(A, D) {
   }
   o.push('');
   o.push('## How it is measured');
-  o.push('- `src/vocablog.js` (dev only, off unless a test sets `G.vocabLog = []`; never saved) logs every word event: *shown* (in a dialogue line, a question prompt, a question\'s picture, the bag, a map banner), *heard* (spoken by the voice), *seen-first*, *page* (on a notebook page just found), *tapped-object* (tap-anything, an animal and its sound, the animal count), *choice-shown*, *recognized* (picked right by tap), *wrong*, *picked* (a free choice), *said* (said out loud and matched) and *learned*, with the game time, map, speaker and the episode.');
-  o.push('- An *episode* lasts until the child is free to walk again; what changed in the save meanwhile (an errand started or finished, its flags, a page, Canelo\'s tricks, a side job, the bag) says which errand it belonged to.');
-  o.push('- Time is the game\'s own frames (60 a second: walking, animations, the typewriter) plus a child\'s pace on top: ~1 s + 0.09 s a letter to listen to a line (the voice reads at 0.85), ~1.5 s + 0.07 s a letter + 0.6 s a card to think at a question, 3 s for a new-word card, 2 s for errand and badge cards, 5 s to look at a new notebook page, 2 s more to say an answer, and ' + STEP_PACE + ' s to look around before each tap on the map. The bot never wanders, replays lines or opens the notebook on its own, so a real child takes longer and meets more words by tapping around; the sunset (18 min) runs on this clock.');
-  o.push('- Greetings (and say-it-back stars) come once per person per calendar day, and the whole run happens on one calendar day, so they are under-counted compared with play over several days.');
-  o.push('- *Cued*: the right answer was in the prompt\'s own text (`¡[hola]!` -> hola) or the prompt\'s picture was the answer itself (Canelo\'s "¡Dile a Canelo!" shows the trick). *Active uses* count picks of the right answer by tap and answers said out loud; a free pick in a shop or Canelo\'s menu is not counted.');
-  o.push(`- Bursts: ${BURST.n}+ first meetings within ${BURST.win} s. Overload: more than ${OVERLOAD.n} first meetings within 5 minutes. Sessions: every 15 minutes of game time.`);
-  o.push('- Re-run: `NODE_PATH=$(npm root -g) node tools/vocab-audit.js` (about 20 minutes; `--from <dump.json>` re-analyses a saved run in a second).');
+  o.push('- `src/vocablog.js` (dev only, off unless a test sets `G.vocabLog = []`; never saved) logs every word event with the game time, map, speaker and episode: *meet* (the word model: met, and how), *prompt* (a question whose answer it is: intro / new / review, its stage, the cards shown, cued), *retrieval* (an active use credited to the model: said, cued, card mode, first try, stage before and after), *stage*, *shown* (a dialogue line, a prompt, a picture, the bag, a banner), *heard* (the voice), *tapped-object*, *choice-shown* (ans: it was the answer), *recognized*, *wrong*, *picked*, *said*, *learned*, and *session* (a new session or day).');
+  o.push('- A word is *new* when it is met (stage 1); being shown or heard before that does not count (an unmet word appears as its picture only). *Active uses* are the model\'s retrievals of a met word; the answer that met it is its puzzle, not a use. *First use*: the first retrieval at least 20 s after meeting. *Cued*: the answer could be found by matching the prompt (its picture over the question and on its card, or its word written in both). *Review prompts*: questions about a word met in an earlier session or 5+ minutes earlier (or asked by `G.review`, or a page puzzle).');
+  o.push('- An *episode* lasts until the child is free to walk again; what changed in the save meanwhile (an errand started or finished, its flags, Canelo\'s tricks, a side job, the bag) says which errand it belonged to. *Errands/episodes a word is in*: the contexts it came up in after it was met.');
+  o.push('- Time is the game\'s own frames (60 a second: walking, animations, the typewriter) plus a child\'s pace on top: ~1 s + 0.09 s a letter to listen to a line, ~1.5 s + 0.07 s a letter + 0.6 s a card to think at a question, 3 s for a gold card, 2 s for errand and badge cards, 5 s to look at the notebook, 12 s for a page puzzle, 2 s more to say an answer, and ' + STEP_PACE + ' s to look around before each tap on the map. The bot never wanders, replays lines or opens the notebook on its own, so a real child takes longer and meets more words by tapping around.');
+  o.push(`- Sessions: about ${Math.round(SESSION / 60)} minutes each (the session ends at the next free moment on the map), each on the next calendar day (G.debug.dayShift): once-a-day greetings, side jobs and say-it-back stars come back each day, and the word model\'s day-based reviews fall due. Bursts: ${BURST.n}+ meetings within ${BURST.win} s. Overload: more than ${OVERLOAD.n} meetings within 5 minutes.`);
+  o.push('- Re-run: `NODE_PATH=$(npm root -g) node tools/vocab-audit.js` (`--quick` runs the game 3x faster, `--strict` exits 1 when a target fails, `--days 5 --session 15`; `--from <dump.json>` re-analyses a saved run in a second).');
   o.push('<!-- AUDIT:END -->');
   return o.join('\n') + '\n';
 }
@@ -479,9 +587,14 @@ function writeReport(text) {
   const A = analyse(D);
   writeReport(report(A, D));
   fs.writeFileSync(SVG, svgChart(A));
-  const sum = { end: A.END, words: Object.keys(A.W).length, met: Object.values(A.W).filter(r => !r.never).length, perWord: A.W, ctx: Object.values(A.ctx).map(C => ({ id: C.id, news: [...C.news], reviewed: C.reviewed, learned: [...C.learned], active: C.active })), sessions: A.sessions,
+  const sum = { targets: A.T, end: A.END, words: Object.keys(A.W).length, met: Object.values(A.W).filter(r => !r.never).length, perWord: A.W, ctx: Object.values(A.ctx).map(C => ({ id: C.id, news: [...C.news], reviewed: C.reviewed, learned: [...C.learned], active: C.active })), sessions: A.sessions,
     problems: Object.fromEntries(Object.entries(A.P).map(([k, v]) => [k, Array.isArray(v) ? v.map(r => r.id || r) : v])) };
   fs.writeFileSync(DUMP.replace(/\.json$/, '') + '-summary.json', JSON.stringify(sum, null, 1));
   console.log('report: ' + REPORT + '\nchart: ' + SVG + '\nsummary: ' + DUMP.replace(/\.json$/, '') + '-summary.json');
-  console.log('game time ' + fmt(A.END) + ', words met ' + sum.met + '/' + sum.words + ', problems: ' + Object.entries(A.P).map(([k, v]) => k + '=' + (Array.isArray(v) ? v.length : v)).join(' '));
+  console.log('game time ' + fmt(A.END) + ', ' + A.sessions.length + ' sessions, words met ' + sum.met + '/' + sum.words + ', problems: ' + Object.entries(A.P).map(([k, v]) => k + '=' + (Array.isArray(v) ? v.length : v)).join(' '));
+  console.log('\nMeasured targets (docs/LEARNING_DESIGN.md):');
+  for (const t of A.T) console.log('  ' + (t.ok ? 'PASS' : 'FAIL') + '  ' + t.name + ': ' + t.now + '  (target ' + t.target + ')');
+  const bad = A.T.filter(t => !t.ok).length;
+  console.log(bad ? bad + ' of ' + A.T.length + ' targets fail' : 'all targets pass');
+  if (STRICT && bad) process.exit(1);
 })().catch(e => { console.log('FAIL: ' + (e.stack || e.message)); process.exit(1); });

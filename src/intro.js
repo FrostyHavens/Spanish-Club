@@ -128,9 +128,8 @@
     const prompt = o.prompt || '¡[' + id + ']!';
     if (!known.length) { yield sayAs(o.who, [TT(prompt, o.en || 'Listen!')]); I.meet(id, o.how || 'listen', { who: o.who }); yield 40; return true; }
     const q = ask(id, Object.assign({ how: 'listen', answer: right, ask: prompt, askEn: o.en || 'Listen! Which one?' }, o), [{ word: right, look: 'pic' }].concat(known.map(k => ({ word: k, look: 'pic' }))), { mask: [id] });
-    if (right !== id) q.learn = [id]; // the sound is the new word; its animal (the right picture) is credited
-    yield* G.ask(q);
-    if (right !== id && !Wd().met(id)) I.meet(id, 'listen', { who: o.who });
+    yield* G.ask(q); // (when the sound is the new word, its animal, the right picture, is what's credited)
+    if (right !== id && !Wd().met(id)) { I.meet(id, o.how || 'listen', { who: o.who }); yield 40; }
     return true;
   };
 
@@ -157,7 +156,7 @@
     const s = finds()[m.id];
     if (!m.right) { // not that one: it says what it is (if it has a word), and a gentle "¿...?"
       if (G.vocabLog) G.vlog('find-wrong', m.id);
-      if (!(G.world && G.world.nameTile(f, x, y, { noMic: true }))) G.audio.sfx('boop');
+      if (!(G.world && G.world.nameTile(f, x, y, { noMic: true, noIntro: true }))) G.audio.sfx('boop');
       const [sx, sy] = [x * G.TILE + 12 - Math.round(f.cam.x), y * G.TILE - Math.round(f.cam.y)];
       G.fx.say('¿...?', sx, sy - 14, '#ffd8a8'); yield 30; return;
     }

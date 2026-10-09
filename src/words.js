@@ -12,7 +12,8 @@
 // log's pace adds to it). A session is a page load / continue, a new game, or a new morning (day.js); a day is a new
 // calendar date or a new morning, whichever comes first (G.state.wm: {clock, sess, day, date}). G.today() and
 // G.debug.dayShift (whole days added to the real date) let tests and the audit play on later days.
-// Saved per word (G.state.words[id]): {st, box, due (play s) | dd (day) + dc (calendar day number), fu, met (play s),
+// Saved per word (G.state.words[id]): {st, box, due (play s; and ds, the session: due anyway in a later one) | dd (day) +
+// dc (calendar day number), fu, met (play s),
 // ms (session met), md (day met), how, last, n (encounters), right, wrong, said, cue (cued right answers), ret (active
 // retrievals), ft {date: uncued first-try rights}, star (date of the last star), s3 (day it reached stage 3), gold
 // (its "¡Palabra de oro!" was shown), learned (= st >= 3, for older readers)}.
@@ -43,7 +44,6 @@
   W.FOLLOW = [90, 360];               // just met: asked again after 1.5 min, then 6 min (play seconds)
   W.MISS = 90;                        // a miss: due again after 1.5 min
   W.BOX_DAYS = [0, 0, 1, 2, 4, 8];    // box -> days until due (box 1: the same session)
-  W.BOX1 = 300;                       // box 1 after its follow-ups: due again in 5 minutes of play
 
   // ---------- calendar ----------
   G.debug = G.debug || {};
@@ -111,7 +111,7 @@
   }
   // when it's due next: in play seconds (sec) or in days (box 2+)
   function schedule(r, sec, days) {
-    if (sec != null) { r.due = W.now() + sec; r.dd = null; r.dc = null; }
+    if (sec != null) { r.due = W.now() + sec; r.ds = wm().sess; r.dd = null; r.dc = null; } // (and due anyway next session)
     else { r.due = null; r.dd = wm().day + days; r.dc = dayNum() + days; }
   }
 
@@ -155,7 +155,7 @@
       }
       // the box, only when it was due (asked again too soon, it stays where it is): a just-met word's follow-ups
       // first, then up a box
-      const ready = r.due != null ? W.now() >= r.due - 30 : W.due(id);
+      const ready = r.due != null ? W.now() >= r.due - 30 || W.due(id) : W.due(id);
       if (!ready) { /* massed: no change */ }
       else if (r.fu === 1) { r.fu = 2; schedule(r, W.FOLLOW[1]); }
       else if (r.fu === 2) { r.fu = 0; r.box = 2; schedule(r, null, W.BOX_DAYS[2]); }
@@ -177,7 +177,7 @@
   // ---------- due ----------
   W.due = function (id) {
     const r = W.rec(id); if (!r || r.st < 1) return false;
-    if (r.due != null) return W.now() >= r.due;
+    if (r.due != null) return W.now() >= r.due || (r.ds != null && wm().sess > r.ds);
     if (r.dd != null) return wm().day >= r.dd || (r.dc != null && dayNum() >= r.dc);
     return true;
   };

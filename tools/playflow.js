@@ -9,6 +9,7 @@
 //   await settle(g, what)               play scenes (dialogue, questions, cards, the Hoy card, the night, Canelo's
 //                                       menu) until the map is free again
 //   await nextTap(g)                    where to tap next on the map, or null
+//   await toward(g, x, y)               a screen point that walks toward tile x, y (the tile, or the nearest visible one)
 // g.hooks.scene(name) (optional) is told about each TodayCard / Night scene settle passes.
 'use strict';
 const { check } = require('./harness');
@@ -22,6 +23,7 @@ async function nextTap(g) {
     let tgt = null, why = '';
     const take = (x, y, w, kind) => { const d = Math.abs(x - p.x) + Math.abs(y - p.y); if (!tgt || d < tgt.d) { tgt = { x, y, d, kind }; why = w; } };
     for (const n of f.npcs) if (n.spec && !n.hidden && alerting(n)) take(n.x, n.y, 'npc ' + n.id, 'npc');
+    for (const t of G.intro.targets(f)) take(Math.floor(t.x / T), Math.floor(t.y / T), 'find ' + t.find, 'search'); // a find-it puzzle (intro.js)
     for (const t of G.errands.targets(f)) { // errand places, animals to count or find, the cat, Canelo to practise a trick
       const kind = t.npc ? 'npc' : t.animal || t.cat ? 'animal' : 'search';
       const tx = Math.floor(t.x / T), ty = Math.floor(t.y / T), d = Math.abs(tx - p.x) + Math.abs(ty - p.y);
@@ -48,6 +50,23 @@ async function nextTap(g) {
     }
     return best && { sx: best.sx, sy: best.sy, why: why + ' (toward)', tile: [tgt.x, tgt.y], kind: tgt.kind, direct: false };
   });
+}
+
+// page-side: a screen point to tap to get to tile x, y on this map: the tile itself when it's on screen, else the visible
+// plain tile nearest it (or null)
+async function toward(g, x, y) {
+  return g.ev(([x, y]) => {
+    const f = G.field, p = f.player, T = G.TILE, cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
+    if (x * T >= cx && (x + 1) * T <= cx + G.W && y * T >= cy + 32 && (y + 1) * T <= cy + G.H) return { sx: x * T + 12 - cx, sy: y * T + 12 - cy, direct: true };
+    let best = null;
+    for (let ty = Math.ceil((cy + 32) / T); (ty + 1) * T <= cy + G.H; ty++) for (let tx = Math.ceil(cx / T); (tx + 1) * T <= cx + G.W; tx++) {
+      const t = f.tapTarget({ x: tx * T + 12 - cx, y: ty * T + 12 - cy });
+      if (t.npc || t.search || t.exit || f.blocked(tx, ty, p)) continue;
+      const d = Math.abs(tx - x) + Math.abs(ty - y);
+      if (!best || d < best.d) best = { d, sx: tx * T + 12 - cx, sy: ty * T + 12 - cy, direct: false };
+    }
+    return best;
+  }, [x, y]);
 }
 
 // play scenes until the map is free, also handling the scenes Game.drive doesn't know (the Hoy card)
@@ -117,4 +136,4 @@ async function playToEnd(g, o = {}) {
   await settle(g, 'the end');
 }
 
-module.exports = { nextTap, settle, newGame, playToEnd };
+module.exports = { nextTap, settle, newGame, playToEnd, toward };

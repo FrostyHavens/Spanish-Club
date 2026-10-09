@@ -13,26 +13,60 @@
 ## Writing dialogue
 Write dialogue as `T('Spanish', 'English')`. The English only shows with the parents' option on, so the Spanish has to work alone:
 - Keep it to a few words. Let pictures and actions carry the meaning.
-- Mark vocabulary words with `[id]`, or `[id:shown form]` for a plural or other form: `'[tres] [manzana:manzanas], ¿[porfavor]?'`. An unlearned word draws its picture beside it in blue; a learned word is gold.
+- Mark vocabulary words with `[id]`, or `[id:shown form]` for a plural or other form: `'[tres] [manzana:manzanas], ¿[porfavor]?'`. How it's drawn follows the word model (`src/words.js`): a word the child hasn't **met** is only its picture (the voice still says it), a met word is its picture plus the blue word, a known word just the blue word, a remembered one the gold word. Appearing in a line (or on a card, in the bag, on a banner) never meets a word: only an introduction does (below).
 - Plain words (grammar, names) are fine. They're understood from context.
 - Write `{name}` for the player's name and `{boy form/girl form}` for words that change with the character's gender: `'¡Bienvenid{o/a}, {name}!'`, `'Eres un{/a} gran carter{o/a}.'` These work in dialogue, questions and the English text.
 
-## Teaching = asking
-A word is learned by **using** it, never by being told. Inside a talk script (a generator in `src/maps.js`):
+## The word model (`src/words.js`, `docs/LEARNING_DESIGN.md`)
+Each word has a stage: 0 unmet, 1 met, 2 known (picked right without a cue), 3 remembered (recalled from a picture or a sound with word-only cards, matched on a page puzzle, or said: gold), 4 solid (remembered again on a later day). Behind it a Leitner box decides when it comes back: a just-met word after 1.5 and 6 minutes of play, then the next day, +2, +4, +8 days; a miss brings it back in 1.5 minutes. Stars: one per word per day, for a first try.
+```js
+G.words.stage(id)      // 0..4      G.st.seen(id) = met, G.st.knows(id) = gold (remembered+)
+G.words.due(id)        // it should come back now
+G.review.due(3, { topic: 'comida', exclude: ['pan'] })  // the words due now, most urgent first
+G.budget.canIntro(2)   // room for 2 new words now? (≤ 5 per 5 min, ≤ 6 a session; { hard: true }: 8)
+```
+
+## Introducing a word (`src/intro.js`)
+A word is met in a little puzzle with **one unknown**, among words the child already knows, and is confirmed at once: it flies into the notebook (the small celebration) and is said again. Inside a talk script:
+```js
+if (!G.budget.canIntro(1)) { yield* say('pepe', T('¡Mañana!', 'Tomorrow!')); return; } // too many new words just now
+yield* G.intro.show('pelota', { who: 'sofia', prompt: '¡Mira! ¡Mi [pelota]!' });   // held up and named, then
+     // "¿Qué es?": the new word written among 2 known words as pictures (known: ['casa', 'hola'] to choose them)
+yield* G.intro.watch('salta', { who: 'sofia', act: function* () { yield* G.pet.trick('salta'); } }); // see it, then do it
+yield* G.intro.listen('cuac', { who: 'nico', answer: 'pato', sound: () => G.audio.sfx('pop') });  // hear it, pick its picture
+yield* G.intro.find('pelota', { who: 'sofia', map: 'villa', at: [12, 15], wrong: [[10, 15], [14, 16]] });
+     // returns at once; the child walks to the right thing and taps it. G.intro.found('pelota'), G.intro.seeking('sofia')
+     // (for her thought bubble: alert: () => G.intro.seeking('sofia') || ...)
+G.intro.meet('pelota', 'my-puzzle');   // your own puzzle: meet it (and the small celebration)
+```
+A question whose answer the child hasn't met also meets it when it's picked (`G.ask`), but use the helpers: they make the one-unknown puzzle for you.
+
+## Asking (`G.ask`)
+A word is learned by **using** it. Inside a talk script (a generator in `src/maps.js` or `src/errands.js`):
 ```js
 yield* G.ask({                                  // repeats until right; returns true if right first try
   prompt: '¿Qué quieres?',
-  ...G.wordChoices('perro', ['perro', 'gato', 'pez'], 3),
+  ...G.wordChoices('perro', ['perro', 'gato', 'pez'], 3),   // distractors: words already met, when there are enough
   layout: 'cards',                              // 'cards' = picture cards, 'list' = menu
-  learn: 'perro', who: 'luna',                  // learned (and celebrated) when answered correctly
+  who: 'luna',
 });
 yield* G.siNo('¿[perro]?', true, { show: 'perro' });   // a sí/no question about a picture
+yield* G.review.ask('perro', { who: 'luna' });         // a review question for a met word, fit for its stage
 ```
-Choice options are `{ word: id }`, drawn as picture plus blue word until learned. Add `text: true` to show only the word (a recall test) or `pic: true` to show only the picture.
+- The **answer** is what the question practises: the word model records it (a retrieval; a miss on a wrong first pick). `learn: [...]` only *meets* the other words listed (no credit). `credit: false` leaves the model alone.
+- The cards follow the answer's stage unless you say otherwise: met -> picture + word cards (if the prompt says the answer, it is heard, not shown: a little speaker); known -> word-only cards under its picture (`show`), or picture cards when the prompt says it; remembered -> its picture and word cards (say it!), or hear it and pick its picture. To force a look: `display: 'both' | 'text' | 'pic'`, or `{ word, text: true }` / `pic: true` / `look: '...'` on a choice; `mask: [ids]` hides words of the prompt (heard only).
+- A right answer that could be found by **matching** (the answer's picture over the question and on its card, or its word written in the prompt and on its card) is *cued*: it counts, but never moves the word on. Write prompts that need the meaning: *¿Qué quieres?*, *¿Qué es?* with the picture and word cards, *¿Dónde está el [perro]?* with picture cards.
+- An unmet word on a card is drawn as its picture only (never its word) unless it's the answer, and stays unmet. Avoid unmet distractors anyway: a word should never be seen first as a wrong answer.
+- A word that reaches stage 3 gets the big *¡Palabra de oro!* card by itself (`G.learnWords(ids)` shows it for gold words that haven't had it; `{ force: true }` makes them gold first, for tests).
 
 **Speaking.** Every `G.ask` question whose answer is a `{ word }` gets the kids' mic button automatically (when the grown-ups' *Speaking (mic)* switch is on and the browser can listen). What the child says is matched against every choice: its `label` if it has one, plus every form in the word's `es` (`'rojo / roja'`, with or without the article). So keep the choices of one question sounding different from each other (*tres* / *dos* is fine; two words that differ by one sound in a short word are not). Add `noMic: true` to a question to leave the mic off, e.g. when the answer is a picture with no word to say. Plain `G.choose` menus (no `answer`) never get a mic.
 
-Use a word in a sentence or on a notebook page first (that marks it *seen*), then ask about it soon after.
+## Rules for new words
+- At most 3-5 new words per errand, about 6 per 15-minute session, never more than 8: check `G.budget.canIntro(n)` and defer when it's false (the errand opens tomorrow, the person says *¡Mañana!*). Fixed phrases (*dame la pata*) count as one word.
+- Every new word arrives as a one-unknown puzzle (`G.intro.*`) and is used for real 1-3 minutes later: `G.review.due()` lists just-met words first, so the next person can ask one (`G.review.ask`).
+- At most one unknown word per line or question; everything else known, a picture, or acted out.
+- Words come back: about 10 meetings, 5+ of them active (picked or said), over several errands and days. Ask `G.review.due()` in greetings, favours, Canelo, the shops.
+- Run `tools/vocab-audit.js` after changing content: its *Measured targets* table must pass (`--strict`).
 
 ## A Round B errand (`src/errands.js`)
 1. Its entry in `D.quests` / `D.questOrder` / `D.badgeOrder` (data.js), a badge in `BADGE_COL` / `BADGE_ICON` (learn.js), and its unlock rule in `UNLOCK`.
@@ -42,7 +76,7 @@ Use a word in a sentence or on a notebook page first (that marks it *seen*), the
 5. `parts(id)` lists its steps for Misiones. Every question is a `q(who, prompt, en, answer, pool)` (picture cards with the mic).
 
 ## A notebook page
-Add it to `D.pages` / `D.pageOrder` in `src/data.js`, then place it with `pages: { 'x,y': 'pageId' }` in a map definition. The tile sparkles until it's found by searching it.
+Add it to `D.pages` / `D.pageOrder` in `src/data.js` (its topic in `D.topics`). A word is written in the notebook the moment it's met, and a topic's page shows once its first word is. To put a **page puzzle** in the world, place the page's sparkle with `pages: { 'x,y': 'pageId' }` in a map definition: it shows once 4 of the page's words are met; solving it (matching 4 pictures to their words) gives a star and counts as a review; it comes back on a later day when 2+ of its words are due again (`G.pages.ready(id)`).
 
 ## A new errand
 1. Add it to `D.quests` and `D.questOrder` in `src/data.js`.
@@ -68,7 +102,7 @@ things: {
   at: { '41,4': 'puerta' },             // one tile; wins over everything
 },
 ```
-`things: {}` just uses the default tiles. The word needs a picture and a page like any word. People, doors, pages and search spots on a tile always win over its word. From code: `G.world.name('flor', worldX, worldY, { cry: '...' })` shows the bubble, speaks, marks it seen and offers the say-it-back mic (one star per word per day).
+`things: {}` just uses the default tiles. The word needs a picture and a page like any word. People, doors, pages and search spots on a tile always win over its word. From code: `G.world.name('flor', worldX, worldY, { cry: '...' })` shows the bubble, speaks, meets the word if it's unmet and the budget allows (else a picture and "?"; `noIntro: true` never meets it) and offers the say-it-back mic for a met word (one star per word per day; a cued use).
 
 ## A new animal (`src/animals.js`)
 1. The word (and a sound word if it has one) in `src/data.js`, with pictures.
@@ -97,5 +131,5 @@ Most play is on an iPad, so every screen works with taps as well as keys:
 - Use Mexican / Latin American Spanish: *presiona* (not *pulsa*), *ustedes* (not *vosotros*), *carro* (not *coche*), *jugo* (not *zumo*), *computadora* (not *ordenador*).
 - Keep sentences short and in the present tense.
 - The player picks boy or girl, so adjectives about the player should use `{o/a}`, never a fixed form.
-- Make every new word appear in a question soon after it's taught.
-- After adding words or an errand, run `tools/vocab-audit.js` and check `docs/VOCAB_AUDIT.md`: every new word should be used (picked or said) soon after it's met and come back in a later errand.
+- Introduce every new word with a puzzle (`G.intro.*`) and ask it again soon after (`G.review`).
+- After adding words or an errand, run `tools/vocab-audit.js --quick --strict` and check `docs/VOCAB_AUDIT.md`: the measured targets should pass; every new word should be used (picked or said) soon after it's met and come back in later errands and days.

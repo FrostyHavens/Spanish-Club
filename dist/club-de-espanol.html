@@ -199,6 +199,7 @@ function step() {
   G.frame++;
   const s = G.top();
   if (G.fx.step) G.fx.step(); // the particle layer (fx.js): sees this frame's tap before a scene can eat it
+  if (G.intro && G.intro.step) G.intro.step(); // a word just met flying into the notebook (intro.js)
   if (s) s.update();
   // fade
   const f = G.fade;
@@ -226,6 +227,7 @@ function draw() {
   if (G.fx.flash > 0) { ctx.globalAlpha = Math.min(1, G.fx.flash / 6); ctx.fillStyle = G.fx.flashColor; ctx.fillRect(0, 0, G.W, G.H); ctx.globalAlpha = 1; }
   if (G.toastT > 0 && G.win) { const w = G.textWidth(G.toastMsg) + 20; ctx.globalAlpha = Math.min(1, G.toastT / 15); G.win(ctx, (G.W - w) / 2, 40, w, 20); G.textC(ctx, G.toastMsg, G.W / 2, 46, '#f8e060'); ctx.globalAlpha = 1; }
   if (G.hint) G.hint.draw(ctx); // the tapping hand, the keyboard strip
+  if (G.intro && G.intro.draw) G.intro.draw(ctx); // a word just met, on its way into the notebook (intro.js)
   if (G.fx.draw) G.fx.draw(ctx); // ripples, bursts, confetti, flying stars (unshaken)
   if (G.fade.a > 0) { ctx.globalAlpha = G.fade.a; ctx.fillStyle = G.fade.color; ctx.fillRect(0, 0, G.W, G.H); ctx.globalAlpha = 1; }
 }
@@ -737,6 +739,7 @@ G.store = {
       case 'micstar': sfxNotes([[79, 0, 0.06], [84, 0.07, 0.06], [88, 0.14, 0.06], [91, 0.21, 0.06], [96, 0.28, 0.34]], 'bell', 0.1); sweep(500, 1600, 0.3, 'sine', 0.05); sfxNotes([[100, 0.3, 0.05], [103, 0.36, 0.2]], 'square', 0.025); break; // said it out loud!
       case 'micland': sfxNotes([[96, 0, 0.04], [100, 0.05, 0.04], [103, 0.1, 0.24]], 'bell', 0.08); break; // a speaking star lands
       case 'huh': sfxNotes([[72, 0, 0.08], [77, 0.1, 0.16]], 'flute', 0.1); break;                 // the mic didn't catch it: "again?"
+      case 'note': noiseHit(0.14, 4200, 0.1, 'bandpass'); sfxNotes([[86, 0.04, 0.06], [91, 0.1, 0.18]], 'bell', 0.07); break; // a word goes in the notebook (paper + a little bell)
       case 'pop': sweep(260, 820, 0.09, 'sine', 0.12); noiseHit(0.06, 3000, 0.08, 'bandpass'); break; // a card springs open
     }
   };
@@ -1220,8 +1223,10 @@ G.store = {
   };
 
   // ---------- Rich text: words grow from pictures ----------
-  // In dialogue, [id] or [id:shown form] marks a vocabulary word. A word the player hasn't learned yet
-  // is drawn as its picture plus the word in blue; once learned, the picture drops away and the word is gold.
+  // In dialogue, [id] or [id:shown form] marks a vocabulary word, drawn by how well the child knows it (words.js):
+  // unmet: only its picture (like Tunic's unreadable text; the voice still says it), met: picture + blue word,
+  // known: the blue word, remembered or solid: the gold word. o.mask (ids) draws those as a little speaker instead:
+  // heard, not read (a listening question, learn.js).
   const TOK = /\[([a-z0-9]+)(?::([^\]]+))?\]/g;
   const COL = { text: '#ffffff', seen: '#a8d8ff', known: '#f8d860' };
   G.baseForm = id => { const w = G.data.words[id]; return w ? w.es.split(' / ')[0].replace(/^(el|la|los|las) /, '') : id; };
@@ -1235,15 +1240,21 @@ G.store = {
     text(s.slice(last));
     return out;
   }
-  const known = id => G.st && G.st.knows(id);
-  const itemW = it => G.textWidth(it.text) + (it.id && !known(it.id) ? 18 : 0);
-  G.richLayout = function (s, maxW) {
+  // how a word token looks now: 'pic' (unmet), 'both' (met), 'text' (known), 'gold' (remembered+), 'mask' (heard only)
+  G.wordLook = function (id, mask) {
+    if (mask && mask.indexOf(id) >= 0) return 'mask';
+    const st = G.st && G.data.words[id] ? G.st.stage(id) : 3;
+    return st >= 3 ? 'gold' : st === 2 ? 'text' : st === 1 ? 'both' : 'pic';
+  };
+  const itemW = it => (!it.id ? G.textWidth(it.text) : it.look === 'pic' ? 16 : it.look === 'mask' ? 14 : G.textWidth(it.text) + (it.look === 'both' ? 18 : 0));
+  const itemChars = it => (!it.id ? it.text.length : it.look === 'pic' || it.look === 'mask' ? 1 : it.text.length + (it.look === 'both' ? 1 : 0));
+  G.richLayout = function (s, maxW, o = {}) {
     const lines = [{ items: [], w: 0 }];
     for (const p of String(s).split('\n')) {
       if (lines[lines.length - 1].items.length) lines.push({ items: [], w: 0 });
       // chunks: runs of items with no space between them wrap together
       const its = items(p), chunks = [];
-      its.forEach(it => { if (it.gap || !chunks.length) chunks.push([it]); else chunks[chunks.length - 1].push(it); });
+      its.forEach(it => { if (it.id) it.look = G.wordLook(it.id, o.mask); if (it.gap || !chunks.length) chunks.push([it]); else chunks[chunks.length - 1].push(it); });
       for (const ch of chunks) {
         const cw = ch.reduce((a, it) => a + itemW(it), 0);
         let L = lines[lines.length - 1];
@@ -1252,9 +1263,15 @@ G.store = {
         ch.forEach((it, k) => { it.sp = k === 0 && L.items.length ? 4 : 0; L.items.push(it); L.w += it.sp + itemW(it); });
       }
     }
-    lines.forEach(L => { L.chars = L.items.reduce((a, it) => a + it.text.length + (it.id ? 1 : 0), 0); });
+    lines.forEach(L => { L.chars = L.items.reduce((a, it) => a + itemChars(it), 0); });
     return lines;
   };
+  // a small speaker (a word to listen to), 12 x 9
+  function earGlyph(ctx, x, y) {
+    ctx.fillStyle = '#a8e8ff';
+    ctx.fillRect(x, y + 3, 3, 4); ctx.fillRect(x + 3, y + 2, 1, 6); ctx.fillRect(x + 4, y + 1, 1, 8); ctx.fillRect(x + 5, y, 1, 10);
+    ctx.fillRect(x + 7, y + 3, 1, 4); ctx.fillRect(x + 9, y + 1, 1, 2); ctx.fillRect(x + 10, y + 3, 1, 4); ctx.fillRect(x + 9, y + 7, 1, 2);
+  }
   // draw lines[from..from+n) ; chars limits the typewriter reveal; returns nothing
   G.richDraw = function (ctx, lines, x, y, o = {}) {
     const lh = o.lineH || 16, from = o.from || 0, n = o.n || lines.length;
@@ -1265,9 +1282,11 @@ G.store = {
         if (chars <= 0) return;
         cx += it.sp;
         if (it.id) {
-          const k = known(it.id);
-          if (!k) { G.drawIcon16(ctx, G.data.words[it.id] || it.id, cx, cy); cx += 18; chars--; }
-          const t = it.text.slice(0, Math.max(0, chars)); G.text(ctx, t, cx, cy + 5, k ? COL.known : COL.seen);
+          const lk = it.look || 'gold';
+          if (lk === 'mask') { earGlyph(ctx, cx + 1, cy + 3); cx += 14; chars--; continue; }
+          if (lk === 'pic' || lk === 'both') { G.drawIcon16(ctx, G.data.words[it.id] || it.id, cx, cy); cx += lk === 'pic' ? 16 : 18; chars--; }
+          if (lk === 'pic') continue;
+          const t = it.text.slice(0, Math.max(0, chars)); G.text(ctx, t, cx, cy + 5, lk === 'gold' ? COL.known : COL.seen);
         } else G.text(ctx, it.text.slice(0, Math.max(0, chars)), cx, cy + 5, o.color || COL.text);
         chars -= it.text.length; cx += G.textWidth(it.text);
       }
@@ -1275,7 +1294,7 @@ G.store = {
   };
 
   // ---------- Dialogue ----------
-  // G.say(pages, {name, portrait, pos:'bottom'|'top', auto, silent, noVoice}) -> Wait
+  // G.say(pages, {name, portrait, pos:'bottom'|'top', auto, silent, noVoice, show: word id or picture held up}) -> Wait
   // A page is a string or {t: 'Spanish text with [words]', en: 'English (parents option)'}.
   class TextBox {
     constructor(pages, opts, w) {
@@ -1288,7 +1307,7 @@ G.store = {
       this.boxX = hasP ? 70 : 8; this.boxW = G.W - this.boxX - 8;
       const t = this.pages[this.pi].t;
       if (G.vocabLog) G.vlog('shown', G.richIds(t), { via: 'dialogue', who: this.opts.who || null }); // (the dev-only log, vocablog.js)
-      G.richIds(t).forEach(id => G.st && G.st.see(id));
+      G.richIds(t).forEach(id => G.st && G.st.see(id)); // (a met word met again; an unmet one stays unmet)
       this.lines = G.richLayout(t, this.boxW - 18 - (this.opts.noVoice ? 0 : 24)); // room for the speaker button
       this.shown = 0; this.scroll = 0; this.t = 0;
       this.spoke = !!this.opts.noVoice;
@@ -1332,6 +1351,12 @@ G.store = {
           G.win(ctx, 6, hy, 60, 12, { fill1: pl ? '#ffe0ec' : '#fff4f8', fill2: '#f8d8e4', alpha: 1 });
           G.hearts.row(ctx, who, 16, hy + 3);
         }
+      }
+      if (this.opts.show) { // something held up to look at (G.intro.show): a framed picture over the box, bobbing
+        const bob = Math.round(Math.sin(this.t / 9) * 2), px = this.boxX + this.boxW / 2 - 26, py = (top ? y + h + 8 : y - 66) + bob;
+        G.win(ctx, px, py, 52, 52, { fill1: '#fff8e8', fill2: '#f0e4c8', alpha: 1 });
+        G.drawIcon16(ctx, this.opts.show, px + 2, py + 2, 3);
+        if (this.t % 40 === 0 && G.fx.twinkle) G.fx.twinkle(px + 46, py + 6);
       }
       G.win(ctx, this.boxX, y, this.boxW, h);
       const name = this.opts.name;
@@ -6702,10 +6727,12 @@ G.store = {
     return {
       flags: {}, searched: {}, playTime: 0,
       loc: { map: 'casa', x: 4, y: 4, dir: 'down' },
-      // words: id -> {learned, right: first-try correct answers, wrong, said: times said out loud (mic.js; older
-      // saves don't have it)}. Present = seen at least once.
+      // words: id -> the word model's record (words.js: stage, Leitner box, due, counts). Older saves held
+      // {learned, right, wrong, said} (present = seen); words.js migrates those when it first reads them.
       words: {},
-      pages: {},          // notebook pages found: id -> true
+      wm: { clock: 0, sess: 0, day: 0, date: '' }, // words.js: play-time clock, session and day counters
+      finds: {},          // intro.js: find-it puzzles going on: word id -> {who, map, at, wrong, found}
+      pages: {},          // notebook page puzzles solved (intro.js): id -> {d: the day it was solved} (older saves: true)
       quests: {},         // id -> 'active' | 'done'
       stars: 0,
       opts: { english: false },
@@ -6733,29 +6760,29 @@ G.store = {
   S.playerName = () => (G.state && G.state.name) || D().player.name;
   S.isGirl = () => !!(G.state && G.state.look && G.state.look.gender === 'nina');
 
-  // ---------- Words: unseen -> seen (met in a sentence or on a page) -> learned (used correctly) ----------
-  const rec = id => G.state.words[id] || (G.state.words[id] = { learned: false, right: 0, wrong: 0 });
-  // (G.vocabLog: the dev-only vocabulary log, src/vocablog.js; off and never saved unless a test turns it on)
-  S.see = id => { if (D().words[id] && !G.state.words[id]) { rec(id); S.autosave(); if (G.vocabLog) G.vlog('seen-first', id); } };
-  S.seen = id => !!G.state.words[id];
-  S.knows = id => !!(G.state.words[id] && G.state.words[id].learned);
-  S.learn = function (id) { const w = rec(id); if (w.learned) return false; w.learned = true; S.autosave(); if (G.vocabLog) G.vlog('learned', id); return true; };
-  S.practiced = function (id, firstTry) {
-    const w = rec(id);
-    if (firstTry) { w.right++; G.state.stars++; } else w.wrong++;
-    S.autosave();
-  };
+  // ---------- Words: the older helpers, now thin wrappers over the word model (words.js) ----------
+  // seen = met (stage 1+), knows = gold (stage 3+, "remembered"), learned count = known (stage 2+). Appearing in a
+  // sentence, on a card or in the bag no longer makes a word seen: see() only counts a meeting of a word already met.
+  const WM = () => G.words;
+  S.see = id => WM().encounter(id, 'seen');
+  S.seen = id => WM().met(id);
+  S.knows = id => WM().stage(id) >= 3;
+  S.stage = id => WM().stage(id);
+  // (tests and tools) make a word gold at once; true if it wasn't
+  S.learn = function (id) { const r = WM().rec(id, true); if (!r || r.st >= 3) return false; if (r.st < 1) WM().meet(id, 'learn'); r.st = 3; r.learned = true; r.s3 = WM().day(); S.autosave(); if (G.vocabLog) G.vlog('learned', id); return true; };
+  S.practiced = (id, firstTry) => (firstTry ? WM().answerRight(id, { firstTry: true }) : WM().answerWrong(id));
   // said out loud with the mic (mic.js): a bonus star, counted in stars; S.micStars() is the speaking stars so far
-  S.said = function (id) { const w = rec(id); w.said = (w.said | 0) + 1; G.state.stars++; S.autosave(); if (G.vocabLog) G.vlog('said', id, { via: G.top() && G.top().constructor.name }); };
+  S.said = function (id) { const w = WM().rec(id, true); if (!w) return; w.said = (w.said | 0) + 1; WM().encounter(id); G.state.stars++; S.autosave(); if (G.vocabLog) G.vlog('said', id, { via: G.top() && G.top().constructor.name }); };
   S.saidCount = id => (G.state.words[id] && G.state.words[id].said) | 0;
   S.micStars = (s = G.state) => Object.keys(s.words).reduce((n, id) => n + ((s.words[id] && s.words[id].said) | 0), 0);
-  // 0..3 stars per word, from first-try answers
-  S.wordStars = id => { const w = G.state.words[id]; return w ? Math.min(3, w.right) : 0; };
-  S.learnedCount = () => Object.keys(G.state.words).filter(S.knows).length;
+  // 0..3 stars per word: its stage (known 1, remembered 2, solid 3)
+  S.wordStars = id => WM().stars(id);
+  S.learnedCount = () => WM().count(2);
 
-  // ---------- Notebook pages ----------
-  S.findPage = id => { const fresh = !G.state.pages[id]; G.state.pages[id] = true; if (fresh && G.vocabLog) G.vlog('page', D().pages[id].words, { page: id }); (D().pages[id].words || []).forEach(S.see); S.autosave(); return fresh; };
-  S.hasPage = id => !!G.state.pages[id];
+  // ---------- Notebook page puzzles (intro.js) ----------
+  S.solvePage = id => { G.state.pages[id] = { d: WM().day() }; S.autosave(); };
+  S.hasPage = id => !!G.state.pages[id]; // its puzzle was solved (a page is no longer handed out)
+  S.findPage = S.solvePage; // (the old name)
 
   // ---------- Errands ----------
   S.quest = id => G.state.quests[id];
@@ -6793,7 +6820,7 @@ G.store = {
   S.summary = function (n) {
     const s = S.read(n); if (!s) return null;
     return { slot: n, name: s.name || D().player.name, look: s.look, stars: s.stars | 0, savedAt: s.savedAt || 0,
-      words: Object.keys(s.words).filter(id => s.words[id] && s.words[id].learned).length };
+      words: Object.keys(s.words).filter(id => { const r = s.words[id]; return r && (r.st == null || r.st >= 1); }).length }; // words in the notebook (met; an older save's seen words count)
   };
   S.anySave = () => [1, 2, 3].some(n => S.read(n));
   S.hasSave = S.anySave; S.save = () => S.saveNow(); // the old names (there is no manual saving any more)
@@ -6802,10 +6829,11 @@ G.store = {
     const s = S.read(n); if (!s) return false;
     clearTimeout(timer); timer = 0;
     G.state = devicePrefs(s); S.slot = n; bound = s;
+    if (G.words) G.words.newSession('load'); // a new session (and a new day on a new date)
     return true;
   };
   // a new game (G.state, after the creator) takes slot n from now on, saved right away
-  S.begin = function (n) { S.slot = n; bound = G.state; return S.saveNow(); };
+  S.begin = function (n) { S.slot = n; bound = G.state; if (G.words && !G.state.wm.sess) G.words.newSession('new'); return S.saveNow(); };
   // leaving the game (back to the title): save, then stop saving
   S.close = function () { S.saveNow(); S.slot = null; bound = null; };
   S.erase = function (n) { G.store.del(S.slotKey(n)); if (S.slot === n) { S.slot = null; bound = null; } };
@@ -6859,6 +6887,236 @@ G.store = {
 })();
 
 </script>
+<script>/* src/words.js */
+// ===== The word model: how strong each word is, when it comes back, and how many new words arrive at once =====
+// docs/LEARNING_DESIGN.md. Each word has a stage the child can see and a Leitner box behind it:
+//   stage 0 unmet       never introduced: in speech it is only its picture (ui.js), it is never "seen" by appearing
+//   stage 1 met         its introduction puzzle (G.intro, learn.js / intro.js): picture + blue word, in the notebook
+//   stage 2 known       picked right without a cue: blue word (no picture in speech), 1 star in the notebook
+//   stage 3 remembered  recalled from a picture or sound with word-only cards, matched on a page puzzle, or said: gold, 2 stars
+//   stage 4 solid       remembered again on a later day (3 uncued first-try answers over 2+ days, after reaching 3): 3 stars
+// Box 1-5 (0 = not met): right uncued first try -> up a box, due later: box 1 the same session (minutes), 2 the next day,
+// 3 +2 days, 4 +4, 5 +8 days; a miss -> down a box (not below 1), due again in ~1.5 minutes. A just-met word gets two
+// follow-ups first (fu 1 -> due at +1.5 min, fu 2 -> +6 min), and the review engine asks those before anything else.
+// Clocks: G.words.now() is play time in seconds (G.state.wm.clock, saved; day.js ticks it while a game is on, the dev
+// log's pace adds to it). A session is a page load / continue, a new game, or a new morning (day.js); a day is a new
+// calendar date or a new morning, whichever comes first (G.state.wm: {clock, sess, day, date}). G.today() and
+// G.debug.dayShift (whole days added to the real date) let tests and the audit play on later days.
+// Saved per word (G.state.words[id]): {st, box, due (play s; and ds, the session: due anyway in a later one) | dd (day) +
+// dc (calendar day number), fu, met (play s),
+// ms (session met), md (day met), how, last, n (encounters), right, wrong, said, cue (cued right answers), ret (active
+// retrievals), ft {date: uncued first-try rights}, star (date of the last star), s3 (day it reached stage 3), gold
+// (its "¡Palabra de oro!" was shown), learned (= st >= 3, for older readers)}.
+//
+// API (G.words, short W below):
+//   W.stage(id) 0..4   W.met(id)   W.rec(id) the record (made and migrated on demand; null for a word not in D.words)
+//   W.meet(id, how, o) stage 0 -> 1 (how: 'show' 'find' 'watch' 'listen' 'answer' 'co' 'tap' ...; o.who), schedules the
+//                      follow-ups; true if it was new. (G.intro.* call it and add the small celebration.)
+//   W.answerRight(id, {cued, said, firstTry = true, mode: 'both'|'text'|'pic'|'match'|'say', review}) -> {stage, up,
+//                      star, gold}: an active retrieval. Uncued first tries move the box and the stage; a star at most
+//                      once per word per day (first tries only)
+//   W.answerWrong(id)  a miss: down a box, due again soon
+//   W.encounter(id, how) a passive meeting of a met word (heard, named, in the bag...): only `last` and `n`
+//   W.due(id)  W.overdue(id) (how late, for sorting)  W.strength(id) 0..1  W.stars(id) 0..3 (the notebook's)
+//   W.isOld(id) met in an earlier session or 5+ minutes ago (a prompt for it is a review)
+//   W.list(minStage) ids at that stage or more   W.count(minStage)
+//   W.newSession(reason) ('load', 'new', 'night')   W.step() every frame (the clock, a new calendar date)
+// G.review: due(n, {topic, filter, exclude, minStage, maxStage}) the words due now, just-met follow-ups first, then
+//   missed ones, then by box and lateness; next(o) the first of them; ask(id, o) a question for that word fit for its
+//   stage (yieldable; see intro.js). G.budget: recent(sec) words met in the last sec play-seconds (300), session() words
+//   met this session, pending() words waiting for their follow-ups, canIntro(n, {hard}) (<= 5 per 5 min, <= 6 per
+//   session, 8 with hard), left(o).
+'use strict';
+(function () {
+  const D = () => G.data;
+  const W = G.words = {};
+  W.STAGES = ['unmet', 'met', 'known', 'remembered', 'solid'];
+  W.FOLLOW = [90, 360];               // just met: asked again after 1.5 min, then 6 min (play seconds)
+  W.MISS = 90;                        // a miss: due again after 1.5 min
+  W.BOX_DAYS = [0, 0, 1, 2, 4, 8];    // box -> days until due (box 1: the same session)
+
+  // ---------- calendar ----------
+  G.debug = G.debug || {};
+  G.now = () => Date.now() + (G.debug.dayShift || 0) * 864e5;
+  G.today = () => { const d = new Date(G.now()); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
+  const dayNum = () => { const d = new Date(G.now()); return Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5); };
+  W.dayNum = dayNum;
+
+  // ---------- session, day and clock (G.state.wm) ----------
+  const wm = () => {
+    const s = G.state; if (!s) return { clock: 0, sess: 0, day: 0, date: '' };
+    if (!s.wm || typeof s.wm !== 'object') s.wm = { clock: 0, sess: 0, day: 0, date: '' };
+    return s.wm;
+  };
+  W.wm = wm;
+  W.now = () => wm().clock;
+  W.sess = () => wm().sess;
+  W.day = () => wm().day;
+  W.newSession = function (reason) {
+    const m = wm();
+    m.sess = (m.sess | 0) + 1;
+    if (reason === 'night' || !m.day || m.date !== G.today()) m.day = (m.day | 0) + 1;
+    m.date = G.today(); m.sessAt = m.clock;
+    if (G.vocabLog) G.vlog.ev({ ty: 'session', sess: m.sess, day: m.day, date: m.date, why: reason || '' });
+  };
+  let dateT = 0;
+  W.step = function () { // day.js, every frame a game is on
+    if (!G.state) return;
+    const m = wm(); m.clock += 1 / 60;
+    if (++dateT >= 600) { dateT = 0; if (m.date && m.date !== G.today()) { m.day++; m.date = G.today(); } } // played past midnight
+  };
+  W.addTime = sec => { if (G.state && sec > 0) wm().clock += sec; };
+
+  // ---------- records ----------
+  const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+  // an old record (before stages: {learned, right, wrong, said}; present = seen) becomes: learned -> stage 2, or 3 when
+  // it was answered right twice or said; seen -> met. Either way it's due now.
+  function migrate(r) {
+    const st = r.learned ? ((r.right | 0) >= 2 || (r.said | 0) >= 1 ? 3 : 2) : 1;
+    Object.assign(r, { st, box: st >= 3 ? 2 : 1, due: null, dd: wm().day, dc: null, fu: 0, met: 0, ms: 0, md: 0, how: 'old', last: 0, n: 1,
+      right: r.right | 0, wrong: r.wrong | 0, said: r.said | 0, cue: 0, ret: (r.right | 0) + (r.said | 0), ft: {}, star: '', s3: st >= 3 ? 0 : null, gold: st >= 3, learned: st >= 3 });
+    return r;
+  }
+  W.migrate = migrate;
+  W.rec = function (id, make) {
+    if (!G.state || !D().words[id]) return null;
+    const ws = G.state.words; let r = ws[id];
+    if (r && (!isObj(r) || r.st == null)) r = ws[id] = migrate(isObj(r) ? r : {});
+    if (!r && make) r = ws[id] = { st: 0, box: 0, due: null, dd: null, dc: null, fu: 0, met: null, ms: 0, md: 0, how: null, last: null, n: 0, right: 0, wrong: 0, said: 0, cue: 0, ret: 0, ft: {}, star: '', s3: null, gold: false, learned: false };
+    return r || null;
+  };
+  const save = () => { if (G.st && G.st.autosave) G.st.autosave(); };
+  const log = (ty, id, o) => { if (G.vocabLog) G.vlog(ty, id, o); };
+  W.stage = id => { const r = W.rec(id); return r ? r.st | 0 : 0; };
+  W.met = id => W.stage(id) >= 1;
+  W.list = (min = 1) => Object.keys(D().words).filter(id => W.stage(id) >= min);
+  W.count = (min = 1) => W.list(min).length;
+  W.stars = id => Math.max(0, Math.min(3, W.stage(id) - 1));
+  function setStage(r, id, st) {
+    if (st <= r.st) return false;
+    r.st = st; r.learned = st >= 3;
+    if (st === 3 && r.s3 == null) r.s3 = wm().day;
+    log('stage', id, { st });
+    return true;
+  }
+  // when it's due next: in play seconds (sec) or in days (box 2+)
+  function schedule(r, sec, days) {
+    if (sec != null) { r.due = W.now() + sec; r.ds = wm().sess; r.dd = null; r.dc = null; } // (and due anyway next session)
+    else { r.due = null; r.dd = wm().day + days; r.dc = dayNum() + days; }
+  }
+
+  W.meet = function (id, how, o = {}) {
+    const r = W.rec(id, true); if (!r) return false;
+    r.last = W.now(); r.n++;
+    if (r.st >= 1) return false;
+    r.st = 1; r.box = 1; r.fu = 1; r.met = W.now(); r.ms = wm().sess; r.md = wm().day; r.how = how || 'meet';
+    schedule(r, W.FOLLOW[0]);
+    log('meet', id, { how: r.how, who: o.who || null });
+    save();
+    return true;
+  };
+  W.encounter = function (id, how) {
+    const r = W.rec(id); if (!r || r.st < 1) return false;
+    r.last = W.now(); r.n++;
+    return true;
+  };
+
+  // an active retrieval: o {cued, said, firstTry (default true), mode, review}
+  W.answerRight = function (id, o = {}) {
+    const r = W.rec(id, true); if (!r) return { stage: 0, up: false, star: false, gold: false };
+    const first = o.firstTry !== false, mode = o.mode || 'both', day = G.today(), st0 = r.st, cued = !!o.cued || st0 < 1; // (meeting a word by answering is its puzzle, not a retrieval)
+    if (st0 < 1) W.meet(id, o.how || 'answer');
+    r.last = W.now(); r.n++; r.ret++;
+    if (first) r.right++; // (a miss was counted by answerWrong)
+    if (cued) r.cue++;
+    let star = false;
+    if (first && !o.noStar && r.star !== day) { r.star = day; star = true; G.state.stars = (G.state.stars | 0) + 1; }
+    if (first && !cued) {
+      r.ft[day] = (r.ft[day] | 0) + 1;
+      const keys = Object.keys(r.ft); if (keys.length > 12) delete r.ft[keys[0]]; // (only the recent days matter)
+      // the stage: 1 -> 2 by any uncued answer; 2 -> 3 by recall (word-only cards, a page match, saying it outside
+      // picture+word cards); 3 -> 4 on a later day once 3 uncued first tries over 2+ days have come since
+      const recall = mode === 'text' || mode === 'match' || mode === 'say' || (o.said && mode !== 'both');
+      if (r.st === 1) setStage(r, id, 2);
+      else if (r.st === 2 && recall) setStage(r, id, 3);
+      else if (r.st === 3 && r.s3 != null && wm().day > r.s3) {
+        const days = Object.keys(r.ft).filter(k => r.ft[k] > 0), n = days.reduce((a, k) => a + r.ft[k], 0);
+        if (n >= 3 && days.length >= 2) setStage(r, id, 4);
+      }
+      // the box, only when it was due (asked again too soon, it stays where it is): a just-met word's follow-ups
+      // first, then up a box
+      const ready = r.due != null ? W.now() >= r.due - 30 || W.due(id) : W.due(id);
+      if (!ready) { /* massed: no change */ }
+      else if (r.fu === 1) { r.fu = 2; schedule(r, W.FOLLOW[1]); }
+      else if (r.fu === 2) { r.fu = 0; r.box = 2; schedule(r, null, W.BOX_DAYS[2]); }
+      else { r.box = Math.min(5, Math.max(1, r.box) + 1); schedule(r, null, W.BOX_DAYS[r.box]); }
+    }
+    log('retrieval', id, { said: !!o.said || null, cued: cued || null, mode, first: first || null, st0, st: r.st, review: o.review || null, star: star || null });
+    save();
+    return { stage: r.st, up: r.st > st0, star, gold: r.st >= 3 && st0 < 3 };
+  };
+  W.answerWrong = function (id) {
+    const r = W.rec(id, true); if (!r) return;
+    if (r.st < 1) return; // an unmet word can't be missed (it's still a puzzle)
+    r.wrong++; r.last = W.now();
+    r.box = Math.max(1, (r.box | 0) - 1); if (r.fu === 2) r.fu = 1;
+    schedule(r, W.MISS);
+    save();
+  };
+
+  // ---------- due ----------
+  W.due = function (id) {
+    const r = W.rec(id); if (!r || r.st < 1) return false;
+    if (r.due != null) return W.now() >= r.due || (r.ds != null && wm().sess > r.ds);
+    if (r.dd != null) return wm().day >= r.dd || (r.dc != null && dayNum() >= r.dc);
+    return true;
+  };
+  // how late it is (bigger = later), to sort the due words: seconds for box 1, days * 1e5 for the rest
+  W.overdue = function (id) {
+    const r = W.rec(id); if (!r) return 0;
+    if (r.due != null) return W.now() - r.due;
+    if (r.dd != null) return Math.max(wm().day - r.dd, r.dc != null ? dayNum() - r.dc : 0) * 1e5;
+    return 1e6;
+  };
+  W.strength = id => { const r = W.rec(id); return !r || r.st < 1 ? 0 : Math.min(1, (r.st - 1) / 3 * 0.7 + (Math.max(1, r.box) - 1) / 4 * 0.3); };
+  W.isOld = id => { const r = W.rec(id); return !!r && r.st >= 1 && (r.ms < wm().sess || W.now() - (r.met || 0) >= 300); };
+  W.starToday = id => { const r = W.rec(id); return !!r && r.star === G.today(); };
+
+  // ---------- the review engine ----------
+  const R = G.review = {};
+  const asList = v => (v == null ? null : Array.isArray(v) ? v : [v]);
+  R.due = function (n = 1, o = {}) {
+    const topics = asList(o.topic), ex = asList(o.exclude) || [];
+    const ids = Object.keys(D().words).filter(id => {
+      const st = W.stage(id);
+      if (st < Math.max(1, o.minStage || 1) || (o.maxStage != null && st > o.maxStage) || ex.includes(id) || !W.due(id)) return false;
+      if (topics && !topics.includes(D().words[id].topic)) return false;
+      return !o.filter || o.filter(id);
+    });
+    const grp = id => { const r = W.rec(id); return r.fu ? 0 : r.due != null ? 1 : 2; };
+    ids.sort((a, b) => {
+      const ga = grp(a), gb = grp(b); if (ga !== gb) return ga - gb;
+      const ra = W.rec(a), rb = W.rec(b);
+      if (ga === 2 && ra.box !== rb.box) return ra.box - rb.box;
+      return W.overdue(b) - W.overdue(a) || (ra.last || 0) - (rb.last || 0);
+    });
+    return ids.slice(0, n);
+  };
+  R.next = o => R.due(1, o)[0] || null;
+  R.count = o => R.due(1e9, o).length;
+
+  // ---------- the new-word budget ----------
+  const B = G.budget = {};
+  B.LIMITS = { win: 300, per5: 5, session: 6, hard: 8 };
+  const metList = () => Object.keys(G.state ? G.state.words : {}).map(W.rec).filter(r => r && r.st >= 1 && r.how !== 'old');
+  B.recent = (sec = B.LIMITS.win) => metList().filter(r => r.met != null && W.now() - r.met < sec).length;
+  B.session = () => metList().filter(r => r.ms === wm().sess).length;
+  B.pending = () => metList().filter(r => r.fu > 0).length;
+  B.left = (o = {}) => Math.max(0, Math.min(B.LIMITS.per5 - B.recent(), (o.hard ? B.LIMITS.hard : B.LIMITS.session) - B.session()));
+  B.canIntro = (n = 1, o = {}) => B.left(o) >= n;
+})();
+
+</script>
 <script>/* src/vocablog.js */
 // ===== Dev only: the vocabulary-flow log, for tools/vocab-audit.js =====
 // Off unless a test sets G.vocabLog = [] in the page. Every hook in the game is guarded by `if (G.vocabLog)`, so with
@@ -6875,11 +7133,20 @@ G.store = {
 //         'wrong'        picked wrongly (ans: the right word)
 //         'picked'       picked in a free choice with no right answer (a shop, Canelo's menu)
 //         'said'         said out loud and matched (productive; via: the scene it was said in)
-//         'learned'      G.st.learn flipped it to learned
+//         'learned'      G.st.learn made it gold at once (tests, older content)
+//   the word model (words.js, learn.js, intro.js):
+//         'meet'         met: stage 0 -> 1 (how: show / find / watch / listen / answer / co / tap / old)
+//         'prompt'       a question whose answer is this word (kind: intro / new / review, st: its stage then, mode:
+//                        both / text / pic / match, cued: it could be found by matching the prompt; via: page)
+//         'retrieval'    an active use credited to the model (said, cued, mode, first, st0 -> st, review, star)
+//         'stage'        its stage went up (st)
+//         'find-start' / 'find-wrong'  a find-it puzzle began / a wrong thing was tapped
+//   'choice-shown' carries ans (it was the right answer) and 'recognized' carries cued.
 //     w: word id, map, who (who is talking or asking, when known), ep (the episode: see below), g (a greeting) }
 // Cue flags on 'recognized': pic (the answer card showed its picture), show (the question's picture IS the answer),
 // prompt (the answer word is in the prompt text).
-// Other entries (no w): { ty: 'quest', q, st: 'start' | 'done' }, { ty: 'mark', label } (G.vlog.mark, from tests), and
+// Other entries (no w): { ty: 'quest', q, st: 'start' | 'done' }, { ty: 'mark', label } (G.vlog.mark, from tests),
+// { ty: 'session', sess, day, date, why } (words.js: a new session or day), { ty: 'puzzle', page } (a page puzzle), and
 // { ty: 'ep', ep, ch } when an episode ends: an episode runs until the child is free to walk again (state.js
 // fieldTick); ch is what changed in G.state meanwhile ({q: {id: status}, f: [flag keys], s: new searched spots,
 // pg: [pages], pet, jobs, bag, h}), which tells the audit which errand the episode belonged to.
@@ -6909,7 +7176,7 @@ G.store = {
   V.ev = function (o) { const L = G.vocabLog; if (!L) return; sync(L); L.push(Object.assign({ t: now(), ep: V.ep, map: G.field ? G.field.mapId : null }, o)); };
   V.mark = (label, o) => V.ev(Object.assign({ ty: 'mark', label }, o || {}));
   // a test's model of a child's pace: sec more seconds pass (reading, listening, thinking); the day's clock moves too
-  V.pace = function (sec) { const L = G.vocabLog; if (!L || !(sec > 0)) return; sync(L); extra += sec; G.sessionTime += sec; };
+  V.pace = function (sec) { const L = G.vocabLog; if (!L || !(sec > 0)) return; sync(L); extra += sec; G.sessionTime += sec; if (G.words) G.words.addTime(sec); };
   V.time = () => (G.vocabLog ? (sync(G.vocabLog), now()) : 0);
 
   // ---------- what the voice said: [id] tokens, else a line that is only words ("el gato. ¡Miau!") ----------
@@ -6972,18 +7239,19 @@ G.store = {
 
 </script>
 <script>/* src/learn.js */
-// ===== Learning UI: picture questions, learning by doing, new-word celebrations, badges =====
-// Words are never translated. A word starts as a picture next to the Spanish; the player shows they
-// understand it by using it correctly, and only then does it count as learned (and turn gold).
+// ===== Learning UI: picture questions that adapt to how well a word is known, the gold-word card, badges =====
+// Words are never translated. A word starts as a picture in speech; it is met in a little puzzle (intro.js), grows
+// by being used (words.js: met -> known -> remembered -> solid), and turns gold once it is remembered.
 'use strict';
 (function () {
   const D = () => G.data, S = () => G.st;
   const STAR = '\u0005';
 
-  // ---------- "¡Palabra nueva!" card: the reward for using a word correctly ----------
+  // ---------- "¡Palabra de oro!" card: a word just remembered (stage 3, gold) ----------
   // A big moment: the room dims, rays turn, the card springs open (overshooting a little), confetti pops from its
   // corners, the picture bounces and sparkles, and the word is spoken. With the mic on (mic.js), a mic beside the
-  // picture lets the child say the new word for a speaking star (once per word); a tap anywhere else still goes on.
+  // picture lets the child say the word for a speaking star; a tap anywhere else still goes on. (A word just MET gets
+  // the small notebook celebration instead: G.intro.note, intro.js.)
   class WordCard {
     constructor(ids, w, o) {
       G.toastT = 0; this.transparent = true; this.ids = ids; this.i = 0; this.w = w; this.t = 0;
@@ -7031,7 +7299,7 @@ G.store = {
       ctx.globalAlpha = Math.min(1, this.t / 4);
       if (s !== 1) { ctx.translate(cx, cy); ctx.scale(s, s); ctx.translate(-cx, -cy); }
       G.win(ctx, x, y, b.w, b.h);
-      G.textC(ctx, '¡' + STAR + ' Palabra nueva ' + STAR + '!', cx, y + 9, '#f8e060');
+      G.textC(ctx, '¡' + STAR + ' Palabra de oro ' + STAR + '!', cx, y + 9, '#f8e060');
       // the picture hops, squashing a little as it lands, over a shadow that shrinks as it rises
       const ph = this.t > 16 ? ((this.t - 16) % 34) / 34 : 0, hop = Math.round(Math.sin(ph * Math.PI) * 7), sq = this.t > 16 && hop === 0 ? 1 : 0;
       const pw = 48 + sq * 4, pht = 48 - sq * 3, px = cx - pw / 2, py = y + 26 + (48 - pht) - hop;
@@ -7048,47 +7316,61 @@ G.store = {
       if (this.mic && this.t >= 20) this.mic.draw(ctx);
     }
   }
-  // Mark words learned; celebrates the ones that are new. Yieldable. o.noMic: the card has no mic (the word was just
-  // said out loud, world.js's say-it-back)
-  G.learnWords = function (ids, o) {
-    ids = (Array.isArray(ids) ? ids : [ids]).filter(id => D().words[id] && S().learn(id));
+  // The gold card for words that have reached stage 3 and haven't had theirs yet (words.js). Yieldable. o.noMic: the card
+  // has no mic (the word was just said out loud); o.force: make the words gold first (older content, tests).
+  G.learnWords = function (ids, o = {}) {
+    ids = (Array.isArray(ids) ? ids : [ids]).filter(id => {
+      if (!D().words[id]) return false;
+      if (o.force) S().learn(id);
+      const r = G.words.rec(id); if (!r || r.st < 3 || r.gold) return false;
+      r.gold = true; return true;
+    });
     const w = new G.Wait();
     if (!ids.length) { w.resolve(); return w; }
     G.audio.jingle('item');
     G.push(new WordCard(ids, w, o)); return w;
   };
+  G.goldCard = G.learnWords;
 
   // ---------- Choice screen ----------
-  // opts: {prompt (rich text), en, show: picture above, choices, layout: 'cards'|'list'}
-  // A choice is {word: id} (drawn as picture+blue word until learned, then gold word), optionally with
-  // label (shown form), pic: true (picture only), text: true (word only), or a free {label, icon}.
+  // opts: {prompt (rich text), en, show: picture above, choices, layout: 'cards'|'list', display, mask}
+  // A choice is {word: id} or a free {label, icon}. How a word choice looks (opts.display, chosen by G.ask from the
+  // answer's stage): 'both' picture + word, 'text' the word only, 'pic' the picture only; an unmet word is never
+  // written on a card unless it is the answer (its picture only). Without a display (a free choice, a shop): unmet =
+  // picture, met = picture + blue word, gold = the gold word alone. A choice's own pic: true / text: true (or
+  // look: 'both' | 'text' | 'pic') always wins. opts.mask: word ids heard but not shown in the prompt (a speaker).
   // With opts.answer, the right pick pops (a star burst and a chime); the Wait resolves at once and the screen
   // closes itself a moment later. With opts.onWrong too (G.ask), a wrong pick wobbles and greys out in place
   // and the question stays up; opts.onRight(rect, x, y, spoken) hears about the right pick (x, y: just above it).
   // Speaking (mic.js): in a G.ask question whose answer is a word, a mic button sits at the bottom right (unless
   // opts.noMic). What the child says is matched against EVERY choice's spoken form: the right one counts as picking it
   // plus a speaking star; a wrong one is just like tapping it; nothing heard or no match: "¡Otra vez!", no penalty.
-  function view(c) {
+  const GOLD = '#f8d860', BLUE = '#a8d8ff';
+  function view(c, disp, isAns) {
     const W = D().words[c.word];
     if (!W) return { label: c.label, icon: c.icon, col: '#ffffff' };
-    const k = S().knows(c.word), label = c.label || G.baseForm(c.word);
-    if (c.pic) return { label: null, icon: W, col: '#ffffff' };
-    if (c.text) return { label, icon: null, col: k ? '#f8d860' : '#a8d8ff' };
-    return { label, icon: k ? null : W, col: k ? '#f8d860' : '#a8d8ff' };
+    const st = S().stage(c.word), label = c.label || G.baseForm(c.word), col = st >= 3 ? GOLD : BLUE;
+    const d = c.pic ? 'pic' : c.text ? 'text' : c.look || disp;
+    if (d === 'pic') return { label: null, icon: W, col };
+    if (d === 'text') return { label, icon: null, col };
+    if (st < 1 && !isAns) return { label: null, icon: W, col }; // an unmet word: its picture only
+    if (d === 'both') return { label, icon: W, col };
+    return { label, icon: st >= 3 ? null : W, col };
   }
+  G.choiceView = view;
   class Choice {
     constructor(opts, w) {
       opts = Object.assign({}, opts, { prompt: G.fill(opts.prompt), en: G.fill(opts.en), choices: opts.choices.map(c => c.label ? Object.assign(c, { label: G.fill(c.label) }) : c) });
       this.transparent = true; this.o = opts; this.w = w; this.t = 0; this.i = 0; this.won = null; this.miss = null;
-      this.ch = opts.choices; this.cards = opts.layout === 'cards';
+      this.ch = opts.choices; this.cards = opts.layout === 'cards'; this.disp = opts.display || null;
       // (opts.mic: a free choice, no right answer, like the shops in errands.js: saying any choice picks it, with a star)
       const word = (opts.answer != null && opts.onWrong && !opts.noMic && this.ch[opts.answer] && this.ch[opts.answer].word) || (opts.mic && opts.answer == null && this.ch.some(c => c.word));
       this.mic = word && G.mic && G.mic.on() ? new G.MicBtn(this, { rect: () => this.micRect(), ready: () => !this.won && this.t > 8 && (!this.miss || this.miss.t > 8), heard: a => this.heard(a) }) : null;
       while (this.ch[this.i] && this.ch[this.i].off) this.i++;
       if (G.vocabLog) this.vlog(); // (the dev-only log, vocablog.js)
-      G.richIds(opts.prompt || '').forEach(id => S().see(id));
+      G.richIds(opts.prompt || '').forEach(id => S().see(id)); // (met words met again; unmet ones stay unmet)
       this.ch.forEach(c => c.word && S().see(c.word));
-      this.lines = G.richLayout(opts.prompt || '', G.W - 96); // room for the speaker (and back) buttons
+      this.lines = G.richLayout(opts.prompt || '', G.W - 96, { mask: opts.mask }); // room for the speaker (and back) buttons
       if (!opts.noVoice) G.speak(opts.prompt || ''); // (G.speak reads the [id] words as plain text)
     }
     showId() { const sh = this.o.show; return !sh ? null : typeof sh === 'string' ? (D().words[sh] ? sh : null) : Object.keys(D().words).find(id => D().words[id] === sh) || null; } // (a word's picture above the prompt)
@@ -7096,7 +7378,7 @@ G.store = {
       const o = this.o, who = o.who || null, show = this.showId();
       G.vlog('shown', G.richIds(o.prompt || ''), { via: 'question', who });
       if (show) G.vlog('shown', show, { via: 'picture', who });
-      this.ch.forEach(c => c.word && G.vlog('choice-shown', c.word, { who, pic: !!view(c).icon }));
+      this.ch.forEach((c, k) => c.word && G.vlog('choice-shown', c.word, { who, pic: !!this.view(k).icon, ans: k === o.answer || null }));
     }
     // the dev-only log: what was picked (spoken right answers are logged as 'said' by G.st.said)
     vlogPick(k, spoken) {
@@ -7104,7 +7386,17 @@ G.store = {
       if (o.answer == null || (k !== o.answer && !o.onWrong)) { if (!spoken) G.vlog('picked', c.word, { who }); return; }
       if (k !== o.answer) { G.vlog('wrong', c.word, { who, ans: this.ch[o.answer] && this.ch[o.answer].word, spoken: spoken || null }); return; }
       if (spoken) return;
-      G.vlog('recognized', c.word, { who, pic: !!view(c).icon, show: this.showId() === c.word || null, prompt: G.richIds(o.prompt || '').indexOf(c.word) >= 0 || null });
+      const cue = this.cue(k);
+      G.vlog('recognized', c.word, { who, pic: !!this.view(k).icon, show: cue.show || null, prompt: cue.prompt || null, cued: cue.cued || null });
+    }
+    view(k) { return view(this.ch[k], this.disp, k === this.o.answer); }
+    // can choice k be found by matching the prompt? Its picture is the prompt's picture (or a token drawn with its
+    // picture), or its word is written in the prompt -> {cued, show, prompt}
+    cue(k) {
+      const c = this.ch[k], v = this.view(k), id = c.word; if (!id) return {};
+      const its = []; this.lines.forEach(L => L.items.forEach(it => { if (it.id === id) its.push(it.look); }));
+      const pic = this.showId() === id || its.some(l => l === 'pic' || l === 'both'), txt = its.some(l => l === 'both' || l === 'text' || l === 'gold');
+      return { cued: (!!v.icon && pic) || (!!v.label && txt), show: this.showId() === id && !!v.icon, prompt: txt && !!v.label };
     }
     onEnter() { if (this.mic) this.mic.arm(); }
     onExit() { if (this.mic) this.mic.off(); }
@@ -7116,11 +7408,11 @@ G.store = {
     move(d) {
       const n = this.ch.length; let k = this.i;
       for (let s = 0; s < n; s++) { k = (k + d + n) % n; if (!this.ch[k].off) break; }
-      if (k !== this.i) { this.i = k; G.audio.sfx('cursor'); const v = view(this.ch[k]); if (v.label && this.ch[k].word) G.speak(v.label); }
+      if (k !== this.i) { this.i = k; G.audio.sfx('cursor'); const v = this.view(k); if (v.label && this.ch[k].word) G.speak(v.label); }
     }
     // tap areas: one rect per choice (picture cards or list rows), the speaker and the back button (o.cancel)
     rects() {
-      const vs = this.ch.map(view);
+      const vs = this.ch.map((c, k) => this.view(k));
       if (this.cards) {
         const n = this.ch.length, cw = 58, gap = this.mic && n > 3 ? 6 : 12, tw = n * cw + (n - 1) * gap, y0 = G.H - 92;
         const x0 = this.mic ? Math.min((G.W - tw) / 2, G.W - 54 - tw) : (G.W - tw) / 2; // (left of the mic)
@@ -7183,7 +7475,7 @@ G.store = {
       if (o.show) G.drawIcon16(ctx, o.show, G.W / 2 - 24, top + 8, 3, 'card');
       G.richDraw(ctx, this.lines, G.W / 2, top + 5 + (o.show ? 58 : 0), { center: true });
       if (o.en && G.enVisible()) G.enBox(ctx, o.en, top + ph + 1, true);
-      const vs = this.ch.map(view), R = this.rects(), won = this.won, wt = won ? won.t : 0;
+      const vs = this.ch.map((c, k) => this.view(k)), R = this.rects(), won = this.won, wt = won ? won.t : 0;
       const wob = k => { const m = this.miss; return m && m.k === k && m.t < 16 ? Math.round(Math.sin(m.t * 1.7) * 3 * (1 - m.t / 16)) : 0; }; // a wrong pick wobbles
       const grey = k => { const m = this.miss; return m && m.k === k && m.t < 8 ? m.t / 8 : 1; }; // ...and greys out quickly (0..1)
       const back = k => won && won.k !== k ? Math.min(0.6, wt / 10) : 0; // when the right one pops, the rest step back
@@ -7226,41 +7518,79 @@ G.store = {
   G.choose = function (opts) { const w = new G.Wait(); const s = new Choice(opts, w); w.scene = s; G.push(s); return w; };
 
   // ---------- Ask until right ----------
-  // q: {prompt, en, show, choices, answer: index, layout, learn: word ids learned by getting it right, who}
+  // q: {prompt, en, show, choices, answer: index, layout, learn, who, display, mask, intro, review, credit}
   // Wrong picks wobble and grey out with a soft boop (no lecture) while the question stays up, so every
-  // question can be finished. The right pick pops with praise; on the first try a star flies to the corner.
+  // question can be finished. The right pick pops with praise; a first-try answer earns a star (one per word a day).
   // Saying the right answer out loud (the mic, mic.js) answers too, and earns a speaking star on top.
+  // The answer word (when it is a {word}) is what the question practises (words.js): an unmet answer is MET by the
+  // right pick (the small notebook celebration), a met one is an active retrieval, cued when it could be found by
+  // matching the prompt. q.learn lists other words: they are only met (no credit). q.credit: false leaves the model alone.
+  // How the cards look comes from the answer's stage unless q.display or a choice's own text / pic / look says:
+  //   unmet, met     'both' (picture + word); a met answer in the prompt's words is heard, not shown (q.mask)
+  //   known          'text' (the word only: recall from the prompt's picture or the context), or 'pic' when the
+  //                  prompt says the word (read it -> pick the picture)
+  //   remembered+    'text' when the prompt's picture is the answer (say it / pick its word), else 'pic' with the
+  //                  answer heard, not shown (listen -> pick the picture)
   // q.noMic: no mic on this question (say, when saying the answer would only be reading it out).
-  // Returns true if right on the first try (worth a star).
+  // Returns true if right on the first try.
   const PRAISE = ['¡Muy bien!', '¡Excelente!', '¡Perfecto!', '¡Fantástico!', '¡Bravo!'];
+  const showOf = sh => (!sh ? null : typeof sh === 'string' ? (D().words[sh] ? sh : null) : Object.keys(D().words).find(id => D().words[id] === sh) || null);
+  G.askDisplay = function (q) {
+    const a = q.choices[q.answer], aid = a && a.word && D().words[a.word] ? a.word : null;
+    if (!aid || q.display || q.choices.some(c => c.text || c.pic || c.look)) return { aid, display: q.display || null, mask: q.mask || null };
+    const st = S().stage(aid), inPrompt = G.richIds(G.fill(q.prompt || '')).indexOf(aid) >= 0, shown = showOf(q.show) === aid;
+    if (st <= 0) return { aid, display: 'both', mask: q.mask || null };
+    if (st === 1) return { aid, display: 'both', mask: inPrompt ? [aid] : q.mask || null };
+    if (st === 2) return { aid, display: shown ? 'text' : inPrompt ? 'pic' : 'text', mask: q.mask || null };
+    return { aid, display: shown ? 'text' : 'pic', mask: inPrompt ? [aid] : q.mask || null };
+  };
   G.ask = function* (q) {
     const ch = q.choices.map(c => Object.assign({}, c));
-    const ids = q.learn ? (Array.isArray(q.learn) ? q.learn : [q.learn]) : [];
-    let tries = 0;
-    const r = yield G.choose(Object.assign({}, q, {
-      choices: ch,
-      onWrong() { tries++; G.fx.shake = 4; },
-      onRight(rect, x, y, spoken) {
-        G.fx.say(spoken ? '¡Bien dicho!' : PRAISE[G.r(PRAISE.length)], x, y, spoken ? '#a8f0ff' : '#f8e060', true);
-        if (!tries) ids.forEach((id, n) => G.fx.flyStar(rect.x + rect.w / 2, rect.y + rect.h / 2, n * 10)); // a star per word, as practiced() counts them
+    const ad = G.askDisplay(q), aid = q.credit === false ? null : ad.aid;
+    const st0 = aid ? S().stage(aid) : 0, kind = q.intro ? 'intro' : !aid ? null : st0 < 1 ? 'new' : q.review || G.words.isOld(aid) ? 'review' : 'new';
+    const ids = (q.learn ? (Array.isArray(q.learn) ? q.learn : [q.learn]) : []).filter(id => id !== aid && D().words[id]);
+    let tries = 0, spoken = false, scene = null;
+    const wq = G.choose(Object.assign({}, q, {
+      choices: ch, display: ad.display, mask: ad.mask,
+      onWrong() { if (!tries && aid) G.words.answerWrong(aid); tries++; G.fx.shake = 4; },
+      onRight(rect, x, y, sp) {
+        spoken = sp;
+        G.fx.say(sp ? '¡Bien dicho!' : PRAISE[G.r(PRAISE.length)], x, y, sp ? '#a8f0ff' : '#f8e060', true);
+        if (!tries && aid && !G.words.starToday(aid)) G.fx.flyStar(rect.x + rect.w / 2, rect.y + rect.h / 2, 0); // the word's star (one a day)
       },
     }));
+    scene = wq.scene;
+    if (G.vocabLog && aid) { const v = scene.view(q.answer); G.vlog('prompt', aid, { kind, st: st0, mode: v.icon && v.label ? 'both' : v.label ? 'text' : 'pic', cued: scene.cue(q.answer).cued || null, who: q.who || null }); }
+    const r = yield wq;
     if (r.result !== q.answer) return false; // closed without answering (a question with a way out)
     const first = tries === 0;
-    ids.forEach(id => S().practiced(id, first));
+    let res = null;
+    if (aid) {
+      const v = scene.view(q.answer), mode = spoken && !v.label ? 'say' : v.icon && v.label ? 'both' : v.label ? 'text' : 'pic';
+      res = G.words.answerRight(aid, { cued: !!scene.cue(q.answer).cued, said: spoken, firstTry: first, mode, review: kind === 'review', how: q.intro ? q.how || 'show' : 'answer' });
+    }
     yield 10;
-    yield G.learnWords(ids);
+    // a word met just now: its small celebration (it goes in the notebook); co-listed words are only met
+    const met = [];
+    if (aid && st0 < 1) met.push(aid);
+    ids.forEach(id => { if (G.words.meet(id, 'co', { who: q.who })) met.push(id); else G.words.encounter(id); });
+    if (met.length && G.intro) G.intro.note(met);
+    if (res && res.gold) yield G.learnWords([aid]);
     return first;
   };
   // Choices for a word question from a pool of word ids (distractors shuffled in). opts are copied onto each choice.
+  // The distractors are words the child has met when the pool has enough of them; otherwise unmet words of another
+  // topic (shown as their pictures only: clearly different, and they stay unmet), then the rest.
   G.wordChoices = function (answerId, pool, n = 3, opts = {}) {
-    const others = pool.filter(id => id !== answerId).sort(() => G.rand() - 0.5).slice(0, n - 1);
+    const top = D().words[answerId] ? D().words[answerId].topic : null;
+    const rank = id => (S().seen(id) ? 0 : D().words[id] && D().words[id].topic !== top ? 1 : 2);
+    const others = pool.filter((id, i) => id !== answerId && pool.indexOf(id) === i).map(id => ({ id, k: rank(id) + G.rand() * 0.9 })).sort((a, b) => a.k - b.k).slice(0, n - 1).map(o => o.id);
     const ids = others.concat([answerId]).sort(() => G.rand() - 0.5);
     return { choices: ids.map(id => Object.assign({ word: id }, opts, opts.label ? { label: opts.label(id) } : {})), answer: ids.indexOf(answerId) };
   };
   // A sí / no question, shown as two picture cards.
   G.siNo = function* (prompt, yes, extra = {}) {
-    return yield* G.ask(Object.assign({ prompt, layout: 'cards', choices: [{ word: 'si' }, { word: 'no' }], answer: yes ? 0 : 1, learn: yes ? 'si' : 'no' }, extra));
+    return yield* G.ask(Object.assign({ prompt, layout: 'cards', choices: [{ word: 'si' }, { word: 'no' }], answer: yes ? 0 : 1 }, extra));
   };
 
   // ---------- Badge award ----------
@@ -7330,6 +7660,342 @@ G.store = {
     if (who === 'player') return S().playerName();
     return D().npcs[who] ? D().npcs[who].name : null;
   };
+})();
+
+</script>
+<script>/* src/intro.js */
+// ===== Meeting new words (one-unknown puzzles), review questions, and the notebook's page puzzles =====
+// docs/LEARNING_DESIGN.md. A new word arrives as a little puzzle with one unknown, among things the child already knows,
+// and is confirmed right away: it glows, its name is said again and it flies into the notebook (G.intro.note, the small
+// celebration; the big gold card is for remembering, learn.js). Every meeting schedules its first real use (words.js:
+// due again at +1.5 min, then +6 min; G.review asks those first).
+//
+// G.intro (generators unless noted; o.who is who's talking: their portrait and name):
+//   show(id, {who, prompt, en, ask, known: [2 ids], how})   "show and name": the thing is held up and named
+//        ("¡Mira! ¡[id]!", its picture over the box), then "¿Qué es?" with the new word (written, no picture) among
+//        known ones (their pictures): pick the one you don't know yet. Without known words it is just named.
+//   watch(id, {who, prompt, en, act: function* () {...}, ask, known})   "watch and do" (actions, commands): it is said,
+//        act() shows it happen; then "¡Ahora tú!" (the mic is on): pick or say it, and act() happens again for you.
+//   listen(id, {who, prompt, en, sound: () => {...}, answer: id of the right picture (default id), known})   "listen and
+//        point": the word is heard (and sound() plays), the prompt shows a speaker; pick its picture among known ones.
+//   find(id, {who, prompt, en, map, at: [x, y], wrong: [[x, y], ...]})   "find it": someone needs a thing ("¿Y mi
+//        [id]?"); it returns at once, and the child walks to the right thing on the map and taps it (field.js asks
+//        spotAt / runFind; hint.js and the bot see targets(f)). A wrong thing names itself and gets a gentle "¿...?".
+//        found(id) once it was found; seeking(who) the word someone is waiting for (for their thought bubble).
+//   meet(id, how, o)  meet a word from a puzzle of your own (not a generator): the model and the small celebration
+//   note(ids) -> Wait  the small celebration for words just met (a paper card with the picture and the blue word
+//        pops up, says the word and flies into the notebook button); yield it to let the word be heard (~0.6 s)
+//   known(id, n) n met words to go with id in a one-unknown puzzle (another topic, stronger first)
+// Content checks G.budget.canIntro(n) before introducing (words.js) and defers when it's false ("¡Mañana!").
+// G.review.ask(id, {who, prompt, en, pool, layout}) one question for a met word, fit for its stage: met -> hear it
+//   (a speaker in the prompt) and pick among picture + word cards; known -> its picture, pick its word; remembered+
+//   -> its picture, say it or pick its word (the mic is on), or hear it and pick its picture. Counted as review.
+// Page puzzles (G.pages): a notebook page's sparkle on the map (maps.js `pages`) is a puzzle: 4 pictures of words from
+//   that page you've met, and their 4 words, shuffled; tap a picture and then its word (or drag the word onto it).
+//   Right: they join and the word is said; wrong: a wobble and "¡Casi!". All four: a star. ready(page) (4+ met words,
+//   not solved, or solved on an earlier day with 2+ of them due again), words(page), run(page) (yieldable), visible()
+//   (the notebook's pages: those with a met word).
+'use strict';
+(function () {
+  const D = () => G.data, S = () => G.st, Wd = () => G.words;
+  const I = G.intro = {};
+  const TT = (t, en) => ({ t, en });
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = G.r(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const sayAs = (who, pages, o) => G.say(pages, Object.assign({ portrait: G.portraitOf(who), name: G.nameOf(who), who }, o || {}));
+
+  // ---------- the small celebration: into the notebook ----------
+  const notes = [];   // {id, t, delay}
+  const LIFE = 84, FLY = 22;
+  I.note = function (ids) {
+    ids = (Array.isArray(ids) ? ids : [ids]).filter(id => D().words[id]);
+    const w = new G.Wait();
+    ids.forEach((id, k) => notes.push({ id, t: -k * 36 }));
+    if (!ids.length) { w.resolve(); return w; }
+    const until = G.frame + 36 + (ids.length - 1) * 36;
+    w.done = () => G.frame >= until || w.fin; // yieldable: a short pause so the word is heard
+    return w;
+  };
+  I.step = function () {
+    for (let i = notes.length - 1; i >= 0; i--) {
+      const nt = notes[i]; nt.t++;
+      if (nt.t === 1) { G.audio.sfx('note'); G.speak(G.baseForm(nt.id)); for (let k = 0; k < 4; k++) G.fx.twinkle(G.W / 2 + (Math.random() - 0.5) * 70, 40 + Math.random() * 30); }
+      if (nt.t === LIFE) G.audio.sfx('select');
+      if (nt.t > LIFE + 4) notes.splice(i, 1);
+    }
+  };
+  I.busy = () => notes.length > 0;
+  I.draw = function (ctx) {
+    for (const nt of notes) {
+      if (nt.t <= 0) continue;
+      const wd = D().words[nt.id], t = nt.t, w = 30 + Math.max(40, G.textWidth(wd.es.split(' / ')[0])), h = 40;
+      const pop = Math.min(1, t / 10), s0 = 0.3 + 0.7 * G.fx.easeBack(pop);
+      const fly = t > LIFE - FLY ? (t - (LIFE - FLY)) / FLY : 0; // 0..1 into the notebook button (top right)
+      const cx0 = G.W / 2, cy0 = 54, cx1 = G.W - 16, cy1 = 16, e = fly * fly;
+      const cx = cx0 + (cx1 - cx0) * e, cy = cy0 + (cy1 - cy0) * e - Math.sin(fly * Math.PI) * 18, sc = s0 * (1 - 0.8 * fly);
+      ctx.save(); ctx.globalAlpha = fly > 0.85 ? (1 - fly) / 0.15 : 1;
+      ctx.translate(cx, cy); ctx.scale(sc, sc); ctx.rotate(Math.sin(t / 7) * 0.03 + fly * 0.5);
+      ctx.fillStyle = '#5a3810'; ctx.fillRect(-w / 2 - 1, -h / 2 - 1, w + 2, h + 2);
+      ctx.fillStyle = '#f8f0dc'; ctx.fillRect(-w / 2, -h / 2, w, h);
+      ctx.fillStyle = '#e0d0b0'; for (let y = -h / 2 + 9; y < h / 2; y += 8) ctx.fillRect(-w / 2 + 3, y, w - 6, 1); // notebook lines
+      ctx.fillStyle = '#e88080'; ctx.fillRect(-w / 2 + 26, -h / 2, 1, h);                                        // the margin
+      const hop = t < 30 ? Math.round(Math.abs(Math.sin(t / 30 * Math.PI * 2)) * -2) : 0;
+      G.drawIcon16(ctx, wd, -w / 2 + 5, -8 + hop);
+      G.text(ctx, wd.es.split(' / ')[0], -w / 2 + 31, -4, '#2860a8', null);
+      G.text(ctx, '+', w / 2 - 9, -h / 2 + 2, '#40a848', null);
+      ctx.restore();
+      if (t > 12 && t < LIFE - FLY && t % 9 === 0) G.fx.twinkle(cx + (Math.random() - 0.5) * w, cy + (Math.random() - 0.5) * h);
+    }
+  };
+  I.meet = function (id, how, o = {}) { const fresh = Wd().meet(id, how || 'meet', o); if (fresh) I.note([id]); return fresh; };
+
+  // ---------- picking the known words for a one-unknown puzzle ----------
+  I.known = function (id, n = 2, o = {}) {
+    const top = D().words[id] && D().words[id].topic, ex = o.exclude || [];
+    const c = Wd().list(1).filter(k => k !== id && ex.indexOf(k) < 0 && G.iconDrawn(k) && G.baseForm(k) !== G.baseForm(id));
+    const score = k => (D().words[k].topic === top ? 2 : 0) + (Wd().stage(k) >= 2 ? 0 : 1) + G.rand();
+    return c.sort((a, b) => score(a) - score(b)).slice(0, n);
+  };
+  const ask = (id, o, choices, extra) => {
+    const ch = shuffle(choices.slice());
+    return Object.assign({ prompt: o.ask || '¿Qué es?', en: o.askEn || 'Which one is it?', choices: ch, answer: ch.findIndex(c => c.word === (o.answer || id)), layout: 'cards', who: o.who || null, intro: id, how: o.how }, extra || {});
+  };
+
+  // ---------- show and name ----------
+  I.show = function* (id, o = {}) {
+    if (!D().words[id]) return false;
+    yield sayAs(o.who, [TT(o.prompt || '¡Mira! ¡[' + id + ']!', o.en || 'Look!')], { show: id });
+    if (Wd().met(id)) return true;
+    const known = o.known || I.known(id, 2);
+    if (!known.length) { I.meet(id, o.how || 'show', { who: o.who }); yield 40; return true; }
+    // the new word written, the known ones as pictures: which word is this thing? (the one you don't know yet)
+    yield* G.ask(ask(id, Object.assign({ how: 'show' }, o), [{ word: id, look: 'text' }].concat(known.map(k => ({ word: k, look: 'both' }))), { show: id }));
+    return true;
+  };
+
+  // ---------- watch and do ----------
+  I.watch = function* (id, o = {}) {
+    if (!D().words[id]) return false;
+    yield sayAs(o.who, [TT(o.prompt || '¡Mira! ¡[' + id + ']!', o.en || 'Watch!')]);
+    if (o.act) yield* o.act();
+    const known = o.known || I.known(id, 2);
+    if (known.length && !Wd().met(id)) {
+      yield* G.ask(ask(id, Object.assign({ how: 'watch', ask: o.ask || '¡Ahora tú!', askEn: o.askEn || 'Now you! (say it, or tap it)' }, o), [{ word: id, look: 'both' }].concat(known.map(k => ({ word: k, look: 'both' })))));
+    } else I.meet(id, o.how || 'watch', { who: o.who });
+    if (o.act) yield* o.act();
+    return true;
+  };
+
+  // ---------- listen and point ----------
+  I.listen = function* (id, o = {}) {
+    if (!D().words[id]) return false;
+    const right = o.answer || id;
+    const known = o.known || I.known(right, 2, { exclude: [id] });
+    if (o.sound) o.sound();
+    const prompt = o.prompt || '¡[' + id + ']!';
+    if (!known.length) { yield sayAs(o.who, [TT(prompt, o.en || 'Listen!')]); I.meet(id, o.how || 'listen', { who: o.who }); yield 40; return true; }
+    const q = ask(id, Object.assign({ how: 'listen', answer: right, ask: prompt, askEn: o.en || 'Listen! Which one?' }, o), [{ word: right, look: 'pic' }].concat(known.map(k => ({ word: k, look: 'pic' }))), { mask: [id] });
+    yield* G.ask(q); // (when the sound is the new word, its animal, the right picture, is what's credited)
+    if (right !== id && !Wd().met(id)) { I.meet(id, o.how || 'listen', { who: o.who }); yield 40; }
+    return true;
+  };
+
+  // ---------- find it (on the map) ----------
+  const finds = () => { const s = G.state; if (!s.finds || typeof s.finds !== 'object') s.finds = {}; return s.finds; };
+  const key = (x, y) => x + ',' + y;
+  I.find = function* (id, o = {}) {
+    if (!D().words[id] || !o.map || !o.at) return false;
+    finds()[id] = { who: o.who || null, map: o.map, at: key(...o.at), wrong: (o.wrong || []).map(p => key(...p)), found: false, how: o.how || 'find' };
+    S().autosave();
+    if (G.vocabLog) G.vlog('find-start', id, { who: o.who || null });
+    yield sayAs(o.who, [TT(o.prompt || '¿Y mi [' + id + ']?', o.en || 'Where is my...? (find it and tap it)')]);
+    return true;
+  };
+  I.found = id => !!(G.state && finds()[id] && finds()[id].found);
+  I.seeking = who => { if (!G.state) return null; const F = finds(); for (const id in F) if (F[id].who === who && !F[id].found) return id; return null; };
+  I.spotAt = function (f, x, y) {
+    if (!G.state || !f) return null;
+    const F = finds(), k = key(x, y);
+    for (const id in F) { const s = F[id]; if (s.found || s.map !== f.mapId) continue; if (s.at === k) return { id, right: true }; if (s.wrong.indexOf(k) >= 0) return { id, right: false }; }
+    return null;
+  };
+  I.runFind = function* (f, m, x, y) {
+    const s = finds()[m.id];
+    if (!m.right) { // not that one: it says what it is (if it has a word), and a gentle "¿...?"
+      if (G.vocabLog) G.vlog('find-wrong', m.id);
+      if (!(G.world && G.world.nameTile(f, x, y, { noMic: true, noIntro: true }))) G.audio.sfx('boop');
+      const [sx, sy] = [x * G.TILE + 12 - Math.round(f.cam.x), y * G.TILE - Math.round(f.cam.y)];
+      G.fx.say('¿...?', sx, sy - 14, '#ffd8a8'); yield 30; return;
+    }
+    s.found = true; f.wig = { x, y, t: 18 };
+    const [sx, sy] = [x * G.TILE + 12 - Math.round(f.cam.x), y * G.TILE + 8 - Math.round(f.cam.y)];
+    G.audio.sfx('chime'); G.fx.burst(sx, sy);
+    Wd().meet(m.id, s.how || 'find', { who: s.who });
+    yield I.note([m.id]);
+    yield 20;
+    S().autosave();
+  };
+  I.targets = function (f) {
+    if (!G.state || !f) return [];
+    const F = finds(), T = G.TILE, out = [];
+    for (const id in F) { const s = F[id]; if (!s.found && s.map === f.mapId) { const [x, y] = s.at.split(',').map(Number); out.push({ x: x * T + 12, y: y * T + 12, find: id }); } }
+    return out;
+  };
+
+  // ---------- a review question for a word, fit for its stage ----------
+  G.review.ask = function* (id, o = {}) {
+    const st = Wd().stage(id); if (st < 1) return false;
+    const top = D().words[id].topic, met = Wd().list(1).filter(k => k !== id && G.baseForm(k) !== G.baseForm(id));
+    let pool = o.pool || met.filter(k => D().words[k].topic === top);
+    if (pool.length < 2) pool = pool.concat(shuffle(met.filter(k => pool.indexOf(k) < 0)).slice(0, 2 - pool.length));
+    const c = G.wordChoices(id, [id].concat(pool), Math.min(3, pool.length + 1));
+    const r = Wd().rec(id), hear = st === 1 || (st >= 3 && (r.n % 2 === 1 || !(G.mic && G.mic.on())));
+    const q = hear ? { prompt: o.prompt || '¿[' + id + ']?', en: o.en || 'Which one? (listen)' } : { prompt: o.prompt || '¿Qué es?', en: o.en || 'What is it?', show: id };
+    return yield* G.ask(Object.assign(q, { choices: c.choices, answer: c.answer, layout: o.layout || 'cards', who: o.who || null, review: true }));
+  };
+
+  // ---------- page puzzles ----------
+  const P = G.pages = {};
+  const pageWords = id => (D().pages[id] ? D().pages[id].words : []);
+  P.visible = () => D().pageOrder.filter(p => pageWords(p).some(w => Wd().met(w)));
+  P.solvedDay = id => { const v = G.state && G.state.pages[id]; return !v ? null : typeof v === 'object' ? v.d | 0 : 0; };
+  P.ready = function (id) {
+    if (!G.state || !D().pages[id]) return false;
+    const met = pageWords(id).filter(w => Wd().met(w)); if (met.length < 4) return false;
+    const d = P.solvedDay(id); if (d == null) return true;
+    return d < Wd().day() && met.filter(w => Wd().due(w)).length >= 2;
+  };
+  // the 4 words to match: due ones first, then the weakest, then the least recently met
+  P.words = function (id) {
+    const met = pageWords(id).filter(w => Wd().met(w));
+    const sc = w => (Wd().due(w) ? 0 : 10) + Wd().stage(w) * 2 + G.rand();
+    return shuffle(met.sort((a, b) => sc(a) - sc(b)).slice(0, 4));
+  };
+  P.run = function* (id) {
+    const ids = P.words(id); if (ids.length < 4) return false;
+    if (G.vocabLog) { ids.forEach(w => G.vlog('prompt', w, { kind: 'review', st: Wd().stage(w), mode: 'match', via: 'page' })); G.vlog.ev({ ty: 'puzzle', page: id }); }
+    const r = yield P.open(id, ids);
+    if (!r.result) return false; // closed before the end
+    S().solvePage(id);
+    yield 10;
+    return true;
+  };
+  class PagePuzzle {
+    constructor(w, id, ids) {
+      G.toastT = 0; this.transparent = true; this.w = w; this.page = id; this.t = 0;
+      this.pics = ids.slice(); this.words = shuffle(ids.slice()); // word card j says words[j]
+      this.match = {};        // picture k -> matched (true)
+      this.tried = {};        // word id -> a wrong attempt was made with its picture
+      this.sel = null;        // {kind: 'pic' | 'word', k}
+      this.miss = null;       // {pk, wk, t}
+      this.drag = null;       // word card j being dragged
+      this.done = 0; this.ki = 0;
+    }
+    onEnter() { G.audio.sfx('note'); }
+    picRect(k) { return { x: 22 + k * 72, y: 42, w: 60, h: 58 }; }
+    wordRect(j) {
+      const k = this.pics.indexOf(this.words[j]);
+      if (this.match[k]) { const p = this.picRect(k); return { x: p.x - 2, y: p.y + 64, w: 64, h: 24, joined: true }; }
+      return { x: 20 + j * 72, y: 150, w: 64, h: 26 };
+    }
+    closeXY() { return [G.W - 30, 8]; }
+    hintXY() { return null; } // never point at an answer
+    tryPair(k, j) {
+      const pid = this.pics[k], wid = this.words[j];
+      if (this.match[k]) return;
+      if (pid === wid) {
+        this.match[k] = true; this.sel = null;
+        const r = this.picRect(k); G.audio.sfx('chime'); G.fx.burst(r.x + r.w / 2, r.y + r.h / 2); G.speak(G.baseForm(pid));
+        const first = !this.tried[pid];
+        Wd().answerRight(pid, { mode: 'match', firstTry: first, review: true, noStar: true });
+        if (Object.keys(this.match).length === this.pics.length) { this.done = 1; G.audio.jingle('item'); G.fx.confetti(40, 200, 1, 20); G.fx.confetti(G.W - 40, 200, -1, 20); }
+        return;
+      }
+      if (!this.tried[pid]) { this.tried[pid] = true; Wd().answerWrong(pid); }
+      if (G.vocabLog) G.vlog('wrong', wid, { ans: pid, via: 'page' });
+      this.miss = { pk: k, wj: j, t: 0 }; this.sel = null;
+      G.audio.sfx('boop'); const r = this.picRect(k); G.fx.say('¡Casi!', r.x + r.w / 2, r.y - 6, '#ffd8a8');
+    }
+    tapPic(k) {
+      if (this.match[k]) return;
+      if (this.sel && this.sel.kind === 'word') { this.tryPair(k, this.sel.k); return; }
+      this.sel = { kind: 'pic', k }; G.audio.sfx('cursor');
+    }
+    tapWord(j) {
+      const k = this.pics.indexOf(this.words[j]); if (this.match[k]) { G.speak(G.baseForm(this.words[j])); return; }
+      G.speak(G.baseForm(this.words[j])); // hearing a word never gives its picture away
+      if (this.sel && this.sel.kind === 'pic') { this.tryPair(this.sel.k, j); return; }
+      this.sel = { kind: 'word', k: j }; G.audio.sfx('cursor');
+    }
+    update() {
+      this.t++; if (this.miss && ++this.miss.t > 18) this.miss = null;
+      if (this.done) {
+        if (++this.done === 30) { G.state.stars++; G.fx.flyStar(G.W / 2, 110, 0); S().autosave(); }
+        if (this.done > 70 && (G.input.tap() || G.input.p('A') || G.input.p('B') || this.done > 150)) { G.pop(); this.w.resolve(true); }
+        return;
+      }
+      if (G.input.p('B') || G.closeHit(...this.closeXY())) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(false); return; }
+      const ptr = G.input.ptr;
+      // dragging a word card onto a picture
+      if (ptr.down && this.drag == null && ptr.held > 6) {
+        const j = this.words.findIndex((w, j) => { const r = this.wordRect(j); return !r.joined && ptr.sx >= r.x && ptr.sx < r.x + r.w && ptr.sy >= r.y && ptr.sy < r.y + r.h; });
+        if (j >= 0 && Math.abs(ptr.x - ptr.sx) + Math.abs(ptr.y - ptr.sy) > 6) { this.drag = j; this.sel = null; }
+      }
+      if (this.drag != null && !ptr.down) {
+        const j = this.drag; this.drag = null;
+        const k = this.pics.findIndex((p, k) => { const r = this.picRect(k); return ptr.x >= r.x - 4 && ptr.x < r.x + r.w + 4 && ptr.y >= r.y - 4 && ptr.y < r.y + r.h + 24; });
+        if (k >= 0) this.tryPair(k, j);
+        return;
+      }
+      if (this.drag != null) return;
+      const tap = G.input.tap();
+      if (tap && this.t > 8) {
+        const k = this.pics.findIndex((p, k) => G.tapIn(this.picRect(k)));
+        if (k >= 0) { this.tapPic(k); return; }
+        const j = this.words.findIndex((w, j) => G.tapIn(this.wordRect(j)));
+        if (j >= 0) { this.tapWord(j); return; }
+      }
+      // keys: left / right moves along the pictures (or, once one is chosen, the words); A takes it
+      const words = this.sel && this.sel.kind === 'pic', d = G.input.repDir(14, 6);
+      const free = [0, 1, 2, 3].filter(i => !this.match[words ? this.pics.indexOf(this.words[i]) : i]);
+      if (!free.length) return;
+      if (free.indexOf(this.ki) < 0) this.ki = free[0];
+      if (d === 'left' || d === 'right') { const i = free.indexOf(this.ki); this.ki = free[(i + (d === 'left' ? -1 : 1) + free.length) % free.length]; G.audio.sfx('cursor'); }
+      if (G.input.p('A') && this.t > 8) { if (words) this.tapWord(this.ki); else this.tapPic(this.ki); this.ki = -1; }
+    }
+    draw(ctx) {
+      const u = Math.min(1, this.t / 10);
+      G.win(ctx, 6, 6, G.W - 12, G.H - 12, { fill1: '#f4ecd8', fill2: '#e0d4b8', alpha: 1 });
+      ctx.globalAlpha = u;
+      const tp = D().topics[D().pages[this.page].topic];
+      G.drawIcon16(ctx, 'pagina', 18, 12);
+      G.textC(ctx, tp.name, G.W / 2, 18, '#a05020', null);
+      if (G.enVisible()) G.textC(ctx, 'Match each picture with its word', G.W / 2, 28, '#a09070', null);
+      G.closeBtn(ctx, ...this.closeXY());
+      const keys = G.hint && G.hint.keyboard && G.hint.keyboard(), keyPic = keys && !(this.sel && this.sel.kind === 'pic'), wob = (m, on) => (m && on ? Math.round(Math.sin(m.t * 1.7) * 3 * (1 - m.t / 18)) : 0);
+      this.pics.forEach((id, k) => {
+        const r = this.picRect(k), sel = this.sel && this.sel.kind === 'pic' && this.sel.k === k, ok = this.match[k], dx = wob(this.miss, this.miss && this.miss.pk === k);
+        const bob = sel ? Math.round(Math.sin(this.t / 6) * 1.5) : 0;
+        ctx.fillStyle = ok ? '#e8b830' : sel ? '#3a56c8' : '#8a6a40'; ctx.fillRect(r.x - 2 + dx, r.y - 2 - bob, r.w + 4, r.h + 4);
+        ctx.fillStyle = ok ? '#fff4c8' : '#fffaf0'; ctx.fillRect(r.x + dx, r.y - bob, r.w, r.h);
+        G.drawIcon16(ctx, id, r.x + 6 + dx, r.y + 5 - bob, 3);
+        if (keyPic && k === this.ki && !ok && (this.t >> 3) % 4 !== 3) G.textC(ctx, '\u0001', r.x + r.w / 2, r.y - 11, '#a05020', null);
+      });
+      this.words.forEach((id, j) => {
+        let r = this.wordRect(j); const pk = this.pics.indexOf(id), ok = this.match[pk], sel = this.sel && this.sel.kind === 'word' && this.sel.k === j;
+        if (this.drag === j) { const p = G.input.ptr; r = { x: p.x - r.w / 2, y: p.y - r.h / 2, w: r.w, h: r.h }; }
+        const dx = wob(this.miss, this.miss && this.miss.wj === j), bob = sel ? Math.round(Math.sin(this.t / 6) * 1.5) : 0;
+        ctx.fillStyle = ok ? '#e8b830' : sel ? '#3a56c8' : '#5a3810'; ctx.fillRect(r.x - 1 + dx, r.y - 1 - bob, r.w + 2, r.h + 2);
+        ctx.fillStyle = ok ? '#fff4c8' : sel ? '#dce4ff' : '#ffffff'; ctx.fillRect(r.x + dx, r.y - bob, r.w, r.h);
+        const st = Wd().stage(id);
+        G.textC(ctx, G.baseForm(id), r.x + r.w / 2 + dx, r.y + r.h / 2 - 4 - bob, st >= 3 ? '#a06008' : '#2860a8', null);
+        if (keys && !keyPic && !ok && j === this.ki && (this.t >> 3) % 4 !== 3) G.textC(ctx, '\u0001', r.x + r.w / 2, r.y - 11, '#a05020', null);
+        if (ok) { ctx.fillStyle = '#c89020'; ctx.fillRect(r.x + r.w / 2, r.y - 6, 1, 6); } // joined to its picture
+      });
+      ctx.globalAlpha = 1;
+      if (this.done) { G.bigText(ctx, '¡Muy bien!', G.W / 2, 186, 2, '#f8d040', '#5a2c04'); }
+    }
+  }
+  P.open = function (id, ids) { const w = new G.Wait(); G.push(new PagePuzzle(w, id, ids)); return w; };
 })();
 
 </script>
@@ -7816,68 +8482,83 @@ G.store = {
   }
   G.kidMenu = function () { const w = new G.Wait(); G.push(new FieldMenu(w)); return w; };
 
-  // ---------- Cuaderno: one page per topic, found around town ----------
+  // ---------- Cuaderno: one page per topic; a word is written in the moment it is met ----------
+  // Only topics with a met word have a page (G.pages.visible, intro.js). On a page: each met word's picture and word
+  // (blue, or gold once remembered), its stars (known 1, remembered 2, solid 3) and a little mic if it was said; the
+  // words still to meet are empty dotted frames. Tap a word to hear it; < > (or left / right) turns the page.
   class Notebook {
-    constructor(w, start) { G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; this.pi = Math.max(0, D().pageOrder.indexOf(start)); this.wi = 0; }
-    page() { return D().pageOrder[this.pi]; }
-    words() { return D().pages[this.page()].words; }
+    constructor(w, start) {
+      G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; this.list = G.pages.visible();
+      this.pi = Math.max(0, this.list.indexOf(start)); this.wi = 0; this.flip = 0;
+    }
+    page() { return this.list[this.pi]; }
+    words() { return this.page() ? D().pages[this.page()].words : []; }
     // tap areas (shared with draw): word k on the page, the < > page buttons around the page dots, close
-    cellRect(k) { return { x: 18 + (k % 3) * 96, y: 34 + Math.floor(k / 3) * 58, w: 92, h: 56 }; }
-    prevXY() { return [G.W / 2 - 82, 4]; } // the page dots sit between these (14 pages since Round B)
+    cellRect(k) { return { x: 22 + (k % 3) * 94, y: 36 + Math.floor(k / 3) * 58, w: 90, h: 56 }; }
+    prevXY() { return [G.W / 2 - 82, 4]; }
     nextXY() { return [G.W / 2 + 62, 4]; }
     closeXY() { return [G.W - 30, 8]; }
-    turn(dx) { this.pi = (this.pi + dx + D().pageOrder.length) % D().pageOrder.length; this.wi = 0; G.audio.sfx('select'); }
+    turn(dx) { if (this.list.length < 2) return; this.pi = (this.pi + dx + this.list.length) % this.list.length; this.wi = 0; this.flip = 8 * dx; G.audio.sfx('note'); }
+    say(k) { const id = this.words()[k]; if (id && S().seen(id)) { G.speak(G.baseForm(id)); return true; } G.audio.sfx('boop'); return false; }
     update() {
-      this.t++;
-      const d = G.input.repDir(14, 5), found = S().hasPage(this.page()), n = this.words().length;
+      this.t++; if (this.flip) this.flip -= Math.sign(this.flip);
+      const d = G.input.repDir(14, 5), n = this.words().length;
       if (G.input.p('B') || G.closeHit(...this.closeXY())) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); return; }
       if (G.btnHit(...this.prevXY())) { this.turn(-1); return; }
       if (G.btnHit(...this.nextXY())) { this.turn(1); return; }
-      if (found) for (let k = 0; k < n; k++) if (G.tapIn(this.cellRect(k))) { // tap a word: hear it
-        if (this.wi !== k) G.audio.sfx('cursor');
-        this.wi = k; if (S().seen(this.words()[k])) G.speak(G.baseForm(this.words()[k]));
-      }
+      for (let k = 0; k < n; k++) if (G.tapIn(this.cellRect(k))) { if (this.wi !== k) G.audio.sfx('cursor'); this.wi = k; this.say(k); } // tap a word: hear it
       // left/right moves within the page's 3-column grid, and past its edge turns the page
       if (d === 'left' || d === 'right') {
         const col = this.wi % 3, dx = d === 'left' ? -1 : 1;
-        if (found && col + dx >= 0 && col + dx < 3 && this.wi + dx < n) { this.wi += dx; G.audio.sfx('cursor'); }
+        if (col + dx >= 0 && col + dx < 3 && this.wi + dx < n) { this.wi += dx; G.audio.sfx('cursor'); }
         else { this.turn(dx); return; }
       }
-      if (found && (d === 'up' || d === 'down')) { const k = this.wi + (d === 'up' ? -3 : 3); if (k >= 0 && k < n) { this.wi = k; G.audio.sfx('cursor'); } }
-      if (found && (G.input.p('A') || G.input.p('C'))) { const id = this.words()[this.wi]; if (S().seen(id)) G.speak(G.baseForm(id)); }
+      if (d === 'up' || d === 'down') { const k = this.wi + (d === 'up' ? -3 : 3); if (k >= 0 && k < n) { this.wi = k; G.audio.sfx('cursor'); } }
+      if (G.input.p('A') || G.input.p('C')) this.say(this.wi);
     }
     draw(ctx) {
       G.win(ctx, 6, 6, G.W - 12, G.H - 12, { fill1: '#f4ecd8', fill2: '#e0d4b8', alpha: 1 });
-      const pid = this.page(), found = S().hasPage(pid);
-      G.iconBtn(ctx, 'back', ...this.prevXY()); G.iconBtn(ctx, 'next', ...this.nextXY()); G.closeBtn(ctx, ...this.closeXY());
-      // page dots
-      const n = D().pageOrder.length, step = Math.min(14, Math.floor(118 / n)), dw = Math.max(5, step - 3);
-      D().pageOrder.forEach((p, k) => {
-        const x = Math.round(G.W / 2 - (n * step - (step - dw)) / 2 + k * step);
-        ctx.fillStyle = k === this.pi ? '#a05020' : S().hasPage(p) ? '#c8a070' : '#e8dcc0';
-        ctx.fillRect(x, 11, dw, 6); ctx.fillStyle = '#7a4a20'; ctx.fillRect(x, 17, dw, 1);
-      });
-      if (!found) {
-        ctx.globalAlpha = 0.35; G.drawIcon16(ctx, 'pagina', G.W / 2 - 24, 64, 3); ctx.globalAlpha = 1;
+      for (let y = 30; y < G.H - 12; y += 12) { ctx.fillStyle = '#e8dcc0'; ctx.fillRect(18, y, G.W - 30, 1); } // ruled lines
+      for (let y = 22; y < G.H - 16; y += 22) { ctx.fillStyle = '#7a4a20'; ctx.fillRect(9, y, 6, 4); ctx.fillStyle = '#c8b090'; ctx.fillRect(10, y + 1, 4, 2); } // the rings
+      G.closeBtn(ctx, ...this.closeXY());
+      const pid = this.page();
+      if (!pid) { // nothing met yet: the notebook waits for its first word
+        ctx.globalAlpha = 0.4; G.drawIcon16(ctx, 'pagina', G.W / 2 - 24, 64, 3); ctx.globalAlpha = 1;
         G.bigText(ctx, '?', G.W / 2, 140, 3, '#a08060', null);
         return;
       }
-      const tp = D().topics[D().pages[pid].topic];
-      G.textC(ctx, tp.name, G.W / 2, 24, '#a05020', null);
-      if (G.enVisible()) G.text(ctx, tp.en, 16, 24, '#a09070', null);
-      this.words().forEach((id, k) => {
-        const R = this.cellRect(k), cx = R.x + 4, cy = R.y + 2, sel = k === this.wi;
-        const wd = D().words[id], seen = S().seen(id), kn = S().knows(id);
-        if (sel) { ctx.fillStyle = '#f8e0a0'; ctx.fillRect(cx - 4, cy - 2, 92, 56); }
-        G.drawIcon16(ctx, wd, cx + 26, cy, 2);
-        if (seen) G.textC(ctx, wd.es.split(' / ')[0], cx + 42, cy + 35, kn ? '#a06008' : '#2860a8', null);
-        else G.textC(ctx, '? ? ?', cx + 42, cy + 35, '#b8a888', null);
-        if (G.enVisible()) G.textC(ctx, wd.en, cx + 42, cy + 45, '#a09070', null);
-        else if (kn) { const st = S().wordStars(id); for (let s = 0; s < 3; s++) G.text(ctx, STAR, cx + 30 + s * 8, cy + 45, s < st ? '#e0a010' : '#d8ccb0', null); }
-        if (seen && S().saidCount(id)) { // said out loud (the mic): a little mic with a sound wave
-          G.mic.glyph(ctx, cx + 72, cy + 2, '#2a8a9a');
-          ctx.fillStyle = '#2a8a9a'; ctx.fillRect(cx + 81, cy + 2, 1, 1); ctx.fillRect(cx + 82, cy + 3, 1, 3); ctx.fillRect(cx + 81, cy + 6, 1, 1);
+      if (this.list.length > 1) { G.iconBtn(ctx, 'back', ...this.prevXY()); G.iconBtn(ctx, 'next', ...this.nextXY()); }
+      // page dots (one per page you have)
+      const n = this.list.length, step = Math.min(14, Math.floor(118 / Math.max(1, n))), dw = Math.max(5, step - 3);
+      this.list.forEach((p, k) => {
+        const x = Math.round(G.W / 2 - (n * step - (step - dw)) / 2 + k * step);
+        ctx.fillStyle = k === this.pi ? '#a05020' : '#c8a070'; ctx.fillRect(x, 11, dw, 6); ctx.fillStyle = '#7a4a20'; ctx.fillRect(x, 17, dw, 1);
+      });
+      const ws = this.words(), got = ws.filter(id => S().seen(id)).length, tp = D().topics[D().pages[pid].topic];
+      G.textC(ctx, tp.name, G.W / 2, 25, '#a05020', null);
+      G.textR(ctx, got + '/' + ws.length, G.W - 40, 25, '#a08060', null);
+      if (G.enVisible()) G.text(ctx, tp.en, 22, 25, '#a09070', null);
+      const dx = this.flip * 3;
+      ws.forEach((id, k) => {
+        const R = this.cellRect(k), cx = R.x + dx, cy = R.y + 2, sel = k === this.wi, st = S().stage(id);
+        if (st < 1) { // still to meet: an empty dotted frame
+          ctx.fillStyle = '#d0c0a0'; for (let i = 0; i < 32; i += 4) { ctx.fillRect(cx + 29 + i, cy + 2, 2, 1); ctx.fillRect(cx + 29 + i, cy + 33, 2, 1); ctx.fillRect(cx + 29, cy + 2 + i, 1, 2); ctx.fillRect(cx + 60, cy + 2 + i, 1, 2); }
+          return;
         }
+        const wd = D().words[id], r = G.words.rec(id), fresh = r && r.met != null && G.words.now() - r.met < 120;
+        if (sel) { ctx.fillStyle = '#f8e0a0'; ctx.fillRect(cx - 2, cy - 2, R.w, R.h); }
+        const hop = sel ? Math.round(Math.abs(Math.sin(this.t / 8)) * -2) : 0;
+        ctx.fillStyle = st >= 3 ? '#e8b830' : '#c8b8e8'; ctx.fillRect(cx + 27, cy + hop, 36, 36);
+        ctx.fillStyle = '#fffaf0'; ctx.fillRect(cx + 28, cy + 1 + hop, 34, 34);
+        G.drawIcon16(ctx, wd, cx + 29, cy + 2 + hop, 2);
+        G.textC(ctx, wd.es.split(' / ')[0], cx + 45, cy + 38, st >= 3 ? '#a06008' : '#2860a8', null);
+        if (G.enVisible()) G.textC(ctx, wd.en, cx + 45, cy + 47, '#a09070', null);
+        else { const ns = S().wordStars(id); for (let s2 = 0; s2 < 3; s2++) G.text(ctx, STAR, cx + 33 + s2 * 8, cy + 47, s2 < ns ? '#e0a010' : '#d8ccb0', null); }
+        if (S().saidCount(id)) { // said out loud (the mic): a little mic with a sound wave
+          G.mic.glyph(ctx, cx + 68, cy + 2, '#2a8a9a');
+          ctx.fillStyle = '#2a8a9a'; ctx.fillRect(cx + 77, cy + 2, 1, 1); ctx.fillRect(cx + 78, cy + 3, 1, 3); ctx.fillRect(cx + 77, cy + 6, 1, 1);
+        }
+        if (fresh && (this.t + k * 7) % 40 < 20) { ctx.fillStyle = '#ffffff'; ctx.fillRect(cx + 24, cy + 2, 5, 1); ctx.fillRect(cx + 26, cy, 1, 5); ctx.fillStyle = '#f8c020'; ctx.fillRect(cx + 26, cy + 2, 1, 1); } // just met: it twinkles
       });
     }
   }
@@ -8535,7 +9216,7 @@ G.store = {
       if (door) return { exit: true, x: door.x, y: door.y }; // the wall or sign around a door, the dark just outside one
       const pg = (this.def.pages || {})[key(tx, ty)];
       const name = G.world ? G.world.wordAt(this, tx, ty) : null;
-      const special = !!((pg && !G.st.hasPage(pg)) || (this.def.searches || {})[key(tx, ty)] || (G.errands && G.errands.spotAt(this, tx, ty))); // these win over an animal on them
+      const special = !!((pg && G.pages.ready(pg)) || (this.def.searches || {})[key(tx, ty)] || (G.errands && G.errands.spotAt(this, tx, ty)) || G.intro.spotAt(this, tx, ty)); // these win over an animal on them
       if (special || THING.includes(c)) return { search: true, x: tx, y: ty, name, special };
       if (name) return this.blocked(tx, ty, this.player) && !(this.player.x === tx && this.player.y === ty) ? { search: true, x: tx, y: ty, name } : { x: tx, y: ty, name };
       return { x: tx, y: ty };
@@ -8596,8 +9277,10 @@ G.store = {
       if (fx === undefined) [fx, fy] = this.facing();
       const sp = G.errands && G.errands.spotAt(this, fx, fy); // a place an errand sends you (errands.js)
       if (sp) { yield* G.errands.runSpot(this, sp); return; }
+      const fd = G.intro.spotAt(this, fx, fy); // a find-it puzzle: the thing someone needs, or not that one (intro.js)
+      if (fd) { yield* G.intro.runFind(this, fd, fx, fy); return; }
       const pg = (this.def.pages || {})[key(fx, fy)];
-      if (pg && !G.st.hasPage(pg)) { yield* G.findPage(pg); return; }
+      if (pg && G.pages.ready(pg)) { yield* G.pages.run(pg); return; } // a notebook page puzzle (intro.js)
       const k = this.mapId + ':' + key(fx, fy);
       const s = (this.def.searches || {})[key(fx, fy)];
       if (s) {
@@ -8672,8 +9355,8 @@ G.store = {
         ctx.fillStyle = '#3a2008'; ctx.fillRect(sx - 1, sy - 1, 18, 18); ctx.fillStyle = '#f4ecd8'; ctx.fillRect(sx, sy, 16, 16);
         G.drawIcon16(ctx, sg.icon, sx, sy);
       }
-      for (const k in this.def.pages || {}) { // a hidden notebook page twinkles
-        if (G.st.hasPage(this.def.pages[k])) continue;
+      for (const k in this.def.pages || {}) { // a notebook page puzzle waiting (4+ met words of its page) twinkles
+        if (!G.pages.ready(this.def.pages[k])) continue;
         const [px, py] = k.split(',').map(Number), ph = (this.t + px * 7) % 60;
         if (ph < 30) { const sx = px * T - cx + 12, sy = py * T - cy + 8 - (ph >> 3); ctx.fillStyle = '#ffffff'; ctx.fillRect(sx - 2, sy, 5, 1); ctx.fillRect(sx, sy - 2, 1, 5); ctx.fillStyle = '#f8e060'; ctx.fillRect(sx, sy, 1, 1); }
       }
@@ -8740,11 +9423,12 @@ G.store = {
     ctx.fillStyle = '#ffffff'; ctx.fillRect(ex + 10, by + 21, 3, 2); ctx.fillRect(ex + 11, by + 23, 1, 1);
     G.drawGoal(ctx, goal, bx + 4, by + 3);
   };
-  // found a notebook page: open the notebook right at it
+  // someone hands you the notebook (Mamá): open it at a page (when it has a word you've met). Pages are no longer
+  // found: a word is written in when it's met, and the sparkles on the map are page puzzles (intro.js)
   G.findPage = function* (id) {
     G.audio.jingle('item');
-    G.st.findPage(id);
-    G.toast('\u0005 ¡Una página! \u0005', 90);
+    G.state.flags.notebook = true; G.st.autosave();
+    G.toast('\u0005 ¡Tu cuaderno! \u0005', 90);
     yield 30;
     yield G.notebook(id);
   };
@@ -9580,10 +10264,12 @@ G.store = {
 <script>/* src/world.js */
 // ===== Round B: tap anything. Things in town say their Spanish word; say it back for a speaking star =====
 // A tap on a thing that has a word (a tree, a flower, the fountain, a bench, a window, the barn, the pond...) shows a
-// word bubble over it with its picture and its Spanish word ("el árbol"), says the word, marks it seen and gives the
-// thing a little wiggle and a sparkle. With the mic on, a small pink mic bubble sits beside the word for ~5 s: tap it
-// (or press V, or hold Space while you talk) and say the word -> a speaking star (G.mic.award), the word is learned
-// if it wasn't ("¡Palabra nueva!", without its own mic), and that word gives no more say-it-back stars today (one per
+// word bubble over it with its picture and its Spanish word ("el árbol"), says the word and gives the thing a little
+// wiggle and a sparkle. A word not met yet (words.js) is met this way when the new-word budget allows (WD.introOnTap:
+// the child chose to ask "what's this?"; G.intro.note's small celebration); otherwise its bubble shows the picture and
+// "?" and says nothing: it waits for its own puzzle. With the mic on, a small pink mic bubble sits beside a met word
+// for ~5 s: tap it (or press V, or hold Space while you talk) and say the word -> a speaking star (G.mic.award; a cued
+// retrieval for the word model: it was just heard), and that word gives no more say-it-back stars today (one per
 // word per calendar day, kept in G.state.sayback[id] = 'YYYY-M-D', so it can't be farmed). A miss: "¡Otra vez!", the
 // bubble stays a little longer, no penalty. Animals (animals.js, ambient.js, Canelo) use the same bubble, with their
 // sound under the word ("el gato" / "¡Miau!").
@@ -9608,10 +10294,11 @@ G.store = {
 // A map without `things` names nothing (and A there still says "...").
 //
 // API: G.world.wordAt(f, x, y)        the word id of tile x, y on field f, or null
-//      G.world.name(id, wx, wy, o)    name a word at world px wx, wy (the top of the thing): the bubble, the voice, seen,
+//      G.world.name(id, wx, wy, o)    name a word at world px wx, wy (the top of the thing): the bubble, the voice, met,
 //                                     sparkles; then the say-it-back mic. o: {cry: '¡Miau!' (a second line, also spoken),
 //                                     animal: id (for the album's `said`), tile: [x, y] (wiggles it), delay: frames
-//                                     before speaking, noMic, walkOn (the 20 s rule)}. Returns the bubble or null.
+//                                     before speaking, noMic, walkOn (the 20 s rule), noIntro (never meets an unmet
+//                                     word)}. Returns the bubble or null.
 //      G.world.nameTile(f, x, y)      name tile x, y if it has a word (true if it did)
 //      G.world.bubble                 the word bubble showing now {id, x, y, t, cry} or null
 //      G.world.sayBack                the say-it-back now {id, t, life, mic (a G.MicBtn), done} or null
@@ -9623,11 +10310,12 @@ G.store = {
   const T = G.TILE, WD = G.world = {};
   const key = (x, y) => x + ',' + y;
   WD.TILES = { T: 'arbol', f: 'arbol', o: 'flor', l: 'fuente', w: 'agua', J: 'banco', N: 'ventana', D: 'puerta', j: 'cama' };
+  WD.introOnTap = true; // a tap on an unmet thing meets its word when G.budget.canIntro(1) (words.js)
   const LIFE = 170, SAY_LIFE = 330, WALK_AGAIN = 20 * 60;
   WD.bubble = null; WD.sayBack = null;
   let speakAt = null, walked = {}; // a line waiting to be spoken {f, text, at}; word -> G.frame it was named by walking onto it
 
-  WD.today = () => { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
+  WD.today = () => G.today(); // (words.js: the date, which tests and the audit can move on)
   const sbook = () => (G.state.sayback || (G.state.sayback = {}));
 
   // ---------- which word a tile has ----------
@@ -9650,17 +10338,21 @@ G.store = {
     if (o.walkOn && walked[id] != null && G.frame - walked[id] < WALK_AGAIN) return null;
     if (o.walkOn) walked[id] = G.frame;
     if (G.vocabLog) G.vlog('tapped-object', id, { via: o.animal ? 'animal' : o.walkOn ? 'walk-on' : 'tap' }); // (the dev-only log, vocablog.js)
-    G.st.see(id);
-    const b = WD.bubble = { id, x: wx, y: wy, t: 0, cry: o.cry || null, f };
+    let fresh = false;
+    if (!G.st.seen(id) && WD.introOnTap && !o.walkOn && !o.noIntro && G.budget.canIntro(1)) fresh = G.words.meet(id, 'tap'); // asked "what's this?": met
+    else G.st.see(id);
+    const unk = !G.st.seen(id); // not met yet: its picture and "?", and no voice
+    const b = WD.bubble = { id, x: wx, y: wy, t: 0, cry: o.cry || null, f, unk };
     if (o.tile) f.wig = { x: o.tile[0], y: o.tile[1], t: 18 };
-    const text = w.es.split(' / ')[0] + (o.cry ? '. ' + o.cry : '');
-    if (o.delay) speakAt = { f, text, at: G.frame + o.delay }; else { speakAt = null; G.speak(text); }
+    const text = unk ? (o.cry || '') : w.es.split(' / ')[0] + (o.cry ? '. ' + o.cry : '');
+    if (!text) speakAt = null; else if (o.delay) speakAt = { f, text, at: G.frame + o.delay }; else { speakAt = null; G.speak(text); }
+    if (fresh) G.intro.note([id]);
     G.audio.sfx('cursor');
     const [sx, sy] = [wx - Math.round(f.cam.x), wy - Math.round(f.cam.y)];
     for (let i = 0; i < 3; i++) G.fx.twinkle(sx + (Math.random() - 0.5) * 22, sy + (Math.random() - 0.5) * 12);
     WD.lastNamed = { id, frame: G.frame, x: wx, y: wy };
     if (WD.sayBack) { WD.sayBack.off(); WD.sayBack = null; }
-    if (!o.noMic && WD.canSayBack(id)) WD.offerSayBack(id, b, o.animal);
+    if (!o.noMic && !unk && WD.canSayBack(id)) WD.offerSayBack(id, b, o.animal);
     return b;
   };
   WD.nameTile = function (f, x, y, o = {}) {
@@ -9722,7 +10414,7 @@ G.store = {
       G.fx.say('¡Bien dicho!', cx, cy - 18, '#a8f0ff', true);
       sbook()[id] = WD.today();
       if (this.animal && G.state.album && G.state.album[this.animal]) G.state.album[this.animal].said = true;
-      if (!G.st.knows(id)) f.tasks.add((function* () { yield 40; f.locked = true; yield G.learnWords([id], { noMic: true }); f.locked = false; })());
+      G.words.answerRight(id, { said: true, cued: true, mode: 'say', noStar: true }); // (said after hearing it: a cued use)
       G.st.autosave();
     }
     // -> true when it used this frame's input
@@ -9743,7 +10435,7 @@ G.store = {
   };
 
   // ---------- where things go on screen ----------
-  function lines(b) { const w = G.data.words[b.id]; return [w.es.split(' / ')[0]].concat(b.cry ? [b.cry] : []); }
+  function lines(b) { const w = G.data.words[b.id]; return [b.unk ? '?' : w.es.split(' / ')[0]].concat(b.cry ? [b.cry] : []); }
   WD.bubbleRect = function (f, b) {
     const ls = lines(b), tw = Math.max(...ls.map(s => G.textWidth(s))), w = 30 + tw, h = ls.length > 1 ? 26 : 22;
     let x = Math.round(b.x - f.cam.x - w / 2), y = Math.round(b.y - f.cam.y) - h - 6;
@@ -9795,7 +10487,7 @@ G.store = {
     else { ctx.fillRect(tx - 1, y + r.h - 1, 3, 2); ctx.fillRect(tx, y + r.h + 1, 1, 1); }
     const hop = b.t < 30 ? Math.round(Math.abs(Math.sin(b.t / 30 * Math.PI * 2)) * -2) : 0;
     G.drawIcon16(ctx, w, r.x + 5, y + (r.h - 16) / 2 + hop);
-    G.text(ctx, ls[0], r.x + 25, y + (ls.length > 1 ? 4 : 7), G.st.knows(b.id) ? '#a06008' : '#2860a8', null);
+    G.text(ctx, ls[0], r.x + 25, y + (ls.length > 1 ? 4 : 7), b.unk ? '#a08060' : G.st.knows(b.id) ? '#a06008' : '#2860a8', null);
     if (ls[1]) G.text(ctx, ls[1], r.x + 25, y + 14, '#e06010', null);
     ctx.globalAlpha = 1;
     if (WD.sayBack && WD.sayBack.b === b && WD.sayBack.f === f) WD.sayBack.mic.draw(ctx);
@@ -9983,7 +10675,7 @@ G.store = {
   const say = (npc, ...pages) => G.say(pages, { portrait: G.portraitOf(npc), name: G.nameOf(npc) || (npc === 'canelo' ? 'Canelo' : null), who: npc });
   function* secret(npc) {
     if (npc === 'canelo') { yield say(npc, T_('¡Guau, guau!', 'Woof, woof! (he wags his tail)')); return; }
-    const pg = G.data.pageOrder.find(p => !G.st.hasPage(p) && PAGE_PLACE[p] && p !== 'saludos');
+    const pg = G.data.pageOrder.find(p => G.pages.ready(p) && PAGE_PLACE[p] && p !== 'saludos'); // a page puzzle waiting (intro.js)
     if (!pg) { yield say(npc, T_('¡Eres muy simpátic{o/a}, {name}!', 'You\'re very nice, {name}!')); return; }
     yield say(npc, T_('¡Un secreto! Una página... ¡[' + PAGE_PLACE[pg] + ']!', 'A secret! A notebook page... near the ' + G.data.words[PAGE_PLACE[pg]].en.replace('the ', '') + '!'));
   }
@@ -10062,7 +10754,7 @@ G.store = {
 // it (a speaking star, once per word per day; a care word works too: "¡la pelota!" throws the ball). Tapping works too.
 // Learning a trick takes 3 good tries: tapping its card asks "¡Dile a Canelo!" (G.ask with {word} cards, so the mic is
 // built in); saying it straight at the menu counts too. Try 1: he tilts his head and half does it; try 2: nearly;
-// try 3: he does it, confetti, a heart and "¡Palabra nueva!" for the command.
+// try 3: he does it, confetti and a heart (and the gold card for the command once the word model says it's remembered).
 // Care: food (crunch crunch, el hueso is his favourite: a gift heart), water (lap lap), the ball (thrown; he fetches
 // it), a pat (hearts float up), la cama (at home he goes to his bed and sleeps, z z z; he sleeps there at night too).
 // Every action shows Canelo's own hearts (G.hearts 'canelo': care +1 up to the daily cap, +1 per trick learned).
@@ -10380,14 +11072,16 @@ G.store = {
   // one question: "¡Dile a Canelo!" (picture cards; say it or tap it) -> true if right on the first try
   P.ask = function* (id, o = {}) {
     const c = G.wordChoices(id, [id].concat(others(id, o.pool)), 3, { label: k => LABEL[k] || null });
-    return yield* G.ask({ prompt: o.prompt || '¡Dile a Canelo!', en: o.en || 'Tell Canelo! (say the trick, or tap it)', show: o.show === false ? null : id, choices: c.choices, answer: c.answer, layout: 'cards', who: 'canelo' });
+    // (the trick's picture over the question only while it's new: once met, the child has to remember it)
+    return yield* G.ask({ prompt: o.prompt || '¡Dile a Canelo!', en: o.en || 'Tell Canelo! (say the trick, or tap it)', show: o.show === false || S.seen(id) ? null : id, choices: c.choices, answer: c.answer, layout: 'cards', who: 'canelo' });
   };
   // for errands (a show): ask for any trick, then he does it
   P.command = function* (id, o = {}) { const first = yield* P.ask(id, o); yield* P.trick(id, { amp: P.knows(id) ? 1 : 0.7 }); return first; };
   // one good try at the trick he's learning; spoken: it was said straight at the menu (no question)
   P.practice = function* (id, spoken) {
     id = id || P.learning(); if (!id) return;
-    if (!spoken) { const first = yield* P.ask(id); S.practiced(id, first); }
+    if (!spoken) yield* P.ask(id); // (G.ask credits the word, words.js)
+    else G.words.answerRight(id, { said: true, mode: 'both', noStar: true }); // said at the menu, where its card is written
     const p = st(); p.learning = id; p.tricks[id] = Math.min(P.NEED, (p.tricks[id] | 0) + 1);
     const k = p.tricks[id], [x, y] = dogXY();
     S.autosave();
@@ -10573,14 +11267,15 @@ G.store = {
   P.act = function* (v) {
     const f = G.field, id = v.id, spoken = !!v.spoken;
     if (trick(id)) {
-      if (P.knows(id)) { if (spoken) spokeStar(id); yield* P.trick(id); careHeart(); G.fx.say('¡Muy bien!', ...dogXY().map((q, i) => q - (i ? 26 : 0)), '#f8e060', true); yield 10; }
+      if (P.knows(id)) { if (spoken) { spokeStar(id); G.words.answerRight(id, { said: true, mode: 'both', noStar: true }); } yield* P.trick(id); careHeart(); G.fx.say('¡Muy bien!', ...dogXY().map((q, i) => q - (i ? 26 : 0)), '#f8e060', true); yield 10; }
       else if (id === P.learning()) { if (spoken) spokeStar(id); yield* P.practice(id, spoken); }
       if (G.hearts) yield* G.hearts.milestones('canelo');
       return false;
     }
     if (W(id)) { if (G.vocabLog && !spoken) G.vlog('picked', id, { via: 'pet-menu' }); S.see(id); }
     let learnIt = false;
-    if (spoken) { spokeStar(id); learnIt = !S.knows(id); }
+    // said from its picture (the care cards have no words): a retrieval that can make it gold (words.js)
+    if (spoken) { spokeStar(id); learnIt = !!(W(id) && G.words.answerRight(id, { said: true, mode: 'say', noStar: true }).gold); }
     if (id === 'hueso' || id === 'galleta') { yield* P.play('eat', { item: id }); if (!(G.hearts && G.hearts.gift('canelo', id))) careHeart(); }
     else if (id === 'agua') { yield* P.play('drink'); careHeart(); }
     else if (id === 'pelota') { yield* P.play('fetch'); careHeart(); }
@@ -11139,16 +11834,10 @@ G.MAPDATA = {
     if (f) f.introBusy = false;
   };
 
-  // ---------- Review: words seen but not yet learned come first ----------
+  // ---------- Review (Luna's "¿Repaso?"): the words due first (words.js), then the weakest met words ----------
   ST.review = function* (n = 5) {
-    const Wd = G.data.words, seen = Object.keys(G.state.words).filter(id => Wd[id]);
-    const shuffle = a => a.sort(() => G.rand() - 0.5);
-    const picks = shuffle(seen.filter(id => !S.knows(id))).concat(shuffle(seen.filter(S.knows))).slice(0, n);
-    for (const id of picks) {
-      let pool = seen.filter(k => Wd[k].topic === Wd[id].topic); if (pool.length < 3) pool = seen;
-      const c = G.wordChoices(id, pool, 3, { text: true });
-      yield* G.ask({ prompt: '¿...?', en: 'What is it?', show: Wd[id], choices: c.choices, answer: c.answer, layout: 'list', learn: id, who: 'luna' });
-    }
+    const due = G.review.due(n), weak = G.words.list(1).filter(id => due.indexOf(id) < 0).sort((a, b) => G.words.stage(a) - G.words.stage(b) || G.rand() - 0.5);
+    for (const id of due.concat(weak).slice(0, n)) yield* G.review.ask(id, { who: 'luna' });
   };
 
   // ---------- Diploma ----------
@@ -12344,10 +13033,10 @@ G.MAPDATA = {
 // ===== The end of the day: a sunset over Villa Sol after a good long play, then home to bed and a new morning =====
 // G.sessionTime counts the seconds of play since this game was started or opened (it is never saved). After
 // G.day.SUNSET_AT the town warms to a sunset, its windows light up and a moon bubble floats over the home door.
-// Going home then plays the evening: Mamá's "¡Buenas noches!", the "Hoy" card (the words learned today, as
+// Going home then plays the evening: Mamá's "¡Buenas noches!", the "Hoy" card (the words met or grown today, as
 // pictures, and the stars earned today), the night sky, a sunrise and Mamá's "¡Buenos días!"; the game is saved
 // and the clock starts again. Nothing is forced: staying out to play changes nothing.
-// "Today" is what changed since the session began (a snapshot of the learned words and stars), so the save
+// "Today" is what changed since the session began (a snapshot of the words' stages and the stars), so the save
 // format doesn't change. G.debug.sunsetAt (seconds) brings the sunset sooner, for tests and curious grown-ups.
 'use strict';
 (function () {
@@ -12361,22 +13050,23 @@ G.MAPDATA = {
 
   // ---------- the session: since the game was started or opened, or since this morning ----------
   function newDay() {
-    const W = G.state.words;
-    base = { state: G.state, learned: new Set(Object.keys(W).filter(id => W[id] && W[id].learned)), stars: G.state.stars | 0, said: G.st.micStars() };
+    const st = {}; for (const id in G.data.words) st[id] = G.st.stage(id); // each word's stage this morning (words.js)
+    base = { state: G.state, st, stars: G.state.stars | 0, said: G.st.micStars() };
     today = []; G.sessionTime = 0; glow = 0;
   }
   DY.sunsetAt = () => (G.debug && G.debug.sunsetAt != null ? G.debug.sunsetAt : DY.SUNSET_AT);
   DY.over = () => !!(G.state && G.state.flags.intro) && G.sessionTime >= DY.sunsetAt();
-  // words learned today (in the order they were learned), stars earned today and how many of them were speaking stars
-  DY.today = () => base && base.state === G.state ? { words: today.slice(), stars: Math.max(0, (G.state.stars | 0) - base.stars), said: Math.max(0, (G.st.micStars()) - base.said) } : { words: [], stars: 0, said: 0 };
+  // words met or grown a stage today (in that order), stars earned today and how many of them were speaking stars
+  const sweep = () => { for (const id in G.state.words) if (today.indexOf(id) < 0 && G.st.stage(id) > (base.st[id] | 0)) today.push(id); };
+  DY.today = () => base && base.state === G.state && (sweep(), 1) ? { words: today.slice(), stars: Math.max(0, (G.state.stars | 0) - base.stars), said: Math.max(0, (G.st.micStars()) - base.said) } : { words: [], stars: 0, said: 0 };
   // core.js, every frame: the clock runs while a game is on (a map is in the scene stack, maybe under a talk)
   DY.step = function () {
     const f = G.field;
     if (!f || !G.state || G.scenes.indexOf(f) < 0) return;
     if (!base || base.state !== G.state) newDay(); // a new game, or one just opened: a new session
     G.sessionTime += 1 / 60;
-    const W = G.state.words;
-    for (const id in W) if (W[id] && W[id].learned && !base.learned.has(id) && today.indexOf(id) < 0) today.push(id);
+    if (G.words) G.words.step(); // the word model's play clock (words.js)
+    if (G.frame % 30 === 0) sweep();
     glow = G.clamp(glow + (DY.over() ? 1 / 480 : -1 / 30), 0, 1); // the sun goes down over ~8 s
   };
   DY.glow = () => glow;
@@ -12448,7 +13138,7 @@ G.MAPDATA = {
     Object.assign(f.player, { x: BED[0], y: BED[1], dir: 'left', ox: 0, oy: 0 }); f.snapCam();
     if (G.pet) G.pet.night(f); // Canelo curls up on his cushion (pet.js)
     yield DY.night(); // the night sky, then the sunrise (it fades itself in and out)
-    newDay();
+    newDay(); if (G.words) G.words.newSession('night'); // a new day for the word model too: yesterday's words come back
     G.audio.play(f.def.music || 'town', true);
     yield G.fadeTo(0, 0.04, '#fff2d0'); // out of the morning light (the night left the fade there)
     if (G.pet) G.pet.morning(f); // and Canelo hops up
@@ -12645,6 +13335,7 @@ G.MAPDATA = {
     const take = (x, y, ox, oy) => { const d = Math.abs(x - p.x) + Math.abs(y - p.y); if (!best || d < best.d) best = { d, x: x * T + ox + T / 2 - cx, y: y * T + oy + T / 2 - cy }; };
     for (const n of f.npcs) if (n.spec && !n.hidden && alerting(n)) take(n.x, n.y, n.ox || 0, n.oy || 0);
     if (G.errands) for (const g of G.errands.targets(f)) take(Math.floor(g.x / T), Math.floor(g.y / T), g.x % T - T / 2, g.y % T - T / 2); // errand places, animals to find
+    if (G.intro) for (const g of G.intro.targets(f)) take(Math.floor(g.x / T), Math.floor(g.y / T), 0, 0); // a find-it puzzle's thing (intro.js)
     const home = G.day && G.day.homeDoor && G.day.homeDoor(f); if (home) take(home[0], home[1], 0, 0);
     if (!best) for (const ex of f.def.exits || []) if (ex.to && (!ex.cond || ex.cond()) && waitsInside(ex.to)) take(ex.x, ex.y, 0, 0);
     if (!best || (best.x >= 10 && best.x <= G.W - 10 && best.y >= 10 && best.y <= G.H - 10)) return best && place(best.x, best.y);
@@ -12663,6 +13354,7 @@ G.MAPDATA = {
     const name = s.constructor && s.constructor.name;
     if (name === 'TextBox' && !(s.opts && s.opts.auto) && s.lines && s.shown >= s.chars(0, s.scroll + 3)) return place(s.boxX + s.boxW - 11, s.boxY() + 51, true);
     if (name === 'Notebook' && s.closeXY) { const [x, y] = s.closeXY(); return place(x + 10, y + 12); }
+    if (name === 'PagePuzzle' && s.closeXY) return null; // a page puzzle: never point at an answer
     if (TAP_ON[name]) return place(G.W / 2, G.H - 32, true); // a tap anywhere goes on: below the card
     return null;
   }

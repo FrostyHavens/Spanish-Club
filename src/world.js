@@ -33,7 +33,8 @@
 //      G.world.name(id, wx, wy, o)    name a word at world px wx, wy (the top of the thing): the bubble, the voice, met,
 //                                     sparkles; then the say-it-back mic. o: {cry: '¡Miau!' (a second line, also spoken),
 //                                     animal: id (for the album's `said`), tile: [x, y] (wiggles it), delay: frames
-//                                     before speaking, noMic, walkOn (the 20 s rule)}. Returns the bubble or null.
+//                                     before speaking, noMic, walkOn (the 20 s rule), noIntro (never meets an unmet
+//                                     word)}. Returns the bubble or null.
 //      G.world.nameTile(f, x, y)      name tile x, y if it has a word (true if it did)
 //      G.world.bubble                 the word bubble showing now {id, x, y, t, cry} or null
 //      G.world.sayBack                the say-it-back now {id, t, life, mic (a G.MicBtn), done} or null
@@ -74,7 +75,7 @@
     if (o.walkOn) walked[id] = G.frame;
     if (G.vocabLog) G.vlog('tapped-object', id, { via: o.animal ? 'animal' : o.walkOn ? 'walk-on' : 'tap' }); // (the dev-only log, vocablog.js)
     let fresh = false;
-    if (!G.st.seen(id) && WD.introOnTap && !o.walkOn && G.budget.canIntro(1)) fresh = G.words.meet(id, 'tap'); // asked "what's this?": met
+    if (!G.st.seen(id) && WD.introOnTap && !o.walkOn && !o.noIntro && G.budget.canIntro(1)) fresh = G.words.meet(id, 'tap'); // asked "what's this?": met
     else G.st.see(id);
     const unk = !G.st.seen(id); // not met yet: its picture and "?", and no voice
     const b = WD.bubble = { id, x: wx, y: wy, t: 0, cry: o.cry || null, f, unk };
