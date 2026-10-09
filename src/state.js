@@ -46,17 +46,18 @@
 
   // ---------- Words: unseen -> seen (met in a sentence or on a page) -> learned (used correctly) ----------
   const rec = id => G.state.words[id] || (G.state.words[id] = { learned: false, right: 0, wrong: 0 });
-  S.see = id => { if (D().words[id] && !G.state.words[id]) { rec(id); S.autosave(); } };
+  // (G.vocabLog: the dev-only vocabulary log, src/vocablog.js; off and never saved unless a test turns it on)
+  S.see = id => { if (D().words[id] && !G.state.words[id]) { rec(id); S.autosave(); if (G.vocabLog) G.vlog('seen-first', id); } };
   S.seen = id => !!G.state.words[id];
   S.knows = id => !!(G.state.words[id] && G.state.words[id].learned);
-  S.learn = function (id) { const w = rec(id); if (w.learned) return false; w.learned = true; S.autosave(); return true; };
+  S.learn = function (id) { const w = rec(id); if (w.learned) return false; w.learned = true; S.autosave(); if (G.vocabLog) G.vlog('learned', id); return true; };
   S.practiced = function (id, firstTry) {
     const w = rec(id);
     if (firstTry) { w.right++; G.state.stars++; } else w.wrong++;
     S.autosave();
   };
   // said out loud with the mic (mic.js): a bonus star, counted in stars; S.micStars() is the speaking stars so far
-  S.said = function (id) { const w = rec(id); w.said = (w.said | 0) + 1; G.state.stars++; S.autosave(); };
+  S.said = function (id) { const w = rec(id); w.said = (w.said | 0) + 1; G.state.stars++; S.autosave(); if (G.vocabLog) G.vlog('said', id, { via: G.top() && G.top().constructor.name }); };
   S.saidCount = id => (G.state.words[id] && G.state.words[id].said) | 0;
   S.micStars = (s = G.state) => Object.keys(s.words).reduce((n, id) => n + ((s.words[id] && s.words[id].said) | 0), 0);
   // 0..3 stars per word, from first-try answers
@@ -64,13 +65,13 @@
   S.learnedCount = () => Object.keys(G.state.words).filter(S.knows).length;
 
   // ---------- Notebook pages ----------
-  S.findPage = id => { const fresh = !G.state.pages[id]; G.state.pages[id] = true; (D().pages[id].words || []).forEach(S.see); S.autosave(); return fresh; };
+  S.findPage = id => { const fresh = !G.state.pages[id]; G.state.pages[id] = true; if (fresh && G.vocabLog) G.vlog('page', D().pages[id].words, { page: id }); (D().pages[id].words || []).forEach(S.see); S.autosave(); return fresh; };
   S.hasPage = id => !!G.state.pages[id];
 
   // ---------- Errands ----------
   S.quest = id => G.state.quests[id];
-  S.startQuest = id => { if (!G.state.quests[id]) { G.state.quests[id] = 'active'; S.autosave(); } };
-  S.finishQuest = id => { G.state.quests[id] = 'done'; S.autosave(); };
+  S.startQuest = id => { if (!G.state.quests[id]) { G.state.quests[id] = 'active'; S.autosave(); if (G.vocabLog) G.vlog.ev({ ty: 'quest', q: id, st: 'start' }); } };
+  S.finishQuest = id => { G.state.quests[id] = 'done'; S.autosave(); if (G.vocabLog) G.vlog.ev({ ty: 'quest', q: id, st: 'done' }); };
   S.done = id => G.state.quests[id] === 'done';
   S.active = id => G.state.quests[id] === 'active';
 
@@ -156,6 +157,7 @@
   let lastField = null, wasLocked = false, fieldT = 0;
   S.fieldTick = function (f) {
     try {
+      if (G.vocabLog) G.vlog.tick(f);
       if (f !== lastField) { lastField = f; wasLocked = f.locked; fieldT = 0; S.autosave(); return; }
       if (wasLocked && !f.locked) S.autosave();
       wasLocked = f.locked;

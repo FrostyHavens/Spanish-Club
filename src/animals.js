@@ -149,7 +149,7 @@
     const K = AN.KINDS[kind]; if (!K) return null;
     if (!o.silent) AN.cry(kind);
     AN.meet(kind);
-    if (K.sound) G.st.see(K.sound);
+    if (K.sound) { if (G.vocabLog) G.vlog('tapped-object', K.sound, { via: 'animal-sound' }); G.st.see(K.sound); } // (the dev-only log, vocablog.js)
     if (G.world) G.world.name(K.word, wx, wy, { cry: K.cry, animal: kind, delay: o.silent ? 0 : 22 });
     return album()[kind];
   };

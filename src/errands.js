@@ -94,7 +94,7 @@
     MAX: 8,
     list: () => bagS(),
     has: (id, o = {}) => bagS().some(it => match(it, id, o)),
-    add(id, o = {}) { const it = Object.assign({ id }, o); bagS().push(it); popIn = { it, t: 0 }; G.audio.sfx('item'); S.see(id); S.autosave(); return it; },
+    add(id, o = {}) { const it = Object.assign({ id }, o); bagS().push(it); popIn = { it, t: 0 }; G.audio.sfx('item'); if (G.vocabLog) G.vlog('shown', id, { via: 'bag' }); S.see(id); S.autosave(); return it; },
     take(id, o = {}) { const L = bagS(), k = L.findIndex(it => match(it, id, o)); if (k < 0) return null; const it = L.splice(k, 1)[0]; S.autosave(); return it; },
     icon: it => (it.col ? { icon: W(it.id).icon, col: it.gold ? '#f8c820' : W(it.col).col } : W(it.id) || it.id),
     full: () => bagS().length >= 8,
@@ -503,6 +503,7 @@
     if (!tot || counted(kind) >= tot) return false;
     c.n[kind] = counted(kind) + 1;
     const w = NUM[c.n[kind] - 1];
+    if (G.vocabLog) G.vlog('tapped-object', w, { via: 'count' }); // (the dev-only log, vocablog.js)
     G.fx.say('¡' + G.baseForm(w) + '!', sx, sy - 10, '#fff070', true); G.speak(G.baseForm(w)); G.audio.sfx('coin');
     if (c.n[kind] >= tot) { G.album.count(kind); G.audio.sfx('chime'); for (let i = 0; i < 3; i++) G.fx.twinkle(sx + (Math.random() - 0.5) * 24, sy + (Math.random() - 0.5) * 14); }
     if (countDone()) G.toast('\u0005 ¡Luna! \u0005', 120);

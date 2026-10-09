@@ -60,7 +60,8 @@ class Game {
 
   // Play whatever is on top (dialogue, questions, cards, the notebook) until done() is true in the page.
   // Questions are answered right, using the answer the scene carries (G.ask passes it); wrongFirst taps a
-  // wrong card on the first question to check that it greys out.
+  // wrong card on the first question to check that it greys out. g.beforeAct = async (s, first) => true|false, if set,
+  // sees each scene first (s: what drive read about it) and returns true when it made the move itself.
   async drive(done, what, o = {}) {
     const t0 = Date.now();
     let wrong = !!o.wrongFirst;
@@ -75,6 +76,7 @@ class Game {
         return r;
       });
       const first = s.name && !this.seen.has(s.name + (s.cards ? 'c' : ''));
+      if (this.beforeAct && await this.beforeAct(s, first)) continue; // a test's own move (tools/vocab-audit.js: pacing, speaking)
       switch (s.name) {
         case 'TextBox':
           if (first && this.touch && !s.noVoice) { // the speaker button repeats the line and doesn't advance

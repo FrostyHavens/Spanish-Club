@@ -69,6 +69,7 @@
     const f = G.field, w = G.data.words[id]; if (!f || !w) return null;
     if (o.walkOn && walked[id] != null && G.frame - walked[id] < WALK_AGAIN) return null;
     if (o.walkOn) walked[id] = G.frame;
+    if (G.vocabLog) G.vlog('tapped-object', id, { via: o.animal ? 'animal' : o.walkOn ? 'walk-on' : 'tap' }); // (the dev-only log, vocablog.js)
     G.st.see(id);
     const b = WD.bubble = { id, x: wx, y: wy, t: 0, cry: o.cry || null, f };
     if (o.tile) f.wig = { x: o.tile[0], y: o.tile[1], t: 18 };

@@ -92,6 +92,7 @@
       const hasP = !!this.opts.portrait;
       this.boxX = hasP ? 70 : 8; this.boxW = G.W - this.boxX - 8;
       const t = this.pages[this.pi].t;
+      if (G.vocabLog) G.vlog('shown', G.richIds(t), { via: 'dialogue', who: this.opts.who || null }); // (the dev-only log, vocablog.js)
       G.richIds(t).forEach(id => G.st && G.st.see(id));
       this.lines = G.richLayout(t, this.boxW - 18 - (this.opts.noVoice ? 0 : 24)); // room for the speaker button
       this.shown = 0; this.scroll = 0; this.t = 0;
@@ -102,9 +103,9 @@
     spk() { return [this.boxX + this.boxW - 26, this.boxY() + 6]; } // "hear it again" button
     update() {
       this.t++;
-      if (!this.spoke) { this.spoke = true; G.speak(G.plain(this.pages[this.pi].t)); }
-      if (!this.opts.noVoice && G.speakerHit(...this.spk())) { G.input.eat(); G.speak(G.plain(this.pages[this.pi].t)); }
-      if (G.input.p('C')) G.speak(G.plain(this.pages[this.pi].t));
+      if (!this.spoke) { this.spoke = true; G.speak(this.pages[this.pi].t); } // (G.speak reads the [id] words as plain text)
+      if (!this.opts.noVoice && G.speakerHit(...this.spk())) { G.input.eat(); G.speak(this.pages[this.pi].t); }
+      if (G.input.p('C')) G.speak(this.pages[this.pi].t);
       const go = G.input.p('A') || G.input.p('B') || !!G.input.tap(); // a tap anywhere = A
       const target = this.chars(0, this.scroll + 3);
       if (this.shown < target) { // the typewriter: 2 letters a frame (4 with A held); a tap shows the rest, the next tap goes on
@@ -244,6 +245,7 @@
     if (wait > 0) timer = setTimeout(go, wait); else go();
   }
   G.speak = function (text) {
+    if (G.vocabLog) G.vlog.heard(text); // (the dev-only log, vocablog.js: as if every device could speak)
     try {
       if (!G.prefs.voice || G.audio.muted) return;
       const ss = window.speechSynthesis; if (!ss) { G.voiceStatus = 'no speech'; return; }

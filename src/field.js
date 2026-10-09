@@ -30,7 +30,7 @@
     removeNpc(id) { this.npcs = this.npcs.filter(n => n.id !== id); }
     onEnter() {
       G.audio.play(this.def.music || 'town');
-      if (this.def.name && !this.noBanner) { this.banner = { text: this.def.name, icon: this.def.icon, t: 150 }; if (this.def.icon) G.st.see(this.def.icon); }
+      if (this.def.name && !this.noBanner) { this.banner = { text: this.def.name, icon: this.def.icon, t: 150 }; if (this.def.icon) { if (G.vocabLog) G.vlog('shown', this.def.icon, { via: 'banner' }); G.st.see(this.def.icon); } }
       if (this.def.onEnter) this.tasks.add(this.def.onEnter(this));
     }
     // ---------- walkability ----------

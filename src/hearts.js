@@ -162,7 +162,8 @@
       como: ['¡[hola]! ¿[comoestas]?', 'Hi! How are you?', 'bien'],
     }[kind];
     const c = G.wordChoices(Q[2], POOL[Q[2]], 3);
-    yield* G.ask({ prompt: nm + ': ' + Q[0], en: nm + ': ' + Q[1], choices: c.choices, answer: c.answer, layout: 'cards', learn: Q[2], who: npc });
+    if (G.vocabLog) G.vlog.greet = npc; // (the dev-only log, vocablog.js: tags the greeting's words)
+    try { yield* G.ask({ prompt: nm + ': ' + Q[0], en: nm + ': ' + Q[1], choices: c.choices, answer: c.answer, layout: 'cards', learn: Q[2], who: npc }); } finally { G.vlog.greet = null; }
     H.add(npc, 1, 'greet'); // (marks today's greeting even when no heart is left to give)
     yield 20;
     yield* H.milestones(npc);

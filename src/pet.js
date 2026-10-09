@@ -314,7 +314,7 @@
   // a speaking star for saying a command or a care word to Canelo (once per word per day, like say-it-back)
   function spokeStar(id) {
     const sb = G.state.sayback || (G.state.sayback = {}), today = G.world.today();
-    if (sb[id] === today) return false;
+    if (sb[id] === today) { if (G.vocabLog) G.vlog('said', id, { via: 'PetMenu', star: false }); return false; } // (the dev-only log, vocablog.js: said, no star today)
     sb[id] = today;
     const [x, y] = dogXY(); G.mic.award(id, x, y - 8); G.fx.say('¡Bien dicho!', x, y - 26, '#a8f0ff', true);
     return true;
@@ -356,7 +356,7 @@
   const tsay = (who, ...pages) => G.say(pages, { portrait: G.portraitOf(who), name: G.nameOf(who), who });
   P.teach = function* (id, who) {
     const f = G.field, n = P.npc(f), p = st();
-    p.learning = id; p.tricks[id] = p.tricks[id] | 0; S.see(id); S.autosave();
+    p.learning = id; p.tricks[id] = p.tricks[id] | 0; if (G.vocabLog) G.vlog('shown', id, { via: 'pet-teach', who }); S.see(id); S.autosave();
     if (n) { while (n.moving) yield 1; P.place(f, n); }
     yield tsay(who, TT('¡Mira! Canelo... ¡[' + id + ']!', 'Look! Canelo... (watch what he does)'));
     yield* P.trick(id, { amp: 1 });
@@ -526,7 +526,7 @@
       if (G.hearts) yield* G.hearts.milestones('canelo');
       return false;
     }
-    if (W(id)) S.see(id);
+    if (W(id)) { if (G.vocabLog && !spoken) G.vlog('picked', id, { via: 'pet-menu' }); S.see(id); }
     let learnIt = false;
     if (spoken) { spokeStar(id); learnIt = !S.knows(id); }
     if (id === 'hueso' || id === 'galleta') { yield* P.play('eat', { item: id }); if (!(G.hearts && G.hearts.gift('canelo', id))) careHeart(); }

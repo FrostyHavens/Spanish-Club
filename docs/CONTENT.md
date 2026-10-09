@@ -98,3 +98,4 @@ Most play is on an iPad, so every screen works with taps as well as keys:
 - Keep sentences short and in the present tense.
 - The player picks boy or girl, so adjectives about the player should use `{o/a}`, never a fixed form.
 - Make every new word appear in a question soon after it's taught.
+- After adding words or an errand, run `tools/vocab-audit.js` and check `docs/VOCAB_AUDIT.md`: every new word should be used (picked or said) soon after it's met and come back in a later errand.

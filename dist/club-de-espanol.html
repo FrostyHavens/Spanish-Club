@@ -1287,6 +1287,7 @@ G.store = {
       const hasP = !!this.opts.portrait;
       this.boxX = hasP ? 70 : 8; this.boxW = G.W - this.boxX - 8;
       const t = this.pages[this.pi].t;
+      if (G.vocabLog) G.vlog('shown', G.richIds(t), { via: 'dialogue', who: this.opts.who || null }); // (the dev-only log, vocablog.js)
       G.richIds(t).forEach(id => G.st && G.st.see(id));
       this.lines = G.richLayout(t, this.boxW - 18 - (this.opts.noVoice ? 0 : 24)); // room for the speaker button
       this.shown = 0; this.scroll = 0; this.t = 0;
@@ -1297,9 +1298,9 @@ G.store = {
     spk() { return [this.boxX + this.boxW - 26, this.boxY() + 6]; } // "hear it again" button
     update() {
       this.t++;
-      if (!this.spoke) { this.spoke = true; G.speak(G.plain(this.pages[this.pi].t)); }
-      if (!this.opts.noVoice && G.speakerHit(...this.spk())) { G.input.eat(); G.speak(G.plain(this.pages[this.pi].t)); }
-      if (G.input.p('C')) G.speak(G.plain(this.pages[this.pi].t));
+      if (!this.spoke) { this.spoke = true; G.speak(this.pages[this.pi].t); } // (G.speak reads the [id] words as plain text)
+      if (!this.opts.noVoice && G.speakerHit(...this.spk())) { G.input.eat(); G.speak(this.pages[this.pi].t); }
+      if (G.input.p('C')) G.speak(this.pages[this.pi].t);
       const go = G.input.p('A') || G.input.p('B') || !!G.input.tap(); // a tap anywhere = A
       const target = this.chars(0, this.scroll + 3);
       if (this.shown < target) { // the typewriter: 2 letters a frame (4 with A held); a tap shows the rest, the next tap goes on
@@ -1439,6 +1440,7 @@ G.store = {
     if (wait > 0) timer = setTimeout(go, wait); else go();
   }
   G.speak = function (text) {
+    if (G.vocabLog) G.vlog.heard(text); // (the dev-only log, vocablog.js: as if every device could speak)
     try {
       if (!G.prefs.voice || G.audio.muted) return;
       const ss = window.speechSynthesis; if (!ss) { G.voiceStatus = 'no speech'; return; }
@@ -6733,17 +6735,18 @@ G.store = {
 
   // ---------- Words: unseen -> seen (met in a sentence or on a page) -> learned (used correctly) ----------
   const rec = id => G.state.words[id] || (G.state.words[id] = { learned: false, right: 0, wrong: 0 });
-  S.see = id => { if (D().words[id] && !G.state.words[id]) { rec(id); S.autosave(); } };
+  // (G.vocabLog: the dev-only vocabulary log, src/vocablog.js; off and never saved unless a test turns it on)
+  S.see = id => { if (D().words[id] && !G.state.words[id]) { rec(id); S.autosave(); if (G.vocabLog) G.vlog('seen-first', id); } };
   S.seen = id => !!G.state.words[id];
   S.knows = id => !!(G.state.words[id] && G.state.words[id].learned);
-  S.learn = function (id) { const w = rec(id); if (w.learned) return false; w.learned = true; S.autosave(); return true; };
+  S.learn = function (id) { const w = rec(id); if (w.learned) return false; w.learned = true; S.autosave(); if (G.vocabLog) G.vlog('learned', id); return true; };
   S.practiced = function (id, firstTry) {
     const w = rec(id);
     if (firstTry) { w.right++; G.state.stars++; } else w.wrong++;
     S.autosave();
   };
   // said out loud with the mic (mic.js): a bonus star, counted in stars; S.micStars() is the speaking stars so far
-  S.said = function (id) { const w = rec(id); w.said = (w.said | 0) + 1; G.state.stars++; S.autosave(); };
+  S.said = function (id) { const w = rec(id); w.said = (w.said | 0) + 1; G.state.stars++; S.autosave(); if (G.vocabLog) G.vlog('said', id, { via: G.top() && G.top().constructor.name }); };
   S.saidCount = id => (G.state.words[id] && G.state.words[id].said) | 0;
   S.micStars = (s = G.state) => Object.keys(s.words).reduce((n, id) => n + ((s.words[id] && s.words[id].said) | 0), 0);
   // 0..3 stars per word, from first-try answers
@@ -6751,13 +6754,13 @@ G.store = {
   S.learnedCount = () => Object.keys(G.state.words).filter(S.knows).length;
 
   // ---------- Notebook pages ----------
-  S.findPage = id => { const fresh = !G.state.pages[id]; G.state.pages[id] = true; (D().pages[id].words || []).forEach(S.see); S.autosave(); return fresh; };
+  S.findPage = id => { const fresh = !G.state.pages[id]; G.state.pages[id] = true; if (fresh && G.vocabLog) G.vlog('page', D().pages[id].words, { page: id }); (D().pages[id].words || []).forEach(S.see); S.autosave(); return fresh; };
   S.hasPage = id => !!G.state.pages[id];
 
   // ---------- Errands ----------
   S.quest = id => G.state.quests[id];
-  S.startQuest = id => { if (!G.state.quests[id]) { G.state.quests[id] = 'active'; S.autosave(); } };
-  S.finishQuest = id => { G.state.quests[id] = 'done'; S.autosave(); };
+  S.startQuest = id => { if (!G.state.quests[id]) { G.state.quests[id] = 'active'; S.autosave(); if (G.vocabLog) G.vlog.ev({ ty: 'quest', q: id, st: 'start' }); } };
+  S.finishQuest = id => { G.state.quests[id] = 'done'; S.autosave(); if (G.vocabLog) G.vlog.ev({ ty: 'quest', q: id, st: 'done' }); };
   S.done = id => G.state.quests[id] === 'done';
   S.active = id => G.state.quests[id] === 'active';
 
@@ -6843,6 +6846,7 @@ G.store = {
   let lastField = null, wasLocked = false, fieldT = 0;
   S.fieldTick = function (f) {
     try {
+      if (G.vocabLog) G.vlog.tick(f);
       if (f !== lastField) { lastField = f; wasLocked = f.locked; fieldT = 0; S.autosave(); return; }
       if (wasLocked && !f.locked) S.autosave();
       wasLocked = f.locked;
@@ -6852,6 +6856,118 @@ G.store = {
   // the tab is hidden or closed (an iPad going to sleep, the home button): save at once
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') S.saveNow(); });
   window.addEventListener('pagehide', () => S.saveNow());
+})();
+
+</script>
+<script>/* src/vocablog.js */
+// ===== Dev only: the vocabulary-flow log, for tools/vocab-audit.js =====
+// Off unless a test sets G.vocabLog = [] in the page. Every hook in the game is guarded by `if (G.vocabLog)`, so with
+// it off nothing is computed, nothing is stored and nothing is saved (the log lives on G, never in G.state).
+// With it on, every time a vocabulary word reaches the child it pushes one event onto G.vocabLog:
+//   { t: game seconds since the log started (frames / 60, plus any pacing a test adds with G.vlog.pace),
+//     ty: 'shown'        in a dialogue line or a question prompt (via: dialogue / question / picture / bag / banner / pet-teach)
+//         'heard'        spoken by the voice (G.speak: [id] tokens, or a line that is just a word: "el gato. ¡Miau!")
+//         'seen-first'   G.st.see marks it seen for the first time
+//         'page'         on a notebook page just found
+//         'tapped-object' named by tap-anything, an animal (or its sound), or the animal count (via: tap / walk-on / animal / animal-sound / count)
+//         'choice-shown' one of the cards or rows of a question (pic: drawn with its picture)
+//         'recognized'   picked as the right answer by tap (receptive retrieval; cue flags below)
+//         'wrong'        picked wrongly (ans: the right word)
+//         'picked'       picked in a free choice with no right answer (a shop, Canelo's menu)
+//         'said'         said out loud and matched (productive; via: the scene it was said in)
+//         'learned'      G.st.learn flipped it to learned
+//     w: word id, map, who (who is talking or asking, when known), ep (the episode: see below), g (a greeting) }
+// Cue flags on 'recognized': pic (the answer card showed its picture), show (the question's picture IS the answer),
+// prompt (the answer word is in the prompt text).
+// Other entries (no w): { ty: 'quest', q, st: 'start' | 'done' }, { ty: 'mark', label } (G.vlog.mark, from tests), and
+// { ty: 'ep', ep, ch } when an episode ends: an episode runs until the child is free to walk again (state.js
+// fieldTick); ch is what changed in G.state meanwhile ({q: {id: status}, f: [flag keys], s: new searched spots,
+// pg: [pages], pet, jobs, bag, h}), which tells the audit which errand the episode belonged to.
+'use strict';
+(function () {
+  const V = G.vlog = function (ty, ids, o) {
+    const L = G.vocabLog; if (!L) return;
+    sync(L);
+    const words = G.data && G.data.words;
+    const base = { t: now(), ty, map: G.field ? G.field.mapId : null, ep: V.ep, who: (o && o.who) || whoNow() };
+    if (V.greet) base.g = V.greet;
+    if (o) for (const k in o) if (k !== 'who' && o[k] != null) base[k] = o[k];
+    for (const w of Array.isArray(ids) ? ids : [ids]) if (w && words && words[w]) { L.push(Object.assign({ w }, base)); V.dirty = true; }
+  };
+  V.greet = null;
+  let f0 = 0, extra = 0;
+  const now = () => Math.round(((G.frame - f0) / 60 + extra) * 100) / 100;
+  function sync(L) {
+    if (V.L === L) return;
+    V.L = L; f0 = G.frame; extra = 0; V.ep = 1; V.dirty = false; V.st = G.state; V.snap = snap();
+  }
+  function whoNow() {
+    const s = G.top && G.top(); if (!s) return null;
+    return (s.opts && s.opts.who) || (s.o && s.o.who) || null;
+  }
+  // an entry that isn't about one word
+  V.ev = function (o) { const L = G.vocabLog; if (!L) return; sync(L); L.push(Object.assign({ t: now(), ep: V.ep, map: G.field ? G.field.mapId : null }, o)); };
+  V.mark = (label, o) => V.ev(Object.assign({ ty: 'mark', label }, o || {}));
+  // a test's model of a child's pace: sec more seconds pass (reading, listening, thinking); the day's clock moves too
+  V.pace = function (sec) { const L = G.vocabLog; if (!L || !(sec > 0)) return; sync(L); extra += sec; G.sessionTime += sec; };
+  V.time = () => (G.vocabLog ? (sync(G.vocabLog), now()) : 0);
+
+  // ---------- what the voice said: [id] tokens, else a line that is only words ("el gato. ¡Miau!") ----------
+  let forms = null;
+  const norm = s => String(s).toLowerCase().replace(/[¡!¿?.,:;…«»"]/g, ' ').replace(/\s+/g, ' ').trim();
+  function formMap() {
+    if (forms) return forms;
+    forms = {};
+    const W = G.data.words;
+    for (const id in W) {
+      const w = W[id], all = [w.es, w.alt, w.pl].filter(Boolean).join(' / ').split(' / ');
+      for (const f of all) { const n = norm(f); forms[n] = forms[n] || id; forms[n.replace(/^(el|la|los|las) /, '')] = forms[n.replace(/^(el|la|los|las) /, '')] || id; }
+    }
+    return forms;
+  }
+  V.heard = function (text) {
+    if (!G.vocabLog || text == null) return;
+    const s = G.fill(String(text)), ids = G.richIds(s);
+    if (!ids.length) {
+      const fm = formMap();
+      for (const seg of G.plain(s).split(/[.!?¡¿,]+/)) {
+        const n = norm(seg); if (!n) continue;
+        if (fm[n]) ids.push(fm[n]);
+        else { const r = n.split(' ').map(x => fm[x]); if (r.every(Boolean) && n.split(' ').length <= 3) r.forEach(id => { if (ids.indexOf(id) < 0) ids.push(id); }); } // "guau guau"
+      }
+    }
+    if (ids.length) V('heard', ids);
+  };
+
+  // ---------- episodes: everything until the child can walk again ----------
+  const J = v => JSON.stringify(v === undefined ? null : v);
+  function snap() {
+    const s = G.state; if (!s) return null;
+    const f = {}; for (const k in s.flags || {}) f[k] = J(s.flags[k]);
+    return { f, q: Object.assign({}, s.quests), pg: Object.keys(s.pages || {}), s: Object.keys(s.searched || {}).length,
+      pet: J(s.pet && s.pet.tricks), jobs: J(s.jobs), bag: J(s.bag), h: J(s.hearts) };
+  }
+  function diff(a, b) {
+    if (!a || !b) return null;
+    const ch = {}; let any = false;
+    const fk = Object.keys(b.f).filter(k => a.f[k] !== b.f[k]); if (fk.length) { ch.f = fk; any = true; }
+    const q = {}; for (const k in b.q) if (a.q[k] !== b.q[k]) q[k] = b.q[k];
+    if (Object.keys(q).length) { ch.q = q; any = true; }
+    const pg = b.pg.filter(p => a.pg.indexOf(p) < 0); if (pg.length) { ch.pg = pg; any = true; }
+    if (b.s > a.s) { ch.s = b.s - a.s; any = true; }
+    for (const k of ['pet', 'jobs', 'bag', 'h']) if (a[k] !== b[k]) { ch[k] = 1; any = true; }
+    return any ? ch : null;
+  }
+  // state.js S.fieldTick, every frame the map runs
+  V.tick = function (f) {
+    const L = G.vocabLog; if (!L) return;
+    sync(L);
+    if (V.st !== G.state) { V.st = G.state; V.snap = snap(); return; } // a new game, a loaded slot
+    if (f.locked || G.top() !== f) return;
+    const s = snap(), ch = diff(V.snap, s);
+    if (V.dirty || ch) { L.push({ t: now(), ty: 'ep', ep: V.ep, map: f.mapId, ch: ch || {} }); V.ep++; V.dirty = false; }
+    V.snap = s;
+  };
 })();
 
 </script>
@@ -6969,10 +7085,26 @@ G.store = {
       const word = (opts.answer != null && opts.onWrong && !opts.noMic && this.ch[opts.answer] && this.ch[opts.answer].word) || (opts.mic && opts.answer == null && this.ch.some(c => c.word));
       this.mic = word && G.mic && G.mic.on() ? new G.MicBtn(this, { rect: () => this.micRect(), ready: () => !this.won && this.t > 8 && (!this.miss || this.miss.t > 8), heard: a => this.heard(a) }) : null;
       while (this.ch[this.i] && this.ch[this.i].off) this.i++;
+      if (G.vocabLog) this.vlog(); // (the dev-only log, vocablog.js)
       G.richIds(opts.prompt || '').forEach(id => S().see(id));
       this.ch.forEach(c => c.word && S().see(c.word));
       this.lines = G.richLayout(opts.prompt || '', G.W - 96); // room for the speaker (and back) buttons
-      if (!opts.noVoice) G.speak(G.plain(opts.prompt || ''));
+      if (!opts.noVoice) G.speak(opts.prompt || ''); // (G.speak reads the [id] words as plain text)
+    }
+    showId() { const sh = this.o.show; return !sh ? null : typeof sh === 'string' ? (D().words[sh] ? sh : null) : Object.keys(D().words).find(id => D().words[id] === sh) || null; } // (a word's picture above the prompt)
+    vlog() {
+      const o = this.o, who = o.who || null, show = this.showId();
+      G.vlog('shown', G.richIds(o.prompt || ''), { via: 'question', who });
+      if (show) G.vlog('shown', show, { via: 'picture', who });
+      this.ch.forEach(c => c.word && G.vlog('choice-shown', c.word, { who, pic: !!view(c).icon }));
+    }
+    // the dev-only log: what was picked (spoken right answers are logged as 'said' by G.st.said)
+    vlogPick(k, spoken) {
+      const o = this.o, c = this.ch[k], who = o.who || null; if (!c.word) return;
+      if (o.answer == null || (k !== o.answer && !o.onWrong)) { if (!spoken) G.vlog('picked', c.word, { who }); return; }
+      if (k !== o.answer) { G.vlog('wrong', c.word, { who, ans: this.ch[o.answer] && this.ch[o.answer].word, spoken: spoken || null }); return; }
+      if (spoken) return;
+      G.vlog('recognized', c.word, { who, pic: !!view(c).icon, show: this.showId() === c.word || null, prompt: G.richIds(o.prompt || '').indexOf(c.word) >= 0 || null });
     }
     onEnter() { if (this.mic) this.mic.arm(); }
     onExit() { if (this.mic) this.mic.off(); }
@@ -7003,6 +7135,7 @@ G.store = {
     pick(k, spoken) {
       const o = this.o, c = this.ch[k], R = this.rects(), r = R[k];
       if (c.off) { G.audio.sfx('boop'); return; }
+      if (G.vocabLog) this.vlogPick(k, spoken);
       this.i = k;
       if (o.answer == null || (k !== o.answer && !o.onWrong)) {
         if (spoken && c.word && this.mic) { const m = this.micRect(); this.mic.win(); G.mic.award(c.word, m.x + m.w / 2, m.y + m.h / 2); G.fx.say('¡Bien dicho!', r.x + r.w / 2, r.y - 12, '#a8f0ff', true); }
@@ -7030,7 +7163,7 @@ G.store = {
       const d = G.input.repDir(14, 6);
       if (d === (this.cards ? 'left' : 'up')) this.move(-1);
       if (d === (this.cards ? 'right' : 'down')) this.move(1);
-      if (G.input.p('C') || (G.speakerHit(...this.spk()) && G.input.eat())) G.speak(G.plain(this.o.prompt || ''));
+      if (G.input.p('C') || (G.speakerHit(...this.spk()) && G.input.eat())) G.speak(this.o.prompt || '');
       if (G.input.tap() && this.t > 8) { // tapping a card (or row) answers with it
         if (this.o.cancel && G.btnHit(...this.backXY())) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(-1); return; }
         const pad = this.cards ? 6 : 0;
@@ -8304,7 +8437,7 @@ G.store = {
     removeNpc(id) { this.npcs = this.npcs.filter(n => n.id !== id); }
     onEnter() {
       G.audio.play(this.def.music || 'town');
-      if (this.def.name && !this.noBanner) { this.banner = { text: this.def.name, icon: this.def.icon, t: 150 }; if (this.def.icon) G.st.see(this.def.icon); }
+      if (this.def.name && !this.noBanner) { this.banner = { text: this.def.name, icon: this.def.icon, t: 150 }; if (this.def.icon) { if (G.vocabLog) G.vlog('shown', this.def.icon, { via: 'banner' }); G.st.see(this.def.icon); } }
       if (this.def.onEnter) this.tasks.add(this.def.onEnter(this));
     }
     // ---------- walkability ----------
@@ -9179,7 +9312,7 @@ G.store = {
     const K = AN.KINDS[kind]; if (!K) return null;
     if (!o.silent) AN.cry(kind);
     AN.meet(kind);
-    if (K.sound) G.st.see(K.sound);
+    if (K.sound) { if (G.vocabLog) G.vlog('tapped-object', K.sound, { via: 'animal-sound' }); G.st.see(K.sound); } // (the dev-only log, vocablog.js)
     if (G.world) G.world.name(K.word, wx, wy, { cry: K.cry, animal: kind, delay: o.silent ? 0 : 22 });
     return album()[kind];
   };
@@ -9516,6 +9649,7 @@ G.store = {
     const f = G.field, w = G.data.words[id]; if (!f || !w) return null;
     if (o.walkOn && walked[id] != null && G.frame - walked[id] < WALK_AGAIN) return null;
     if (o.walkOn) walked[id] = G.frame;
+    if (G.vocabLog) G.vlog('tapped-object', id, { via: o.animal ? 'animal' : o.walkOn ? 'walk-on' : 'tap' }); // (the dev-only log, vocablog.js)
     G.st.see(id);
     const b = WD.bubble = { id, x: wx, y: wy, t: 0, cry: o.cry || null, f };
     if (o.tile) f.wig = { x: o.tile[0], y: o.tile[1], t: 18 };
@@ -9835,7 +9969,8 @@ G.store = {
       como: ['¡[hola]! ¿[comoestas]?', 'Hi! How are you?', 'bien'],
     }[kind];
     const c = G.wordChoices(Q[2], POOL[Q[2]], 3);
-    yield* G.ask({ prompt: nm + ': ' + Q[0], en: nm + ': ' + Q[1], choices: c.choices, answer: c.answer, layout: 'cards', learn: Q[2], who: npc });
+    if (G.vocabLog) G.vlog.greet = npc; // (the dev-only log, vocablog.js: tags the greeting's words)
+    try { yield* G.ask({ prompt: nm + ': ' + Q[0], en: nm + ': ' + Q[1], choices: c.choices, answer: c.answer, layout: 'cards', learn: Q[2], who: npc }); } finally { G.vlog.greet = null; }
     H.add(npc, 1, 'greet'); // (marks today's greeting even when no heart is left to give)
     yield 20;
     yield* H.milestones(npc);
@@ -10231,7 +10366,7 @@ G.store = {
   // a speaking star for saying a command or a care word to Canelo (once per word per day, like say-it-back)
   function spokeStar(id) {
     const sb = G.state.sayback || (G.state.sayback = {}), today = G.world.today();
-    if (sb[id] === today) return false;
+    if (sb[id] === today) { if (G.vocabLog) G.vlog('said', id, { via: 'PetMenu', star: false }); return false; } // (the dev-only log, vocablog.js: said, no star today)
     sb[id] = today;
     const [x, y] = dogXY(); G.mic.award(id, x, y - 8); G.fx.say('¡Bien dicho!', x, y - 26, '#a8f0ff', true);
     return true;
@@ -10273,7 +10408,7 @@ G.store = {
   const tsay = (who, ...pages) => G.say(pages, { portrait: G.portraitOf(who), name: G.nameOf(who), who });
   P.teach = function* (id, who) {
     const f = G.field, n = P.npc(f), p = st();
-    p.learning = id; p.tricks[id] = p.tricks[id] | 0; S.see(id); S.autosave();
+    p.learning = id; p.tricks[id] = p.tricks[id] | 0; if (G.vocabLog) G.vlog('shown', id, { via: 'pet-teach', who }); S.see(id); S.autosave();
     if (n) { while (n.moving) yield 1; P.place(f, n); }
     yield tsay(who, TT('¡Mira! Canelo... ¡[' + id + ']!', 'Look! Canelo... (watch what he does)'));
     yield* P.trick(id, { amp: 1 });
@@ -10443,7 +10578,7 @@ G.store = {
       if (G.hearts) yield* G.hearts.milestones('canelo');
       return false;
     }
-    if (W(id)) S.see(id);
+    if (W(id)) { if (G.vocabLog && !spoken) G.vlog('picked', id, { via: 'pet-menu' }); S.see(id); }
     let learnIt = false;
     if (spoken) { spokeStar(id); learnIt = !S.knows(id); }
     if (id === 'hueso' || id === 'galleta') { yield* P.play('eat', { item: id }); if (!(G.hearts && G.hearts.gift('canelo', id))) careHeart(); }
@@ -11159,7 +11294,7 @@ G.MAPDATA = {
     MAX: 8,
     list: () => bagS(),
     has: (id, o = {}) => bagS().some(it => match(it, id, o)),
-    add(id, o = {}) { const it = Object.assign({ id }, o); bagS().push(it); popIn = { it, t: 0 }; G.audio.sfx('item'); S.see(id); S.autosave(); return it; },
+    add(id, o = {}) { const it = Object.assign({ id }, o); bagS().push(it); popIn = { it, t: 0 }; G.audio.sfx('item'); if (G.vocabLog) G.vlog('shown', id, { via: 'bag' }); S.see(id); S.autosave(); return it; },
     take(id, o = {}) { const L = bagS(), k = L.findIndex(it => match(it, id, o)); if (k < 0) return null; const it = L.splice(k, 1)[0]; S.autosave(); return it; },
     icon: it => (it.col ? { icon: W(it.id).icon, col: it.gold ? '#f8c820' : W(it.col).col } : W(it.id) || it.id),
     full: () => bagS().length >= 8,
@@ -11568,6 +11703,7 @@ G.MAPDATA = {
     if (!tot || counted(kind) >= tot) return false;
     c.n[kind] = counted(kind) + 1;
     const w = NUM[c.n[kind] - 1];
+    if (G.vocabLog) G.vlog('tapped-object', w, { via: 'count' }); // (the dev-only log, vocablog.js)
     G.fx.say('¡' + G.baseForm(w) + '!', sx, sy - 10, '#fff070', true); G.speak(G.baseForm(w)); G.audio.sfx('coin');
     if (c.n[kind] >= tot) { G.album.count(kind); G.audio.sfx('chime'); for (let i = 0; i < 3; i++) G.fx.twinkle(sx + (Math.random() - 0.5) * 24, sy + (Math.random() - 0.5) * 14); }
     if (countDone()) G.toast('\u0005 ¡Luna! \u0005', 120);

@@ -111,10 +111,26 @@
       const word = (opts.answer != null && opts.onWrong && !opts.noMic && this.ch[opts.answer] && this.ch[opts.answer].word) || (opts.mic && opts.answer == null && this.ch.some(c => c.word));
       this.mic = word && G.mic && G.mic.on() ? new G.MicBtn(this, { rect: () => this.micRect(), ready: () => !this.won && this.t > 8 && (!this.miss || this.miss.t > 8), heard: a => this.heard(a) }) : null;
       while (this.ch[this.i] && this.ch[this.i].off) this.i++;
+      if (G.vocabLog) this.vlog(); // (the dev-only log, vocablog.js)
       G.richIds(opts.prompt || '').forEach(id => S().see(id));
       this.ch.forEach(c => c.word && S().see(c.word));
       this.lines = G.richLayout(opts.prompt || '', G.W - 96); // room for the speaker (and back) buttons
-      if (!opts.noVoice) G.speak(G.plain(opts.prompt || ''));
+      if (!opts.noVoice) G.speak(opts.prompt || ''); // (G.speak reads the [id] words as plain text)
+    }
+    showId() { const sh = this.o.show; return !sh ? null : typeof sh === 'string' ? (D().words[sh] ? sh : null) : Object.keys(D().words).find(id => D().words[id] === sh) || null; } // (a word's picture above the prompt)
+    vlog() {
+      const o = this.o, who = o.who || null, show = this.showId();
+      G.vlog('shown', G.richIds(o.prompt || ''), { via: 'question', who });
+      if (show) G.vlog('shown', show, { via: 'picture', who });
+      this.ch.forEach(c => c.word && G.vlog('choice-shown', c.word, { who, pic: !!view(c).icon }));
+    }
+    // the dev-only log: what was picked (spoken right answers are logged as 'said' by G.st.said)
+    vlogPick(k, spoken) {
+      const o = this.o, c = this.ch[k], who = o.who || null; if (!c.word) return;
+      if (o.answer == null || (k !== o.answer && !o.onWrong)) { if (!spoken) G.vlog('picked', c.word, { who }); return; }
+      if (k !== o.answer) { G.vlog('wrong', c.word, { who, ans: this.ch[o.answer] && this.ch[o.answer].word, spoken: spoken || null }); return; }
+      if (spoken) return;
+      G.vlog('recognized', c.word, { who, pic: !!view(c).icon, show: this.showId() === c.word || null, prompt: G.richIds(o.prompt || '').indexOf(c.word) >= 0 || null });
     }
     onEnter() { if (this.mic) this.mic.arm(); }
     onExit() { if (this.mic) this.mic.off(); }
@@ -145,6 +161,7 @@
     pick(k, spoken) {
       const o = this.o, c = this.ch[k], R = this.rects(), r = R[k];
       if (c.off) { G.audio.sfx('boop'); return; }
+      if (G.vocabLog) this.vlogPick(k, spoken);
       this.i = k;
       if (o.answer == null || (k !== o.answer && !o.onWrong)) {
         if (spoken && c.word && this.mic) { const m = this.micRect(); this.mic.win(); G.mic.award(c.word, m.x + m.w / 2, m.y + m.h / 2); G.fx.say('¡Bien dicho!', r.x + r.w / 2, r.y - 12, '#a8f0ff', true); }
@@ -172,7 +189,7 @@
       const d = G.input.repDir(14, 6);
       if (d === (this.cards ? 'left' : 'up')) this.move(-1);
       if (d === (this.cards ? 'right' : 'down')) this.move(1);
-      if (G.input.p('C') || (G.speakerHit(...this.spk()) && G.input.eat())) G.speak(G.plain(this.o.prompt || ''));
+      if (G.input.p('C') || (G.speakerHit(...this.spk()) && G.input.eat())) G.speak(this.o.prompt || '');
       if (G.input.tap() && this.t > 8) { // tapping a card (or row) answers with it
         if (this.o.cancel && G.btnHit(...this.backXY())) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(-1); return; }
         const pad = this.cards ? 6 : 0;
