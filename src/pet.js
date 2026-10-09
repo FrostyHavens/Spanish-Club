@@ -30,10 +30,11 @@
   const P = G.pet = {}, T = G.TILE;
   const F = () => G.state.flags, S = G.st;
   const TT = (t, en) => ({ t, en });
-  // ven and siéntate are learned in the story (chapters 1 and 3); the others are taught by Sofía and Nico (canTeach) for
-  // the older errands after chapter 10, until chapters 14 and 17 teach them
-  P.TRICKS = [{ id: 'ven', by: 'mama', anim: 'come', story: true }, { id: 'sientate', by: 'mama', anim: 'sit', story: true }, { id: 'pata', by: 'sofia', anim: 'paw' },
-    { id: 'salta', by: 'sofia', anim: 'jump' }, { id: 'gira', by: 'nico', anim: 'spin' }];
+  // every trick is learned in the story: ven (chapter 1), siéntate (3), dame la pata and salta (14, Sofía), busca (16,
+  // Señor Gómez: he sniffs his way to something and barks there), gira (17, Nico)
+  P.TRICKS = [{ id: 'ven', by: 'mama', anim: 'come', story: true }, { id: 'sientate', by: 'mama', anim: 'sit', story: true }, { id: 'pata', by: 'sofia', anim: 'paw', story: true },
+    { id: 'salta', by: 'sofia', anim: 'jump', story: true }, { id: 'busca', by: 'gomez', anim: 'sniff', story: true }, { id: 'gira', by: 'nico', anim: 'spin', story: true }];
+  const TR = P.TRICKS.length; // (the menu's top row)
   P.CARE = ['hueso', 'galleta', 'agua', 'pelota', 'mimo', 'cama'];
   P.NEED = 3;
   P.BED = [7, 5]; P.BOWL = [1, 4]; // at home (casa): his cushion and his bowl
@@ -96,7 +97,7 @@
 
   // ---------- Canelo's animations (time from G.frame, so they play under any screen) ----------
   // n.pa = {k, f0, len, amp, sx, sy (away direction), D (px away), ev: fired events, item}
-  const LEN = { sit: 80, come: 120, paw: 92, jump: 72, spin: 76, huh: 56, eat: 112, drink: 96, fetch: 168, pet: 104, dance: 64, wake: 30 };
+  const LEN = { sniff: 84, sit: 80, come: 120, paw: 92, jump: 72, spin: 76, huh: 56, eat: 112, drink: 96, fetch: 168, pet: 104, dance: 64, wake: 30 };
   const DIRS = ['down', 'right', 'up', 'left'];
   const ease = u => 1 - (1 - u) * (1 - u);
   // the free distance (tiles, up to max) from n's tile going (dx, dy): walls stop it
@@ -160,6 +161,12 @@
         if (t < 56) { o.dir = DIRS[Math.min(steps, Math.floor(t / per)) % 4]; o.z = Math.abs(Math.sin(t / per * Math.PI)) * 2; o.fr = (t >> 2) & 1; } else o.dir = 'down';
         if (t % 8 === 0 && t < 56 && A >= 1) puff('spark', wx + Math.cos(t / 4) * 14, wy + 10 + Math.sin(t / 4) * 5, { life: 18 });
         ev(58, () => { P.sound('bark'); if (A >= 1) puff('heart', wx, wy - 2, { life: 50, vy: -0.35 }); });
+        break;
+      }
+      case 'sniff': { // nose to the ground, left and right, then a bark: found it!
+        o.dir = t < 64 ? ((t >> 4) & 1 ? 'left' : 'right') : 'down'; o.sy = t < 64 ? 0.9 : 1; o.dy = t < 64 ? 2 : 0; o.fr = (t >> 2) & 1;
+        if (t % 10 === 0 && t < 64) puff('dust', wx + (o.dir === 'left' ? -9 : 9), wy + 21, { life: 16, vy: -0.25 });
+        ev(66, () => { P.sound('bark'); if (A >= 1) puff('ex', wx, wy - 6, { life: 34 }); });
         break;
       }
       case 'huh': o.rot = Math.sin(Math.min(1, t / 10) * Math.PI / 2) * 0.22 * (t < 46 ? 1 : (56 - t) / 10); o.dir = 'down'; ev(4, () => { puff('q', wx, wy - 8, { life: 46 }); P.sound('whine'); }); break;
@@ -399,7 +406,7 @@
       G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; this.won = null;
       const C = this.cards(), k = C.findIndex(c => c.st === 'learn');
       this.sel = k >= 0 ? k : Math.max(0, C.findIndex(c => c.st === 'known'));
-      if (this.sel < 0 || C[this.sel].st === 'lock') this.sel = 5;
+      if (this.sel < 0 || C[this.sel].st === 'lock') this.sel = TR;
       this.mic = G.mic && G.mic.on() ? new G.MicBtn(this, { rect: () => this.micRect(), ready: () => this.t > 10 && !this.won, heard: a => this.heard(a) }) : null;
     }
     onEnter() { if (this.mic) this.mic.arm(); }
@@ -410,7 +417,7 @@
       return P.TRICKS.map(tr => ({ id: tr.id, row: 0, by: tr.by, st: P.knows(tr.id) ? 'known' : l === tr.id ? 'learn' : nx && nx.id === tr.id ? 'next' : 'lock' }))
         .concat(P.CARE.map(id => ({ id, row: 1, st: id === 'cama' && !this.home() ? 'away' : 'care' })));
     }
-    rect(k) { return k < 5 ? { x: 9 + k * 54, y: 136, w: 52, h: 46 } : { x: 10 + (k - 5) * 44, y: 184, w: 40, h: 38 }; }
+    rect(k) { return k < TR ? { x: 9 + k * 45, y: 136, w: 43, h: 46 } : { x: 10 + (k - TR) * 44, y: 184, w: 40, h: 38 }; }
     micRect() { return { x: 279, y: 140, w: 36, h: 36 }; }
     closeXY() { return [G.W - 26, 6]; }
     hintXY() { const k = this.cards().findIndex(c => c.st === 'learn'); if (k < 0) return null; const r = this.rect(k); return [r.x + r.w / 2, r.y + r.h / 2]; }
@@ -433,10 +440,10 @@
       if (this.won) { if (this.mic) { this.mic.t++; if (this.mic.pop) this.mic.pop--; } if (++this.won.t >= (this.won.v.spoken ? 24 : 10)) { G.pop(); this.w.resolve(this.won.v); } return; }
       if (this.mic && this.mic.update()) return;
       const C = this.cards(), d = G.input.repDir(14, 6);
-      if (d === 'left' || d === 'right') { const row = this.sel < 5 ? [0, 5] : [5, 11], n = row[1] - row[0]; this.sel = row[0] + ((this.sel - row[0] + (d === 'left' ? -1 : 1) + n) % n); G.audio.sfx('cursor'); }
+      if (d === 'left' || d === 'right') { const row = this.sel < TR ? [0, TR] : [TR, TR + P.CARE.length], n = row[1] - row[0]; this.sel = row[0] + ((this.sel - row[0] + (d === 'left' ? -1 : 1) + n) % n); G.audio.sfx('cursor'); }
       if (d === 'up' || d === 'down') { // the card nearest above / below
-        const r = this.rect(this.sel), cx = r.x + r.w / 2, want = d === 'up' ? [0, 5] : [5, 11];
-        if ((d === 'up') === (this.sel >= 5)) { let b = want[0], bd = 1e9; for (let k = want[0]; k < want[1]; k++) { const q = this.rect(k), dd = Math.abs(q.x + q.w / 2 - cx); if (dd < bd) { bd = dd; b = k; } } this.sel = b; G.audio.sfx('cursor'); }
+        const r = this.rect(this.sel), cx = r.x + r.w / 2, want = d === 'up' ? [0, TR] : [TR, TR + P.CARE.length];
+        if ((d === 'up') === (this.sel >= TR)) { let b = want[0], bd = 1e9; for (let k = want[0]; k < want[1]; k++) { const q = this.rect(k), dd = Math.abs(q.x + q.w / 2 - cx); if (dd < bd) { bd = dd; b = k; } } this.sel = b; G.audio.sfx('cursor'); }
       }
       if (G.input.p('C') && W(C[this.sel].id)) G.speak(G.baseForm(C[this.sel].id));
       if (G.input.tap()) {
@@ -464,14 +471,14 @@
         if (c.row === 0) {
           if (c.st === 'lock') G.bigText(ctx, '?', r.x + r.w / 2, y + 12, 2, '#6a6e90', null);
           else if (c.st === 'next') { // who teaches it next: their little face, and the trick, faded
-            ctx.globalAlpha = 0.35; G.drawIcon16(ctx, c.id, r.x + 9, y + 4, 2); ctx.globalAlpha = 1;
+            ctx.globalAlpha = 0.35; G.drawIcon16(ctx, c.id, r.x + 5, y + 4, 2); ctx.globalAlpha = 1;
             ctx.drawImage(G.unitSprite(G.data.npcs[c.by].map, 'down', (this.t >> 5) & 1), r.x + r.w - 26, y + r.h - 28);
             G.text(ctx, '?', r.x + 6, y + r.h - 12, '#f8e060');
           } else {
-            G.drawIcon16(ctx, c.id, r.x + 9, y + 2, 2);
+            G.drawIcon16(ctx, c.id, r.x + 5, y + 2, 2);
             const lab = LABEL[c.id] || G.baseForm(c.id);
             G.textC(ctx, lab, r.x + r.w / 2, y + 35, c.st === 'known' ? '#f8d860' : '#ffffff');
-            if (c.st === 'learn') for (let i = 0; i < P.NEED; i++) drawPaw(ctx, r.x + 6 + i * 14, y + 4, i < P.tries(c.id));
+            if (c.st === 'learn') for (let i = 0; i < P.NEED; i++) drawPaw(ctx, r.x + 3 + i * 13, y + 4, i < P.tries(c.id));
             if (c.st === 'known') G.text(ctx, '\u0005', r.x + r.w - 9, y + 3, '#f8d040');
           }
         } else {

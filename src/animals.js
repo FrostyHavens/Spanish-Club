@@ -208,6 +208,21 @@
     a.age++;
     if (a.react > 0) a.react--;
     const zf = f.zoo.fx;
+    // the story moves an animal (chapters 11-21): a.follow = k: it trots after you, k-th in the line (called with
+    // "¡ven!"); a.go = [x, y, speed] (world px): it trots there, then stays; a.pin = [x, y]: it stays put (a hen to
+    // point at, the party's guests)
+    if (a.follow) {
+      const tr = f.zoo.trail || [], pt = tr[Math.max(0, tr.length - 1 - a.follow * 9)];
+      if (pt) { a.tx = pt[0] + (a.follow & 1 ? -4 : 4); a.ty = pt[1]; const far = Math.hypot(a.tx - a.x, a.ty - a.y); if (far > 3) goToward(a, Math.min(2.4, 0.6 + far * 0.03)); a.z = a.kind === 'conejo' && far > 3 && a.age % 14 < 7 ? 2 : 0; }
+      a.pin = null; a.st = 'idle'; return;
+    }
+    if (a.go) {
+      a.tx = a.go[0]; a.ty = a.go[1];
+      if (a.kind === 'conejo' && a.age % 14 < 7) a.z = 2; else a.z = 0;
+      if (goToward(a, a.go[2] || 0.9)) { a.pin = [a.x, a.y]; a.go = null; a.z = 0; }
+      a.st = a.kind === 'pez' ? 'swim' : 'idle'; return;
+    }
+    if (a.pin && a.st !== 'jump') { a.x = a.pin[0]; a.y = a.pin[1]; a.tx = a.x; a.ty = a.y; if (a.st === 'walk' || a.st === 'hop' || a.st === 'swim') a.st = 'idle'; if (a.t < 10) a.t = 30 + ri(60); a.t--; if (a.kind === 'gallina' && a.t % 50 === 0) a.st = a.st === 'peck' ? 'idle' : 'peck'; return; }
     switch (a.kind) {
       case 'pato': {
         if (a.baby) { // follow the one in front, a little behind
@@ -404,7 +419,12 @@
   };
 
   // ---------- hooks and lookups ----------
-  AN.update = function (f) { if (!f.zoo) setup(f); sync(f); };
+  AN.update = function (f) {
+    if (!f.zoo) setup(f);
+    const p = f.player, tr = f.zoo.trail || (f.zoo.trail = []), px = p.x * T + 12 + (p.ox || 0), py = p.y * T + 20 + (p.oy || 0), l = tr[tr.length - 1]; // (your trail: animals that follow you walk it)
+    if (!l || Math.abs(l[0] - px) + Math.abs(l[1] - py) >= 2) { tr.push([px, py]); if (tr.length > 120) tr.shift(); }
+    sync(f);
+  };
   AN.here = function (f) { f = f || G.field; if (!f) return []; if (!f.zoo) setup(f); return f.zoo.list.map(a => ({ kind: a.kind, x: a.x, y: a.y, st: a.st, baby: !!a.baby })); };
   AN.find = function (kind, f) { f = f || G.field; if (!f) return null; if (!f.zoo) setup(f); return f.zoo.list.find(a => a.kind === kind && !a.baby) || null; };
   AN.screen = function (a, f) { f = f || G.field; const img = frameOf(a); return [a.x - Math.round(f.cam.x), a.y - a.z - img.height / 2 - Math.round(f.cam.y)]; };

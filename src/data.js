@@ -12,9 +12,8 @@
   // ---------- Errands ----------
   // goal: what the Misiones screen pictures — [word, count] pairs, '>' draws an arrow ("take this there").
   // The story is the 21 chapters (content/es/words.js, src/chapters.js); each chapter is also a quest here (c1..c21:
-  // active / done in G.state.quests, a badge when it's done). The errands below are the older ones: mercado, picnic,
-  // show, cuenta, sonidos, flores and fiestab still run after chapter 10 until chapters 11-21 replace them; saludos,
-  // pelota, carta, canelo, cansado and fiesta only show in older games that have them.
+  // active / done in G.state.quests, a badge when it's done). The errands below are the older ones the chapters
+  // replaced (docs/CURRICULUM.md 7.2): they never start now and only show in older games that have them done.
   D.quests = {
     saludos: { name: 'Saludos', en: 'Greetings: say hello to three people', giver: 'luna', goal: [['hola', 3]] },
     mercado: { name: 'El mercado', en: 'The market: three apples and two bananas', giver: 'rosa', goal: [['manzana', 3], ['platano', 2]] },
@@ -31,11 +30,10 @@
     fiestab: { name: 'La fiesta de los animales', en: 'The animal party at the farm (the finale)', giver: 'luna', goal: [['hola', 5], '>', ['granja', 1]] },
   };
   for (const c of D.chapters || []) D.quests[c.id] = { name: c.title, en: c.en, giver: c.giver, goal: c.goal, chapter: c.n, icon: c.icon, col: c.col };
-  // the older errands that still run after chapter 10 (src/errands.js), in the order they open
-  D.tailOrder = ['mercado', 'picnic', 'show', 'flores', 'sonidos', 'cuenta', 'fiestab'];
-  // Misiones and the badge rows: the chapters written so far, then the older errands still running; the legacy ones
-  // only show in older games that have them
-  D.legacyQuests = ['saludos', 'pelota', 'carta', 'canelo', 'cansado', 'fiesta'];
+  // older errands that would run after the chapters written so far (src/errands.js): none, all 21 chapters are written
+  D.tailOrder = [];
+  // Misiones and the badge rows: the chapters; the legacy errands only show in older games that have them
+  D.legacyQuests = ['saludos', 'mercado', 'pelota', 'carta', 'canelo', 'cansado', 'picnic', 'show', 'flores', 'sonidos', 'cuenta', 'fiesta', 'fiestab'];
   D.questOrder = (D.chapters || []).map(c => c.id).concat(D.tailOrder, D.legacyQuests);
   D.badgeOrder = (D.chapters || []).map(c => c.id).concat(D.tailOrder);
 

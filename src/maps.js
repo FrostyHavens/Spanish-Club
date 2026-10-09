@@ -21,6 +21,10 @@
   function* CT(who, f) { return !!G.chapters && (yield* G.chapters.talk(who, f)); }
   const EA = who => (G.errands ? G.errands.alert(who) : false);
   function* ET(who, f) { return !!G.errands && (yield* G.errands.talk(who, f)); }
+  // then the day's review in the world (favores.js): someone's small favour, Luna's palabra del día, Inés's pages
+  const FA = who => (G.favores ? G.favores.alert(who) : null);
+  function* FT(who, f) { return !!G.favores && (yield* G.favores.talk(who, f)); }
+  const EF = who => EA(who) || FA(who);
   const CH = () => G.chapters;
   // a townsperson's whole talk: greeting, story, errands, then their own line
   function talker(who, line) {
@@ -28,6 +32,7 @@
       yield* hello(who);
       if (yield* CT(who, f)) return;
       if (yield* ET(who, f)) return;
+      if (yield* FT(who, f)) return;
       yield* (typeof line === 'function' ? line(f) : say(who, line));
     };
   }
@@ -73,23 +78,23 @@
     things: { areas: { escuelaArea: 'escuela', rosaArea: 'casa', casaArea: 'casa', panaderiaArea: 'panaderia', bibliotecaArea: 'biblioteca', granja: 'granja' } },
     npcs: [
       { id: 'pepe', npc: 'pepe', x: P('villa', 'pepe')[0], y: P('villa', 'pepe')[1], dir: 'down', fixed: true,
-        alert: () => CA('pepe') || (S.active('mercado') && !F().compra ? [['manzana', 3], ['platano', 2]] : EA('pepe')),
+        alert: () => CA('pepe') || (S.active('mercado') && !F().compra ? [['manzana', 3], ['platano', 2]] : EF('pepe')),
         talk: talker('pepe', pepeTalk) },
       { id: 'rosa', npc: 'rosa', x: 7, y: 7, dir: 'down', wander: 1,
-        alert: () => CA('rosa') || (S.active('mercado') && F().compra ? true : !S.quest('mercado') && G.errands && G.errands.offer('mercado') ? [['manzana', 3], ['platano', 2]] : EA('rosa')),
+        alert: () => CA('rosa') || (S.active('mercado') && F().compra ? true : !S.quest('mercado') && G.errands && G.errands.offer('mercado') ? [['manzana', 3], ['platano', 2]] : EF('rosa')),
         talk: talker('rosa', rosaTalk) },
       { id: 'tomas', npc: 'tomas', x: 20, y: 12, dir: 'down', // his mail round (ambient.js): the plaza, beside the bakery door, Rosa's
         route: [[20, 12, 'down', 150], [28, 7, 'up', 120], [4, 7, 'up', 120]],
-        alert: () => CA('tomas') || EA('tomas'),
+        alert: () => CA('tomas') || EF('tomas'),
         talk: talker('tomas', () => say('tomas', met('carta') ? T('¡[hola], {name}! ¡Mis [carta:cartas]!', 'Hi, {name}! My letters!') : T('¡Hola! Soy Tomás.', 'Hi! I\'m Tomás, the mail carrier.'))) },
       { id: 'gomez', npc: 'gomez', x: 8, y: 11, dir: 'right', wander: 1,
-        alert: () => CA('gomez') || EA('gomez'), talk: talker('gomez', () => say('gomez', T('¡[hola], {name}!', 'Hi, {name}!'))) },
+        alert: () => CA('gomez') || EF('gomez'), talk: talker('gomez', () => say('gomez', T('¡[hola], {name}!', 'Hi, {name}!'))) },
       { id: 'lucia', npc: 'lucia', x: 27, y: 12, dir: 'left', wander: 2,
-        alert: () => CA('lucia') || EA('lucia'), talk: talker('lucia', () => say('lucia', met('comoestas') ? T('¡[hola]! ¿[comoestas]?', 'Hi! How are you?') : T('¡[hola]!', 'Hi!'))) },
+        alert: () => CA('lucia') || EF('lucia'), talk: talker('lucia', () => say('lucia', met('comoestas') ? T('¡[hola]! ¿[comoestas]?', 'Hi! How are you?') : T('¡[hola]!', 'Hi!'))) },
       { id: 'nico', npc: 'nico', x: 15, y: 15, dir: 'down', wander: 2, follow: () => !!G.errands && G.errands.nicoFollows(), // (his sound game: he tags along)
-        alert: () => CA('nico') || EA('nico'), talk: talker('nico', () => say('nico', met('parque') ? T('¡[hola]! ¡Al [parque]!', 'Hi! To the park!') : T('¡[hola]! Soy Nico.', 'Hi! I\'m Nico.'))) },
+        alert: () => CA('nico') || EF('nico'), talk: talker('nico', () => say('nico', met('parque') ? T('¡[hola]! ¡Al [parque]!', 'Hi! To the park!') : T('¡[hola]! Soy Nico.', 'Hi! I\'m Nico.'))) },
       { id: 'sofia', npc: 'sofia', x: P('villa', 'sofia')[0], y: P('villa', 'sofia')[1], dir: 'down',
-        alert: () => CA('sofia') || EA('sofia'),
+        alert: () => CA('sofia') || EF('sofia'),
         talk: talker('sofia', () => say('sofia', met('pelota') ? T('¡Mi [pelota]!', 'My ball!') : T('¡[hola]!', 'Hi!'))) },
       { id: 'canelo', npc: 'canelo', x: 19, y: 9, dir: 'left', wander: 3, follow: () => F().canelo, // tags along once you've met
         cond: () => !(G.errands && G.errands.lost()), // (not while he's lost)
@@ -166,12 +171,13 @@
       } })],
     npcs: [
       { id: 'mama', npc: 'mama', x: P('casa', 'mama')[0], y: P('casa', 'mama')[1], dir: 'down', fixed: true,
-        alert: () => CA('mama') || !!(G.day && G.day.over() && !(G.field && G.field.evening)) || EA('mama'), // (not while the evening is going on)
+        alert: () => CA('mama') || !!(G.day && G.day.over() && !(G.field && G.field.evening)) || EF('mama'), // (not while the evening is going on)
         talk: function* (f) {
           if (G.day && G.day.over()) { yield* G.day.evening(f); return; } // already home when the sun went down
           yield* hello('mama');
           if (yield* CT('mama', f)) return;
           if (yield* ET('mama', f)) return; // the older errands (errands.js)
+          if (yield* FT('mama', f)) return; // a favour (favores.js)
           if (S.done('fiestab') || S.done('c21')) yield* say('mama', T('¡{name}! ¡Muy bien!', '{name}! Well done!'));
           else if (G.pet && G.pet.mine()) yield* say('mama', T('¡Canelo y {name}! ¡A jugar!', 'Canelo and {name}! Off you go and play!'));
           else yield* say('mama', T('¡{name}!', '{name}!'));
@@ -190,7 +196,7 @@
     exits: [exitAt('escuela', 'escuelaDoor')],
     npcs: [
       { id: 'luna', npc: 'luna', x: P('escuela', 'luna')[0], y: P('escuela', 'luna')[1], dir: 'down', fixed: true,
-        alert: () => CA('luna') || EA('luna'),
+        alert: () => CA('luna') || EF('luna'),
         talk: talker('luna', lunaTalk) },
       { id: 'kid1', npc: 'nico', x: 3, y: 5, dir: 'up', cond: () => S.done('fiesta') || S.done('fiestab'), talk: [T('¡Fiesta!', 'Party!')] },
       { id: 'kid2', npc: 'lucia', x: 9, y: 5, dir: 'up', cond: () => S.done('fiesta') || S.done('fiestab'), talk: [T('¡Muy bien, {name}!', 'Well done, {name}!')] },
@@ -223,7 +229,7 @@
     exits: [exitAt('panaderia', 'panaderiaDoor')],
     npcs: [
       { id: 'marta', npc: 'marta', x: P('panaderia', 'marta')[0], y: P('panaderia', 'marta')[1], dir: 'down', fixed: true,
-        alert: () => CA('marta') || EA('marta'),
+        alert: () => CA('marta') || EF('marta'),
         talk: talker('marta', () => say('marta', met('pan') ? T('¡[hola]! ¡[pan]!', 'Hello! Bread!') : T('¡[hola]!', 'Hello!'))) },
     ],
   };
@@ -235,7 +241,7 @@
     pages: PAGES('biblioteca'), things: {},
     npcs: [
       { id: 'ines', npc: 'ines', x: P('biblioteca', 'ines')[0], y: P('biblioteca', 'ines')[1], dir: 'down', fixed: true,
-        alert: () => CA('ines') || EA('ines'),
+        alert: () => CA('ines') || EF('ines'),
         talk: talker('ines', () => say('ines', T('Shhh...', 'Shhh... (this is the library)'))) },
     ],
   };

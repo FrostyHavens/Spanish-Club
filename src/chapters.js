@@ -17,12 +17,14 @@
 // beat.when(c): an extra condition (e.g. () => G.intro.found('perro')); beat.hint(f, c): [{x, y}] world px for the hint
 // hand; beat.part: an icon for Misiones (the steps with a part are ticked off as they are done).
 // opts: { stage(f, c) (puts people where the chapter needs them; called when a map opens and after every beat),
+//         after(f, c) (a generator played once the chapter is done and its badge shown: the diploma),
+//         follows(who, c) (someone tags along with you now: Nico's sound game),
 //         draw(f, ctx, c) (under the people), drawTop(f, ctx, c), lost: (c) => Canelo is away (his map entries
 //         hide), tap(kind, f, c) (true: a tap on an animal / the cat / Canelo was handled, e.g. a wrong one) }
 // c (the chapter's context, also G.chapters.ctx(id)): { id, def, data (its own saved object), step }.
 //
 // Opening (gate(id) -> null when it may start, else why not):
-//   'prev'      the chapter before isn't done          'unwritten'  no script yet (chapters 11-21 for now)
+//   'prev'      the chapter before isn't done          'unwritten'  no script yet
 //   'budget'    its new words don't fit today: at most 6 new words a day (G.words.day) and 8 a calendar date
 //   'soon'      more than 5 new words would fall inside 5 minutes of play: it opens a few minutes later (no bubble
 //               meanwhile; the evening chapter has the sunset for that)
@@ -49,7 +51,7 @@
   const TT = (t, en) => ({ t, en });
   const scripts = {};
   CH.LIMITS = { day: 6, date: 8, busy: 10, win: 300, inWin: 5 }; // (at most inWin new words in win seconds of play)
-  CH.VERSION = 2;
+  CH.VERSION = 3; // (2: chapters 1-10 then the older errands; 3: all 21 chapters)
 
   // ---------- the table and the scripts ----------
   CH.ids = () => (D().chapters || []).map(c => c.id);
@@ -57,7 +59,7 @@
   CH.script = function (id, beats, opts) { scripts[id] = { beats, o: opts || {} }; };
   CH.written = id => !!scripts[id];
   CH.writtenIds = () => CH.ids().filter(CH.written);
-  // the badge rows (Misiones, the diploma): the chapters written so far, then the older errands still running
+  // the badge rows (Misiones, the diploma): the chapters (and any older errands still listed in tailOrder: none now)
   Object.defineProperty(D(), 'badgeOrder', { configurable: true, get: () => CH.writtenIds().concat(D().tailOrder || []) });
 
   // ---------- saved state ----------
@@ -124,6 +126,7 @@
     S.finishQuest(id); s.doneSess[id] = G.words.sess(); s.lastDoneSess = G.words.sess();
     yield G.badge(id);
     if (G.hearts && c.giver && G.hearts.WHO.includes(c.giver) && G.hearts.add(c.giver, 2, 'errand')) { yield 40; yield* G.hearts.milestones(c.giver); }
+    const sc = scripts[id]; if (sc && sc.o.after) yield* sc.o.after(f, CH.ctx(id)); // (the last chapter: the diploma)
     const nx = CH.next();
     if (nx && CH.def(nx).when === 'evening' && !CH.gate(nx, { evening: true }) && G.day && G.day.bring) G.day.bring(300); // (C9: the sunset comes sooner)
     restage(f);
@@ -206,7 +209,7 @@
   CH.alert = function (who) {
     if (!G.state) return null;
     const L = live();
-    if (L && L.b.who === who && when(L)) { const bb = L.b.bubble; return typeof bb === 'function' ? bb(CH.ctx(L.id)) : bb != null ? bb : true; }
+    if (L && L.b.who === who && when(L)) { const bb = L.b.bubble, v = typeof bb === 'function' ? bb(CH.ctx(L.id)) : bb != null ? bb : true; return CH.bubbleOf(v); }
     if (who === 'canelo' && CH.nudge()) return 'pregunta';
     if (CH.needsReview() && who === CH.reviewer()) return 'pagina';
     if (!CH.current()) {
@@ -215,6 +218,9 @@
     }
     return null;
   };
+  // a request bubble over someone shows the thing's picture while its word is new, and a "?" once the word is known
+  // (stage 2+: the child has to remember what they want; CURRICULUM.md 7.3)
+  CH.bubbleOf = v => (typeof v === 'string' && G.data.words[v] && G.words.stage(v) >= 2 ? 'pregunta' : v);
   // their part of a talk: true when it handled it
   CH.talk = function* (who, f) {
     if (!G.state) return false;
@@ -306,6 +312,8 @@
   }
   CH.restage = restage;
   CH.lost = function () { const id = CH.current(), sc = id && scripts[id]; return !!(sc && sc.o.lost && sc.o.lost(CH.ctx(id))); };
+  // someone tags along with you for a while (opts.follows(who, c): Nico in his sound game, chapter 17)
+  CH.follows = function (who) { const id = CH.current(), sc = id && scripts[id]; try { return !!(sc && sc.o.follows && sc.o.follows(who, CH.ctx(id))); } catch (e) { return false; } };
 
   // ---------- the arrival banner: entering a building whose word is met and due asks its name (a few times) ----------
   const PLACES = ['escuela', 'panaderia', 'biblioteca', 'casa'];
@@ -391,31 +399,40 @@
   };
 
   // ---------- older saves ----------
-  // A game from before the chapters: its errands map roughly onto the chapters that replaced them (CURRICULUM.md
-  // section 7.2), and every chapter before the furthest one counts as done too (one path). Canelo stays yours, with
-  // the tricks he knew. An older errand still going is let go (its chapter replaces it). Nothing is ever lost: the
-  // words keep their stages. Runs once (G.state.ch.v).
-  const MAP = { mercado: 'c4', pelota: 'c5', canelo: 'c7', saludos: 'c8', carta: 'c10', cansado: 'c10', picnic: 'c10', show: 'c10', cuenta: 'c10', sonidos: 'c10', flores: 'c10', fiestab: 'c10', fiesta: 'c10' };
+  // A game from before the chapters (no G.state.ch): its errands map onto the chapters that replaced them (CURRICULUM.md
+  // section 7.2), and every chapter before the furthest one counts as done too (one path). A game from part 1 (ch.v 2:
+  // chapters 1-10, then the older errands): those errands map onto chapters 11-21 the same way. Canelo stays yours, with
+  // the tricks he knew (and the tricks of every chapter now behind you). An older errand still going is let go (its
+  // chapter replaces it; its things leave the bag). Nothing is ever lost: the words keep their stages. Runs once.
+  const MAP = { mercado: 'c4', pelota: 'c5', canelo: 'c7', saludos: 'c8', carta: 'c10', cansado: 'c10', fiesta: 'c10',
+    picnic: 'c13', show: 'c14', flores: 'c15', sonidos: 'c17', cuenta: 'c19', fiestab: 'c21' };
+  const TAIL = { picnic: 'c13', show: 'c14', flores: 'c15', sonidos: 'c17', cuenta: 'c19', fiestab: 'c21' };
+  const TRICK_AT = { sientate: 'c3', pata: 'c14', salta: 'c14', busca: 'c16', gira: 'c17' };
   CH.migrate = function () {
     const s = G.state; if (!s) return;
-    if (isObj(s.ch) && s.ch.v) return;
-    const q = s.quests || (s.quests = {}), old = Object.keys(q).filter(k => !/^c\d+$/.test(k));
+    const v = isObj(s.ch) ? s.ch.v | 0 : 0;
+    if (v >= CH.VERSION) return;
+    const q = s.quests || (s.quests = {}), old = Object.keys(q).filter(k => !/^c\d+$/.test(k)), ids = CH.ids();
     const c = st(); c.v = CH.VERSION;
-    if (!old.length && !(s.flags && s.flags.intro)) return; // a new game
+    if (!v && !old.length && !(s.flags && s.flags.intro)) return; // a new game
     let far = -1;
-    for (const k of old) if (q[k] === 'done' && MAP[k]) far = Math.max(far, CH.ids().indexOf(MAP[k]));
-    if (s.flags && s.flags.petStart) far = Math.max(far, 0); // Canelo was already yours: chapter 1 is behind you
-    for (let i = 0; i <= far; i++) q[CH.ids()[i]] = 'done';
-    // older errands still going: the chapters replace them (the tail errands after chapter 10 go on as they were)
-    for (const k of old) if (q[k] === 'active' && !(far >= 9 && (D().tailOrder || []).includes(k))) { delete q[k]; delete s.flags['e_' + k]; }
-    if (s.bag && Array.isArray(s.bag.items)) s.bag.items = s.bag.items.filter(it => !it.q || q[it.q] === 'active');
-    if (far >= 0) {
-      s.flags.intro = true; s.flags.canelo = true; s.flags.petStart = true;
-      const p = isObj(s.pet) ? s.pet : (s.pet = {}); if (!isObj(p.tricks)) p.tricks = {};
-      p.tricks.ven = 3; if (far >= 2) p.tricks.sientate = 3;
-      if (p.learning === 'ven' || p.learning === 'sientate') p.learning = null;
+    if (v) { if (q.c10 === 'done') for (const k of old) if (q[k] === 'done' && TAIL[k]) far = Math.max(far, ids.indexOf(TAIL[k])); } // (part 1)
+    else {
+      for (const k of old) if (q[k] === 'done' && MAP[k]) far = Math.max(far, ids.indexOf(MAP[k]));
+      if (s.flags && s.flags.petStart) far = Math.max(far, 0); // Canelo was already yours: chapter 1 is behind you
     }
-    c.lastDoneSess = null;
+    for (let i = 0; i <= far; i++) q[ids[i]] = 'done';
+    // older errands still going: the chapters replace them
+    for (const k of old) if (q[k] === 'active') { delete q[k]; if (s.flags) delete s.flags['e_' + k]; }
+    if (s.bag && Array.isArray(s.bag.items)) s.bag.items = s.bag.items.filter(it => !it.q || q[it.q] === 'active');
+    if (!v && far >= 0) { s.flags.intro = true; s.flags.canelo = true; s.flags.petStart = true; }
+    if (s.flags && s.flags.petStart) {
+      const p = isObj(s.pet) ? s.pet : (s.pet = {}); if (!isObj(p.tricks)) p.tricks = {};
+      p.tricks.ven = 3;
+      for (const t in TRICK_AT) if (q[TRICK_AT[t]] === 'done') p.tricks[t] = 3;
+      p.learning = null; // (every trick is taught by its chapter now)
+    }
+    if (!v) c.lastDoneSess = null;
   };
 
   // =====================================================================

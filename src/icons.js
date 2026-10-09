@@ -298,6 +298,16 @@
     huella(p) { // a paw print on the ground
       p.ell(8, 11, 3.6, 3, '#6a4020'); [[3.6, 6.8], [6.6, 4.6], [9.6, 4.6], [12.4, 6.8]].forEach(([x, y]) => p.ell(x, y, 1.5, 1.8, '#6a4020'));
     },
+    plato(p) { // a plate (the picnic: Rosa counts them)
+      p.ell(8, 9, 7.5, 5, '#d8d8e4'); p.ell(8, 8.6, 6.4, 4, '#ffffff'); p.ell(8, 9, 4.2, 2.6, '#eef0f8'); p.rect(4, 6, 3, 1, '#ffffff');
+    },
+    nido(p, w) { // a nest of straw with w.n eggs in it (Rosa's hens: uno, dos)
+      const n = (w && w.n) || 1;
+      p.ell(8, 11, 7.5, 4, '#a07030'); p.ell(8, 10.2, 6, 2.6, '#6a4818');
+      if (n >= 1) { p.ell(n > 1 ? 5.6 : 8, 8.6, 2.4, 3, '#fff8ec'); p.put(n > 1 ? 4 : 7, 7, '#ffffff'); }
+      if (n >= 2) { p.ell(10.6, 8.6, 2.4, 3, '#fff4e0'); p.put(10, 7, '#ffffff'); }
+      for (const [x, y] of [[2, 11], [4, 13], [7, 14], [11, 13], [13, 11], [9, 12]]) p.put(x, y, '#d0a050');
+    },
     cubeta(p) { // a pail of milk
       p.rect(3, 6, 10, 9, '#a0a8b8'); p.rect(3, 6, 10, 2, '#e8ecf4'); p.rect(4, 7, 8, 1, '#ffffff'); p.shade(8, 10, 8, '#808898');
       for (let a = Math.PI; a <= Math.PI * 2; a += 0.06) p.put(8 + Math.cos(a) * 5 - 0.5, 6 + Math.sin(a) * 4 - 0.5, '#606878');
@@ -468,14 +478,32 @@
   // true when a word (or icon name) has its own picture, not the plain placeholder tile (tools/test-roundb-world.js)
   G.iconDrawn = w => { if (typeof w === 'string') w = G.data.words[w] || { icon: w }; return !!(w && DRAW[w.icon]); };
   // draw an icon scaled (pixel-perfect) inside an optional frame
+  // Two kinds of picture made of pictures (chapters 11-21, content/es/story-c11-c21.js):
+  //   {icon, count: n, col}  n of that thing in a little heap ("¿Cuántos?": count them; never the number's own picture)
+//   {list: [w, ...]}       several different things in a heap (Rosa's picnic basket)
+  //   {icon, sign: true}     a picture sign on a wooden post (Sofía's and Luna's trick signs: a sign, not the word)
   G.drawIcon16 = function (ctx, w, x, y, scale = 1, frame) {
-    const img = G.icon(w), s = S * scale;
+    const s = S * scale;
     if (frame) {
       ctx.fillStyle = '#000010'; ctx.fillRect(x - 3, y - 3, s + 6, s + 6);
       ctx.fillStyle = frame === 'sel' ? '#f0d060' : '#8898e0'; ctx.fillRect(x - 2, y - 2, s + 4, s + 4);
       ctx.fillStyle = frame === 'sel' ? '#3a56c8' : '#f4ecd8'; ctx.fillRect(x - 1, y - 1, s + 2, s + 2);
     }
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(img, Math.round(x), Math.round(y), s, s);
+    if (w && typeof w === 'object' && (w.count != null || w.list)) { // a heap: a grid of small ones, filled row by row
+      const n = w.list ? w.list.length : Math.max(1, Math.min(12, w.count | 0)), cols = n <= 1 ? 1 : n <= 4 ? 2 : n <= 9 ? 3 : 4, rows = Math.ceil(n / cols);
+      const cell = Math.floor(s / Math.max(cols, rows)), ox = x + (s - cols * cell) / 2, oy = y + (s - rows * cell) / 2, one = w.list ? null : G.icon({ icon: w.icon, col: w.col });
+      for (let i = 0; i < n; i++) { const r = Math.floor(i / cols), k = i % cols, inRow = r === rows - 1 ? n - r * cols : cols; ctx.drawImage(one || G.icon(w.list[i]), Math.round(ox + k * cell + (cols - inRow) * cell / 2 + 1), Math.round(oy + r * cell + 1), cell - 2, cell - 2); }
+      return;
+    }
+    if (w && typeof w === 'object' && w.sign) { // a wooden sign: a post, a board, the picture painted on it
+      const u = s / 16, R = (a, b, c, d, col) => { ctx.fillStyle = col; ctx.fillRect(Math.round(x + a * u), Math.round(y + b * u), Math.round(c * u), Math.round(d * u)); };
+      R(7, 11, 2, 5, '#3a2410'); R(7.5, 11, 1, 5, '#7a5028');                 // the post
+      R(0.5, 0.5, 15, 11.5, '#3a2410'); R(1, 1, 14, 10.5, '#a06a34'); R(1.6, 1.6, 12.8, 9.3, '#f4e8c8'); // the board
+      R(1, 1, 14, 0.6, '#c88a48');
+      ctx.drawImage(G.icon({ icon: w.icon, col: w.col }), Math.round(x + 3.5 * u), Math.round(y + 1.8 * u), Math.round(9 * u), Math.round(9 * u));
+      return;
+    }
+    ctx.drawImage(G.icon(w), Math.round(x), Math.round(y), s, s);
   };
 })();

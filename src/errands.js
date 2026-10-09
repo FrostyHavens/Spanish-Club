@@ -80,14 +80,10 @@
   // picnic and show, then flores and sonidos, then cuenta, and the party last. canelo and cansado were replaced by
   // chapters 7 and 10: they only finish in an older game that has them going.
   const CHD = () => !!G.chapters && G.chapters.allWrittenDone();
+  // (all 21 chapters are written: none of these opens any more, docs/CURRICULUM.md 7.2; kept for older games and tools)
   const UNLOCK = {
-    mercado: () => CHD(),
-    picnic: () => CHD() && S.done('mercado'),
-    show: () => CHD() && S.done('mercado'),
-    flores: () => S.done('picnic') && S.done('show'),
-    sonidos: () => S.done('picnic') && S.done('show'),
-    cuenta: () => S.done('flores') && S.done('sonidos'),
-    fiestab: () => ['mercado', 'picnic', 'show', 'flores', 'sonidos', 'cuenta'].every(S.done),
+    mercado: () => CHD() && !!(D().tailOrder || []).includes('mercado'),
+    picnic: () => false, show: () => false, flores: () => false, sonidos: () => false, cuenta: () => false, fiestab: () => false,
     canelo: () => false,
     cansado: () => false,
   };
@@ -136,7 +132,8 @@
   const lettersDone = () => { const c = ca(); return !!(c.rosa && c.granja === 2 && c.ines); };
   E.tomasTired = () => !!G.state && (E.offer('cansado') || S.active('cansado'));
   const so = () => fl('sonidos');
-  E.nicoFollows = () => !!G.state && S.active('sonidos') && (so().i | 0) < 5;
+  const soundGame = () => !!G.state && S.active('sonidos') && (so().i | 0) < 5; // (the older sound game: Nico tags along)
+  E.nicoFollows = () => soundGame() || (!!G.state && !!G.chapters && G.chapters.follows('nico')); // (or a chapter's: maps.js)
 
   // ---------- Lucía's flowers ----------
   E.FLOWERS = [ // coloured flowers around town (on flower or grass tiles): [x, y, colour]
@@ -149,7 +146,7 @@
   const fo = () => fl('flores');
   const picked = (x, y) => { const p = F().e_picked; return !!(p && p[x + ',' + y] === today()); };
   const pickNow = (x, y) => { if (!F().e_picked || typeof F().e_picked !== 'object') F().e_picked = {}; F().e_picked[x + ',' + y] = today(); };
-  const flowersOut = () => !!S.quest('flores');
+  const flowersOut = () => !!S.quest('flores') || chDone('c15'); // (after Lucía's chapter: a flower a day as a present)
   const wishLeft = () => WISH.filter(c => !fo().got || !fo().got[c]);
 
   // ---------- the animal count (errand 5) ----------
@@ -204,7 +201,7 @@
     { id: 'party', map: 'villa', at: V('granjaDoor'), icon: () => S.active('fiestab') && decorated() && fedAll() ? 'estrella' : null, run: partySpot },
     // side jobs
     { id: 'jobDucks', map: 'villa', at: [37, 21], icon: () => chDone('c6') && free('pan') && !E.jobDone('patos') ? 'pan' : null, run: ducksJob },
-    { id: 'jobEgg', map: 'villa', at: [1, 7], icon: () => S.done('picnic') && !E.jobDone('huevo') && !free('huevo') ? 'huevo' : null, run: eggJob },
+    { id: 'jobEgg', map: 'villa', at: [1, 7], icon: () => (chDone('c11') || S.done('picnic')) && !E.jobDone('huevo') && !free('huevo') ? 'huevo' : null, run: eggJob },
     { id: 'jobWater', map: 'villa', at: V('fuente'), icon: () => E.bowlEmpty() && !free('agua') ? 'agua' : null, run: waterJob },
     { id: 'bowl', map: 'casa', at: [1, 4], icon: () => E.bowlEmpty() ? 'agua' : null, nohint: () => !free('agua'), run: bowlJob },
     { id: 'gold', map: 'villa', at: GOLD, quiet: true, icon: () => F().e_gold === 1 && !picked(GOLD[0], GOLD[1]) ? 'flor' : null, run: goldSpot }, // (no bubble: it shines)
@@ -238,7 +235,7 @@
         const a = (f.zoo ? f.zoo.list : []).find(a => a.kind === k && !a._cu); if (a) out.push({ x: Math.round(a.x), y: Math.round(a.y - 6), animal: k });
       }
     }
-    if (E.nicoFollows() && f.npc('nico')) {
+    if (soundGame() && f.npc('nico')) {
       const r = ROUNDS[so().i | 0];
       if (r && r[0] === 'gato') { if (f.amb && f.amb.cat) out.push({ x: f.amb.cat.x * T + 12, y: f.amb.cat.y * T - 2, cat: true }); }
       else if (r) { const a = G.animals.find(r[0], f); if (a) out.push({ x: Math.round(a.x), y: Math.round(a.y - 6), animal: r[0] }); }
@@ -760,6 +757,7 @@
   }
   function photoCard(who) { const w = new G.Wait(); G.push(new Photo(who, w)); return w; }
   E.photoCard = photoCard;
+  E.stage = stage; E.unstage = unstage; // (move people about for a scene and back: the chapters' picnic, show and party)
 
   // =====================================================================
   //  Side jobs
@@ -804,7 +802,7 @@
   E.catTap = function (f) {
     if (!G.state || !f || f.locked || !f.amb || !f.amb.cat) return false;
     const c = f.amb.cat, nap = G.ambient.napping(f), sx = c.x * T + 12 - Math.round(f.cam.x), sy = c.y * T - 6 - Math.round(f.cam.y);
-    const game = E.nicoFollows() && f.npc('nico') && ROUNDS[so().i | 0] && ROUNDS[so().i | 0][0] === 'gato';
+    const game = soundGame() && f.npc('nico') && ROUNDS[so().i | 0] && ROUNDS[so().i | 0][0] === 'gato';
     if (!game && !(nap && !E.jobDone('gato') && chDone('c2'))) return false;
     scene(f, (function* () {
       if (nap) {
@@ -1006,7 +1004,7 @@
       const [sx, sy] = scr(f, a.x, a.y - 14);
       if (G.chapters && G.chapters.tapped(a.kind, f)) { G.animals.react(f, a); G.animals.cry(a.kind); return here; } // the story's animal (chapters.js)
       // the sound game: the round's animal, with Nico here
-      if (E.nicoFollows() && f.npc('nico') && !f.locked) {
+      if (soundGame() && f.npc('nico') && !f.locked) {
         const r = ROUNDS[so().i | 0];
         if (r && r[0] === a.kind) { G.animals.react(f, a); G.animals.cry(a.kind); scene(f, soundFound(f)); return here; }
         if (r && a.kind !== r[0]) { const n = f.npc('nico'); if (n && f.amb) f.amb.fx.push({ kind: 'say', s: '¡No! ¡Escucha!', o: n, dx: 0, t: 0, life: 70 }); soundAt = G.frame + 60; }
@@ -1049,7 +1047,7 @@
     // the party: the guests wait by the barn once everything is ready
     if (S.active('fiestab') && decorated() && fedAll() && !f.partyWait && !f.locked) { f.partyWait = stage(f, partyPlaces()); }
     // Nico makes the sound again now and then (and right after a wrong animal)
-    if (E.nicoFollows() && G.top() === f && !f.locked && f.npc('nico')) {
+    if (soundGame() && G.top() === f && !f.locked && f.npc('nico')) {
       if (!soundAt) soundAt = G.frame + 600;
       if (G.frame >= soundAt) { soundAt = G.frame + 600; playSound(f, so().i | 0); }
     }
@@ -1087,7 +1085,7 @@
       f.picnic.food.forEach((k, i) => G.drawIcon16(ctx, k, x + 2 + i * 14, y - 2));
     }
     // ribbons on the barn: the party
-    const deco = Math.min(RIBBONS.length, S.done('fiestab') || S.active('fiestab') ? (S.done('fiestab') ? RIBBONS.length : fb().deco | 0) : 0);
+    const deco = Math.min(RIBBONS.length, S.done('fiestab') || chDone('c20') ? RIBBONS.length : S.active('fiestab') ? fb().deco | 0 : 0); // (the party's ribbons: up from chapter 20 on)
     if (deco) {
       const d = V('granjaDoor'), x0 = (d[0] - 3) * T - cx, y0 = (d[1] - 1) * T - cy + 4;
       for (let i = 0; i < 6 * T; i += 6) { const yy = y0 + Math.round(Math.sin(i / (6 * T) * Math.PI) * 8); ctx.fillStyle = '#5a3818'; ctx.fillRect(x0 + i, yy, 6, 1); const col = W(RIBBONS[(i / 6) % deco]).col; ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x0 + i, yy + 1); ctx.lineTo(x0 + i + 5, yy + 1); ctx.lineTo(x0 + i + 2.5, yy + 6); ctx.fill(); }
