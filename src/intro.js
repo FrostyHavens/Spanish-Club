@@ -194,7 +194,7 @@
     const c = G.wordChoices(id, [id].concat(pool), Math.min(3, pool.length + 1));
     const r = Wd().rec(id), hear = st === 1 || (st >= 3 && (r.n % 2 === 1 || !(G.mic && G.mic.on())));
     const q = hear ? { prompt: o.prompt || '¿[' + id + ']?', en: o.en || 'Which one? (listen)' } : { prompt: o.prompt || '¿Qué es?', en: o.en || 'What is it?', show: id };
-    return yield* G.ask(Object.assign(q, { choices: c.choices, answer: c.answer, layout: o.layout || 'cards', who: o.who || null, review: true }));
+    return yield* G.ask(Object.assign(q, { choices: c.choices, answer: c.answer, layout: o.layout || 'cards', who: o.who || null, review: Wd().isOld(id) }));  // (a word met a minute ago, Canelo's "?": its first use, not a review)
   };
 
   // ---------- page puzzles ----------
