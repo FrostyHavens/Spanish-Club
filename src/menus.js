@@ -264,7 +264,7 @@
         { id: 'pick', label: 'Choose voice', right: voices.length ? (voiceIndex(voices, cur) + 1) + ' / ' + voices.length : 'none found', off: !voices.length, help: voiceLine() },
         { id: 'english', label: 'English help', on: G.enVisible(), help: 'Shows English under the Spanish (for grown-ups).' },
         { id: 'dpad', label: 'On-screen buttons', on: !!G.prefs.dpad, help: 'Arrows and A B C on the screen. Taps work without.' },
-        G.speech.supported() ? { id: 'speak', label: 'Speaking (mic)', on: G.prefs.mic !== false && !G.mic.blocked, help: G.mic.blocked ? 'The mic was blocked. Try the Microphone test.' : 'Say answers out loud for bonus stars. Taps always work.' }
+        G.speech.supported() ? { id: 'speak', label: 'Speaking (mic)', on: G.prefs.mic !== false, help: (G.mic.errors.length ? 'Last mic problem: ' + G.mic.errors[G.mic.errors.length - 1].error + '. ' : '') + 'Say answers out loud for bonus stars. Taps always work.' }
           : { id: 'speak', label: 'Speaking (mic)', right: 'not available', off: true, help: 'No speech recognition here. iPad: Safari + Dictation on.' },
         { id: 'mic', label: 'Microphone test', right: mic ? '>' : 'not available', off: !mic, help: mic ? 'Does speech recognition hear Spanish words?' : 'The microphone test is not in this version.' },
         { id: 'help', label: 'Controls and tips', right: '>', help: 'The keys, and how the game teaches.' },
@@ -317,7 +317,7 @@
       } else if (r.id === 'dpad') { G.setDpad(!G.prefs.dpad); G.audio.sfx('ok'); }
       else if (r.id === 'speak') {
         if (r.off) { G.audio.sfx('error'); return; }
-        G.audio.setPref('mic', !r.on); G.mic.blocked = false; G.mic.strikes = 0; G.audio.sfx('ok');
+        G.audio.setPref('mic', !r.on); G.audio.sfx('ok');
       }
       else if (r.id === 'mic') {
         if (r.off) { G.audio.sfx('error'); return; }

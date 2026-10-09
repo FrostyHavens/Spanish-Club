@@ -54,6 +54,9 @@
       a.forEach((e, i) => L.push(['#' + (i + 1), stamp(e.at), e.word, e.verdict, (e.score || 0).toFixed(2), e.ms + 'ms', 'started in ' + e.start,
         'voice after: ' + (e.heard == null ? '-' : e.heard ? 'heard' : 'NOT heard') + (e.tts ? ' (' + e.tts + ')' : ''),
         e.error ? 'error ' + e.error : '', (e.alts || []).map(([t, c]) => '"' + t + '" ' + c).join(', ')].filter(Boolean).join(' | ')));
+      const ge = (G.mic && G.mic.errors) || [];
+      L.push('', 'In-game mic problems (last ' + ge.length + '): ' + (ge.length ? ge.map(e => e.at + ' ' + e.error + ' (' + e.during + ')').join('; ') : 'none'));
+      L.push('Speaking switch: ' + (G.prefs.mic === false ? 'OFF' : 'on'));
       return L.join('\n');
     },
   };

@@ -14,15 +14,22 @@
 // with the update() fallback for the on-screen pad, like src/mictest.js. G.speech.listen stops the voice first and
 // brings the audio back after. A tap anywhere else while listening stops listening and is a normal tap.
 // No speech, an error or no match: the button shows a listening ear and "¡Otra vez!", and the child can try again.
-// A blocked mic ('not-allowed' and the like) hides every mic button until the grown-ups' switch is turned on again,
-// but only after two refusals in a row from a real tap or key: iPad Safari also refuses now and then (a start outside
-// the gesture, the audio still busy with the voice), and one of those used to hide the mic for the whole session.
+// A refusal ('not-allowed' and the like) never hides the mic: iPad Safari refuses now and then (the audio still busy
+// with the voice, a start it didn't count as the tap) while the mic test works fine, and hiding the buttons made the
+// mic vanish from the game for good. The child just gets "¡Otra vez!"; the last errors are kept on the device
+// (M.errors, shown in the grown-ups menu and in the mic test's shared log) so a grown-up can see what went wrong.
 'use strict';
 (function () {
   const M = G.mic = {};
   const OPTS = { lang: 'es-MX', alts: 5, timeout: 7000 };
-  const BLOCK = ['not-allowed', 'service-not-allowed', 'language-not-supported', 'unsupported'];
-  M.blocked = false; M.strikes = 0;
+  const ERR_KEY = 'spanishclub_micerrors';
+  M.blocked = false; // kept for older code; nothing sets it any more
+  M.errors = G.store.get(ERR_KEY) || [];
+  M.logError = function (res) {
+    const d = new Date();
+    M.errors.push({ error: res.error, during: res.during, at: d.toISOString().slice(0, 16).replace('T', ' ') });
+    M.errors = M.errors.slice(-10); G.store.set(ERR_KEY, M.errors);
+  };
   M.on = () => !!G.speech && G.speech.supported() && G.prefs.mic !== false && !M.blocked;
   M.target = c => { const w = c && c.word && G.data.words[c.word]; return [c && c.label, w && w.es, w && w.alt].filter(Boolean).join(' / ') || null; };
   M.best = function (targets, alts, prefer) {
@@ -102,10 +109,8 @@
         const l = this.l;
         if (l.done()) {
           this.l = null; const res = l.result;
-          if (res.ok) M.strikes = 0;
           if (res.ok && res.alternatives.length) this.o.heard(res.alternatives);
-          else if (BLOCK.includes(res.error) && res.during !== 'frame' && ++M.strikes >= 2) M.blocked = true;
-          else if (res.error !== 'aborted') this.miss();
+          else if (res.error !== 'aborted') { if (res.error && res.error !== 'no-speech' && res.error !== 'no-match') M.logError(res); this.miss(); }
           return true;
         }
         // push-to-talk: letting go of Space finishes with what was heard (a quick press just starts it, like a tap)

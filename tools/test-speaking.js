@@ -197,20 +197,17 @@ async function ipad(browser) {
     await g.fieldIdle('villa');
     await g.ev(() => G.audio.setPref('mic', true));
 
-    // ---- a blocked mic hides the buttons until the grown-ups' switch is turned on again ----
+    // ---- refusals never hide the mic (iPad Safari refuses now and then); they are logged for grown-ups ----
     await ask(g, { prompt: '¡[no]!', layout: 'cards', choices: cards('si', 'no'), answer: 1, learn: 'no' });
     await choiceUp(g);
     await g.ev(() => { window.__c = G.top(); });
     await speak(g, { error: 'audio-capture', delay: 50 });
     await micIdle(g);
     check('speak: a busy mic (audio-capture) just says ¡Otra vez! and stays', await g.ev(() => G.mic.on() && window.__c.mic.shown() && window.__c.mic.sad > 0));
-    await speak(g, { error: 'not-allowed', delay: 50 });
-    await micIdle(g);
-    check('speak: one refusal keeps the mic (iPad refuses now and then)', await g.ev(() => G.mic.on() && window.__c.mic.shown() && !G.mic.blocked));
-    await speak(g, { error: 'not-allowed', delay: 50 });
-    await g.until(() => G.mic.blocked && !window.__c.mic.listening(), null, 'the block');
-    check('speak: a blocked mic hides the button at once (no error shown to the child)', await g.ev(() => !G.mic.on() && !window.__c.mic.shown() && !window.__c.won));
-    await g.frames(4); await still(g, 'mic_blocked');
+    for (let k = 0; k < 3; k++) { await speak(g, { error: 'not-allowed', delay: 50 }); await micIdle(g); }
+    check('speak: repeated refusals keep the mic, with ¡Otra vez!', await g.ev(() => G.mic.on() && window.__c.mic.shown() && window.__c.mic.sad > 0 && !window.__c.won));
+    check('speak: refusals are logged on the device', await g.ev(() => G.mic.errors.filter(e => e.error === 'not-allowed').length >= 3 && JSON.parse(localStorage.getItem('spanishclub_micerrors')).length >= 3));
+    await g.frames(4); await still(g, 'mic_refused');
     await g.tapRect(await g.ev(() => G.top().rects()[1]));
     await g.until(() => G.top().constructor.name === 'WordCard' && G.top().t > 20 && G.input.ready(), null, 'the new word card');
     await g.tap(150, 200);
@@ -218,9 +215,8 @@ async function ipad(browser) {
     await g.ev(() => { window.__gu = G.grownUps(); });
     await g.until(() => G.top().constructor.name === 'GrownUps' && G.input.ready(), null, 'the grown-ups menu');
     row = await g.ev(() => { const s = G.top(), k = s.rows().findIndex(r => r.id === 'speak'); return { r: s.rows()[k], rect: s.rowRect(k) }; });
-    check('speak: grown-ups shows it off, and says why', row.r.on === false && /blocked/.test(row.r.help));
-    await g.tapRect(row.rect);
-    check('speak: turning it on again clears the block', await g.ev(() => G.mic.on() && G.prefs.mic === true));
+    check('speak: grown-ups shows the switch on, and the last mic problem', row.r.on === true && /not-allowed/.test(row.r.help));
+    check('speak: the mic test log includes in-game mic problems', await g.ev(() => /In-game mic problems \(last \d+\): .*not-allowed/.test(G.micTest.log.text())));
     await g.tapBtn(await g.ev(() => G.top().closeXY()));
     await g.fieldIdle('villa');
 

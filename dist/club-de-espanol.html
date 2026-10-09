@@ -8133,15 +8133,22 @@ G.store = {
 // with the update() fallback for the on-screen pad, like src/mictest.js. G.speech.listen stops the voice first and
 // brings the audio back after. A tap anywhere else while listening stops listening and is a normal tap.
 // No speech, an error or no match: the button shows a listening ear and "¡Otra vez!", and the child can try again.
-// A blocked mic ('not-allowed' and the like) hides every mic button until the grown-ups' switch is turned on again,
-// but only after two refusals in a row from a real tap or key: iPad Safari also refuses now and then (a start outside
-// the gesture, the audio still busy with the voice), and one of those used to hide the mic for the whole session.
+// A refusal ('not-allowed' and the like) never hides the mic: iPad Safari refuses now and then (the audio still busy
+// with the voice, a start it didn't count as the tap) while the mic test works fine, and hiding the buttons made the
+// mic vanish from the game for good. The child just gets "¡Otra vez!"; the last errors are kept on the device
+// (M.errors, shown in the grown-ups menu and in the mic test's shared log) so a grown-up can see what went wrong.
 'use strict';
 (function () {
   const M = G.mic = {};
   const OPTS = { lang: 'es-MX', alts: 5, timeout: 7000 };
-  const BLOCK = ['not-allowed', 'service-not-allowed', 'language-not-supported', 'unsupported'];
-  M.blocked = false; M.strikes = 0;
+  const ERR_KEY = 'spanishclub_micerrors';
+  M.blocked = false; // kept for older code; nothing sets it any more
+  M.errors = G.store.get(ERR_KEY) || [];
+  M.logError = function (res) {
+    const d = new Date();
+    M.errors.push({ error: res.error, during: res.during, at: d.toISOString().slice(0, 16).replace('T', ' ') });
+    M.errors = M.errors.slice(-10); G.store.set(ERR_KEY, M.errors);
+  };
   M.on = () => !!G.speech && G.speech.supported() && G.prefs.mic !== false && !M.blocked;
   M.target = c => { const w = c && c.word && G.data.words[c.word]; return [c && c.label, w && w.es, w && w.alt].filter(Boolean).join(' / ') || null; };
   M.best = function (targets, alts, prefer) {
@@ -8221,10 +8228,8 @@ G.store = {
         const l = this.l;
         if (l.done()) {
           this.l = null; const res = l.result;
-          if (res.ok) M.strikes = 0;
           if (res.ok && res.alternatives.length) this.o.heard(res.alternatives);
-          else if (BLOCK.includes(res.error) && res.during !== 'frame' && ++M.strikes >= 2) M.blocked = true;
-          else if (res.error !== 'aborted') this.miss();
+          else if (res.error !== 'aborted') { if (res.error && res.error !== 'no-speech' && res.error !== 'no-match') M.logError(res); this.miss(); }
           return true;
         }
         // push-to-talk: letting go of Space finishes with what was heard (a quick press just starts it, like a tap)
@@ -8769,7 +8774,7 @@ G.store = {
         { id: 'pick', label: 'Choose voice', right: voices.length ? (voiceIndex(voices, cur) + 1) + ' / ' + voices.length : 'none found', off: !voices.length, help: voiceLine() },
         { id: 'english', label: 'English help', on: G.enVisible(), help: 'Shows English under the Spanish (for grown-ups).' },
         { id: 'dpad', label: 'On-screen buttons', on: !!G.prefs.dpad, help: 'Arrows and A B C on the screen. Taps work without.' },
-        G.speech.supported() ? { id: 'speak', label: 'Speaking (mic)', on: G.prefs.mic !== false && !G.mic.blocked, help: G.mic.blocked ? 'The mic was blocked. Try the Microphone test.' : 'Say answers out loud for bonus stars. Taps always work.' }
+        G.speech.supported() ? { id: 'speak', label: 'Speaking (mic)', on: G.prefs.mic !== false, help: (G.mic.errors.length ? 'Last mic problem: ' + G.mic.errors[G.mic.errors.length - 1].error + '. ' : '') + 'Say answers out loud for bonus stars. Taps always work.' }
           : { id: 'speak', label: 'Speaking (mic)', right: 'not available', off: true, help: 'No speech recognition here. iPad: Safari + Dictation on.' },
         { id: 'mic', label: 'Microphone test', right: mic ? '>' : 'not available', off: !mic, help: mic ? 'Does speech recognition hear Spanish words?' : 'The microphone test is not in this version.' },
         { id: 'help', label: 'Controls and tips', right: '>', help: 'The keys, and how the game teaches.' },
@@ -8822,7 +8827,7 @@ G.store = {
       } else if (r.id === 'dpad') { G.setDpad(!G.prefs.dpad); G.audio.sfx('ok'); }
       else if (r.id === 'speak') {
         if (r.off) { G.audio.sfx('error'); return; }
-        G.audio.setPref('mic', !r.on); G.mic.blocked = false; G.mic.strikes = 0; G.audio.sfx('ok');
+        G.audio.setPref('mic', !r.on); G.audio.sfx('ok');
       }
       else if (r.id === 'mic') {
         if (r.off) { G.audio.sfx('error'); return; }
@@ -8937,6 +8942,9 @@ G.store = {
       a.forEach((e, i) => L.push(['#' + (i + 1), stamp(e.at), e.word, e.verdict, (e.score || 0).toFixed(2), e.ms + 'ms', 'started in ' + e.start,
         'voice after: ' + (e.heard == null ? '-' : e.heard ? 'heard' : 'NOT heard') + (e.tts ? ' (' + e.tts + ')' : ''),
         e.error ? 'error ' + e.error : '', (e.alts || []).map(([t, c]) => '"' + t + '" ' + c).join(', ')].filter(Boolean).join(' | ')));
+      const ge = (G.mic && G.mic.errors) || [];
+      L.push('', 'In-game mic problems (last ' + ge.length + '): ' + (ge.length ? ge.map(e => e.at + ' ' + e.error + ' (' + e.during + ')').join('; ') : 'none'));
+      L.push('Speaking switch: ' + (G.prefs.mic === false ? 'OFF' : 'on'));
       return L.join('\n');
     },
   };

@@ -2,6 +2,12 @@
 
 A running record of what changed in Club de Español and why. Newest first.
 
+## 2026-10-09 — The mic no longer disappears on iPad
+- On iPad Safari the mic test worked but no mic showed up in the game. Two refusals from Safari (it sometimes refuses
+  while the voice is still finishing a line) used to hide every mic button for the rest of the session. Now a refusal
+  never hides the mic: the child gets "¡Otra vez!" and can try again. The last 10 mic problems are kept on the device,
+  shown in the grown-ups menu's *Speaking (mic)* row and included in the mic test's shared log.
+
 ## 2026-10-09 — Learning redesign: wrap-up
 - The review-share target is now **at least 40%** (was 40–60%). With at most 5 new words per chapter and at least 5
   spaced retrievals per word, review naturally lands around 70–80%; a ceiling of 60% would have meant fewer
