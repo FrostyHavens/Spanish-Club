@@ -28,6 +28,11 @@ replace never open.
   as presents with C15), presents and the shops; the market went from maps.js. Older saves (from before the chapters,
   or from part 1 with the older errands after chapter 10) map those errands onto chapters 11-21 (`migrate()`, save
   version 3); an errand still going on is let go.
+- **Audit** (`docs/VOCAB_AUDIT.md`, the full run: 18 sessions, every chapter, the diploma): 9 of the 10 targets pass
+  (part 1 passed 6): no word unused or only cued, none met as a wrong answer first, a median of 10 active retrievals
+  per word, every word in 3+ episodes. The review share is 76% against 40-60%: left high on purpose (the curriculum's
+  chapters are 70% review by design, and ≥ 5 spaced retrievals per word cannot fit under 60%); the audit report
+  explains it. Canelo's "?" (a word's first use) no longer counts as a review.
 - **Tests**: `tools/test-chapters2.js` (new: chapters 11-21 by taps to the diploma, each chapter's words, the budget,
   the tricks, favores and the palabra on the way; a part-1 save), `tools/test-review.js` (new, replaces
   `test-roundb-errands.js`: favores of every kind, the palabra del día, Inés's pages, the greeting's due word, side jobs,
