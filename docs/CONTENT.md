@@ -99,20 +99,46 @@ opens tomorrow. Inside a run, write with the helpers in `G.chapters.K` (`say`, `
 **Gating** (`G.chapters.gate(id)`): the chapter before must be done; its new words must fit today's budget (6 a day, 8
 a calendar date, and at most 5 inside 5 minutes of play: otherwise it opens a few minutes later); no new chapter while 10 or more words are still only met (a review day: Luna, or Mamá before chapter 8, shows a notebook bubble and asks the oldest of them, `G.chapters.review`); `when: 'morning'` chapters
 open only as the first chapter of a session, `when: 'evening'` ones only in the evening at home (day.js runs their
-`evening: 'dusk' | 'dawn'` beats). A chapter that has started can always be finished. Chapters without a script
-(`'unwritten'`) are skipped by nothing: the older errands run after the last written chapter
-(`G.chapters.tailGate()`), one new one a day. To add chapters 11-21: write `content/es/story-c11-c21.js` (or one file
-per few chapters) with `G.chapters.script(...)` calls, load it in `index.html` after `story-c01-c10.js`, and the
-badges, Misiones and the gating follow by themselves. When a chapter replaces an older errand, map it in
-`G.chapters.migrate()` (old saves) and drop the errand from `G.data.tailOrder`.
+`evening: 'dusk' | 'dawn'` beats). A chapter that has started can always be finished. All 21 chapters are written
+(`content/es/story-c01-c10.js`, `content/es/story-c11-c21.js`); a new one goes in the table in `content/es/words.js`
+and a `G.chapters.script(...)` call in a content file loaded in `index.html` after those, and the badges, Misiones
+and the gating follow by themselves.
 
-## An older errand (`src/errands.js`)
-These run after the last written chapter (`G.data.tailOrder`), until the chapters that replace them are written.
-1. Its entry in `D.quests` (with `icon` and `col` for its badge) and `D.tailOrder` (data.js), and its unlock rule in `UNLOCK`.
-2. `START[id]` (the giver's first talk: ends with `newQuest(id)`), `STEP[id](who, f)` (a generator returning true when it handled that person: an errand step), `REMIND[id](who)` (what the giver says meanwhile), `ALERT[id](who)` (their bubble for a step) and `OFFER_ICON[id]` (the giver's bubble while it's waiting to start). Keep its progress in `fl(id)` (saved in `G.state.flags`), finish with `finishQuest(id)`.
-3. Places to go are `SPOTS`: `{ id, map, at: [x, y], icon: () => picture or null when inactive, run: function* (f) {...} }` (a picture bubble over the tile; a tap walks there and runs it; `quiet: true` draws no bubble, `nohint()` keeps the hint hand away).
-4. Things to carry go in the bag: `B.add('carta', { q: id, to: 'casa' })` / `B.take(...)`; things without `q` can be given as presents.
-5. `parts(id)` lists its steps for Misiones. Every question is a `q(who, prompt, en, answer, pool)` (picture cards with the mic).
+**Pictures that keep a question cue-free** (`src/icons.js`; any `show`, card `img` or `sayShow` picture):
+- `{ icon: 'platano', count: 3 }` a heap of three bananas to count ("¿Cuántos?": never the number's own picture);
+  `{ list: ['pan', 'queso', ...] }` a heap of different things (Rosa's basket, the animals counted so far).
+- `{ icon: 'pata', sign: true }` a picture sign on a little wooden post (Sofía's and Luna's trick signs). Ask with
+  `display: 'text'` once the trick is known, so the child goes from the sign to the word (story-c11-c21.js `fromSign`).
+
+**Canelo and the animals in a chapter**: `G.pet.play('sniff')` and a walk to a tile is *¡busca!* (story-c11-c21.js
+`busca(f, x, y)`). An animal of `G.animals` can be moved: `a.follow = k` (it trots along your trail, k-th in line: the
+animals called with *¡ven!* in chapter 19), `a.go = [x, y, speed]` (world px: it trots there, then stays), `a.pin =
+[x, y]` (it stays put: a hen to tap for a find-it). `opts.follows(who, c)` makes a townsperson tag along for a while
+(Nico's sound game), `opts.after(f, c)` plays once the chapter's badge is shown (the diploma). A request bubble
+(`bubble: 'huevo'`) shows the thing's picture while its word is new and a "?" once it is known.
+
+## Review in the world (`src/favores.js`)
+- **Favores**: from chapter 7, up to three townsfolk a day have a "?" bubble and ask about one known word that is due
+  (`G.review.next`), the way their life shows it: Tomás and Gómez send you to a place named by its word only (arriving
+  asks its name), Nico asks you to find an animal and tap it, Pepe / Marta / Rosa / Luna have a heap to count, Lucía
+  and Sofía a flower or a ribbon (*¿De qué color?*), Nico an animal's sound, Mamá and Lucía a face (*¿Cómo está?*),
+  and the shopkeepers one of their things (*¿Qué es?*, sometimes it goes in your bag as a present). A new kind is an
+  entry in `OFFERS` (who, kind, the pool of words) and a generator in `KIND`.
+- **Palabra del día**: from chapter 8, once a day, Profesora Luna holds up a picture of a due word: say it or pick
+  its word from four.
+- **Inés's library**: from chapter 16 she offers one notebook page puzzle that is ready, once a day.
+- The morning greeting and its due word are in `src/hearts.js` (`H.POOLS`). The order of a townsperson's talk is
+  their greeting, the story, then a present they'd like, the day's favour, the shop (`src/maps.js`, `src/errands.js`).
+
+## Side jobs, presents and the shops (`src/errands.js`)
+1. A side job is a place in `SPOTS`: `{ id, map, at: [x, y], icon: () => picture or null when inactive, run: function* (f) {...} }`
+   (a picture bubble over the tile; a tap walks there and runs it; `quiet: true` draws no bubble, `nohint()` keeps the
+   hint hand away). Open it with the chapter that teaches its words (`chDone('c11')`), finish it with `jobStar(f, id, x, y)`
+   (once a day) and add it to `E.JOBS` / `E.JOB_ICON` for Misiones.
+2. Things to carry go in the bag: `G.errands.bag.add('carta', { q: 'c10', to: 'casa' })` / `take(...)`; things without
+   `q` can be given as presents (`G.hearts.LIKES`).
+3. The older errands (`D.quests` in `src/data.js`: the market, the picnic, the show...) never open now; they only show
+   their badges in older games that earned them.
 
 (No saving code needed: the game saves itself after every conversation. Code that changes `G.state` outside one, say on a timer, calls `G.st.autosave()`, or `G.st.saveNow()` to write at once.) A character's `alert: () => ...` returns `true` for a "!" bubble, a word id to show its picture, or a goal like `[['manzana', 3]]` to show what they want.
 
@@ -149,7 +175,7 @@ Tapping it then does the rest: its reaction, the word bubble with its sound, the
 - A townsperson's talk starts with `yield* hello('id')` (maps.js): their once-a-day voice greeting (from chapter 3 on; the right one for the time of day, *buenos días* early in a session, *buenas noches* after sunset, else *hola*, each once it's met; then one word that's due from that person's pool, `G.hearts.POOLS`) and any 3- or 5-heart surprise. Use `say(who, ...)` so their hearts show over the portrait.
 - Hearts: `G.hearts.add(npc, n, why)` (`'greet'`, `'gift'`, `'care'`, `'errand'`, `'trick'`), then `yield* G.hearts.milestones(npc)`. `finishQuest(id)` already gives the giver +2. A new person needs adding to `G.hearts.WHO` (and `LIKES`).
 - A 3-heart secret of your own: `G.hearts.secrets.rosa = function* () { ... }`.
-- Canelo: `G.pet.knows('salta')`; `yield* G.pet.command('salta')` asks "¡Dile a Canelo!" and he does it; `yield* G.pet.play('fetch')` for any of his animations. A new trick: its word (with a picture) in `content/es/words.js`, an entry in `G.pet.TRICKS` (`{id, by, anim}`; `story: true` for a trick a chapter teaches), and an animation case in `pose()`.
+- Canelo: `G.pet.knows('salta')`; `yield* G.pet.command('salta')` asks "¡Dile a Canelo!" and he does it; `yield* G.pet.play('fetch')` for any of his animations (`sit come paw jump spin sniff huh eat drink fetch pet dance wake`). His six tricks are taught by chapters 1, 3, 14, 16 and 17 (set `G.pet.state().tricks[id] = 3` after the third try). A new trick: its word (with a picture) in `content/es/words.js`, an entry in `G.pet.TRICKS` (`{id, by, anim, story: true}`), an animation case in `pose()`, and room in the menu's top row (`rect(k)`).
 - The album's gold star: `G.album.count('pato')`.
 - Who likes what as a present: `G.hearts.LIKES` (errands.js offers it when you carry it).
 

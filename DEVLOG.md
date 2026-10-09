@@ -2,6 +2,38 @@
 
 A running record of what changed in Club de Español and why. Newest first.
 
+## 2026-10-09 — Learning redesign, step 2 (part 2) and step 3: chapters 11-21, review in the world
+The whole game is now the chapter path of `docs/CURRICULUM.md`: chapters 11-21 are written and the older errands they
+replace never open.
+- **Chapters 11-21** (`content/es/story-c11-c21.js`): Rosa's hens (nests with *uno* and *dos* found on the map, the
+  white hen, a hen called home with *¡ven!*), Mamá's market (counting heaps of fruit, *por favor* overheard), the picnic
+  (five stops, a basket of *cinco*, six plates on a blanket), the dog show (*dame la pata*, *salta*, Luna judging from
+  picture signs, four ribbons), Lucía's flowers (find the pink and the yellow one, a butterfly on Canelo's nose), the
+  lost pages (*¡busca!*: Canelo sniffs the notebook's cards out in the park, one up a tree, a rabbit on the last; Inés's
+  library), Nico's sound game (frog, *croac*, green, a bird; *¡gira!*), counting the town with Luna (a fish, *siete*,
+  *ocho*), the animals following you to the farm (*nueve*, *diez*), getting the party ready and the party (no new
+  words; Canelo's show, the animals' song, the photo, the diploma). §7.6 of the curriculum lists where the build
+  differs from the plan (C20 and C21 are shorter: about 40 answers each).
+- **Engine pieces**: picture signs (`{icon, sign}`: a trick's picture on a wooden sign; word-only cards), heaps to
+  count (`{icon, count}`, `{list}`: never the number's own picture), *busca* (a `sniff` animation, then Canelo walks to
+  the target and barks), animals that follow you after *¡ven!* (`a.follow`, `a.go`, `a.pin` in animals.js), request
+  bubbles that turn to "?" once their word is known, someone tagging along (`follows`), a chapter's `after` (the
+  diploma), Canelo's menu with six tricks, all taught by the chapters. Two people on one tile: the one with a bubble
+  (or the one tapped) is the one you talk to.
+- **Review in the world** (`src/favores.js`): favores (up to three a day: go to a place named only by its word, find an
+  animal, count, a colour, a sound, a face, a thing; a star and a heart), Luna's *palabra del día* (a picture: say it),
+  Inés's library offering a page puzzle a day. With the morning greeting's due word, Canelo's "?" and the page puzzles,
+  that is every review source of the design.
+- **The older errands are retired**: `src/errands.js` is now the bag, side jobs (the hens' egg opens with C11, flowers
+  as presents with C15), presents and the shops; the market went from maps.js. Older saves (from before the chapters,
+  or from part 1 with the older errands after chapter 10) map those errands onto chapters 11-21 (`migrate()`, save
+  version 3); an errand still going on is let go.
+- **Tests**: `tools/test-chapters2.js` (new: chapters 11-21 by taps to the diploma, each chapter's words, the budget,
+  the tricks, favores and the palabra on the way; a part-1 save), `tools/test-review.js` (new, replaces
+  `test-roundb-errands.js`: favores of every kind, the palabra del día, Inés's pages, the greeting's due word, side jobs,
+  shops, presents, flowers, no older errand); the others follow (six tricks; chapter 11 after chapter 10; Tomás's road
+  check counts the tiles he steps on, not time samples, which made it flaky).
+
 ## 2026-10-09 — Learning redesign, step 2: the chapters (1-10)
 The curriculum of `docs/CURRICULUM.md` begins: one story path of chapters in a fixed order, chapters 1-10 written.
 - **Content moved to `content/es/`**: `words.js` (73 words: *uvas*, *negro*, *café*, *ventana*, *puerta*, *pío* and

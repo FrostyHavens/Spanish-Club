@@ -69,6 +69,14 @@ async function story(browser) {
     await g.until(() => G.field && G.top() === G.field && G.fade.a === 0, null, 'back in the game');
     await watch(g); await g.ev(() => { G.speedMul = 2; });
     const until = process.env.UNTIL || null, shots = {};
+    // a screenshot of the first question of each kind of picture: a heap to count, a picture sign, a mixed heap
+    const seenKind = {};
+    g.beforeAct = async (s) => {
+      if (s.name !== 'Choice' || s.t < 12) return false;
+      const k = await g.ev(() => { const sh = G.top().o.show; return sh && typeof sh === 'object' ? (sh.sign ? 'sign' : sh.count ? 'count' : sh.list ? 'heap' : null) : null; });
+      if (k && !seenKind[k]) { seenKind[k] = 1; await g.shot('question_' + k); }
+      return false;
+    };
     let sawFavor = false, sawPalabra = false;
     await playToEnd(g, {
       nextDay: async () => { await nextDay(g); await watch(g); await g.ev(() => { G.speedMul = 2; }); },
@@ -76,6 +84,7 @@ async function story(browser) {
         if (g.errors.length) throw new Error(g.errors.join('\n'));
         const c = await g.ev(() => G.chapters.current());
         if (c && !shots[c]) { shots[c] = 1; await g.frames(10); await g.shot(c + '_start'); }
+        if (c === 'c19' && !shots.parade && await g.ev(() => G.field.zoo && G.field.zoo.list.filter(a => a.follow).length >= 3)) { shots.parade = 1; await g.frames(30); await g.shot('c19_parade'); }
         if (!sawFavor) sawFavor = await g.ev(() => !!(G.favores && G.favores.today().length));
         if (!sawPalabra) sawPalabra = await g.ev(() => !!(G.favores && G.favores.palabraDone()));
         if (until && st.q[until] === 'done') throw new Error('UNTIL');

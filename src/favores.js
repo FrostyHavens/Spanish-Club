@@ -34,7 +34,7 @@
     escuela: { map: 'escuela' }, panaderia: { map: 'panaderia' }, biblioteca: { map: 'biblioteca' }, casa: { map: 'rosa' },
     parque: { at: [17, 18] }, fuente: { at: [18, 11] }, granja: { at: [41, 6] }, banco: { at: [13, 9] }, arbol: { at: [23, 18] },
   };
-  const ANIMALS = ['gato', 'pato', 'cabra', 'caballo', 'conejo', 'rana', 'gallina'];
+  const ANIMALS = ['cabra', 'caballo', 'conejo', 'rana', 'gallina']; // (ones you can walk up to and tap: not the cat on the fence or the ducks out on the pond)
   const THINGS = { pepe: ['manzana', 'platano', 'naranja', 'queso'], marta: ['pan', 'galleta', 'leche'], rosa: ['huevo', 'flor', 'manzana'], mama: ['hueso', 'pelota', 'agua', 'cama', 'carta'] };
   const COUNT_OF = { pepe: 'manzana', marta: 'pan', rosa: 'huevo', luna: 'estrella' };
   const NUMS = ['uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'];

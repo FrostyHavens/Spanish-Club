@@ -13643,8 +13643,8 @@ G.MAPDATA = {
   const many = (icon, n, col) => ({ icon: W(icon) ? W(icon).icon : icon, count: n, col });
   const heap = list => ({ list: list.map(k => (typeof k === 'string' && W(k) ? W(k) : k)) });
   const sign = id => ({ icon: W(id).icon, sign: true });
-  // a trick asked from a picture sign: once the trick is known, the cards are words only (the sign is the picture)
-  const fromSign = id => (G.words.stage(id) >= 2 ? { show: sign(id), display: 'text' } : { show: sign(id) });
+  // a trick asked from a picture sign: the cards are words only (the sign is the picture: go from it to the word)
+  const fromSign = id => ({ show: sign(id), display: 'text' });
 
   // ---------- Canelo ----------
   const dog = f => K.dog(f);
@@ -13705,6 +13705,8 @@ G.MAPDATA = {
   const animal = (f, kind, k = 0) => zoo(f).filter(a => a.kind === kind && !a.baby)[k] || null;
   const over = a => (a ? { x: Math.round(a.x), y: Math.round(a.y - 18) } : null);  // a point over an animal
   const at = (x, y) => [x * TL + 12, y * TL + 18];                                 // an animal's feet on tile (x, y)
+  const DUCK_EDGE = [38, 20]; // (the pond's edge: a duck you can walk up to and tap)
+  const duckToEdge = f => { const d = animal(f, 'pato'); if (d && !d.follow && !d.go) { d.pin = [DUCK_EDGE[0] * TL + 8, DUCK_EDGE[1] * TL + 16]; d.flip = true; } };
   const hens = f => { const h = zoo(f).filter(a => a.kind === 'gallina'); return { brown: h.find(a => !a.tint) || h[0], white: h.find(a => a.tint) || h[1] }; };
 
   // ---------- little pictures drawn on the map ----------
@@ -14297,6 +14299,7 @@ G.MAPDATA = {
     { tap: 'pato', hint: aniHint('pato'), run: function* (f) {
       yield* ask('nico', '¡[si]! ¿Quién es?', 'Yes! Who is it?', 'pato', ['rana', 'perro'], { point: duckP2(f) });
       yield* ask('nico', '¿De qué color es el patito?', 'And the duckling: what colour is it?', 'amarillo', ['blanco', 'verde'], { point: over(zoo(f).find(a => a.kind === 'pato' && a.baby)) });
+      const d0 = animal(f, 'pato'); if (d0) d0.pin = null; // (back to her swim)
       yield* listen(f, '¡Miau!', 'Meow! Who says that? (on the park fence)');
     } },
     { tap: 'cat', hint: f => { const p = catP(f); return p ? [Object.assign({ cat: true }, p, { y: p.y + 6 })] : []; }, run: function* (f) {
@@ -14339,9 +14342,10 @@ G.MAPDATA = {
     } },
   ], {
     follows: (who, c) => who === 'nico' && c.step >= 3 && c.step <= 5,
-    stage(f, c) { if (f.mapId === 'villa' && c.step >= 1 && c.step <= 2) hold(f, 'nico', ...NICO_POND2, 'down'); },
+    stage(f, c) { if (f.mapId === 'villa' && c.step >= 1 && c.step <= 2) hold(f, 'nico', ...NICO_POND2, 'down'); if (f.mapId === 'villa' && c.step === 3) duckToEdge(f); },
     drawTop(f, ctx, c) {
       if (f.mapId !== 'villa') return;
+      if (c.step === 3) duckToEdge(f);
       if (c.data.bird) drawBird(ctx, f, ...BIRD_TREE, '#3068e0');
       if (c.data.fly) butterfly(ctx, f.player.x * TL + 20 - Math.round(f.cam.x) + Math.sin(G.frame / 9) * 14, f.player.y * TL - 10 - Math.round(f.cam.y) + Math.cos(G.frame / 7) * 6);
     },
@@ -14546,6 +14550,7 @@ G.MAPDATA = {
       if (f.mapId !== 'villa') return;
       if (c.step >= 5 && c.step <= 6) guest(f, 'luna', ...LUNA_GATE, 'down'); else unguest(f, 'luna');
       if (c.data.cat && f.amb && f.amb.cat) f.amb.cat.away = true;
+      if (c.step === 4) duckToEdge(f);
       if (c.step >= 1 && c.step <= 5) { // (back on the map: whoever came, follows again)
         const came = c.data.came || [], h = hens(f); let k = 1;
         if (came.includes('conejo')) { const a = animal(f, 'conejo'); if (a && !a.follow) a.follow = k++; }
@@ -14554,6 +14559,7 @@ G.MAPDATA = {
       }
     },
     drawTop(f, ctx, c) { // the cat trotting after you, then in the paddock
+      if (f.mapId === 'villa' && c.step === 4) duckToEdge(f);
       if (f.mapId !== 'villa' || !c.data.cat || c.step > 6) return;
       const tr = f.zoo && f.zoo.trail, pt = c.data.cat === 2 ? at(...PEN.gato) : tr && tr[Math.max(0, tr.length - 1 - 8)];
       if (pt) G.drawIcon16(ctx, 'gato', Math.round(pt[0] - 8 - f.cam.x), Math.round(pt[1] - 16 - f.cam.y));
@@ -14753,7 +14759,7 @@ G.MAPDATA = {
     escuela: { map: 'escuela' }, panaderia: { map: 'panaderia' }, biblioteca: { map: 'biblioteca' }, casa: { map: 'rosa' },
     parque: { at: [17, 18] }, fuente: { at: [18, 11] }, granja: { at: [41, 6] }, banco: { at: [13, 9] }, arbol: { at: [23, 18] },
   };
-  const ANIMALS = ['gato', 'pato', 'cabra', 'caballo', 'conejo', 'rana', 'gallina'];
+  const ANIMALS = ['cabra', 'caballo', 'conejo', 'rana', 'gallina']; // (ones you can walk up to and tap: not the cat on the fence or the ducks out on the pond)
   const THINGS = { pepe: ['manzana', 'platano', 'naranja', 'queso'], marta: ['pan', 'galleta', 'leche'], rosa: ['huevo', 'flor', 'manzana'], mama: ['hueso', 'pelota', 'agua', 'cama', 'carta'] };
   const COUNT_OF = { pepe: 'manzana', marta: 'pan', rosa: 'huevo', luna: 'estrella' };
   const NUMS = ['uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'];

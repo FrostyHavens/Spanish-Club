@@ -8,7 +8,7 @@ on (word stages, the review engine, the new-word budget, page puzzles) is descri
 
 ## At a glance
 - **73 words** (was 78): seven dropped, two added (§7). Concrete and picturable, Mexican Spanish.
-- **21 chapters on one path, about 17 sessions of 15 minutes.** At most 5 new words per chapter and 6 per session; the
+- **21 chapters on one path, about 17 sessions of 15 minutes** (all 21 are built: §7.5, §7.6). At most 5 new words per chapter and 6 per session; the
   last three chapters bring 0-2.
 - **Day 1 is Canelo and the cat.** A puppy bursts through the door in the first minute. The first six words are
   *hola, el perro, guau, ven, el gato, miau*: two of them are things you say to animals and hear back (bark at Canelo,
@@ -1021,12 +1021,58 @@ table in `content/es/words.js`). They follow §4 step by step; where the build d
   Canelo; tapping him asks it (a review question). It keeps every new word's first use within about 1-2 minutes.
 - **Engine pieces of §7.3 in place**: unmet things and animals show only a "?" (the album too), arrival banners
   (*¿Dónde estás?*, up to 3 times while the place word is due), picture-only answer cards (`pic`), time-of-day
-  greetings (from C3 on; `src/hearts.js`), the daily budget with the sun bubble, the moon and *busca* icons. Still to
-  build with chapters 11-21: picture signs for tricks, *busca* running to a target, animals following *¡ven!*, and
-  request bubbles that turn to "?" once their word is known.
-- **After C10**, until C11-C21 are written, the older errands run (market, picnic, dog show, flowers, sounds, the
-  animal count, the party: `G.data.tailOrder`), one new one a day. Side jobs open with the chapter that teaches their
-  words (ducks C6, the sleepy cat C2, water C9, the horse C10); the shops with C4 and C6.
-- **Older saves** load with their errands mapped onto chapters (`G.chapters.migrate()`: the market C4, the ball C5,
-  the lost Canelo C7, greetings C8, letters and anything later C10); an older errand still going on is kept when every
-  chapter is done, otherwise let go.
+  greetings (from C3 on; `src/hearts.js`), the daily budget with the sun bubble, the moon and *busca* icons. The rest
+  (picture signs for tricks, *busca* running to a target, animals following *¡ven!*, request bubbles that turn to "?"
+  once their word is known) came with chapters 11-21 (§7.6).
+- **After C10** (part 1 only) the older errands ran until C11-C21 were written: see §7.6. Side jobs open with the
+  chapter that teaches their words (ducks C6, the sleepy cat C2, water C9, the horse C10, the hens' egg C11, flowers
+  C15); the shops with C4 and C6.
+- **Older saves** load with their errands mapped onto chapters (`G.chapters.migrate()`, §7.6).
+
+### 7.6 As built: chapters 11-21 (part 2)
+Chapters 11-21 are in the game (`content/es/story-c11-c21.js`), and with them the whole game is the chapter path: the
+older errands they replace (§7.2) never open (`src/errands.js` keeps only the bag, the side jobs, presents, the shops
+and the flowers). They follow §4 step by step; where the build differs:
+- **C11**: Rosa walks you to her hens (the daily greeting is the greeting: no card for it in the chapter). The two
+  nests (one egg, two eggs) are drawn by the henhouse and found by tapping (find-it), so *dos* is never a picture card
+  before it is met; the white and the brown hen hold still for the *blanca* find-it. The scattered hen runs to the
+  plaza; *¡ven!* (a card question with the hen pointed at) brings her trotting home.
+- **C12**: Marta's *¡Una manzana, por favor!* is overheard at the stall. Every "¿Cuántos?" shows a heap of the things
+  (three bananas, four oranges: `{icon, count}`), never the number's own picture. Mamá's list is a heap of both.
+- **C13**: Gómez passes the stall (*¿Qué tienes?*, no bench question); at the paddock it is Canelo, not the cat, who
+  wants the milk; Rosa counts the basket (a heap of the five foods, `{list}`) and six plates; no sunset (it is the
+  afternoon: the moon line is left out).
+- **C14**: Sofía's and Luna's signs are **picture signs**: the trick's picture painted on a little wooden sign on a post
+  (`{icon, sign: true}`); once the trick is known the cards are words only, so it is a recall from the sign. Tries 2
+  and 3 of each trick are from the sign. Home at the end: Canelo is *cansado* and goes to his *cama* (no *buenas
+  noches*: it is not evening).
+- **C15**: four flower beds around town (red, white, blue, pink) with no bubbles: the child finds the pink one (its
+  colour asked at each); the yellow one by the farm road with the butterfly on it; Lucía's bouquet is the two you
+  brought and three of hers (*cinco*). No bench question.
+- **C16**: as planned; the cards land in the park (drawn), *¡busca!* walks Canelo to each one, sniffing, and he barks
+  there (`busca` in `G.pet.TRICKS`, the `sniff` animation); Inés's page puzzle is *Mi perro*'s four most due words.
+- **C17**: Nico tags along for the sound rounds (`follows`); the cat stays on the park fence; the bird sits in a park
+  tree (drawn). A wrong animal in his game: *¡No! ¡Escucha!*
+- **C18**: Luna waits at the fountain with her clipboard (the animals counted so far, top left); the child finds the
+  cat, the frog, the rabbit, the bird, the butterfly on a pink flower and Rosa's hens; each count shows the heap of
+  animals so far.
+- **C19**: the animals **follow you** after *¡ven!* (`a.follow`: they trot along your trail; the cat is drawn trotting
+  behind you) and walk into the paddock as they are counted (`a.go`, then `a.pin`); the horse and the goat bring
+  *nueve* and *diez*; a duckling wanders off and *¡busca!* brings it back.
+- **C20** is shorter than planned (about 40 answers, not 62: a 7-year-old's quarter of an hour): five invitations in
+  order (Marta, Inés, Rosa, Don Pepe, Sofía), each with what they bring (bread and nine cookies, six eggs, eight apples
+  and seven bananas, four ribbons and a rehearsal with picture signs), then Nico's song rehearsal and Lucía's flowers.
+- **C21** (about 40 answers) at the barn: where things come from, Sofía's ribbons (hear the colour, tap the ribbon),
+  feeding the animals, Canelo's show from Luna's picture signs, *¡busca!* finds the cake by a tree, the animals' song,
+  how many, the group photo, *buenas noches* to the animals; the badge, then the diploma.
+- **Request bubbles** over people show the thing's picture while its word is new and a "?" once it is known
+  (`G.chapters.bubbleOf`).
+- **Review in the world** (`src/favores.js`): favores (up to three a day from C7: go to a place named by its word,
+  find an animal, count a heap, a colour, a sound, a face, a thing; a star and a heart), Luna's *palabra del día*
+  (from C8: a picture, say it or pick its word from four) and, from C16, Inés's library offering one page puzzle a day.
+  The morning greeting's due word (`src/hearts.js`) was already in.
+- **Older saves**: a game from before the chapters maps its errands onto them (the market C4, the ball C5, lost Canelo
+  C7, greetings C8, letters C10, the picnic C13, the show C14, the flowers C15, the sounds C17, the count C19, the
+  party C21; every chapter before the furthest counts as done); a game from part 1 (chapters 1-10, then the older
+  errands) maps those errands the same way. An older errand still going on is let go and its things leave the bag;
+  Canelo keeps his tricks and gets those of every chapter behind him.
