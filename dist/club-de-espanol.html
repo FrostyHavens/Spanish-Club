@@ -11431,7 +11431,8 @@ G.store = {
           } else {
             G.drawIcon16(ctx, c.id, r.x + 5, y + 2, 2);
             const lab = LABEL[c.id] || G.baseForm(c.id);
-            G.textC(ctx, lab, r.x + r.w / 2, y + 35, c.st === 'known' ? '#f8d860' : '#ffffff');
+            const lw = G.textWidth(lab), sq = Math.min(1, (r.w - 4) / Math.max(1, lw)); // (a long word squeezes into its card)
+            ctx.save(); ctx.translate(r.x + r.w / 2, 0); ctx.scale(sq, 1); G.textC(ctx, lab, 0, y + 35, c.st === 'known' ? '#f8d860' : '#ffffff'); ctx.restore();
             if (c.st === 'learn') for (let i = 0; i < P.NEED; i++) drawPaw(ctx, r.x + 3 + i * 13, y + 4, i < P.tries(c.id));
             if (c.st === 'known') G.text(ctx, '\u0005', r.x + r.w - 9, y + 3, '#f8d040');
           }
@@ -14944,7 +14945,7 @@ G.MAPDATA = {
     yield sayShow('luna', { icon: 'estrella' }, TT('¡{name}! ¡La palabra del día!', '{name}! The word of the day! Look at the picture: say it out loud (or tap its word).'));
     const pool = G.words.list(1).filter(k => k !== id && G.baseForm(k) !== G.baseForm(id) && G.iconDrawn(k));
     const c = G.wordChoices(id, [id].concat(pool.sort(() => G.rand() - 0.5)), Math.min(4, pool.length + 1));
-    yield* G.ask({ prompt: '¿Qué es?', en: 'The word of the day: what is it? Say it!', show: id, choices: c.choices, answer: c.answer, layout: 'cards', display: 'text', who: 'luna', review: true });
+    yield* G.ask({ prompt: '\u0005 ¡La palabra del día! \u0005', en: 'The word of the day: what is it? Say it!', show: id, choices: c.choices, answer: c.answer, layout: 'cards', display: 'text', who: 'luna', review: true });
     st().pal = G.words.day(); G.st.autosave();
     G.state.stars++; G.fx.flyStar(G.W / 2, 90, 0); G.audio.sfx('star');
     if (G.hearts) G.hearts.add('luna', 1, 'care');
