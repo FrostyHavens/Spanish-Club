@@ -13721,7 +13721,7 @@ G.MAPDATA = {
 
   // ---------- little pictures drawn on the map ----------
   const sx = (f, x) => x * TL - Math.round(f.cam.x), sy = (f, y) => y * TL - Math.round(f.cam.y);
-  function nest(ctx, f, x, y, n) { G.drawIcon16(ctx, { icon: 'nido', n }, sx(f, x) + 4, sy(f, y) + 6); }
+  function nest(ctx, f, x, y, n) { G.drawIcon16(ctx, { icon: 'nido', n }, sx(f, x), sy(f, y) + 2, 1.5); } // (big enough to count the eggs at a glance)
   function bigFlower(ctx, f, x, y, col, k) { // a flower bigger than the tile's own, bobbing, with a twinkle now and then
     const X = sx(f, x), Y = sy(f, y), bob = Math.round(Math.sin((f.t + x * 9) / 14));
     ctx.fillStyle = 'rgba(16,28,8,0.3)'; ctx.fillRect(X + 6, Y + 19, 12, 2);
