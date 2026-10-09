@@ -24,6 +24,8 @@
 // Opening (gate(id) -> null when it may start, else why not):
 //   'prev'      the chapter before isn't done          'unwritten'  no script yet (chapters 11-21 for now)
 //   'budget'    its new words don't fit today: at most 6 new words a day (G.words.day) and 8 a calendar date
+//   'soon'      more than 5 new words would fall inside 5 minutes of play: it opens a few minutes later (no bubble
+//               meanwhile; the evening chapter has the sunset for that)
 //   'busy'      10 or more words are still only met (stage 1, never picked without a cue): a review day (the
 //               reviewer, Luna or Mamá, has a notebook bubble and asks 5 of them: .needsReview(), .review(who))
 //   'morning'   a morning chapter opens only as the first chapter of a session (a new day, a night at home)
@@ -35,7 +37,7 @@
 //   .next() (the next to open), .gate(id), .ready(id), .start(id), .ctx(id), .beat(id) (the current beat),
 //   .newToday() / .newOnDate() (words met today), .stage1() (words still only met), .parts(id) (Misiones),
 //   .alert(who) / .talk(who, f) (maps.js), .spotAt / .runSpot (field.js), .tapped(kind, f) (animals, the cat, Canelo),
-//   .door(f) (an exit's run), .evening(phase, f) (day.js), .targets(f) (hint.js, tools/playflow.js), .waitsIn(map),
+//   .nudge() / .nudgeRun(f, n) (Canelo's "?": a word just met comes back), .door(f) (an exit's run), .evening(phase, f) (day.js), .targets(f) (hint.js, tools/playflow.js), .waitsIn(map),
 //   .update(f) / .draw(f, ctx, layer) (field.js), .lost() (Canelo away), .tailGate() (the older errands after
 //   chapter 10), .migrate() (older saves), .say / .ask / .K (helpers for scripts: content/es/story-*.js).
 // Saved: G.state.ch = { v, step: {id: beat}, data: {id: {...}}, began: {id: {day, date}}, doneSess: {id: session},
@@ -46,7 +48,7 @@
   const D = () => G.data, S = G.st, F = () => G.state.flags, T = G.TILE;
   const TT = (t, en) => ({ t, en });
   const scripts = {};
-  CH.LIMITS = { day: 6, date: 8, busy: 10 };
+  CH.LIMITS = { day: 6, date: 8, busy: 10, win: 300, inWin: 5 }; // (at most inWin new words in win seconds of play)
   CH.VERSION = 2;
 
   // ---------- the table and the scripts ----------
@@ -85,6 +87,7 @@
   CH.newToday = () => { const d = G.words.day(); return recs().filter(r => r.md === d).length; };
   CH.newOnDate = () => { const t = G.today(); return recs().filter(r => r.mdate === t).length; };
   CH.stage1 = () => recs().filter(r => r.st === 1).length;
+  CH.newRecent = sec => { const now = G.words.now(), ss = G.words.sess(); return recs().filter(r => r.met != null && r.ms === ss && now - r.met < sec).length; }; // (this session only)
   CH.newWords = id => { const c = CH.def(id); return c ? c.words.filter(w => !G.words.met(w)) : []; };
   CH.gate = function (id, o = {}) {
     const c = CH.def(id); if (!c || !G.state) return 'none';
@@ -98,6 +101,7 @@
     const n = CH.newWords(id).length;
     if (n && (CH.newToday() + n > CH.LIMITS.day || CH.newOnDate() + n > CH.LIMITS.date)) return 'budget';
     if (n && CH.stage1() >= CH.LIMITS.busy) return 'busy';
+    if (n && c.when !== 'evening' && CH.newRecent(CH.LIMITS.win) + n > CH.LIMITS.inWin) return 'soon';
     return null;
   };
   CH.ready = (id, o) => !CH.gate(id, o);
@@ -165,14 +169,42 @@
     yield say(TT('¡Muy bien, {name}!', 'Very good, {name}!'));
     G.st.autosave();
   };
+  // Canelo's "?": a word met this session a minute or more ago and not used since its puzzle comes back through him
+  // (tap him: a review question for it), so every new word is used again within a minute or two (at most one every
+  // 40 seconds of play)
+  CH.nudge = function () {
+    if (!G.state || !G.pet || !G.pet.mine() || (G.errands && G.errands.lost())) return null;
+    const now = G.words.now(), ss = G.words.sess(), s = st();
+    if (s.nudgeAt != null && now - s.nudgeAt < 40 && now >= s.nudgeAt) return null;
+    let best = null;
+    for (const id of Object.keys(G.state.words)) {
+      const r = G.words.rec(id);
+      if (!r || r.st < 1 || r.how === 'old' || r.ms !== ss || r.met == null) continue;
+      const age = now - r.met;
+      if (age < 60 || age > 600 || (r.last != null && r.last - r.met >= 20)) continue;
+      if (!best || r.met < best[1]) best = [id, r.met];
+    }
+    return best && best[0];
+  };
+  CH.nudgeRun = function* (f, n) {
+    const id = CH.nudge(); if (!id) return false;
+    st().nudgeAt = G.words.now();
+    if (n && G.ambient) G.ambient.happy(n);
+    if (G.pet && G.pet.sound) G.pet.sound('bark');
+    yield 16;
+    yield* G.review.ask(id, { who: null });
+    if (n && G.hearts) G.hearts.add('canelo', 1, 'care');
+    return true;
+  };
   CH.alert = function (who) {
     if (!G.state) return null;
     const L = live();
     if (L && L.b.who === who && when(L)) { const bb = L.b.bubble; return typeof bb === 'function' ? bb(CH.ctx(L.id)) : bb != null ? bb : true; }
+    if (who === 'canelo' && CH.nudge()) return 'pregunta';
     if (CH.needsReview() && who === CH.reviewer()) return 'pagina';
     if (!CH.current()) {
       const nx = CH.next(), c = nx && CH.def(nx), g = nx && CH.gate(nx);
-      if (c && g && c.giver === who && scripts[nx] && g !== 'prev') return g === 'evening' ? { icon: 'noche', wait: true } : { icon: 'manana', wait: true };
+      if (c && g && c.giver === who && scripts[nx] && g !== 'prev' && g !== 'soon') return g === 'evening' ? { icon: 'noche', wait: true } : { icon: 'manana', wait: true };
     }
     return null;
   };
@@ -182,9 +214,10 @@
     const L = live();
     if (L && L.b.who === who && when(L)) return yield* play(L.id, f || G.field, L.k);
     if (CH.needsReview() && who === CH.reviewer()) { yield* CH.review(who); return true; }
+    if (who === 'canelo' && CH.nudge()) return yield* CH.nudgeRun(f || G.field, G.pet && G.pet.npc(f || G.field));
     if (!CH.current()) {
       const nx = CH.next(), c = nx && CH.def(nx), g = nx && CH.gate(nx);
-      if (c && g && c.giver === who && scripts[nx] && g !== 'prev') { yield* tomorrow(who, g); return true; }
+      if (c && g && c.giver === who && scripts[nx] && g !== 'prev' && g !== 'soon') { yield* tomorrow(who, g); return true; }
     }
     return false;
   };

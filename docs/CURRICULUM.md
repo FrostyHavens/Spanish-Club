@@ -1000,7 +1000,8 @@ Most are in `LEARNING_DESIGN.md`'s build step 1; these are the content-facing on
 ### 7.5 As built: chapters 1-10 (part 1)
 Chapters 1-10 are in the game (`src/chapters.js`, `content/es/story-c01-c10.js`; the words, pages and the chapter
 table in `content/es/words.js`). They follow §4 step by step; where the build differs:
-- **Gating** (§3.1 made concrete, `G.chapters.gate`): at most 6 new words a game day and 8 a calendar date; no new
+- **Gating** (§3.1 made concrete, `G.chapters.gate`): at most 6 new words a game day and 8 a calendar date, and at
+  most 5 inside 5 minutes of play (C2 waits a few minutes after a quick C1); no new
   chapter while 10 or more words are only met (a review day: Profesora Luna, or Mamá before C8, has a notebook
   bubble and asks the 5 oldest of them, so the story always goes on); C3, C7 and C8 (and C19) are *morning* chapters, opened
   only as the first chapter of a session; C9 is the *evening* chapter: after C8 the sunset comes about 5 minutes later
@@ -1014,6 +1015,8 @@ table in `content/es/words.js`). They follow §4 step by step; where the build d
 - **C9**: the bed find has no picture bubbles (your bed is the right spot, the table and a shelf the wrong ones); the
   dawn beat ends with Mamá pointing at the fountain (the water side job opens).
 - **C10**: the letters are *Esta / Y esta* (no numbers before C11).
+- **Canelo's "?"**: a word met in this session a minute ago and not used since its puzzle puts a "?" over
+  Canelo; tapping him asks it (a review question). It keeps every new word's first use within about 1-2 minutes.
 - **Engine pieces of §7.3 in place**: unmet things and animals show only a "?" (the album too), arrival banners
   (*¿Dónde estás?*, up to 3 times while the place word is due), picture-only answer cards (`pic`), time-of-day
   greetings (from C3 on; `src/hearts.js`), the daily budget with the sun bubble, the moon and *busca* icons. Still to

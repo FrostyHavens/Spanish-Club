@@ -387,12 +387,14 @@ function analyse(D) {
     else i++;
   }
   P.bursts = bursts;
-  // overload: the busiest windows of OVERLOAD.win seconds
+  // overload: the busiest windows of OVERLOAD.win seconds of play (inside one session: a night in between is not
+  // 5 minutes, even when the clock of play time runs on)
   const over = [];
-  for (const r of firsts) { const n = firsts.filter(q => q.first >= r.first && q.first < r.first + OVERLOAD.win).length; over.push({ t: r.first, n }); }
+  const inWin = (r, q) => q.first >= r.first && q.first < r.first + OVERLOAD.win && q.firstSess === r.firstSess;
+  for (const r of firsts) { const n = firsts.filter(q => inWin(r, q)).length; over.push({ t: r.first, n, r }); }
   over.sort((a, b) => b.n - a.n);
   const peaks = []; for (const o of over) if (o.n > OVERLOAD.n && !peaks.some(p => Math.abs(p.t - o.t) < OVERLOAD.win)) peaks.push(o);
-  P.overload = peaks.sort((a, b) => a.t - b.t).map(p => Object.assign(p, { words: firsts.filter(q => q.first >= p.t && q.first < p.t + OVERLOAD.win).map(q => q.id) }));
+  P.overload = peaks.sort((a, b) => a.t - b.t).map(p => ({ t: p.t, n: p.n, words: firsts.filter(q => inWin(p.r, q)).map(q => q.id) }));
   P.maxIn5 = over.length ? over[0].n : 0;
   P.pageFirst = words.filter(r => r.firstHow === 'page');
   P.pageNoUse5 = P.pageFirst.filter(r => r.firstActive == null || r.firstActive - r.first > 300);
@@ -426,8 +428,8 @@ function analyse(D) {
 function targets(A, scope) {
   const until = scope && scope.until != null ? scope.until : Infinity;
   const L = A.L.filter(e => e.t <= until), W = A.W, ids = Object.keys(W).filter(id => !W[id].never && W[id].firstHow !== 'old' && W[id].firstHow !== 'test' && (!scope || scope.ids.includes(id)));
-  const meetT = ids.map(id => W[id].first).sort((a, b) => a - b);
-  let max5 = 0; meetT.forEach(t => { max5 = Math.max(max5, meetT.filter(u => u >= t && u < t + 300).length); });
+  const meetT = ids.map(id => [W[id].first, W[id].firstSess]).sort((a, b) => a[0] - b[0]);
+  let max5 = 0; meetT.forEach(([t, ss]) => { max5 = Math.max(max5, meetT.filter(([u, us]) => u >= t && u < t + 300 && us === ss).length); }); // (inside one session)
   const firstSess = ids.filter(id => W[id].firstSess === 0).length;
   const pageFirst = ids.filter(id => W[id].firstHow === 'page' || (W[id].exposedFirst && W[id].exposedFirst.ty === 'page' && W[id].exposedFirst.t < W[id].first));
   const toUse = ids.map(id => (W[id].toActive == null ? Infinity : W[id].toActive)), med = median(toUse);

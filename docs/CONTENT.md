@@ -72,7 +72,7 @@ yield* G.review.ask('perro', { who: 'luna' });         // a review question for 
 ## Rules for new words
 - New words come with chapters: at most 6 a day (8 a calendar date), listed in the chapter's `words` so the gate can count them before it opens. Outside a chapter, check `G.budget.canIntro(n)` and defer when it's false (the person says *¡Mañana!*). Fixed phrases (*dame la pata*) count as one word.
 - A side job, a shop or a greeting only asks words that are met: give it a chapter to wait for (`chDone('c6')` in errands.js), and keep unmet words out of its choices (`q()` in errands.js drops them).
-- Every new word arrives as a one-unknown puzzle (`G.intro.*`) and is used for real 1-3 minutes later: `G.review.due()` lists just-met words first, so the next person can ask one (`G.review.ask`).
+- Every new word arrives as a one-unknown puzzle (`G.intro.*`) and is used for real 1-3 minutes later: `G.review.due()` lists just-met words first, so the next person can ask one (`G.review.ask`). If nothing in the story uses it by then, Canelo gets a "?" bubble a minute after it was met: tapping him asks it (`G.chapters.nudge()`), so a chapter only needs its own second use when the story calls for one.
 - At most one unknown word per line or question; everything else known, a picture, or acted out.
 - Words come back: about 10 meetings, 5+ of them active (picked or said), over several errands and days. Ask `G.review.due()` in greetings, favours, Canelo, the shops.
 - Run `tools/vocab-audit.js` after changing content: its *Measured targets* table must pass (`--strict`), and the *Chapters 1-10 on their own* table too (`--strict-chapters`).
@@ -97,7 +97,7 @@ opens tomorrow. Inside a run, write with the helpers in `G.chapters.K` (`say`, `
 `src/chapters.js` lists every trigger and option; `content/es/story-c01-c10.js` has ten worked examples.
 
 **Gating** (`G.chapters.gate(id)`): the chapter before must be done; its new words must fit today's budget (6 a day, 8
-a calendar date); no new chapter while 10 or more words are still only met (a review day: Luna, or Mamá before chapter 8, shows a notebook bubble and asks the oldest of them, `G.chapters.review`); `when: 'morning'` chapters
+a calendar date, and at most 5 inside 5 minutes of play: otherwise it opens a few minutes later); no new chapter while 10 or more words are still only met (a review day: Luna, or Mamá before chapter 8, shows a notebook bubble and asks the oldest of them, `G.chapters.review`); `when: 'morning'` chapters
 open only as the first chapter of a session, `when: 'evening'` ones only in the evening at home (day.js runs their
 `evening: 'dusk' | 'dawn'` beats). A chapter that has started can always be finished. Chapters without a script
 (`'unwritten'`) are skipped by nothing: the older errands run after the last written chapter

@@ -18,6 +18,8 @@ The curriculum of `docs/CURRICULUM.md` begins: one story path of chapters in a f
   and tired-Tomás errands. Day 1: Mamá's *hola*, then a puppy bursts in within the first minute, hides under the table,
   barks *guau* and comes on *¡ven!*: Canelo is yours; then Nico's cat outside. Every new word arrives in a one-unknown
   puzzle and is used again within minutes.
+- **Pacing**: at most 5 new words inside 5 minutes of play (the next chapter waits a few minutes); Canelo shows a
+  "?" for a word met a minute ago and not used since: tap him to answer it.
 - **Engine**: unmet things and animals show only a "?" (no meeting by tapping); arrival banners ask the place's name;
   picture-only cards; time-of-day greetings (*buenos días / buenas noches / hola*) from chapter 3; side jobs and shops
   wait for the chapter that teaches their words and never offer an unmet word; the evening chapter brings the sunset

@@ -190,7 +190,7 @@
       const E = G.errands, CH = G.chapters, out = [];
       const cur = CH && CH.current();
       if (cur) out.push({ id: cur, st: 'on', ch: true });
-      else if (CH) { const nx = CH.next(); if (nx && CH.written(nx)) out.push({ id: nx, st: CH.gate(nx) ? 'wait' : 'new', ch: true }); }
+      else if (CH) { const nx = CH.next(); if (nx && CH.written(nx)) out.push({ id: nx, st: CH.gate(nx) && CH.gate(nx) !== 'soon' ? 'wait' : 'new', ch: true }); }
       const act = D().questOrder.filter(id => S().active(id) && !(CH && CH.def(id)));
       const fresh = E ? D().questOrder.filter(id => !(CH && CH.def(id)) && E.offer && E.offer(id)) : [];
       return out.concat(act.map(id => ({ id, st: 'on' })), fresh.map(id => ({ id, st: 'new' }))).slice(0, 4);

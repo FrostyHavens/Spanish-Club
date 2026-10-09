@@ -47,6 +47,7 @@ The game is one story in 21 short chapters, played in order; chapters 1-10 are w
 words, each met in a little puzzle with one unknown and used again within a few minutes. A new chapter opens when the
 last is done and the day still has room for new words (about 6 a day; a review day when many words are still new);
 otherwise its giver shows a sun coming up: *¡Mañana!* Misiones shows the chapter going on with its steps, or the next.
+When a new word hasn't come back by itself a minute later, Canelo shows a "?": tap him and say or pick it.
 1. **¡Un perrito!** Mamá says *hola*; a puppy bursts through the door, hides under the table (find him), barks *guau*, and comes when you say *¡ven!*: Canelo is yours.
 2. **El gato de Nico.** Canelo chases a butterfly to the park; Nico, his cat (*gato*, *miau*) and a sound game; the cat bolts into a bush.
 3. **Buenos días.** The next morning: *buenos días*, a bone (*hueso*) and Canelo learns *¡siéntate!*

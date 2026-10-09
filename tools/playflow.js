@@ -161,6 +161,13 @@ async function playToEnd(g, o = {}) {
         console.log('    waiting for the sunset (an evening chapter)');
         await g.until(() => G.day.over(), null, 'the sunset', 15 * 60 * 1000); idle = 0; continue;
       }
+      if (await g.ev(() => { const n = G.chapters.next(); return !!n && G.chapters.gate(n) === 'soon'; })) { // the next chapter opens in a few minutes of play: play on (faster)
+        console.log('    the next chapter in a few minutes');
+        await g.ev(() => { window.__sm = G.speedMul; G.speedMul = Math.max(G.speedMul, 8); });
+        await g.until(() => { const n = G.chapters.next(); return !n || G.chapters.gate(n) !== 'soon' || G.top() !== G.field; }, null, 'the next chapter to open', 10 * 60 * 1000);
+        await g.ev(() => { G.speedMul = window.__sm; });
+        idle = 0; continue;
+      }
       idle = 0;
       if (++days > 60) throw new Error('more than 60 days and still not done: ' + JSON.stringify(st.q));
       const why = await g.ev(() => { const n = G.chapters.next(); const C = G.chapters, b = ' [new today ' + C.newToday() + ', on the date ' + C.newOnDate() + ', only met ' + C.stage1() + ']'; return (n ? n + ':' + C.gate(n) : 'tail ' + C.tailGate()) + b; });
