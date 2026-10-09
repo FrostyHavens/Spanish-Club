@@ -32,7 +32,7 @@
   // ---------- what each person can ask about ----------
   const PLACES = { // where a place word is: a building (walk in) or a tile on the map (walk up to it)
     escuela: { map: 'escuela' }, panaderia: { map: 'panaderia' }, biblioteca: { map: 'biblioteca' }, casa: { map: 'rosa' },
-    parque: { at: [17, 18] }, fuente: { at: [18, 11] }, granja: { at: [41, 6] }, banco: { at: [13, 9] }, arbol: { at: [23, 18] },
+    parque: { at: [17, 18] }, fuente: { at: [18, 11] }, granja: { at: [41, 6], map: 'granja' }, banco: { at: [13, 9] }, arbol: { at: [23, 18] },
   };
   const ANIMALS = ['cabra', 'caballo', 'conejo', 'rana', 'gallina']; // (ones you can walk up to and tap: not the cat on the fence or the ducks out on the pond)
   const THINGS = { pepe: ['manzana', 'platano', 'naranja', 'queso'], marta: ['pan', 'galleta', 'leche'], rosa: ['huevo', 'flor', 'manzana'], mama: ['hueso', 'pelota', 'agua', 'cama', 'carta'] };
@@ -165,7 +165,7 @@
     if (!G.state || !f || f.locked || G.top() !== f || f.player.moving) return;
     const v = onNow(); if (!v || v.kind !== 'go') return;
     const p = PLACES[v.word], pl = f.player;
-    const here = p.map ? f.mapId === p.map : f.mapId === 'villa' && Math.abs(pl.x - p.at[0]) + Math.abs(pl.y - p.at[1]) <= 2;
+    const here = (p.map && f.mapId === p.map) || (!!p.at && f.mapId === 'villa' && Math.abs(pl.x - p.at[0]) + Math.abs(pl.y - p.at[1]) <= 2); // (the farm: its front, or inside the barn)
     if (!here) return;
     G.chapters.scene(f, arrived(f, v));
   };

@@ -2286,6 +2286,12 @@ G.store = {
     'u': OBSTACLE('Pew', 'indoor'), 'j': OBSTACLE('Bed', 'indoor'),
     'v': WALL('Hearth', 'indoor'), 'n': WALL('Bookshelf', 'indoor'),
     'c': tt('Stone Floor', 0, 1, 1, 1, 1, 'indoor'),
+    // the barn (la granja, inside): a straw-strewn floor, plank walls (a window), square hay bales, nest boxes, the
+    // horse's water trough, a milk can, a basket of apples
+    'z': tt('Barn Floor', 0, 1, 1, 1, 1, 'indoor'),
+    'V': WALL('Barn Wall', 'indoor'), 'C': WALL('Barn Window', 'indoor'),
+    'H': OBSTACLE('Hay Bales', 'indoor'), 'E': OBSTACLE('Nest Boxes', 'indoor'), 'U': OBSTACLE('Trough', 'indoor'),
+    'm': OBSTACLE('Milk Can', 'indoor'), 'A': OBSTACLE('Apples', 'indoor'),
     ' ': WALL('Void', 'grass'),
   };
 
@@ -2294,15 +2300,15 @@ G.store = {
   // =====================================================================
   // n[] order: N NE E SE S SW W NW
   const DX = [0, 1, 1, 1, 0, -1, -1, -1], DY = [-1, -1, 0, 1, 1, 1, 0, -1];
-  const BASEMAP = { '.': '.', 'o': '.', 'y': '.', 'f': '.', 'h': '.', ',': ',', '=': '=', 'p': 'p', 's': 's', 'x': 'x', 'i': 'i', 'c': 'c' };
-  const OBJ = new Set('rFlkgPLYZteaujJO'.split(''));
-  const INDOOR_OBJ = new Set('teauj'.split(''));
-  const BASE_PREF = ['=', 'p', 'x', 'c', 'i', ',', 's', '.'];
+  const BASEMAP = { '.': '.', 'o': '.', 'y': '.', 'f': '.', 'h': '.', ',': ',', '=': '=', 'p': 'p', 's': 's', 'x': 'x', 'i': 'i', 'c': 'c', 'z': 'z' };
+  const OBJ = new Set('rFlkgPLYZteaujJOHEUmA'.split(''));
+  const INDOOR_OBJ = new Set('teaujHEUmA'.split(''));
+  const BASE_PREF = ['=', 'p', 'x', 'c', 'z', 'i', ',', 's', '.'];
   const WATERISH = c => c === 'w' || c === '~' || c === 'b' || c === 'B';
   const ROOF = c => c === 'R' || c === 'Q' || c === '+';
   const BWALL = c => c === 'W' || c === 'N' || c === 'D' || c === 'S' || c === 'G' || c === 'K';
-  const IWALL = c => c === 'I' || c === 'n' || c === 'v';
-  const TALL = new Set('WNDSGKRQ+XIvnT'.split(''));
+  const IWALL = c => c === 'I' || c === 'n' || c === 'v' || c === 'V' || c === 'C';
+  const TALL = new Set('WNDSGKRQ+XIvnTVC'.split(''));
   const GRASSY = c => c === '.' || c === 'T' || c === 'M';
 
   function inferBase(map, x, y, code) {
@@ -2491,6 +2497,24 @@ G.store = {
       b.set(x, y, c);
     }
   }
+  // the barn floor: packed earth under loose straw (the strands wrap around the tile's edges, so the floor is seamless)
+  function strawFloorTex(b, v) {
+    const base = mix(P.D3, P.H1, 0.35);
+    b.fill(base);
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) {
+      const r = hsh(x, y, v + 211);
+      if (r < 0.07) b.set(x, y, scale(base, 0.86)); else if (r < 0.1) b.set(x, y, mix(P.D4, P.H2, 0.5));
+    }
+    const STRAW = [P.H2, P.H3, mix(P.H3, P.H4, 0.5), P.H1, P.H2];
+    for (let i = 0, n = 8 + (v % 4); i < n; i++) {
+      const x0 = Math.floor(hsh(i, v, 221) * TS), y0 = Math.floor(hsh(v, i, 223) * TS), len = 3 + Math.floor(hsh(i, v, 227) * 4), d = hsh(i, v, 229);
+      const col = STRAW[Math.floor(hsh(v, i, 233) * STRAW.length)];
+      for (let k = 0; k < len; k++) {
+        const x = (x0 + k) % TS, y = (y0 + (d < 0.4 ? 0 : d < 0.7 ? (k >> 1) : -(k >> 1)) + TS) % TS;
+        b.set(x, y, col); if (k === 1) b.set(x, (y + 1) % TS, scale(base, 0.8)); // (a little shadow under each strand)
+      }
+    }
+  }
   function carpetTex(b, n) {
     const isC = c => c === 'q';
     for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) {
@@ -2541,6 +2565,7 @@ G.store = {
       case 'x': flagTex(b, I.v, true); grassFringe(b, I.g, I.v); break;
       case 'i': plankTex(b, I.v); break;
       case 'c': stoneFloorTex(b, I.v); break;
+      case 'z': strawFloorTex(b, I.v); break;
       case 'q': carpetTex(b, I.n); break;
       default: grassTex(b, I.v);
     }
@@ -3255,7 +3280,7 @@ G.store = {
   }
   function shrubTile(b, I) {
     drawGround(b, I.base, I);
-    const indoor = I.base === 'i' || I.base === 'c';
+    const indoor = I.base === 'i' || I.base === 'c' || I.base === 'z';
     if (indoor) {
       dropShadow(b, 14, 21, 6, 2, 0.6);
       for (let y = 14; y < 22; y++) { const w = 5 - (y - 14) * 0.35; for (let x = Math.round(12 - w); x < 12 + w; x++) b.set(x, y, x < 10 ? P.R4 : x < 13 ? P.R3 : P.R2); }
@@ -3408,6 +3433,126 @@ G.store = {
     }
     for (let y = 5; y < 20; y++) { b.set(12, y, P.T2); }
   }
+  // ---------- inside the barn ----------
+  // plank walls: the top face like any interior wall, the front of upright boards with a crossbeam (a horseshoe on some;
+  // 'C' has a little window full of sky)
+  function barnWallTile(b, I, win) {
+    const n = I.n, v = I.v;
+    const front = !IWALL(n[4]) && n[4] !== ' ';
+    const L = !IWALL(n[6]), Rt = !IWALL(n[2]), Tp = !IWALL(n[0]);
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) b.set(x, y, ((x + y) % 4 === 0) ? P.T0 : mix(P.T1, P.T0, 0.45));
+    if (L) for (let y = 0; y < TS; y++) { b.set(0, y, P.X0); b.set(1, y, P.T2); }
+    if (Rt) for (let y = 0; y < TS; y++) { b.set(TS - 1, y, P.X0); b.set(TS - 2, y, P.T0); }
+    if (Tp) { b.hl(0, TS - 1, 0, P.X0); b.hl(0, TS - 1, 1, P.T2); }
+    if (!front) return;
+    const y0 = 4;
+    b.hl(0, TS - 1, y0 - 1, P.T3);
+    for (let y = y0; y < TS; y++) for (let x = 0; x < TS; x++) {
+      const bx = Math.floor(x / 6), lx = x % 6, tone = hsh(bx, v, 7) < 0.5 ? P.T3 : mix(P.T3, P.T2, 0.5);
+      let c = lx === 0 ? P.T1 : lx === 1 ? lighten(tone, 0.12) : tone;
+      if (lx > 1 && hsh(x >> 1, y >> 2, v + bx) < 0.07) c = scale(tone, 0.86); // grain
+      if (y === y0) c = P.T1;
+      if (y >= TS - 2) c = y === TS - 1 ? P.T0 : P.T1;
+      b.set(x, y, c);
+    }
+    b.hl(0, TS - 1, 12, P.T4); b.hl(0, TS - 1, 13, P.T2); b.hl(0, TS - 1, 14, P.T0); // the crossbeam
+    for (let x = 2; x < TS; x += 12) { b.set(x, 13, P.K3); b.set(x + 6, 13, P.K2); } // (nails)
+    if (win) { // a small square window: sky and a cloud, a cross of muntins, a sill with light on it
+      b.rect(6, 3, 12, 9, P.T0); b.rect(7, 4, 10, 7, P.W4);
+      b.hl(7, 16, 4, P.W5); b.rect(8, 6, 3, 1, P.W6); b.rect(9, 5, 2, 1, P.W6);
+      b.vl(11, 4, 10, P.T1); b.hl(7, 16, 7, P.T1);
+      b.hl(5, 18, 11, P.T5); b.hl(5, 18, 12, P.T2);
+      for (let y = 15; y < 22; y++) for (let x = 7 + (y - 15); x < 15 + (y - 15) && x < TS; x++) if ((x + y) & 1) b.tint(x, y, P.Y4, 0.18); // a soft shaft of light
+    } else if (v % 4 === 1) { // a horseshoe on the beam, for luck
+      const hx = 12, hy = 6;
+      for (const [x, y] of [[-3, 0], [-3, 1], [-3, 2], [-3, 3], [-2, 4], [-1, 5], [0, 5], [1, 5], [2, 4], [3, 3], [3, 2], [3, 1], [3, 0]]) { b.set(hx + x, hy + y, P.K3); b.set(hx + x + 1, hy + y + 1, P.K1); }
+      b.set(hx - 3, hy - 1, P.K4); b.set(hx + 3, hy - 1, P.K4); b.set(hx, hy - 3, P.K2);
+    } else if (v % 4 === 3) { // a coil of rope on a peg
+      b.set(16, 5, P.T0);
+      for (let a = 0; a < 6.3; a += 0.3) { b.set(16 + Math.round(Math.cos(a) * 3), 9 + Math.round(Math.sin(a) * 3), P.D4); b.set(16 + Math.round(Math.cos(a) * 2), 9 + Math.round(Math.sin(a) * 2), P.D2); }
+    }
+  }
+  // a square hay bale (a top face, a front, two twine bands); some tiles have a smaller bale stacked on top
+  function baleBox(b, x0, y0, w, h, top, v) {
+    for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) {
+      let c;
+      if (y < y0 + top) c = hsh(x, y, v + 41) < 0.22 ? P.H3 : P.H4;
+      else c = ((x * 7 + (y >> 1) * 3 + v) % 5 === 0) ? P.H1 : hsh(x, y, v + 43) < 0.25 ? P.H3 : P.H2;
+      if (y === y0) c = P.Y4;
+      if (y === y0 + top) c = P.H1;
+      if (x === x0) c = y < y0 + top ? P.H4 : P.H3;
+      if (x === x0 + w - 1) c = P.H1;
+      if (y === y0 + h - 1) c = P.H0;
+      b.set(x, y, c);
+    }
+    for (const tx of [x0 + 3, x0 + w - 4]) { b.vl(tx, y0 + 1, y0 + top - 1, P.T3); b.vl(tx, y0 + top + 1, y0 + h - 2, P.T1); }
+    for (let i = 0; i < 4; i++) { const sx = x0 + 2 + Math.floor(hsh(i, v, 47) * (w - 4)); b.set(sx, y0 - 1, P.H3); b.set(sx + 1, y0 - 2, P.H4); } // loose straws on top
+  }
+  function baleTile(b, I) {
+    drawGround(b, I.base, I);
+    const n = I.n, onBale = n[4] === 'H';
+    if (!onBale) dropShadow(b, 13, 22, 11, 2, 0.6);
+    if (I.v % 3 === 0) { baleBox(b, 1, 11, 22, 12, 4, I.v); baleBox(b, 4, 2, 17, 10, 4, I.v + 3); }
+    else baleBox(b, 1, 5, 22, 18, 6, I.v);
+  }
+  // nest boxes: a perch rail on top (the hens sit there), two boxes of straw, an egg in one of them
+  function nestTile(b, I) {
+    drawGround(b, I.base, I);
+    const n = I.n, jw = n[6] === 'E', je = n[2] === 'E';
+    dropShadow(b, 13, 22, 11, 1.5, 0.6);
+    b.rect(0, 8, TS, 15, P.T2);
+    for (let x = 0; x < TS; x++) { b.set(x, 8, P.T4); b.set(x, 9, P.T3); b.set(x, 22, P.T0); }
+    for (const bx of [2, 13]) {
+      b.rect(bx, 11, 9, 8, P.T0);
+      for (let x = bx; x < bx + 9; x++) { b.set(x, 17, P.H2); b.set(x, 18, P.H3); if (hsh(x, bx, I.v) < 0.5) b.set(x, 16, P.H3); }
+      b.hl(bx, bx + 8, 19, P.T4); b.hl(bx, bx + 8, 20, P.T3); b.hl(bx, bx + 8, 21, P.T1);
+    }
+    const eggAt = (I.v % 2) ? 5 : 16; // an egg in one box
+    b.rect(eggAt, 14, 3, 3, P.P3); b.set(eggAt + 1, 13, P.P3); b.set(eggAt, 14, P.F1); b.set(eggAt + 2, 16, P.P1);
+    b.vl(0, 8, 22, jw ? P.T2 : P.T1); b.vl(TS - 1, 8, 22, je ? P.T2 : P.T0);
+    b.hl(0, TS - 1, 5, P.T4); b.hl(0, TS - 1, 6, P.T1); // the perch
+    if (!jw) { b.rect(1, 5, 2, 4, P.T1); }
+    if (!je) { b.rect(TS - 3, 5, 2, 4, P.T1); }
+  }
+  // a wooden trough of water (the horse drinks here)
+  function troughTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 13, 21, 11, 2, 0.6);
+    b.rect(2, 8, 20, 12, P.T2); b.hl(2, 21, 8, P.T5); b.hl(2, 21, 9, P.T4);
+    b.rect(4, 10, 16, 4, P.W3); b.hl(4, 19, 10, P.W2);
+    for (let x = 5; x < 19; x += 4) b.set(x + (I.af & 1), 12, P.W5);
+    b.set(8 + (I.af & 1) * 6, 11, P.W6);
+    for (let x = 2; x < 22; x++) { b.set(x, 15, P.T3); b.set(x, 18, P.T3); }
+    for (const x of [5, 17]) { b.vl(x, 14, 19, P.K2); b.vl(x + 1, 14, 19, P.K1); }
+    b.hl(2, 21, 19, P.T0); b.vl(2, 8, 19, P.T3); b.vl(21, 8, 19, P.T0);
+    b.rect(3, 20, 2, 2, P.T0); b.rect(19, 20, 2, 2, P.T0);
+  }
+  // a metal milk can (and a little one beside it on some tiles)
+  function milkTile(b, I) {
+    drawGround(b, I.base, I);
+    const can = (x0, y0, w, h) => {
+      dropShadow(b, x0 + w / 2 + 1, y0 + h, w / 2 + 1, 1.5, 0.6);
+      const cx = x0 + w / 2;
+      for (let y = y0 + 4; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) { const u = (x + 0.5 - x0) / w; b.set(x, y, u < 0.2 ? P.K5 : u < 0.45 ? P.K4 : u < 0.8 ? P.K3 : P.K2); }
+      for (let y = y0 + 1; y < y0 + 4; y++) for (let x = Math.round(cx - w / 4); x < Math.round(cx + w / 4); x++) b.set(x, y, x < cx - 1 ? P.K5 : P.K3);
+      b.hl(Math.round(cx - w / 4) - 1, Math.round(cx + w / 4), y0, P.K4); b.hl(Math.round(cx - w / 4), Math.round(cx + w / 4) - 1, y0 - 1, P.K5);
+      b.hl(x0, x0 + w - 1, y0 + 4, P.K5); b.hl(x0, x0 + w - 1, y0 + Math.round(h * 0.55), P.K2); b.hl(x0, x0 + w - 1, y0 + h - 1, P.K1);
+      b.set(x0 - 1, y0 + 5, P.K1); b.set(x0 - 1, y0 + 6, P.K1); b.set(x0 + w, y0 + 5, P.K1); b.set(x0 + w, y0 + 6, P.K1); // handles
+    };
+    can(6, 5, 10, 16);
+    if (I.v % 2) can(17, 13, 6, 9);
+  }
+  // a wicker basket heaped with red apples
+  function applesTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 13, 21, 10, 2, 0.6);
+    for (const [x, y] of [[7, 10], [12, 9], [16, 10], [9, 7], [14, 6], [11, 12], [5, 12], [18, 12]]) {
+      b.rect(x - 2, y - 1, 5, 4, P.C3); b.rect(x - 1, y - 2, 3, 6, P.C3); b.set(x - 1, y - 1, P.F1); b.set(x, y - 1, P.C4); b.hl(x - 1, x + 1, y + 3, P.C1); b.set(x + 2, y + 1, P.C2);
+      b.set(x, y - 3, P.T1); if ((x + y) % 3 === 0) b.set(x + 1, y - 3, P.G3);
+    }
+    for (let y = 13; y < 22; y++) for (let x = 3 + (y > 19 ? 1 : 0); x < 21 - (y > 19 ? 1 : 0); x++) b.set(x, y, ((x + (y >> 1)) % 3 === 0) ? P.T2 : ((y & 1) ? P.T4 : P.T3));
+    b.hl(3, 20, 13, P.T5); b.hl(3, 20, 14, P.T2); b.hl(4, 19, 21, P.T0);
+  }
   function tableTile(b, I) {
     drawGround(b, I.base, I);
     const n = I.n, jw = n[6] === 't', je = n[2] === 't';
@@ -3537,7 +3682,7 @@ G.store = {
   reg('.', { need: 's', fn: (b, I) => { grassTex(b, I.v); applyShadow(b, I.sh); } });
   reg('o', { need: 's', anim: 2, spd: 30, fn: (b, I) => { flowerTex(b, I.v, I.af); applyShadow(b, I.sh); } });
   reg('y', { need: 'n', anim: 2, spd: 36, fn: wheatTile });
-  reg(',=psxicq', { need: 'g', fn: (b, I) => drawGround(b, I.c, I) });
+  reg(',=psxicqz', { need: 'g', fn: (b, I) => drawGround(b, I.c, I) });
   reg('f', { need: 's', fn: forestTile });
   reg('T', { need: 'n', fn: denseTile });
   reg('h', { need: 's', fn: hillsTile });
@@ -3567,6 +3712,13 @@ G.store = {
   reg('Z', { need: 'g', base: true, fn: statueTile });
   reg('J', { need: 'g', base: true, fn: benchTile });
   reg('O', { need: 'g', base: true, fn: hayTile });
+  reg('V', { need: 'n', fn: (b, I) => barnWallTile(b, I, false) });
+  reg('C', { need: 'n', fn: (b, I) => barnWallTile(b, I, true) });
+  reg('H', { need: 'g', base: true, fn: baleTile });
+  reg('E', { need: 'g', base: true, fn: nestTile });
+  reg('U', { need: 'g', base: true, anim: 2, spd: 30, fn: troughTile });
+  reg('m', { need: 'g', base: true, fn: milkTile });
+  reg('A', { need: 'g', base: true, fn: applesTile });
   reg('I', { need: 'n', fn: iwallTile });
   reg('t', { need: 'g', base: true, fn: tableTile });
   reg('e', { need: 'g', base: true, fn: counterTile });
@@ -3623,6 +3775,7 @@ G.store = {
     'D': '#74421e', 'S': '#8a8a96', 'G': '#8a8a96', 'K': '#74421e', 'l': '#6c6c80', 'k': '#9c5e2a', 'g': '#9a9aa4', 'P': '#3c8a2c',
     'L': '#e8c850', 'Y': '#c8343c', 'Z': '#b4b2b4', 'J': '#c0823a', 'O': '#e2be46', 'i': '#a0602c', 'I': '#4c4032', 'q': '#9c1c2c', 't': '#c0823a', 'e': '#74421e',
     'a': '#e6e2d8', 'u': '#74421e', 'j': '#d8d8e8', 'v': '#e05818', 'n': '#5c3418', 'c': '#a08c6c', ' ': '#000000',
+    'z': '#b08a50', 'V': '#5c3418', 'C': '#5c3418', 'H': '#e2be46', 'E': '#9c5e2a', 'U': '#3a72d2', 'm': '#b4b2b4', 'A': '#c8343c',
   };
   G.MINI_COLORS = MINI;
   G.drawMiniTile = function (ctx, code, x, y, size) {
@@ -6313,6 +6466,10 @@ G.store = {
       for (let a = Math.PI * 1.05; a <= Math.PI * 1.95; a += 0.05) p.put(8 + Math.cos(a) * 3.5 - 0.5, 6 + Math.sin(a) * 3.5 - 0.5, '#8a5022');
       p.ell(8, 11, 6, 4.6, '#d89a50'); p.rect(4, 6, 8, 3, '#d89a50'); p.shade(8, 11, 6, '#b07030'); p.rect(4, 7, 8, 1, '#a86028'); p.put(6, 9, '#f8d8a0');
     },
+    lupa(p) { // a magnifying glass (hide-and-seek: ¿Dónde están?)
+      p.rect(9, 10, 2, 2, '#6a4020'); p.rect(11, 12, 2, 2, '#6a4020'); p.rect(13, 13, 2, 2, '#8a5a28');
+      p.disc(6.5, 6.5, 5.5, '#c8a040'); p.disc(6.5, 6.5, 4.2, '#b8e0f8'); p.disc(5, 5, 1.6, '#ffffff'); p.put(8, 8, '#88c0e8'); p.put(9, 7, '#88c0e8');
+    },
     huella(p) { // a paw print on the ground
       p.ell(8, 11, 3.6, 3, '#6a4020'); [[3.6, 6.8], [6.6, 4.6], [9.6, 4.6], [12.4, 6.8]].forEach(([x, y]) => p.ell(x, y, 1.5, 1.8, '#6a4020'));
     },
@@ -6666,11 +6823,12 @@ G.store = {
   C.pageOrder = C.topicOrder.slice();
   // where each page's puzzle sparkle sits (maps.js reads this): map -> 'x,y' -> page
   C.pagePlaces = {
-    villa: { '15,9': 'saludos', '13,19': 'animales', '43,19': 'granja', '41,4': 'sonidos', '18,11': 'numeros', '21,20': 'colores', '13,9': 'cosas' },
+    villa: { '15,9': 'saludos', '13,19': 'animales', '43,19': 'granja', '18,11': 'numeros', '21,20': 'colores', '13,9': 'cosas' },
     casa: { '7,5': 'mascota' },
     rosa: { '1,1': 'comida' },
     biblioteca: { '2,1': 'pueblo' },
     escuela: { '3,1': 'sentir' },
+    granja: { '6,2': 'sonidos' }, // (inside the barn: what do the animals say?)
   };
 
   // ---------- the 21 chapters, in order (docs/CURRICULUM.md section 4) ----------
@@ -9229,7 +9387,7 @@ G.store = {
   const key = (x, y) => x + ',' + y;
   const HUD = [G.W - 26, 6];          // the field menu button (= B), top-right
   const COUNTER = 'etaY';             // people are talked to across these (see interact)
-  const THING = 'rlkgPLYZteaujJO';      // objects a tap walks up to and searches (fences, walls, trees, water: just walk)
+  const THING = 'rlkgPLYZteaujJOHEUmA';      // objects a tap walks up to and searches (fences, walls, trees, water: just walk)
   const DIR4 = ['up', 'down', 'left', 'right'];
 
   class Field {
@@ -9438,7 +9596,9 @@ G.store = {
         if (s.run) yield* s.run(this);
         return;
       }
+      if (G.seek && G.seek.poke(this, fx, fy)) return; // an animal hiding there (hide-and-seek, seek.js)
       if (G.ambient && G.ambient.poke(this, fx, fy)) return; // pet the cat on the fence
+      if (this.def.poke && this.def.poke(this, fx, fy)) return; // the map's own (a hay bale in the barn rustles)
       if (G.world && G.world.nameTile(this, fx, fy)) return; // a thing with a word says it (world.js)
       yield G.say({ t: '...', en: 'Nothing here.' }, { noVoice: true });
     }
@@ -9470,6 +9630,7 @@ G.store = {
       if (this.route && (this.locked || G.input.dir() || ['up', 'down', 'left', 'right', 'A', 'B'].some(k => G.input.p(k)))) this.route = null;
       if (!this.locked && G.input.tap()) { // the menu button (= B, eats the tap), else tap-to-walk (field tasks still see the tap)
         if (G.btnHit(...HUD)) { G.input.eat(); this.menuReq = true; this.route = null; }
+        else if (G.seek && G.seek.tap(this, G.input.tap())) { G.input.eat(); this.route = null; } // found a hiding animal (seek.js)
         else { // tap-to-walk; a tap on an animal (animals.js, not over a person or a door) names it and walks toward it
           const tap = G.input.tap(), tt = this.tapTarget(tap), an = !tt.npc && !tt.exit && !tt.special && G.animals && G.animals.hit(this, tap);
           this.route = an ? G.animals.tapped(this, an) : tt; this.plan(this.route);
@@ -9482,6 +9643,7 @@ G.store = {
       if (G.animals) G.animals.update(this); // ducks, hens, the fish, the frog, the rabbit, the horse, the goat (animals.js)
       if (G.errands) G.errands.update(this); // Round B errands: who stands where, Canelo lost, Nico tagging along (errands.js)
       if (G.chapters) G.chapters.update(this); // the story: a chapter's moments that start by themselves (chapters.js)
+      if (G.seek) G.seek.update(this); // hide-and-seek: who hides where, Canelo sniffing out a trail (seek.js)
       const ct = this.camTarget(); this.cam.x += (ct.x - this.cam.x) * 0.3; this.cam.y += (ct.y - this.cam.y) * 0.3;
       if (Math.abs(ct.x - this.cam.x) < 0.5) this.cam.x = ct.x; if (Math.abs(ct.y - this.cam.y) < 0.5) this.cam.y = ct.y;
       if (this.banner) this.banner.t--;
@@ -9520,6 +9682,7 @@ G.store = {
       if (G.animals) G.animals.draw(this, ctx, 'ground'); // lily pads, ripples, swimmers, shadows
       if (G.pet) G.pet.drawUnder(this, ctx); // Canelo's cushion and bowl at home
       if (G.errands) G.errands.drawUnder(this, ctx); // Lucía's flowers, the picnic blanket, the party ribbons (errands.js)
+      if (G.seek) G.seek.draw(this, ctx); // animals hiding (hide-and-seek: an ear, a tail peeking out; seek.js)
       if (G.chapters) G.chapters.draw(this, ctx, 'under'); // a chapter's own things on the ground (chapters.js)
       if (G.intro && G.intro.drawUnder) G.intro.drawUnder(this, ctx); // a find-it puzzle's picture bubbles (intro.js)
       const ents = this.npcs.filter(n => n.spec && !n.hidden).concat([this.player]);
@@ -9555,6 +9718,7 @@ G.store = {
       }
       if (!this.locked && G.top() === this) G.iconBtn(ctx, 'menu', ...HUD);
       if (G.errands) G.errands.drawHud(this, ctx); // what you carry, Luna's clipboard (errands.js)
+      if (G.seek) G.seek.drawHud(this, ctx); // who is still hiding (seek.js)
     }
   }
   G.Field = Field;
@@ -9850,6 +10014,7 @@ G.store = {
     if (!G.animals) a.fx.push({ kind: 'say', s: '¡Miau!', x: c.x * T + 12, y: c.y * T - 9, dx: -8, t: 0, life: 70 }); // the bubble up-left (Round B: the word bubble says it),
     a.fx.push({ kind: 'heart', x: c.x * T + 22, y: c.y * T - 4, t: 0, life: 50 });                    // a heart rising on the right
   }
+  const gone = c => !!(c.away || c.hid); // off somewhere in the story (chapters.js), or hiding today (seek.js)
   function catHit(c, wx, wy) { const x = c.x * T + 12, y = c.y * T; return wx >= x - 10 && wx < x + 11 && wy >= y - 9 && wy < y + 12; }
 
   // ---------- people ----------
@@ -9921,7 +10086,7 @@ G.store = {
       let named = null;
       for (const b of a.birds) if ((b.st === 'ground' || b.st === 'land') && Math.hypot(b.x - wx, b.y - b.z - 3 - wy) < 12) { scare(f, a, b, px, py); named = named || ['pajaro', b.x, b.y - b.z - 8]; }
       for (const fl of a.flies) if (Math.hypot(fl.x - wx, fl.y - fl.z - wy) < 12) { flee(f, a, fl); named = named || ['mariposa', fl.x, fl.y - fl.z - 4]; }
-      if (a.cat && !a.cat.away && catHit(a.cat, wx, wy) && !(G.chapters && G.chapters.tapped('cat', f)) && !(G.errands && G.errands.catTap(f))) { pet(a); named = ['gato', a.cat.x * T + 12, a.cat.y * T - 8]; } // (chapters.js: the cat in the story; errands.js: the sleepy cat, the sound game)
+      if (a.cat && !gone(a.cat) && catHit(a.cat, wx, wy) && !(G.chapters && G.chapters.tapped('cat', f)) && !(G.errands && G.errands.catTap(f))) { pet(a); named = ['gato', a.cat.x * T + 12, a.cat.y * T - 8]; } // (chapters.js: the cat in the story; errands.js: the sleepy cat, the sound game)
       if (named && G.animals) G.animals.tap(named[0], named[1], named[2], { silent: true });
     }
     for (const n of f.npcs) {
@@ -9957,7 +10122,7 @@ G.store = {
       return;
     }
     const c = a.cat; // on its fence post, in front of anyone standing behind the fence (c.away: off somewhere, chapters.js)
-    if (c && !c.away && vis(c.x * T, c.y * T)) {
+    if (c && !gone(c) && vis(c.x * T, c.y * T)) {
       const nap = (c.nap || 0) > 480, x = c.x * T + 9 - cx, y = c.y * T - 5 - cy, tail = CAT_TAIL[nap ? 0 : [0, 1, 2, 1][(c.t >> (c.happy ? 2 : 4)) & 3]], shut = c.blink || c.happy > 10 || nap;
       ctx.fillStyle = OL; for (const [tx, ty] of tail) ctx.fillRect(x + tx - 1, y + ty - 1, 3, 3);
       ctx.fillStyle = CAT_PAL.b; for (const [tx, ty] of tail) ctx.fillRect(x + tx, y + ty, 1, 1);
@@ -9981,7 +10146,7 @@ G.store = {
     }
   };
   // A pressed facing a tile: the cat purrs and meows (true = handled, so the search says nothing)
-  A.poke = function (f, x, y) { const a = f.amb; if (a && a.cat && !a.cat.away && a.cat.x === x && a.cat.y === y) { if (G.chapters && G.chapters.tapped('cat', f)) return true; if (G.errands && G.errands.catTap(f)) return true; pet(a); if (G.animals) G.animals.tap('gato', x * T + 12, y * T - 8, { silent: true }); return true; } return false; };
+  A.poke = function (f, x, y) { const a = f.amb; if (a && a.cat && !gone(a.cat) && a.cat.x === x && a.cat.y === y) { if (G.chapters && G.chapters.tapped('cat', f)) return true; if (G.errands && G.errands.catTap(f)) return true; pet(a); if (G.animals) G.animals.tap('gato', x * T + 12, y * T - 8, { silent: true }); return true; } return false; };
   A.wake = f => { const a = f && f.amb; if (a && a.cat) pet(a); }; // the cat wakes up, purrs and meows (errands.js)
   A.sfx = { meow, yip, flutter }; // for animals.js
   // the cat drawn anywhere (screen px of her head's top-left; t: frames, for the tail): chapter 19's cat trotting after you
@@ -10113,6 +10278,8 @@ G.store = {
       swim: ['l..oo..', 'llooooe', 'l.dooo.'],
       jump: ['..l..', '.lol.', '.ooo.', '.ooo.', '.oeo.', '..o..'] },
   };
+  // a second look for some kinds (tint): the white hen, the cream horse in the barn's stall
+  const TINT = { gallina: { b: '#f4f0e8', c: '#ffffff', d: '#d0c8c0' }, caballo: { b: '#e0b878', d: '#b88c50', m: '#f8f0dc', h: '#5a4028' } };
   const lily = ['..gggg..', '.gggggg.', 'ggggg.gg', '.gggggg.', '..gggg..'];
   const LILY_PAL = { g: '#3a9a48' };
 
@@ -10164,7 +10331,7 @@ G.store = {
 
   // ---------- setting up a map ----------
   const area = (f, tag) => { const p = G.MAPDATA[f.mapId] && G.MAPDATA[f.mapId].pos[tag]; return p && p.length === 4 ? p : p ? [p[0], p[1], 1, 1] : null; };
-  const LAND = '.o,=py';
+  const LAND = '.o,=pyz'; // (z: the barn's straw floor)
   function tilesIn(f, r, ok) { const out = []; if (!r) return out; for (let y = r[1]; y < r[1] + r[3]; y++) for (let x = r[0]; x < r[0] + r[2]; x++) if (ok(f.map.get(x, y), x, y)) out.push([x, y]); return out; }
   function setup(f) {
     const z = f.zoo = { f: G.frame, list: [], fx: [] };
@@ -10181,12 +10348,17 @@ G.store = {
         add(z, 'rana', pads[0][0], pads[0][1], { pads, pad: 0 });
       } else if (c.kind === 'pez') {
         add(z, 'pez', r[0] * T + 12, r[1] * T + 16, { cx: r[0] * T + 12, cy: r[1] * T + 16, ang: rnd(6), next: 120 + ri(200) });
+      } else if (c.perch) { // sitting on something (the hens on the barn's perch): one on each tile, pinned there
+        for (let i = 0; i < Math.min(c.n || r[2] * r[3], r[2] * r[3]); i++) {
+          const x = r[0] + (i % r[2]), y = r[1] + Math.floor(i / r[2]), px = x * T + 12 + (i & 1 ? 2 : -2), py = y * T + c.perch;
+          add(z, c.kind, px, py, { ground: [[x, y]], tint: i, pin: [px, py], perched: true, flip: (i & 1) === 1 });
+        }
       } else {
         const ground = tilesIn(f, r, (ch, x, y) => LAND.includes(ch) && !f.exitAt(x, y));
         if (!ground.length) continue;
         for (let i = 0; i < (c.n || 1); i++) {
           const [x, y] = ground[ri(ground.length)];
-          add(z, c.kind, x * T + 4 + rnd(16), y * T + 12 + rnd(10), { ground, tint: i });
+          add(z, c.kind, x * T + 4 + rnd(16), y * T + 12 + rnd(10), { ground, tint: c.tint != null ? c.tint : i });
         }
       }
     }
@@ -10337,12 +10509,13 @@ G.store = {
     f.zoo.fx.push({ k: 'heart', x: a.x + (a.flip ? -8 : 8), y: a.y - frameOf(a).height + 4, t: 0, life: 50 });
   }
   // the animal under a tap (world px), nearest first; generous areas for small fingers
+  const hid = (f, a) => !!(G.seek && G.seek.hides(f, a)); // (hiding somewhere else today: seek.js)
   AN.hit = function (f, tap) {
     if (!f.zoo) return null;
     const wx = tap.x + Math.round(f.cam.x), wy = tap.y + Math.round(f.cam.y);
     let best = null, bd = 1e9;
     for (const a of f.zoo.list) {
-      if (a.kind === 'pez' && a.st !== 'jump') continue; // the fish only while it jumps (the fountain names itself)
+      if ((a.kind === 'pez' && a.st !== 'jump') || hid(f, a)) continue; // the fish only while it jumps (the fountain names itself)
       const img = frameOf(a), w = Math.max(20, img.width + 6), h = Math.max(20, img.height + 6), cy = a.y - a.z - img.height / 2;
       const dx = Math.abs(wx - a.x), dy = Math.abs(wy - cy);
       if (dx <= w / 2 && dy <= h / 2 && dx + dy < bd) { best = a; bd = dx + dy; }
@@ -10370,8 +10543,8 @@ G.store = {
       case 'rana': fr = a.st === 'hop' ? 'hop' : a.st === 'croak' && (a.t >> 3) & 1 ? 'croak' : 'sit'; break;
       case 'pez': fr = a.st === 'jump' ? 'jump' : 'swim'; break;
     }
-    const pal = a.kind === 'gallina' && a.tint ? Object.assign({}, S.pal, { b: '#f4f0e8', c: '#ffffff', d: '#d0c8c0' }) : S.pal;
-    return pix((a.baby ? 'patito' : a.kind) + fr + (a.tint && a.kind === 'gallina' ? 'w' : ''), S[fr], pal, a.flip);
+    const tint = a.tint && TINT[a.kind], pal = tint ? Object.assign({}, S.pal, tint) : S.pal;
+    return pix((a.baby ? 'patito' : a.kind) + fr + (tint ? 'w' : ''), S[fr], pal, a.flip);
   }
   function drawOne(ctx, a, cx, cy) {
     const img = frameOf(a), x = Math.round(a.x - img.width / 2 - cx), y = Math.round(a.y - img.height - a.z - cy);
@@ -10390,7 +10563,7 @@ G.store = {
     const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
     if (layer !== 'ground') return;
     for (const a of z.list) { // shadows; lily pads; ripples; swimmers and the fountain's fish
-      if (a.kind === 'rana') for (const [px, py] of a.pads) ctx.drawImage(pix('lily', lily, LILY_PAL), Math.round(px - 5 - cx), Math.round(py - 4 - cy));
+      if (a.kind === 'rana' && !hid(f, a)) for (const [px, py] of a.pads) ctx.drawImage(pix('lily', lily, LILY_PAL), Math.round(px - 5 - cx), Math.round(py - 4 - cy));
     }
     for (const e of z.fx) if (e.k === 'ring') {
       const k = e.t / e.life, r = 3 + k * 7;
@@ -10398,9 +10571,10 @@ G.store = {
       ctx.beginPath(); ctx.ellipse(Math.round(e.x - cx) + 0.5, Math.round(e.y - cy) + 0.5, r, r * 0.45, 0, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
     }
     for (const a of z.list) {
+      if (hid(f, a)) continue;
       if (a.kind === 'pato' || a.kind === 'rana' || (a.kind === 'pez' && a.st !== 'jump')) {
         if (a.kind === 'pez') { ctx.globalAlpha = 0.85; drawOne(ctx, a, cx, cy); ctx.globalAlpha = 1; } else drawOne(ctx, a, cx, cy);
-      } else if (a.kind !== 'pez') { // a soft shadow under land animals
+      } else if (a.kind !== 'pez' && !a.perched) { // a soft shadow under land animals
         const w = a.kind === 'caballo' ? 16 : a.kind === 'cabra' ? 10 : 7;
         ctx.fillStyle = 'rgba(16,28,8,0.3)'; ctx.fillRect(Math.round(a.x - w / 2 - cx), Math.round(a.y - cy) - 1, w, 2);
       }
@@ -10409,7 +10583,7 @@ G.store = {
   // land animals and the jumping fish, for field.js to draw in order with the people: [{sy, draw(ctx, cx, cy)}]
   AN.ents = function (f) {
     const z = f.zoo; if (!z) return [];
-    return z.list.filter(a => a.kind !== 'pato' && a.kind !== 'rana' && (a.kind !== 'pez' || a.st === 'jump'))
+    return z.list.filter(a => a.kind !== 'pato' && a.kind !== 'rana' && (a.kind !== 'pez' || a.st === 'jump') && !hid(f, a))
       .map(a => ({ sy: a.kind === 'pez' ? a.y + 8 : a.y - 21, draw: (ctx, cx, cy) => drawOne(ctx, a, cx, cy) }));
   };
   // hearts and splashes above everything on the map
@@ -10434,7 +10608,7 @@ G.store = {
     sync(f);
   };
   AN.here = function (f) { f = f || G.field; if (!f) return []; if (!f.zoo) setup(f); return f.zoo.list.map(a => ({ kind: a.kind, x: a.x, y: a.y, st: a.st, baby: !!a.baby })); };
-  AN.find = function (kind, f) { f = f || G.field; if (!f) return null; if (!f.zoo) setup(f); return f.zoo.list.find(a => a.kind === kind && !a.baby) || null; };
+  AN.find = function (kind, f) { f = f || G.field; if (!f) return null; if (!f.zoo) setup(f); return f.zoo.list.find(a => a.kind === kind && !a.baby && !hid(f, a)) || null; };
   AN.screen = function (a, f) { f = f || G.field; const img = frameOf(a); return [a.x - Math.round(f.cam.x), a.y - a.z - img.height / 2 - Math.round(f.cam.y)]; };
   AN.sheet = SPR; // the pictures, for tools
   AN.react = react; // its reaction to a tap, without the naming (errands.js: counting, the sound game)
@@ -11685,6 +11859,7 @@ G.MAPDATA = {
   rosa: { rows: ["IIIIIIIII", "IniiiiviI", "IiiiiiiiI", "IiitttijI", "IiiiiiijI", "IPiiiiikI", "IIIIiIIII"], pos: {"door": [4, 6], "rosa": [2, 2]} },
   panaderia: { rows: ["IIIIIIIIII", "InniiivviI", "IiiiiiiiiI", "IieeeeeeiI", "IiiiiiiiiI", "IkiiiiiikI", "IiiiiiiiiI", "IIIIIiIIII"], pos: {"door": [5, 7], "marta": [5, 2]} },
   biblioteca: { rows: ["IIIIIIIIIII", "InnniiinnnI", "IiiiiqiiiiI", "IiiiiqiiiiI", "IittiqittiI", "IiiiiqiiiiI", "IiiiiqiiiiI", "IPiiiqiiiPI", "IIIIIiIIIII"], pos: {"door": [5, 8], "ines": [5, 2]} },
+  granja: { rows: ["VVVCVVVVVCVVV", "VUzzFmzEEEHHV", "VzzzFzzzzzzHV", "VzzzFzzzzzzzV", "VFFFFAzzzzzzV", "VzzzzzzzzHHzV", "VHzzzzzzzzzHV", "VHkzzzzzzzzkV", "VVVVVVzVVVVVV"], pos: {"establo": [1, 1, 3, 3], "roost": [7, 1, 3, 1], "patio": [6, 2, 5, 4], "door": [6, 8]} },
 };
 
 </script>
@@ -11714,7 +11889,8 @@ G.MAPDATA = {
   function* ET(who, f) { return !!G.errands && (yield* G.errands.talk(who, f)); }
   // and the day's review in the world (favores.js): someone's small favour, Luna's palabra del día, Inés's pages
   const FA = who => (G.favores ? G.favores.alert(who) : null);
-  const EF = who => EA(who) || FA(who);
+  const SA = who => (G.seek ? G.seek.alert(who) : null); // (Nico's hide-and-seek, seek.js: through errands.js's talk)
+  const EF = who => EA(who) || FA(who) || SA(who);
   const CH = () => G.chapters;
   // a townsperson's whole talk: greeting, story, errands, then their own line
   function talker(who, line) {
@@ -11741,6 +11917,7 @@ G.MAPDATA = {
       door('rosaDoor', 'rosa', 4, 5),
       door('panaderiaDoor', 'panaderia', 5, 6),
       door('bibliotecaDoor', 'biblioteca', 5, 7),
+      Object.assign(door('granjaDoor', 'granja', P('granja', 'door')[0], P('granja', 'door')[1] - 1), { run: barnDoor }), // the barn opens (docs/PLAYTEST_NOTES.md)
     ],
     signs: [sign('casaDoor', 'casa'), sign('escuelaDoor', 'escuela'), sign('rosaDoor', 'casa'), sign('panaderiaDoor', 'panaderia'), sign('bibliotecaDoor', 'biblioteca'), sign('granjaDoor', 'granja')],
     pages: PAGES('villa'), // the notebook's page puzzles (content/es/words.js pagePlaces)
@@ -11785,6 +11962,17 @@ G.MAPDATA = {
     ],
   };
 
+  // The barn door. In chapter 7 Canelo is barking in there while Tomás's find-it puzzle waits at the barn's front
+  // (content/es/story-c01-c10.js): walking into the door is choosing the barn, so it counts as finding it, and the
+  // chapter goes on outside (Canelo comes out). Otherwise in you go, any time (before chapter 7 too: exploring).
+  function* barnDoor(f) {
+    const [x, y] = P('villa', 'granjaDoor'), fd = G.intro.spotAt(f, x, y + 1);
+    if (fd && fd.right) { stepBack(f, 'down'); yield* G.intro.runFind(f, fd, x, y + 1); return false; }
+    return true;
+  }
+  // off a doorstep, back the way you came (a door that isn't for now always says why first: Mamá, a chapter's moment)
+  function stepBack(f, dir) { const p = f.player, [dx, dy] = G.DIRS[dir]; p.x += dx; p.y += dy; p.ox = p.oy = 0; p.dir = dir; f.route = null; }
+
   // Canelo: a chapter's beat with him first; once he's yours, the pet menu (pet.js)
   function* caneloTalk(f, n) {
     if (yield* CT('canelo', f)) return;
@@ -11817,9 +12005,17 @@ G.MAPDATA = {
     onEnter: function* (f) { if (G.day) yield* G.day.evening(f); }, // home after sunset: good night, Hoy, a new morning
     exits: [Object.assign(exitAt('casa', 'casaDoor'), {
       run: function* (f) {
-        if (G.chapters && !(yield* G.chapters.door(f))) { f.player.y -= 1; return false; } // a chapter's moment at the door (chapters.js)
+        if (G.chapters && !(yield* G.chapters.door(f))) { stepBack(f, 'up'); return false; } // a chapter's moment at the door (chapters.js)
         if (F().intro || !G.chapters || G.chapters.done('c1')) return true;
-        yield* say('mama', T('¡{name}!', '{name}! (stay a moment)')); const p = G.field.player; p.y -= 1; p.dir = 'up'; return false; // (back off the doorstep)
+        // chapter 1 isn't over: Mamá says why (the puppy is still hiding: she points at his hiding place)
+        stepBack(f, 'up');
+        const want = G.intro.seeking('mama'), at = want && G.state.finds[want] && G.state.finds[want].at.split(',').map(Number);
+        if (at && G.chapters) G.chapters.point(at[0] * G.TILE + 12, at[1] * G.TILE);
+        try {
+          if (want) yield G.say([T('¡{name}! ¿Y el [' + want + ']?', '{name}! Wait! Where did the ' + W(want).en.replace('the ', '') + ' go? (find him first)')], { portrait: G.portraitOf('mama'), name: G.nameOf('mama'), who: 'mama' });
+          else yield* say('mama', T('¡{name}! ¡Espera!', '{name}! Wait a moment! (stay with Mamá)'));
+        } finally { if (G.chapters) G.chapters.point(null); }
+        return false;
       } })],
     npcs: [
       { id: 'mama', npc: 'mama', x: P('casa', 'mama')[0], y: P('casa', 'mama')[1], dir: 'down', fixed: true,
@@ -11837,6 +12033,34 @@ G.MAPDATA = {
       { id: 'canelo', npc: 'canelo', x: 7, y: 5, dir: 'left', cond: () => !!(G.pet && G.pet.mine()) && !(G.errands && G.errands.lost()),
         alert: () => CA('canelo') || (!!G.errands && G.errands.caneloAlert()),
         follow: () => !!F().canelo && !(G.pet && G.pet.sleeping()), talk: function* (f, n) { yield* caneloTalk(f, n); } },
+    ],
+  };
+
+  // ---------- La granja: inside the barn ----------
+  // The horse's stall (a cream horse, a trough of water), hens on the perch over their nest boxes and one scratching
+  // about, hay bales, a milk can, a basket of apples, the notebook's ¿Qué dicen? page puzzle. Everything with a word
+  // names itself when tapped (world.js: a "?" and its picture while the word isn't met); a hay bale rustles. Hide-and-
+  // seek (seek.js) hides an animal or two in here. Canelo comes in with you.
+  G.maps.granja = {
+    name: 'La granja', icon: 'granja', rows: MD.granja.rows, music: 'inn',
+    exits: [exitAt('granja', 'granjaDoor')],
+    pages: PAGES('granja'),
+    things: { tiles: { E: 'huevo', U: 'agua', m: 'leche', A: 'manzana' } },
+    animals: [
+      { kind: 'caballo', area: 'establo', tint: 1 },  // the cream horse in her stall
+      { kind: 'gallina', area: 'roost', perch: 6, n: 2 }, // two hens on the perch (brown, white)
+      { kind: 'gallina', area: 'patio', n: 1 },           // and one scratching about
+    ],
+    poke: (f, x, y) => { // a hay bale: it rustles (no word: CURRICULUM.md has none for hay)
+      if (f.map.get(x, y) !== 'H') return false;
+      f.wig = { x, y, t: 18 }; G.audio.sfx('swing');
+      for (let i = 0; i < 5; i++) G.fx.twinkle(x * G.TILE + 12 - Math.round(f.cam.x) + (Math.random() - 0.5) * 18, y * G.TILE + 6 - Math.round(f.cam.y) + (Math.random() - 0.5) * 10);
+      return true;
+    },
+    npcs: [
+      { id: 'canelo', npc: 'canelo', x: 6, y: 6, dir: 'up', wander: 2, follow: () => F().canelo,
+        cond: () => !!(G.pet && G.pet.mine()) && !(G.errands && G.errands.lost()),
+        alert: () => CA('canelo'), talk: function* (f, n) { yield* caneloTalk(f, n); } },
     ],
   };
 
@@ -12214,11 +12438,12 @@ G.MAPDATA = {
   // =====================================================================
   //  Who says what (maps.js calls talk / alert for every townsperson, after the story)
   // =====================================================================
-  // a present they'd like first, then the day's favour (favores.js), then the shop
+  // a present they'd like first, then the day's favour (favores.js), Nico's hide-and-seek (seek.js), then the shop
   E.talk = function* (who, f) {
     if (!G.state) return false;
     if (yield* gift(who)) return true;
     if (G.favores && (yield* G.favores.talk(who, f))) return true;
+    if (G.seek && (yield* G.seek.talk(who, f))) return true; // Nico's hide-and-seek (seek.js)
     if (yield* shop(who)) return true;
     return false;
   };
@@ -12663,7 +12888,7 @@ G.MAPDATA = {
   CH.follows = function (who) { const id = CH.current(), sc = id && scripts[id]; try { return !!(sc && sc.o.follows && sc.o.follows(who, CH.ctx(id))); } catch (e) { return false; } };
 
   // ---------- the arrival banner: entering a building whose word is met and due asks its name (a few times) ----------
-  const PLACES = ['escuela', 'panaderia', 'biblioteca', 'casa'];
+  const PLACES = ['escuela', 'panaderia', 'biblioteca', 'casa', 'granja'];
   function placeAsk(f) {
     if (f.placeAsked) return;
     f.placeAsked = true;
@@ -14776,7 +15001,7 @@ G.MAPDATA = {
   // ---------- what each person can ask about ----------
   const PLACES = { // where a place word is: a building (walk in) or a tile on the map (walk up to it)
     escuela: { map: 'escuela' }, panaderia: { map: 'panaderia' }, biblioteca: { map: 'biblioteca' }, casa: { map: 'rosa' },
-    parque: { at: [17, 18] }, fuente: { at: [18, 11] }, granja: { at: [41, 6] }, banco: { at: [13, 9] }, arbol: { at: [23, 18] },
+    parque: { at: [17, 18] }, fuente: { at: [18, 11] }, granja: { at: [41, 6], map: 'granja' }, banco: { at: [13, 9] }, arbol: { at: [23, 18] },
   };
   const ANIMALS = ['cabra', 'caballo', 'conejo', 'rana', 'gallina']; // (ones you can walk up to and tap: not the cat on the fence or the ducks out on the pond)
   const THINGS = { pepe: ['manzana', 'platano', 'naranja', 'queso'], marta: ['pan', 'galleta', 'leche'], rosa: ['huevo', 'flor', 'manzana'], mama: ['hueso', 'pelota', 'agua', 'cama', 'carta'] };
@@ -14909,7 +15134,7 @@ G.MAPDATA = {
     if (!G.state || !f || f.locked || G.top() !== f || f.player.moving) return;
     const v = onNow(); if (!v || v.kind !== 'go') return;
     const p = PLACES[v.word], pl = f.player;
-    const here = p.map ? f.mapId === p.map : f.mapId === 'villa' && Math.abs(pl.x - p.at[0]) + Math.abs(pl.y - p.at[1]) <= 2;
+    const here = (p.map && f.mapId === p.map) || (!!p.at && f.mapId === 'villa' && Math.abs(pl.x - p.at[0]) + Math.abs(pl.y - p.at[1]) <= 2); // (the farm: its front, or inside the barn)
     if (!here) return;
     G.chapters.scene(f, arrived(f, v));
   };
@@ -14968,6 +15193,271 @@ G.MAPDATA = {
     yield sayShow('ines', { icon: 'pagina' }, TT('Shhh... ¡Una página! ¿Jugamos?', 'Shhh... a notebook page to play with! Match each picture with its word.'));
     yield* G.pages.run(pg);
   }
+})();
+
+</script>
+<script>/* src/seek.js */
+// ===== ¿Dónde están? Nico's hide-and-seek: animals hiding around town and in the barn (docs/PLAYTEST_NOTES.md) =====
+// A 4-year-old's favourite moment was finding the cat on the fence post, so once a day Nico starts a game of hide-and-
+// seek: two or three animals hide in fun spots (on a fence post, behind a house's roof, in a tree, on a roof, behind hay
+// bales and barrels, in the barn). Only animals whose words the child has MET hide, so nothing new is introduced (the
+// new-word budget is untouched): their pictures show in Nico's bubble and in the little panel of who is still hiding.
+// A hidden animal peeks: an ear, the top of a head, and every few seconds it pops up a little more (more often when
+// you're near, with its cry). Tap it (or press A facing its spot): it pops out with a chime and a star, its name is
+// said in the word bubble (the say-it-back mic), and when its word is due a quick review question (G.review.ask)
+// comes first. All found: confetti and a heart from Nico.
+// Hints, never the answer: Nico, asked again, holds up the picture of the place ("¿Y el [gato]?" and the bakery);
+// Canelo, after a while with nothing found, sniffs and leaves a trail of paw prints toward the nearest one (or toward
+// the door of the barn when it's in there).
+// The game waits while a chapter is going on (the story's animals are where the story needs them): while
+// G.chapters.current() is set, nothing hides; it starts again when the chapter is done. A hidden animal's own self on the
+// map (the paddock's goat, the park's rabbit, Rosa's brown hen, a duckling, the cat on the park fence) is away while it
+// hides (G.animals and G.ambient ask hides()).
+// Hooks: field.js (update, tap, poke, draw, drawHud), maps.js (alert: Nico's bubble), errands.js (talk), animals.js
+// (hides), ambient.js (the cat: c.hid).
+// API: G.seek.today() (today's game: {day, list: [{kind, spot, found}], on, done}), .active(), .hiding(kind),
+//   .ready(), .SPOTS, .KINDS, .where(h, f) (a hider's tap rectangle on screen, for tests), .hints(f) (Canelo's trail).
+// Saved: G.state.seek.
+'use strict';
+(function () {
+  const SK = G.seek = {}, T = G.TILE;
+  const TT = (t, en) => ({ t, en });
+  const W = id => G.data.words[id];
+  const say = (who, ...pages) => G.say(pages, { portrait: G.portraitOf(who), name: G.nameOf(who), who });
+  const sayShow = (who, show, ...pages) => G.say(pages, { portrait: G.portraitOf(who), name: G.nameOf(who), who, show });
+  SK.HOST = 'nico';
+  SK.KINDS = ['gato', 'conejo', 'gallina', 'cabra', 'pato', 'rana'];
+  // where they hide. at: the tile (tap it, or A facing it); how: 'sit' (on top of it, all of it showing: a fence post, a
+  // roof ridge; y: where its feet are, px down the tile) or 'over' (behind it, peeking over a line `cut` px down the
+  // tile: a roof's top, a hay bale, a bush, a barrel, the trough's water); dx: px across from the tile's middle;
+  // place: the picture Nico holds up as a hint
+  SK.SPOTS = [
+    { id: 'poste', map: 'villa', at: [35, 16], how: 'sit', y: 6, dx: 0, kinds: ['gato', 'gallina'], place: 'granja' },     // a farm fence post
+    { id: 'tejado', map: 'villa', at: [30, 4], how: 'sit', y: 9, dx: 0, kinds: ['gato'], place: 'panaderia' },             // the bakery roof
+    { id: 'casa', map: 'villa', at: [6, 15], how: 'over', cut: 1, dx: 0, kinds: ['conejo', 'gato', 'cabra'], place: 'casa' }, // behind your house
+    { id: 'biblio', map: 'villa', at: [31, 15], how: 'over', cut: 1, dx: 0, kinds: ['conejo', 'cabra', 'gallina'], place: 'biblioteca' }, // behind the library
+    { id: 'arbol', map: 'villa', at: [24, 1], how: 'over', cut: 20, dx: 0, kinds: ['gato', 'conejo'], place: 'arbol' },   // in the trees, behind the school
+    { id: 'fuente', map: 'villa', at: [18, 11], how: 'over', cut: 9, dx: -5, kinds: ['rana', 'pato'], place: 'fuente' },  // in the plaza's fountain
+    { id: 'arbusto', map: 'villa', at: [43, 7], how: 'over', cut: 8, dx: 0, kinds: ['conejo', 'gallina', 'pato'], place: 'granja' }, // a bush by the barn
+    { id: 'paja', map: 'villa', at: [45, 4], how: 'over', cut: 6, dx: 2, kinds: ['gallina', 'gato', 'conejo', 'pato'], place: 'granja' }, // the round hay bale
+    { id: 'barriles', map: 'villa', at: [33, 6], how: 'over', cut: 4, dx: 0, kinds: ['gato', 'conejo', 'gallina'], place: 'panaderia' }, // the bakery's barrels
+    { id: 'parque', map: 'villa', at: [13, 22], how: 'over', cut: 7, dx: 0, kinds: ['conejo', 'pato', 'gallina'], place: 'parque' }, // a bush in the park
+    { id: 'pajar', map: 'granja', at: [9, 5], how: 'over', cut: 6, dx: 0, kinds: ['gallina', 'gato', 'conejo', 'pato'], place: 'granja' }, // the barn's hay
+    { id: 'pila', map: 'granja', at: [1, 1], how: 'over', cut: 11, dx: 0, kinds: ['rana'], place: 'granja' },              // the horse's trough
+    { id: 'barril', map: 'granja', at: [2, 7], how: 'over', cut: 4, dx: 0, kinds: ['gato', 'conejo', 'gallina'], place: 'granja' }, // the barn's barrel
+  ];
+  const spot = id => SK.SPOTS.find(s => s.id === id);
+  // how much shows: lo (an ear, a comb, horns), hi (up to the eyes) in px from the top of the picture
+  const PEEK = { gato: [4, 8], conejo: [5, 9], gallina: [4, 7], cabra: [4, 7], pato: [3, 5], rana: [3, 4] };
+
+  // ---------- today's game ----------
+  const st = () => { const s = G.state; if (!s.seek || typeof s.seek !== 'object' || !Array.isArray(s.seek.list)) s.seek = { day: -1, list: [], on: false, done: false }; return s.seek; };
+  const kindsMet = () => SK.KINDS.filter(k => G.words.met(k));
+  SK.ready = () => !!G.state && !!G.state.flags.intro && !!G.pet && G.pet.mine() && kindsMet().length >= 2;
+  const story = () => !!G.chapters && !!G.chapters.current(); // a chapter going on: the game waits
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(G.rand() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  SK.today = function () {
+    if (!SK.ready()) return null;
+    const s = st(), d = G.words.day();
+    if (s.day !== d) {
+      const fav = G.favores ? G.favores.today().find(v => v.kind === 'find' && !v.done) : null; // (not the animal Nico's favour is about)
+      const kinds = shuffle(kindsMet().filter(k => !fav || fav.word !== k)).slice(0, 3), used = new Set(), list = [];
+      // one in the barn when one of them fits there, the others around town
+      const barn = kinds.find(k => SK.SPOTS.some(p => p.map === 'granja' && p.kinds.includes(k)));
+      for (const k of barn ? [barn].concat(kinds.filter(x => x !== barn)) : kinds) {
+        const opts = shuffle(SK.SPOTS.filter(p => p.kinds.includes(k) && !used.has(p.id) && (k === barn && !list.length ? p.map === 'granja' : p.map === 'villa')));
+        const p = opts[0] || shuffle(SK.SPOTS.filter(p => p.kinds.includes(k) && !used.has(p.id)))[0];
+        if (!p) continue;
+        used.add(p.id); list.push({ kind: k, spot: p.id, found: false });
+      }
+      Object.assign(s, { day: d, list, on: false, done: false });
+      G.st.autosave();
+    }
+    return s.list.length >= 2 ? s : null;
+  };
+  SK.active = () => { const s = SK.ready() && SK.today(); return !!s && s.on && !s.done && !story(); };
+  const left = () => (SK.active() ? st().list.filter(h => !h.found) : []);
+  SK.hiding = kind => left().some(h => h.kind === kind);
+  const here = f => left().filter(h => spot(h.spot).map === f.mapId);
+  // is this animal of the map (animals.js) away hiding? (the brown hen, the last duckling, the others of their kind)
+  SK.hides = function (f, a) {
+    if (!f || f.mapId !== 'villa' || !SK.hiding(a.kind)) return false;
+    if (a.kind === 'gallina') return !a.tint;
+    if (a.kind === 'pato') return !!a.baby && !(f.zoo.list.some(o => o.baby && o.trail > a.trail));
+    return !a.baby;
+  };
+
+  // ---------- Nico (maps.js: his bubble, errands.js: his talk) ----------
+  SK.alert = function (who) {
+    if (who !== SK.HOST || !SK.ready() || story()) return null;
+    const s = SK.today(); return s && !s.on && !s.done ? { icon: 'lupa' } : null;
+  };
+  SK.talk = function* (who, f) {
+    if (who !== SK.HOST || !SK.ready() || story()) return false;
+    const s = SK.today(); if (!s || s.done) return false;
+    if (!s.on) {
+      yield say(who, TT('¡{name}! ¡A jugar a las escondidas!', '{name}! Let\'s play hide-and-seek! The animals are hiding.'));
+      yield sayShow(who, { list: s.list.map(h => W(h.kind)) }, TT('¿Dónde están? ¡A buscar!', 'Where are they? Look for an ear or a tail peeking out, and tap it! (in town and in the barn)'));
+      s.on = true; rt.quiet = 0; G.st.autosave();
+      if (G.pet && G.pet.npc(f)) G.pet.sound('bark');
+      return true;
+    }
+    yield* remind(who, f);
+    return true;
+  };
+  function* remind(who, f) { // the nearest one still hiding: its name and the picture of the place
+    const L = left(); if (!L.length) return;
+    const p = f && f.player, d = h => { const sp = spot(h.spot); return (sp.map === f.mapId ? 0 : 100) + (p ? Math.abs(sp.at[0] - p.x) + Math.abs(sp.at[1] - p.y) : 0); };
+    const h = L.slice().sort((a, b) => d(a) - d(b))[0], sp = spot(h.spot), art = W(h.kind).es.split(' ')[0];
+    yield sayShow(who, { icon: sp.place }, TT('¿Y ' + art + ' [' + h.kind + ']? ¡Mira!', 'Where is it hiding? Look near this place!'));
+  }
+
+  // ---------- where a hider is, how much of it shows ----------
+  const rt = { quiet: 0, trail: null, cry: 0, out: {} }; // (not saved: Canelo's trail, the found ones popping out)
+  function pic(kind, flip) { return kind === 'gato' ? null : G.animals.frame({ kind, st: kind === 'pato' ? 'swim' : 'idle', react: 0, t: 0, tint: 0, baby: kind === 'pato', flip }); }
+  const size = kind => { if (kind === 'gato') return [11, 14]; const c = pic(kind, false); return [c.width, c.height]; };
+  // the line it hides behind and its feet (world px), x its middle
+  function geo(sp, kind) {
+    const [w, h] = size(kind), x = sp.at[0] * T + 12 + (sp.dx || 0);
+    if (sp.how === 'sit') { const b = sp.at[1] * T + sp.y; return { x, cut: null, feet: b, top: b - h, w, h }; }
+    const cut = sp.at[1] * T + sp.cut, [lo] = PEEK[kind] || [4, 7];
+    return { x, cut, feet: cut + h - lo, top: cut - lo, w, h };
+  }
+  const near = (f, sp, n) => sp.map === f.mapId && Math.abs(f.player.x - sp.at[0]) + Math.abs(f.player.y - sp.at[1]) <= n;
+  // px of it showing now: mostly an ear; every few seconds it pops up to its eyes (more often when you're near)
+  function showing(f, h, sp) {
+    const [lo, hi] = PEEK[h.kind] || [4, 7], per = near(f, sp, 5) ? 150 : 260, ph = (G.frame + sp.at[0] * 37) % per;
+    if (ph < 50) return lo + Math.round((hi - lo) * Math.sin(ph / 50 * Math.PI));
+    return lo - ((G.frame >> 4) % 11 === 0 ? 1 : 0); // (an ear twitches)
+  }
+  SK.where = function (h, f) { // its tap rectangle on screen (game px)
+    f = f || G.field; const sp = spot(h.spot), g = geo(sp, h.kind), cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
+    const top = sp.how === 'sit' ? g.top : g.cut - (PEEK[h.kind] || [4, 7])[1];
+    return { x: g.x - 14 - cx, y: top - 8 - cy, w: 28, h: (sp.how === 'sit' ? g.feet : g.cut + 6) - top + 8 + 4 };
+  };
+  function hit(f, h, wx, wy) {
+    const sp = spot(h.spot), r = SK.where(h, f), cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
+    if (wx - cx >= r.x && wx - cx < r.x + r.w && wy - cy >= r.y && wy - cy < r.y + r.h) return true;
+    return Math.floor(wx / T) === sp.at[0] && Math.floor(wy / T) === sp.at[1]; // (its hiding place itself)
+  }
+
+  // ---------- finding one ----------
+  SK.tap = function (f, tap) {
+    if (!tap || f.locked || G.top() !== f) return false;
+    const wx = tap.x + Math.round(f.cam.x), wy = tap.y + Math.round(f.cam.y), h = here(f).find(h => hit(f, h, wx, wy));
+    if (!h) return false;
+    G.chapters.scene(f, found(f, h)); return true;
+  };
+  SK.poke = function (f, x, y) { // A facing its hiding place (the field is in a search: play it once that ends)
+    const h = here(f).find(h => { const sp = spot(h.spot); return sp.at[0] === x && sp.at[1] === y; });
+    if (!h) return false;
+    f.tasks.add((function* () { while (f.locked) yield 1; G.chapters.scene(f, found(f, h)); })());
+    return true;
+  };
+  function* found(f, h) {
+    const sp = spot(h.spot), g = geo(sp, h.kind), K = G.animals.KINDS[h.kind];
+    h.found = true; G.st.autosave();
+    rt.out[h.spot] = { kind: h.kind, f0: G.frame, flip: f.player.x * T + 12 < g.x }; rt.quiet = 0; rt.trail = null;
+    const sx = g.x - Math.round(f.cam.x), sy = (g.cut != null ? g.cut : g.top) - Math.round(f.cam.y);
+    G.audio.sfx('chime'); G.fx.burst(sx, sy); G.animals.cry(h.kind);
+    yield 30;
+    G.animals.meet(h.kind);
+    G.state.stars++; G.fx.flyStar(sx, sy - 10); G.audio.sfx('star'); G.fx.say('¡Aquí!', sx, sy - 22, '#f8e060', true);
+    yield 30;
+    if (G.words.due(h.kind)) yield* G.review.ask(h.kind, { who: null }); // a quick question when its word is due
+    const fx = rt.out[h.spot]; if (fx) fx.f0 = Math.max(fx.f0, G.frame - 30); // (stay out a little longer)
+    G.world.name(h.kind, g.x, (g.cut != null ? g.cut + 2 : g.feet) - g.h, { cry: K && K.cry, animal: h.kind }); // its name, said; the say-it-back mic
+    yield 40;
+    if (!st().list.every(x => x.found)) return;
+    st().done = true; G.st.autosave();
+    G.fx.confetti(G.W / 2 - 70, 140, -1, 18); G.fx.confetti(G.W / 2 + 70, 140, 1, 18); G.audio.jingle('promote');
+    yield 30;
+    yield G.say([TT('¡Muy bien, {name}! ¡Todos!', 'You found them all, {name}! Hide-and-seek again tomorrow.')]);
+    G.state.stars++; G.fx.flyStar(G.W / 2, 90, 0); G.audio.sfx('star');
+    if (G.hearts) G.hearts.add(SK.HOST, 1, 'care');
+  }
+
+  // ---------- every frame (field.js) ----------
+  SK.update = function (f) {
+    if (!G.state) return;
+    const on = SK.active();
+    if (f.mapId === 'villa' && f.amb && f.amb.cat) f.amb.cat.hid = on && SK.hiding('gato');
+    if (!on || f.locked || G.top() !== f) return;
+    const L = here(f);
+    // a little cry now and then from one that's close by and peeking up
+    for (const h of L) { const sp = spot(h.spot); if (near(f, sp, 4) && (G.frame + sp.at[0] * 37) % 150 === 0 && G.frame - rt.cry > 280) { rt.cry = G.frame; G.animals.cry(h.kind); } }
+    // nothing found for a while: Canelo sniffs, and a trail of paw prints leads toward the nearest one
+    if (++rt.quiet < 900) return;
+    const n = G.pet && G.pet.npc(f); if (!n || n.moving || n.pa) return;
+    const to = trailTo(f, n); if (!to) return;
+    rt.quiet = 0;
+    G.pet.anim(n, 'sniff'); G.pet.sound('bark'); if (G.pet.puff) G.pet.puff('ex', n.x * T + 12, n.y * T - 4, { life: 30 });
+    rt.trail = { f, from: [n.x * T + 12, n.y * T + 16], to, f0: G.frame };
+  };
+  function trailTo(f, n) {
+    const L = here(f), d = sp => Math.abs(sp.at[0] - n.x) + Math.abs(sp.at[1] - n.y);
+    if (L.length) { const sp = L.map(h => spot(h.spot)).sort((a, b) => d(a) - d(b))[0]; return [sp.at[0] * T + 12, sp.at[1] * T + 14]; }
+    const other = left().map(h => spot(h.spot).map).find(m => m !== f.mapId); if (!other) return null;
+    const ex = (f.def.exits || []).find(e => e.to === other) || (f.mapId !== 'villa' ? (f.def.exits || []).find(e => e.to === 'villa') : null);
+    return ex ? [ex.x * T + 12, ex.y * T + 14] : null;
+  }
+  SK.hints = f => (rt.trail && rt.trail.f === (f || G.field) ? rt.trail : null);
+  SK.hint = function (f) { rt.quiet = 900; }; // (tests: Canelo sniffs on the next free frame)
+
+  // ---------- drawing (field.js: after the ground, before the people; the panel with the HUD) ----------
+  function drawKind(ctx, kind, x, feet, flip) { // its picture with its feet at x, feet (screen px)
+    if (kind === 'gato') { if (G.ambient && G.ambient.drawCat) G.ambient.drawCat(ctx, x - 4, feet - 12, G.frame); return; }
+    const c = pic(kind, flip); ctx.drawImage(c, Math.round(x - c.width / 2), Math.round(feet - c.height));
+  }
+  SK.draw = function (f, ctx) {
+    if (!G.state) return;
+    const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
+    const tr = SK.hints(f); // Canelo's trail of paw prints
+    if (tr) {
+      const k = G.frame - tr.f0; if (k > 300) rt.trail = null;
+      else {
+        const [x0, y0] = tr.from, [x1, y1] = tr.to, len = Math.hypot(x1 - x0, y1 - y0), n = Math.min(6, Math.floor(len / 14));
+        ctx.globalAlpha = k > 240 ? (300 - k) / 60 : 1;
+        for (let i = 1; i <= n && i * 6 <= k; i++) {
+          const u = i * 14 / len, px = Math.round(x0 + (x1 - x0) * u - cx + (i & 1 ? 3 : -3)), py = Math.round(y0 + (y1 - y0) * u - cy);
+          ctx.fillStyle = 'rgba(90,56,24,0.85)'; ctx.fillRect(px - 2, py, 4, 3); ctx.fillRect(px - 3, py - 2, 1, 1); ctx.fillRect(px - 1, py - 3, 1, 1); ctx.fillRect(px + 1, py - 3, 1, 1); ctx.fillRect(px + 2, py - 2, 1, 1);
+        }
+        ctx.globalAlpha = 1;
+      }
+    }
+    for (const id in rt.out) { // found: it pops out in front of its hiding place, hops, then trots home (a puff)
+      const o = rt.out[id], sp = spot(id); if (!sp || sp.map !== f.mapId) continue;
+      const k = G.frame - o.f0; if (k > 200) { delete rt.out[id]; continue; }
+      const g = geo(sp, o.kind), base = (g.cut != null ? g.cut + 3 : g.feet), z = k < 24 ? Math.round(Math.sin(k / 24 * Math.PI) * 14) : (k >> 3) % 4 === 0 ? 2 : 0;
+      if (k > 176) { ctx.globalAlpha = Math.max(0, (200 - k) / 24); }
+      ctx.fillStyle = 'rgba(16,28,8,0.3)'; ctx.fillRect(g.x - 6 - cx, base - 1 - cy, 12, 2);
+      drawKind(ctx, o.kind, g.x - cx, base - z - cy, o.flip);
+      ctx.globalAlpha = 1;
+    }
+    if (!SK.active()) return;
+    for (const h of here(f)) {
+      const sp = spot(h.spot), g = geo(sp, h.kind), flip = f.player.x * T + 12 < g.x;
+      if (sp.how === 'sit') { const bob = (G.frame >> 5) % 6 === 0 ? 1 : 0; drawKind(ctx, h.kind, g.x - cx, g.feet - cy + bob, flip); continue; }
+      const vis = showing(f, h, sp), feet = g.cut + g.h - vis;
+      ctx.save(); ctx.beginPath(); ctx.rect(g.x - 20 - cx, g.cut - 40 - cy, 40, 40); ctx.clip(); // only what's above the line shows
+      drawKind(ctx, h.kind, g.x - cx, feet - cy, flip);
+      ctx.restore();
+    }
+  };
+  // who is still hiding: a little panel under the bag (top-left), their pictures; the found ones bright with a tick
+  SK.drawHud = function (f, ctx) {
+    if (!SK.active() || f.locked || G.top() !== f || (G.hint && G.hint.stripShowing())) return;
+    if (f.mapId !== 'villa' && f.mapId !== 'granja') return;
+    const L = st().list, bag = G.state.bag && G.state.bag.items && G.state.bag.items.length, y = bag ? 30 : 4, w = 26 + L.length * 18;
+    G.win(ctx, 4, y, w, 22, { alpha: 0.9 });
+    G.drawIcon16(ctx, 'lupa', 8, y + 3);
+    L.forEach((h, i) => {
+      const x = 26 + i * 18;
+      ctx.globalAlpha = h.found ? 1 : 0.6; G.drawIcon16(ctx, h.kind, x, y + 3); ctx.globalAlpha = 1;
+      if (h.found) { ctx.fillStyle = '#10102a'; ctx.fillRect(x + 10, y + 12, 7, 6); ctx.fillStyle = '#58d858'; ctx.fillRect(x + 11, y + 15, 2, 2); ctx.fillRect(x + 12, y + 16, 2, 1); ctx.fillRect(x + 13, y + 14, 1, 2); ctx.fillRect(x + 14, y + 13, 2, 1); }
+      else G.text(ctx, '?', x + 11, y + 10, '#f8e060', '#10102a'); // (still hiding)
+    });
+  };
 })();
 
 </script>

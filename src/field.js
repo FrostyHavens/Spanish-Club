@@ -5,7 +5,7 @@
   const key = (x, y) => x + ',' + y;
   const HUD = [G.W - 26, 6];          // the field menu button (= B), top-right
   const COUNTER = 'etaY';             // people are talked to across these (see interact)
-  const THING = 'rlkgPLYZteaujJO';      // objects a tap walks up to and searches (fences, walls, trees, water: just walk)
+  const THING = 'rlkgPLYZteaujJOHEUmA';      // objects a tap walks up to and searches (fences, walls, trees, water: just walk)
   const DIR4 = ['up', 'down', 'left', 'right'];
 
   class Field {
@@ -214,7 +214,9 @@
         if (s.run) yield* s.run(this);
         return;
       }
+      if (G.seek && G.seek.poke(this, fx, fy)) return; // an animal hiding there (hide-and-seek, seek.js)
       if (G.ambient && G.ambient.poke(this, fx, fy)) return; // pet the cat on the fence
+      if (this.def.poke && this.def.poke(this, fx, fy)) return; // the map's own (a hay bale in the barn rustles)
       if (G.world && G.world.nameTile(this, fx, fy)) return; // a thing with a word says it (world.js)
       yield G.say({ t: '...', en: 'Nothing here.' }, { noVoice: true });
     }
@@ -246,6 +248,7 @@
       if (this.route && (this.locked || G.input.dir() || ['up', 'down', 'left', 'right', 'A', 'B'].some(k => G.input.p(k)))) this.route = null;
       if (!this.locked && G.input.tap()) { // the menu button (= B, eats the tap), else tap-to-walk (field tasks still see the tap)
         if (G.btnHit(...HUD)) { G.input.eat(); this.menuReq = true; this.route = null; }
+        else if (G.seek && G.seek.tap(this, G.input.tap())) { G.input.eat(); this.route = null; } // found a hiding animal (seek.js)
         else { // tap-to-walk; a tap on an animal (animals.js, not over a person or a door) names it and walks toward it
           const tap = G.input.tap(), tt = this.tapTarget(tap), an = !tt.npc && !tt.exit && !tt.special && G.animals && G.animals.hit(this, tap);
           this.route = an ? G.animals.tapped(this, an) : tt; this.plan(this.route);
@@ -258,6 +261,7 @@
       if (G.animals) G.animals.update(this); // ducks, hens, the fish, the frog, the rabbit, the horse, the goat (animals.js)
       if (G.errands) G.errands.update(this); // Round B errands: who stands where, Canelo lost, Nico tagging along (errands.js)
       if (G.chapters) G.chapters.update(this); // the story: a chapter's moments that start by themselves (chapters.js)
+      if (G.seek) G.seek.update(this); // hide-and-seek: who hides where, Canelo sniffing out a trail (seek.js)
       const ct = this.camTarget(); this.cam.x += (ct.x - this.cam.x) * 0.3; this.cam.y += (ct.y - this.cam.y) * 0.3;
       if (Math.abs(ct.x - this.cam.x) < 0.5) this.cam.x = ct.x; if (Math.abs(ct.y - this.cam.y) < 0.5) this.cam.y = ct.y;
       if (this.banner) this.banner.t--;
@@ -296,6 +300,7 @@
       if (G.animals) G.animals.draw(this, ctx, 'ground'); // lily pads, ripples, swimmers, shadows
       if (G.pet) G.pet.drawUnder(this, ctx); // Canelo's cushion and bowl at home
       if (G.errands) G.errands.drawUnder(this, ctx); // Lucía's flowers, the picnic blanket, the party ribbons (errands.js)
+      if (G.seek) G.seek.draw(this, ctx); // animals hiding (hide-and-seek: an ear, a tail peeking out; seek.js)
       if (G.chapters) G.chapters.draw(this, ctx, 'under'); // a chapter's own things on the ground (chapters.js)
       if (G.intro && G.intro.drawUnder) G.intro.drawUnder(this, ctx); // a find-it puzzle's picture bubbles (intro.js)
       const ents = this.npcs.filter(n => n.spec && !n.hidden).concat([this.player]);
@@ -331,6 +336,7 @@
       }
       if (!this.locked && G.top() === this) G.iconBtn(ctx, 'menu', ...HUD);
       if (G.errands) G.errands.drawHud(this, ctx); // what you carry, Luna's clipboard (errands.js)
+      if (G.seek) G.seek.drawHud(this, ctx); // who is still hiding (seek.js)
     }
   }
   G.Field = Field;

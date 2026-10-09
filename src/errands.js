@@ -246,11 +246,12 @@
   // =====================================================================
   //  Who says what (maps.js calls talk / alert for every townsperson, after the story)
   // =====================================================================
-  // a present they'd like first, then the day's favour (favores.js), then the shop
+  // a present they'd like first, then the day's favour (favores.js), Nico's hide-and-seek (seek.js), then the shop
   E.talk = function* (who, f) {
     if (!G.state) return false;
     if (yield* gift(who)) return true;
     if (G.favores && (yield* G.favores.talk(who, f))) return true;
+    if (G.seek && (yield* G.seek.talk(who, f))) return true; // Nico's hide-and-seek (seek.js)
     if (yield* shop(who)) return true;
     return false;
   };

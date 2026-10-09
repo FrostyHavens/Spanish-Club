@@ -23,7 +23,8 @@
   function* ET(who, f) { return !!G.errands && (yield* G.errands.talk(who, f)); }
   // and the day's review in the world (favores.js): someone's small favour, Luna's palabra del día, Inés's pages
   const FA = who => (G.favores ? G.favores.alert(who) : null);
-  const EF = who => EA(who) || FA(who);
+  const SA = who => (G.seek ? G.seek.alert(who) : null); // (Nico's hide-and-seek, seek.js: through errands.js's talk)
+  const EF = who => EA(who) || FA(who) || SA(who);
   const CH = () => G.chapters;
   // a townsperson's whole talk: greeting, story, errands, then their own line
   function talker(who, line) {
@@ -50,6 +51,7 @@
       door('rosaDoor', 'rosa', 4, 5),
       door('panaderiaDoor', 'panaderia', 5, 6),
       door('bibliotecaDoor', 'biblioteca', 5, 7),
+      Object.assign(door('granjaDoor', 'granja', P('granja', 'door')[0], P('granja', 'door')[1] - 1), { run: barnDoor }), // the barn opens (docs/PLAYTEST_NOTES.md)
     ],
     signs: [sign('casaDoor', 'casa'), sign('escuelaDoor', 'escuela'), sign('rosaDoor', 'casa'), sign('panaderiaDoor', 'panaderia'), sign('bibliotecaDoor', 'biblioteca'), sign('granjaDoor', 'granja')],
     pages: PAGES('villa'), // the notebook's page puzzles (content/es/words.js pagePlaces)
@@ -94,6 +96,17 @@
     ],
   };
 
+  // The barn door. In chapter 7 Canelo is barking in there while Tomás's find-it puzzle waits at the barn's front
+  // (content/es/story-c01-c10.js): walking into the door is choosing the barn, so it counts as finding it, and the
+  // chapter goes on outside (Canelo comes out). Otherwise in you go, any time (before chapter 7 too: exploring).
+  function* barnDoor(f) {
+    const [x, y] = P('villa', 'granjaDoor'), fd = G.intro.spotAt(f, x, y + 1);
+    if (fd && fd.right) { stepBack(f, 'down'); yield* G.intro.runFind(f, fd, x, y + 1); return false; }
+    return true;
+  }
+  // off a doorstep, back the way you came (a door that isn't for now always says why first: Mamá, a chapter's moment)
+  function stepBack(f, dir) { const p = f.player, [dx, dy] = G.DIRS[dir]; p.x += dx; p.y += dy; p.ox = p.oy = 0; p.dir = dir; f.route = null; }
+
   // Canelo: a chapter's beat with him first; once he's yours, the pet menu (pet.js)
   function* caneloTalk(f, n) {
     if (yield* CT('canelo', f)) return;
@@ -126,9 +139,17 @@
     onEnter: function* (f) { if (G.day) yield* G.day.evening(f); }, // home after sunset: good night, Hoy, a new morning
     exits: [Object.assign(exitAt('casa', 'casaDoor'), {
       run: function* (f) {
-        if (G.chapters && !(yield* G.chapters.door(f))) { f.player.y -= 1; return false; } // a chapter's moment at the door (chapters.js)
+        if (G.chapters && !(yield* G.chapters.door(f))) { stepBack(f, 'up'); return false; } // a chapter's moment at the door (chapters.js)
         if (F().intro || !G.chapters || G.chapters.done('c1')) return true;
-        yield* say('mama', T('¡{name}!', '{name}! (stay a moment)')); const p = G.field.player; p.y -= 1; p.dir = 'up'; return false; // (back off the doorstep)
+        // chapter 1 isn't over: Mamá says why (the puppy is still hiding: she points at his hiding place)
+        stepBack(f, 'up');
+        const want = G.intro.seeking('mama'), at = want && G.state.finds[want] && G.state.finds[want].at.split(',').map(Number);
+        if (at && G.chapters) G.chapters.point(at[0] * G.TILE + 12, at[1] * G.TILE);
+        try {
+          if (want) yield G.say([T('¡{name}! ¿Y el [' + want + ']?', '{name}! Wait! Where did the ' + W(want).en.replace('the ', '') + ' go? (find him first)')], { portrait: G.portraitOf('mama'), name: G.nameOf('mama'), who: 'mama' });
+          else yield* say('mama', T('¡{name}! ¡Espera!', '{name}! Wait a moment! (stay with Mamá)'));
+        } finally { if (G.chapters) G.chapters.point(null); }
+        return false;
       } })],
     npcs: [
       { id: 'mama', npc: 'mama', x: P('casa', 'mama')[0], y: P('casa', 'mama')[1], dir: 'down', fixed: true,
@@ -146,6 +167,34 @@
       { id: 'canelo', npc: 'canelo', x: 7, y: 5, dir: 'left', cond: () => !!(G.pet && G.pet.mine()) && !(G.errands && G.errands.lost()),
         alert: () => CA('canelo') || (!!G.errands && G.errands.caneloAlert()),
         follow: () => !!F().canelo && !(G.pet && G.pet.sleeping()), talk: function* (f, n) { yield* caneloTalk(f, n); } },
+    ],
+  };
+
+  // ---------- La granja: inside the barn ----------
+  // The horse's stall (a cream horse, a trough of water), hens on the perch over their nest boxes and one scratching
+  // about, hay bales, a milk can, a basket of apples, the notebook's ¿Qué dicen? page puzzle. Everything with a word
+  // names itself when tapped (world.js: a "?" and its picture while the word isn't met); a hay bale rustles. Hide-and-
+  // seek (seek.js) hides an animal or two in here. Canelo comes in with you.
+  G.maps.granja = {
+    name: 'La granja', icon: 'granja', rows: MD.granja.rows, music: 'inn',
+    exits: [exitAt('granja', 'granjaDoor')],
+    pages: PAGES('granja'),
+    things: { tiles: { E: 'huevo', U: 'agua', m: 'leche', A: 'manzana' } },
+    animals: [
+      { kind: 'caballo', area: 'establo', tint: 1 },  // the cream horse in her stall
+      { kind: 'gallina', area: 'roost', perch: 6, n: 2 }, // two hens on the perch (brown, white)
+      { kind: 'gallina', area: 'patio', n: 1 },           // and one scratching about
+    ],
+    poke: (f, x, y) => { // a hay bale: it rustles (no word: CURRICULUM.md has none for hay)
+      if (f.map.get(x, y) !== 'H') return false;
+      f.wig = { x, y, t: 18 }; G.audio.sfx('swing');
+      for (let i = 0; i < 5; i++) G.fx.twinkle(x * G.TILE + 12 - Math.round(f.cam.x) + (Math.random() - 0.5) * 18, y * G.TILE + 6 - Math.round(f.cam.y) + (Math.random() - 0.5) * 10);
+      return true;
+    },
+    npcs: [
+      { id: 'canelo', npc: 'canelo', x: 6, y: 6, dir: 'up', wander: 2, follow: () => F().canelo,
+        cond: () => !!(G.pet && G.pet.mine()) && !(G.errands && G.errands.lost()),
+        alert: () => CA('canelo'), talk: function* (f, n) { yield* caneloTalk(f, n); } },
     ],
   };
 

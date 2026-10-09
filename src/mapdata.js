@@ -7,4 +7,5 @@ G.MAPDATA = {
   rosa: { rows: ["IIIIIIIII", "IniiiiviI", "IiiiiiiiI", "IiitttijI", "IiiiiiijI", "IPiiiiikI", "IIIIiIIII"], pos: {"door": [4, 6], "rosa": [2, 2]} },
   panaderia: { rows: ["IIIIIIIIII", "InniiivviI", "IiiiiiiiiI", "IieeeeeeiI", "IiiiiiiiiI", "IkiiiiiikI", "IiiiiiiiiI", "IIIIIiIIII"], pos: {"door": [5, 7], "marta": [5, 2]} },
   biblioteca: { rows: ["IIIIIIIIIII", "InnniiinnnI", "IiiiiqiiiiI", "IiiiiqiiiiI", "IittiqittiI", "IiiiiqiiiiI", "IiiiiqiiiiI", "IPiiiqiiiPI", "IIIIIiIIIII"], pos: {"door": [5, 8], "ines": [5, 2]} },
+  granja: { rows: ["VVVCVVVVVCVVV", "VUzzFmzEEEHHV", "VzzzFzzzzzzHV", "VzzzFzzzzzzzV", "VFFFFAzzzzzzV", "VzzzzzzzzHHzV", "VHzzzzzzzzzHV", "VHkzzzzzzzzkV", "VVVVVVzVVVVVV"], pos: {"establo": [1, 1, 3, 3], "roost": [7, 1, 3, 1], "patio": [6, 2, 5, 4], "door": [6, 8]} },
 };

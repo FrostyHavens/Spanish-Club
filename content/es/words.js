@@ -136,11 +136,12 @@
   C.pageOrder = C.topicOrder.slice();
   // where each page's puzzle sparkle sits (maps.js reads this): map -> 'x,y' -> page
   C.pagePlaces = {
-    villa: { '15,9': 'saludos', '13,19': 'animales', '43,19': 'granja', '41,4': 'sonidos', '18,11': 'numeros', '21,20': 'colores', '13,9': 'cosas' },
+    villa: { '15,9': 'saludos', '13,19': 'animales', '43,19': 'granja', '18,11': 'numeros', '21,20': 'colores', '13,9': 'cosas' },
     casa: { '7,5': 'mascota' },
     rosa: { '1,1': 'comida' },
     biblioteca: { '2,1': 'pueblo' },
     escuela: { '3,1': 'sentir' },
+    granja: { '6,2': 'sonidos' }, // (inside the barn: what do the animals say?)
   };
 
   // ---------- the 21 chapters, in order (docs/CURRICULUM.md section 4) ----------

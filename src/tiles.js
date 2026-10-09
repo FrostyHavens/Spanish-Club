@@ -147,6 +147,12 @@
     'u': OBSTACLE('Pew', 'indoor'), 'j': OBSTACLE('Bed', 'indoor'),
     'v': WALL('Hearth', 'indoor'), 'n': WALL('Bookshelf', 'indoor'),
     'c': tt('Stone Floor', 0, 1, 1, 1, 1, 'indoor'),
+    // the barn (la granja, inside): a straw-strewn floor, plank walls (a window), square hay bales, nest boxes, the
+    // horse's water trough, a milk can, a basket of apples
+    'z': tt('Barn Floor', 0, 1, 1, 1, 1, 'indoor'),
+    'V': WALL('Barn Wall', 'indoor'), 'C': WALL('Barn Window', 'indoor'),
+    'H': OBSTACLE('Hay Bales', 'indoor'), 'E': OBSTACLE('Nest Boxes', 'indoor'), 'U': OBSTACLE('Trough', 'indoor'),
+    'm': OBSTACLE('Milk Can', 'indoor'), 'A': OBSTACLE('Apples', 'indoor'),
     ' ': WALL('Void', 'grass'),
   };
 
@@ -155,15 +161,15 @@
   // =====================================================================
   // n[] order: N NE E SE S SW W NW
   const DX = [0, 1, 1, 1, 0, -1, -1, -1], DY = [-1, -1, 0, 1, 1, 1, 0, -1];
-  const BASEMAP = { '.': '.', 'o': '.', 'y': '.', 'f': '.', 'h': '.', ',': ',', '=': '=', 'p': 'p', 's': 's', 'x': 'x', 'i': 'i', 'c': 'c' };
-  const OBJ = new Set('rFlkgPLYZteaujJO'.split(''));
-  const INDOOR_OBJ = new Set('teauj'.split(''));
-  const BASE_PREF = ['=', 'p', 'x', 'c', 'i', ',', 's', '.'];
+  const BASEMAP = { '.': '.', 'o': '.', 'y': '.', 'f': '.', 'h': '.', ',': ',', '=': '=', 'p': 'p', 's': 's', 'x': 'x', 'i': 'i', 'c': 'c', 'z': 'z' };
+  const OBJ = new Set('rFlkgPLYZteaujJOHEUmA'.split(''));
+  const INDOOR_OBJ = new Set('teaujHEUmA'.split(''));
+  const BASE_PREF = ['=', 'p', 'x', 'c', 'z', 'i', ',', 's', '.'];
   const WATERISH = c => c === 'w' || c === '~' || c === 'b' || c === 'B';
   const ROOF = c => c === 'R' || c === 'Q' || c === '+';
   const BWALL = c => c === 'W' || c === 'N' || c === 'D' || c === 'S' || c === 'G' || c === 'K';
-  const IWALL = c => c === 'I' || c === 'n' || c === 'v';
-  const TALL = new Set('WNDSGKRQ+XIvnT'.split(''));
+  const IWALL = c => c === 'I' || c === 'n' || c === 'v' || c === 'V' || c === 'C';
+  const TALL = new Set('WNDSGKRQ+XIvnTVC'.split(''));
   const GRASSY = c => c === '.' || c === 'T' || c === 'M';
 
   function inferBase(map, x, y, code) {
@@ -352,6 +358,24 @@
       b.set(x, y, c);
     }
   }
+  // the barn floor: packed earth under loose straw (the strands wrap around the tile's edges, so the floor is seamless)
+  function strawFloorTex(b, v) {
+    const base = mix(P.D3, P.H1, 0.35);
+    b.fill(base);
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) {
+      const r = hsh(x, y, v + 211);
+      if (r < 0.07) b.set(x, y, scale(base, 0.86)); else if (r < 0.1) b.set(x, y, mix(P.D4, P.H2, 0.5));
+    }
+    const STRAW = [P.H2, P.H3, mix(P.H3, P.H4, 0.5), P.H1, P.H2];
+    for (let i = 0, n = 8 + (v % 4); i < n; i++) {
+      const x0 = Math.floor(hsh(i, v, 221) * TS), y0 = Math.floor(hsh(v, i, 223) * TS), len = 3 + Math.floor(hsh(i, v, 227) * 4), d = hsh(i, v, 229);
+      const col = STRAW[Math.floor(hsh(v, i, 233) * STRAW.length)];
+      for (let k = 0; k < len; k++) {
+        const x = (x0 + k) % TS, y = (y0 + (d < 0.4 ? 0 : d < 0.7 ? (k >> 1) : -(k >> 1)) + TS) % TS;
+        b.set(x, y, col); if (k === 1) b.set(x, (y + 1) % TS, scale(base, 0.8)); // (a little shadow under each strand)
+      }
+    }
+  }
   function carpetTex(b, n) {
     const isC = c => c === 'q';
     for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) {
@@ -402,6 +426,7 @@
       case 'x': flagTex(b, I.v, true); grassFringe(b, I.g, I.v); break;
       case 'i': plankTex(b, I.v); break;
       case 'c': stoneFloorTex(b, I.v); break;
+      case 'z': strawFloorTex(b, I.v); break;
       case 'q': carpetTex(b, I.n); break;
       default: grassTex(b, I.v);
     }
@@ -1116,7 +1141,7 @@
   }
   function shrubTile(b, I) {
     drawGround(b, I.base, I);
-    const indoor = I.base === 'i' || I.base === 'c';
+    const indoor = I.base === 'i' || I.base === 'c' || I.base === 'z';
     if (indoor) {
       dropShadow(b, 14, 21, 6, 2, 0.6);
       for (let y = 14; y < 22; y++) { const w = 5 - (y - 14) * 0.35; for (let x = Math.round(12 - w); x < 12 + w; x++) b.set(x, y, x < 10 ? P.R4 : x < 13 ? P.R3 : P.R2); }
@@ -1269,6 +1294,126 @@
     }
     for (let y = 5; y < 20; y++) { b.set(12, y, P.T2); }
   }
+  // ---------- inside the barn ----------
+  // plank walls: the top face like any interior wall, the front of upright boards with a crossbeam (a horseshoe on some;
+  // 'C' has a little window full of sky)
+  function barnWallTile(b, I, win) {
+    const n = I.n, v = I.v;
+    const front = !IWALL(n[4]) && n[4] !== ' ';
+    const L = !IWALL(n[6]), Rt = !IWALL(n[2]), Tp = !IWALL(n[0]);
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) b.set(x, y, ((x + y) % 4 === 0) ? P.T0 : mix(P.T1, P.T0, 0.45));
+    if (L) for (let y = 0; y < TS; y++) { b.set(0, y, P.X0); b.set(1, y, P.T2); }
+    if (Rt) for (let y = 0; y < TS; y++) { b.set(TS - 1, y, P.X0); b.set(TS - 2, y, P.T0); }
+    if (Tp) { b.hl(0, TS - 1, 0, P.X0); b.hl(0, TS - 1, 1, P.T2); }
+    if (!front) return;
+    const y0 = 4;
+    b.hl(0, TS - 1, y0 - 1, P.T3);
+    for (let y = y0; y < TS; y++) for (let x = 0; x < TS; x++) {
+      const bx = Math.floor(x / 6), lx = x % 6, tone = hsh(bx, v, 7) < 0.5 ? P.T3 : mix(P.T3, P.T2, 0.5);
+      let c = lx === 0 ? P.T1 : lx === 1 ? lighten(tone, 0.12) : tone;
+      if (lx > 1 && hsh(x >> 1, y >> 2, v + bx) < 0.07) c = scale(tone, 0.86); // grain
+      if (y === y0) c = P.T1;
+      if (y >= TS - 2) c = y === TS - 1 ? P.T0 : P.T1;
+      b.set(x, y, c);
+    }
+    b.hl(0, TS - 1, 12, P.T4); b.hl(0, TS - 1, 13, P.T2); b.hl(0, TS - 1, 14, P.T0); // the crossbeam
+    for (let x = 2; x < TS; x += 12) { b.set(x, 13, P.K3); b.set(x + 6, 13, P.K2); } // (nails)
+    if (win) { // a small square window: sky and a cloud, a cross of muntins, a sill with light on it
+      b.rect(6, 3, 12, 9, P.T0); b.rect(7, 4, 10, 7, P.W4);
+      b.hl(7, 16, 4, P.W5); b.rect(8, 6, 3, 1, P.W6); b.rect(9, 5, 2, 1, P.W6);
+      b.vl(11, 4, 10, P.T1); b.hl(7, 16, 7, P.T1);
+      b.hl(5, 18, 11, P.T5); b.hl(5, 18, 12, P.T2);
+      for (let y = 15; y < 22; y++) for (let x = 7 + (y - 15); x < 15 + (y - 15) && x < TS; x++) if ((x + y) & 1) b.tint(x, y, P.Y4, 0.18); // a soft shaft of light
+    } else if (v % 4 === 1) { // a horseshoe on the beam, for luck
+      const hx = 12, hy = 6;
+      for (const [x, y] of [[-3, 0], [-3, 1], [-3, 2], [-3, 3], [-2, 4], [-1, 5], [0, 5], [1, 5], [2, 4], [3, 3], [3, 2], [3, 1], [3, 0]]) { b.set(hx + x, hy + y, P.K3); b.set(hx + x + 1, hy + y + 1, P.K1); }
+      b.set(hx - 3, hy - 1, P.K4); b.set(hx + 3, hy - 1, P.K4); b.set(hx, hy - 3, P.K2);
+    } else if (v % 4 === 3) { // a coil of rope on a peg
+      b.set(16, 5, P.T0);
+      for (let a = 0; a < 6.3; a += 0.3) { b.set(16 + Math.round(Math.cos(a) * 3), 9 + Math.round(Math.sin(a) * 3), P.D4); b.set(16 + Math.round(Math.cos(a) * 2), 9 + Math.round(Math.sin(a) * 2), P.D2); }
+    }
+  }
+  // a square hay bale (a top face, a front, two twine bands); some tiles have a smaller bale stacked on top
+  function baleBox(b, x0, y0, w, h, top, v) {
+    for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) {
+      let c;
+      if (y < y0 + top) c = hsh(x, y, v + 41) < 0.22 ? P.H3 : P.H4;
+      else c = ((x * 7 + (y >> 1) * 3 + v) % 5 === 0) ? P.H1 : hsh(x, y, v + 43) < 0.25 ? P.H3 : P.H2;
+      if (y === y0) c = P.Y4;
+      if (y === y0 + top) c = P.H1;
+      if (x === x0) c = y < y0 + top ? P.H4 : P.H3;
+      if (x === x0 + w - 1) c = P.H1;
+      if (y === y0 + h - 1) c = P.H0;
+      b.set(x, y, c);
+    }
+    for (const tx of [x0 + 3, x0 + w - 4]) { b.vl(tx, y0 + 1, y0 + top - 1, P.T3); b.vl(tx, y0 + top + 1, y0 + h - 2, P.T1); }
+    for (let i = 0; i < 4; i++) { const sx = x0 + 2 + Math.floor(hsh(i, v, 47) * (w - 4)); b.set(sx, y0 - 1, P.H3); b.set(sx + 1, y0 - 2, P.H4); } // loose straws on top
+  }
+  function baleTile(b, I) {
+    drawGround(b, I.base, I);
+    const n = I.n, onBale = n[4] === 'H';
+    if (!onBale) dropShadow(b, 13, 22, 11, 2, 0.6);
+    if (I.v % 3 === 0) { baleBox(b, 1, 11, 22, 12, 4, I.v); baleBox(b, 4, 2, 17, 10, 4, I.v + 3); }
+    else baleBox(b, 1, 5, 22, 18, 6, I.v);
+  }
+  // nest boxes: a perch rail on top (the hens sit there), two boxes of straw, an egg in one of them
+  function nestTile(b, I) {
+    drawGround(b, I.base, I);
+    const n = I.n, jw = n[6] === 'E', je = n[2] === 'E';
+    dropShadow(b, 13, 22, 11, 1.5, 0.6);
+    b.rect(0, 8, TS, 15, P.T2);
+    for (let x = 0; x < TS; x++) { b.set(x, 8, P.T4); b.set(x, 9, P.T3); b.set(x, 22, P.T0); }
+    for (const bx of [2, 13]) {
+      b.rect(bx, 11, 9, 8, P.T0);
+      for (let x = bx; x < bx + 9; x++) { b.set(x, 17, P.H2); b.set(x, 18, P.H3); if (hsh(x, bx, I.v) < 0.5) b.set(x, 16, P.H3); }
+      b.hl(bx, bx + 8, 19, P.T4); b.hl(bx, bx + 8, 20, P.T3); b.hl(bx, bx + 8, 21, P.T1);
+    }
+    const eggAt = (I.v % 2) ? 5 : 16; // an egg in one box
+    b.rect(eggAt, 14, 3, 3, P.P3); b.set(eggAt + 1, 13, P.P3); b.set(eggAt, 14, P.F1); b.set(eggAt + 2, 16, P.P1);
+    b.vl(0, 8, 22, jw ? P.T2 : P.T1); b.vl(TS - 1, 8, 22, je ? P.T2 : P.T0);
+    b.hl(0, TS - 1, 5, P.T4); b.hl(0, TS - 1, 6, P.T1); // the perch
+    if (!jw) { b.rect(1, 5, 2, 4, P.T1); }
+    if (!je) { b.rect(TS - 3, 5, 2, 4, P.T1); }
+  }
+  // a wooden trough of water (the horse drinks here)
+  function troughTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 13, 21, 11, 2, 0.6);
+    b.rect(2, 8, 20, 12, P.T2); b.hl(2, 21, 8, P.T5); b.hl(2, 21, 9, P.T4);
+    b.rect(4, 10, 16, 4, P.W3); b.hl(4, 19, 10, P.W2);
+    for (let x = 5; x < 19; x += 4) b.set(x + (I.af & 1), 12, P.W5);
+    b.set(8 + (I.af & 1) * 6, 11, P.W6);
+    for (let x = 2; x < 22; x++) { b.set(x, 15, P.T3); b.set(x, 18, P.T3); }
+    for (const x of [5, 17]) { b.vl(x, 14, 19, P.K2); b.vl(x + 1, 14, 19, P.K1); }
+    b.hl(2, 21, 19, P.T0); b.vl(2, 8, 19, P.T3); b.vl(21, 8, 19, P.T0);
+    b.rect(3, 20, 2, 2, P.T0); b.rect(19, 20, 2, 2, P.T0);
+  }
+  // a metal milk can (and a little one beside it on some tiles)
+  function milkTile(b, I) {
+    drawGround(b, I.base, I);
+    const can = (x0, y0, w, h) => {
+      dropShadow(b, x0 + w / 2 + 1, y0 + h, w / 2 + 1, 1.5, 0.6);
+      const cx = x0 + w / 2;
+      for (let y = y0 + 4; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) { const u = (x + 0.5 - x0) / w; b.set(x, y, u < 0.2 ? P.K5 : u < 0.45 ? P.K4 : u < 0.8 ? P.K3 : P.K2); }
+      for (let y = y0 + 1; y < y0 + 4; y++) for (let x = Math.round(cx - w / 4); x < Math.round(cx + w / 4); x++) b.set(x, y, x < cx - 1 ? P.K5 : P.K3);
+      b.hl(Math.round(cx - w / 4) - 1, Math.round(cx + w / 4), y0, P.K4); b.hl(Math.round(cx - w / 4), Math.round(cx + w / 4) - 1, y0 - 1, P.K5);
+      b.hl(x0, x0 + w - 1, y0 + 4, P.K5); b.hl(x0, x0 + w - 1, y0 + Math.round(h * 0.55), P.K2); b.hl(x0, x0 + w - 1, y0 + h - 1, P.K1);
+      b.set(x0 - 1, y0 + 5, P.K1); b.set(x0 - 1, y0 + 6, P.K1); b.set(x0 + w, y0 + 5, P.K1); b.set(x0 + w, y0 + 6, P.K1); // handles
+    };
+    can(6, 5, 10, 16);
+    if (I.v % 2) can(17, 13, 6, 9);
+  }
+  // a wicker basket heaped with red apples
+  function applesTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 13, 21, 10, 2, 0.6);
+    for (const [x, y] of [[7, 10], [12, 9], [16, 10], [9, 7], [14, 6], [11, 12], [5, 12], [18, 12]]) {
+      b.rect(x - 2, y - 1, 5, 4, P.C3); b.rect(x - 1, y - 2, 3, 6, P.C3); b.set(x - 1, y - 1, P.F1); b.set(x, y - 1, P.C4); b.hl(x - 1, x + 1, y + 3, P.C1); b.set(x + 2, y + 1, P.C2);
+      b.set(x, y - 3, P.T1); if ((x + y) % 3 === 0) b.set(x + 1, y - 3, P.G3);
+    }
+    for (let y = 13; y < 22; y++) for (let x = 3 + (y > 19 ? 1 : 0); x < 21 - (y > 19 ? 1 : 0); x++) b.set(x, y, ((x + (y >> 1)) % 3 === 0) ? P.T2 : ((y & 1) ? P.T4 : P.T3));
+    b.hl(3, 20, 13, P.T5); b.hl(3, 20, 14, P.T2); b.hl(4, 19, 21, P.T0);
+  }
   function tableTile(b, I) {
     drawGround(b, I.base, I);
     const n = I.n, jw = n[6] === 't', je = n[2] === 't';
@@ -1398,7 +1543,7 @@
   reg('.', { need: 's', fn: (b, I) => { grassTex(b, I.v); applyShadow(b, I.sh); } });
   reg('o', { need: 's', anim: 2, spd: 30, fn: (b, I) => { flowerTex(b, I.v, I.af); applyShadow(b, I.sh); } });
   reg('y', { need: 'n', anim: 2, spd: 36, fn: wheatTile });
-  reg(',=psxicq', { need: 'g', fn: (b, I) => drawGround(b, I.c, I) });
+  reg(',=psxicqz', { need: 'g', fn: (b, I) => drawGround(b, I.c, I) });
   reg('f', { need: 's', fn: forestTile });
   reg('T', { need: 'n', fn: denseTile });
   reg('h', { need: 's', fn: hillsTile });
@@ -1428,6 +1573,13 @@
   reg('Z', { need: 'g', base: true, fn: statueTile });
   reg('J', { need: 'g', base: true, fn: benchTile });
   reg('O', { need: 'g', base: true, fn: hayTile });
+  reg('V', { need: 'n', fn: (b, I) => barnWallTile(b, I, false) });
+  reg('C', { need: 'n', fn: (b, I) => barnWallTile(b, I, true) });
+  reg('H', { need: 'g', base: true, fn: baleTile });
+  reg('E', { need: 'g', base: true, fn: nestTile });
+  reg('U', { need: 'g', base: true, anim: 2, spd: 30, fn: troughTile });
+  reg('m', { need: 'g', base: true, fn: milkTile });
+  reg('A', { need: 'g', base: true, fn: applesTile });
   reg('I', { need: 'n', fn: iwallTile });
   reg('t', { need: 'g', base: true, fn: tableTile });
   reg('e', { need: 'g', base: true, fn: counterTile });
@@ -1484,6 +1636,7 @@
     'D': '#74421e', 'S': '#8a8a96', 'G': '#8a8a96', 'K': '#74421e', 'l': '#6c6c80', 'k': '#9c5e2a', 'g': '#9a9aa4', 'P': '#3c8a2c',
     'L': '#e8c850', 'Y': '#c8343c', 'Z': '#b4b2b4', 'J': '#c0823a', 'O': '#e2be46', 'i': '#a0602c', 'I': '#4c4032', 'q': '#9c1c2c', 't': '#c0823a', 'e': '#74421e',
     'a': '#e6e2d8', 'u': '#74421e', 'j': '#d8d8e8', 'v': '#e05818', 'n': '#5c3418', 'c': '#a08c6c', ' ': '#000000',
+    'z': '#b08a50', 'V': '#5c3418', 'C': '#5c3418', 'H': '#e2be46', 'E': '#9c5e2a', 'U': '#3a72d2', 'm': '#b4b2b4', 'A': '#c8343c',
   };
   G.MINI_COLORS = MINI;
   G.drawMiniTile = function (ctx, code, x, y, size) {

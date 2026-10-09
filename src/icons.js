@@ -295,6 +295,10 @@
       for (let a = Math.PI * 1.05; a <= Math.PI * 1.95; a += 0.05) p.put(8 + Math.cos(a) * 3.5 - 0.5, 6 + Math.sin(a) * 3.5 - 0.5, '#8a5022');
       p.ell(8, 11, 6, 4.6, '#d89a50'); p.rect(4, 6, 8, 3, '#d89a50'); p.shade(8, 11, 6, '#b07030'); p.rect(4, 7, 8, 1, '#a86028'); p.put(6, 9, '#f8d8a0');
     },
+    lupa(p) { // a magnifying glass (hide-and-seek: ¿Dónde están?)
+      p.rect(9, 10, 2, 2, '#6a4020'); p.rect(11, 12, 2, 2, '#6a4020'); p.rect(13, 13, 2, 2, '#8a5a28');
+      p.disc(6.5, 6.5, 5.5, '#c8a040'); p.disc(6.5, 6.5, 4.2, '#b8e0f8'); p.disc(5, 5, 1.6, '#ffffff'); p.put(8, 8, '#88c0e8'); p.put(9, 7, '#88c0e8');
+    },
     huella(p) { // a paw print on the ground
       p.ell(8, 11, 3.6, 3, '#6a4020'); [[3.6, 6.8], [6.6, 4.6], [9.6, 4.6], [12.4, 6.8]].forEach(([x, y]) => p.ell(x, y, 1.5, 1.8, '#6a4020'));
     },

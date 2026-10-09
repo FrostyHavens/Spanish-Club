@@ -316,7 +316,7 @@
   CH.follows = function (who) { const id = CH.current(), sc = id && scripts[id]; try { return !!(sc && sc.o.follows && sc.o.follows(who, CH.ctx(id))); } catch (e) { return false; } };
 
   // ---------- the arrival banner: entering a building whose word is met and due asks its name (a few times) ----------
-  const PLACES = ['escuela', 'panaderia', 'biblioteca', 'casa'];
+  const PLACES = ['escuela', 'panaderia', 'biblioteca', 'casa', 'granja'];
   function placeAsk(f) {
     if (f.placeAsked) return;
     f.placeAsked = true;

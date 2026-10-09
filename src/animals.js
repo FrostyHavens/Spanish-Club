@@ -107,6 +107,8 @@
       swim: ['l..oo..', 'llooooe', 'l.dooo.'],
       jump: ['..l..', '.lol.', '.ooo.', '.ooo.', '.oeo.', '..o..'] },
   };
+  // a second look for some kinds (tint): the white hen, the cream horse in the barn's stall
+  const TINT = { gallina: { b: '#f4f0e8', c: '#ffffff', d: '#d0c8c0' }, caballo: { b: '#e0b878', d: '#b88c50', m: '#f8f0dc', h: '#5a4028' } };
   const lily = ['..gggg..', '.gggggg.', 'ggggg.gg', '.gggggg.', '..gggg..'];
   const LILY_PAL = { g: '#3a9a48' };
 
@@ -158,7 +160,7 @@
 
   // ---------- setting up a map ----------
   const area = (f, tag) => { const p = G.MAPDATA[f.mapId] && G.MAPDATA[f.mapId].pos[tag]; return p && p.length === 4 ? p : p ? [p[0], p[1], 1, 1] : null; };
-  const LAND = '.o,=py';
+  const LAND = '.o,=pyz'; // (z: the barn's straw floor)
   function tilesIn(f, r, ok) { const out = []; if (!r) return out; for (let y = r[1]; y < r[1] + r[3]; y++) for (let x = r[0]; x < r[0] + r[2]; x++) if (ok(f.map.get(x, y), x, y)) out.push([x, y]); return out; }
   function setup(f) {
     const z = f.zoo = { f: G.frame, list: [], fx: [] };
@@ -175,12 +177,17 @@
         add(z, 'rana', pads[0][0], pads[0][1], { pads, pad: 0 });
       } else if (c.kind === 'pez') {
         add(z, 'pez', r[0] * T + 12, r[1] * T + 16, { cx: r[0] * T + 12, cy: r[1] * T + 16, ang: rnd(6), next: 120 + ri(200) });
+      } else if (c.perch) { // sitting on something (the hens on the barn's perch): one on each tile, pinned there
+        for (let i = 0; i < Math.min(c.n || r[2] * r[3], r[2] * r[3]); i++) {
+          const x = r[0] + (i % r[2]), y = r[1] + Math.floor(i / r[2]), px = x * T + 12 + (i & 1 ? 2 : -2), py = y * T + c.perch;
+          add(z, c.kind, px, py, { ground: [[x, y]], tint: i, pin: [px, py], perched: true, flip: (i & 1) === 1 });
+        }
       } else {
         const ground = tilesIn(f, r, (ch, x, y) => LAND.includes(ch) && !f.exitAt(x, y));
         if (!ground.length) continue;
         for (let i = 0; i < (c.n || 1); i++) {
           const [x, y] = ground[ri(ground.length)];
-          add(z, c.kind, x * T + 4 + rnd(16), y * T + 12 + rnd(10), { ground, tint: i });
+          add(z, c.kind, x * T + 4 + rnd(16), y * T + 12 + rnd(10), { ground, tint: c.tint != null ? c.tint : i });
         }
       }
     }
@@ -331,12 +338,13 @@
     f.zoo.fx.push({ k: 'heart', x: a.x + (a.flip ? -8 : 8), y: a.y - frameOf(a).height + 4, t: 0, life: 50 });
   }
   // the animal under a tap (world px), nearest first; generous areas for small fingers
+  const hid = (f, a) => !!(G.seek && G.seek.hides(f, a)); // (hiding somewhere else today: seek.js)
   AN.hit = function (f, tap) {
     if (!f.zoo) return null;
     const wx = tap.x + Math.round(f.cam.x), wy = tap.y + Math.round(f.cam.y);
     let best = null, bd = 1e9;
     for (const a of f.zoo.list) {
-      if (a.kind === 'pez' && a.st !== 'jump') continue; // the fish only while it jumps (the fountain names itself)
+      if ((a.kind === 'pez' && a.st !== 'jump') || hid(f, a)) continue; // the fish only while it jumps (the fountain names itself)
       const img = frameOf(a), w = Math.max(20, img.width + 6), h = Math.max(20, img.height + 6), cy = a.y - a.z - img.height / 2;
       const dx = Math.abs(wx - a.x), dy = Math.abs(wy - cy);
       if (dx <= w / 2 && dy <= h / 2 && dx + dy < bd) { best = a; bd = dx + dy; }
@@ -364,8 +372,8 @@
       case 'rana': fr = a.st === 'hop' ? 'hop' : a.st === 'croak' && (a.t >> 3) & 1 ? 'croak' : 'sit'; break;
       case 'pez': fr = a.st === 'jump' ? 'jump' : 'swim'; break;
     }
-    const pal = a.kind === 'gallina' && a.tint ? Object.assign({}, S.pal, { b: '#f4f0e8', c: '#ffffff', d: '#d0c8c0' }) : S.pal;
-    return pix((a.baby ? 'patito' : a.kind) + fr + (a.tint && a.kind === 'gallina' ? 'w' : ''), S[fr], pal, a.flip);
+    const tint = a.tint && TINT[a.kind], pal = tint ? Object.assign({}, S.pal, tint) : S.pal;
+    return pix((a.baby ? 'patito' : a.kind) + fr + (tint ? 'w' : ''), S[fr], pal, a.flip);
   }
   function drawOne(ctx, a, cx, cy) {
     const img = frameOf(a), x = Math.round(a.x - img.width / 2 - cx), y = Math.round(a.y - img.height - a.z - cy);
@@ -384,7 +392,7 @@
     const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
     if (layer !== 'ground') return;
     for (const a of z.list) { // shadows; lily pads; ripples; swimmers and the fountain's fish
-      if (a.kind === 'rana') for (const [px, py] of a.pads) ctx.drawImage(pix('lily', lily, LILY_PAL), Math.round(px - 5 - cx), Math.round(py - 4 - cy));
+      if (a.kind === 'rana' && !hid(f, a)) for (const [px, py] of a.pads) ctx.drawImage(pix('lily', lily, LILY_PAL), Math.round(px - 5 - cx), Math.round(py - 4 - cy));
     }
     for (const e of z.fx) if (e.k === 'ring') {
       const k = e.t / e.life, r = 3 + k * 7;
@@ -392,9 +400,10 @@
       ctx.beginPath(); ctx.ellipse(Math.round(e.x - cx) + 0.5, Math.round(e.y - cy) + 0.5, r, r * 0.45, 0, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
     }
     for (const a of z.list) {
+      if (hid(f, a)) continue;
       if (a.kind === 'pato' || a.kind === 'rana' || (a.kind === 'pez' && a.st !== 'jump')) {
         if (a.kind === 'pez') { ctx.globalAlpha = 0.85; drawOne(ctx, a, cx, cy); ctx.globalAlpha = 1; } else drawOne(ctx, a, cx, cy);
-      } else if (a.kind !== 'pez') { // a soft shadow under land animals
+      } else if (a.kind !== 'pez' && !a.perched) { // a soft shadow under land animals
         const w = a.kind === 'caballo' ? 16 : a.kind === 'cabra' ? 10 : 7;
         ctx.fillStyle = 'rgba(16,28,8,0.3)'; ctx.fillRect(Math.round(a.x - w / 2 - cx), Math.round(a.y - cy) - 1, w, 2);
       }
@@ -403,7 +412,7 @@
   // land animals and the jumping fish, for field.js to draw in order with the people: [{sy, draw(ctx, cx, cy)}]
   AN.ents = function (f) {
     const z = f.zoo; if (!z) return [];
-    return z.list.filter(a => a.kind !== 'pato' && a.kind !== 'rana' && (a.kind !== 'pez' || a.st === 'jump'))
+    return z.list.filter(a => a.kind !== 'pato' && a.kind !== 'rana' && (a.kind !== 'pez' || a.st === 'jump') && !hid(f, a))
       .map(a => ({ sy: a.kind === 'pez' ? a.y + 8 : a.y - 21, draw: (ctx, cx, cy) => drawOne(ctx, a, cx, cy) }));
   };
   // hearts and splashes above everything on the map
@@ -428,7 +437,7 @@
     sync(f);
   };
   AN.here = function (f) { f = f || G.field; if (!f) return []; if (!f.zoo) setup(f); return f.zoo.list.map(a => ({ kind: a.kind, x: a.x, y: a.y, st: a.st, baby: !!a.baby })); };
-  AN.find = function (kind, f) { f = f || G.field; if (!f) return null; if (!f.zoo) setup(f); return f.zoo.list.find(a => a.kind === kind && !a.baby) || null; };
+  AN.find = function (kind, f) { f = f || G.field; if (!f) return null; if (!f.zoo) setup(f); return f.zoo.list.find(a => a.kind === kind && !a.baby && !hid(f, a)) || null; };
   AN.screen = function (a, f) { f = f || G.field; const img = frameOf(a); return [a.x - Math.round(f.cam.x), a.y - a.z - img.height / 2 - Math.round(f.cam.y)]; };
   AN.sheet = SPR; // the pictures, for tools
   AN.react = react; // its reaction to a tap, without the naming (errands.js: counting, the sound game)
