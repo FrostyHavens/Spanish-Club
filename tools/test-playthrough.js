@@ -18,8 +18,10 @@ run('Full tap playthrough (iPad)', async browser => {
       if (doneN >= 2 && !reloaded) {
         reloaded = true;
         const before = await g.ev(() => ({ map: G.field.mapId, x: G.field.player.x, y: G.field.player.y, q: JSON.stringify(G.state.quests), stars: G.state.stars, name: G.state.name, home: G.field.npcs.some(n => n.home && n.home[0] === G.field.player.x && n.home[1] === G.field.player.y) }));
+        const ds = await g.ev(() => G.debug.dayShift || 0); // (the test's moved date: a reload forgets it)
         await g.page.reload();
         await g.until(() => window.G && G.top && G.top() && G.top().constructor.name === 'Title' && G.top().t > 32, null, 'the title after reload');
+        await g.ev(ds => { G.debug.dayShift = ds; }, ds);
         await g.tap(160, 180);
         await g.until(() => G.top().constructor.name === 'Slots', null, 'the slot screen');
         await g.frames(20); await g.shot('slots_after_reload');

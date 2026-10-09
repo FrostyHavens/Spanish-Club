@@ -146,9 +146,11 @@ async function chapters(browser) {
         if (!reloaded && st.q.c7 === 'active' && await g.ev(() => (G.state.ch.step.c7 | 0) >= 3)) {
           reloaded = true;
           const before = await g.ev(() => ({ step: G.state.ch.step.c7, lost: G.errands.lost(), met: G.words.list(1).length, finds: JSON.stringify(G.state.finds) }));
+          const ds = await g.ev(() => G.debug.dayShift || 0); // (the test's moved date: a reload forgets it)
           await g.ev(() => G.st.saveNow());
           await g.page.reload();
           await g.until(() => window.G && G.top && G.top() && G.top().constructor.name === 'Title' && G.top().t > 32, null, 'the title after reload');
+          await g.ev(ds => { G.debug.dayShift = ds; }, ds);
           await g.tap(160, 180);
           await g.until(() => G.top().constructor.name === 'Slots', null, 'the slot screen');
           await g.tapRect(await g.ev(() => G.top().cardRect(0)));
