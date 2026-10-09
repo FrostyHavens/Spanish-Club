@@ -387,13 +387,14 @@ async function sideJobs(browser) {
     const h0 = await g.ev(() => G.hearts.get('gomez'));
     await talk(g, 'gomez', 'a present for Gómez');
     check('gift: Gómez likes apples: +1 heart', await g.ev(h0 => G.hearts.get('gomez') > h0 && G.hearts.did('gomez', 'gift') && !G.errands.bag.has('manzana'), h0));
-    // Misiones
+    // Misiones (the next day: today's new words were all met yesterday, so a new errand may start)
+    await g.ev(() => { for (const id in G.state.words) { const r = G.words.rec(id); if (r && r.st >= 1) { r.md = (r.md | 0) - 1; r.mdate = '1999-1-1'; } } });
     await g.ev(() => { G.field.menuReq = true; });
     await g.until(() => G.top().constructor.name === 'FieldMenu', null, 'the menu');
     await g.tapRect(await g.ev(() => G.top().rect('quest')));
     await g.until(() => G.top().constructor.name === 'QuestLog', null, 'Misiones');
     await g.frames(10); await g.shot('misiones');
-    check('misiones: lists new errands waiting (Sofía\'s show, Tomás...), and today\'s side jobs', await g.ev(() => G.top().rows().some(r => r.st === 'new')));
+    check('misiones: lists new errands waiting (Sofía\'s show), and today\'s side jobs', await g.ev(() => G.top().rows().some(r => r.st === 'new')));
     noErrors(g, 'jobs');
   } finally { await ctx.close(); }
 }

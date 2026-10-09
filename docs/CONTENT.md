@@ -97,7 +97,7 @@ opens tomorrow. Inside a run, write with the helpers in `G.chapters.K` (`say`, `
 `src/chapters.js` lists every trigger and option; `content/es/story-c01-c10.js` has ten worked examples.
 
 **Gating** (`G.chapters.gate(id)`): the chapter before must be done; its new words must fit today's budget (6 a day, 8
-a calendar date); no new chapter while 10 or more words are still only met (a review day); `when: 'morning'` chapters
+a calendar date); no new chapter while 10 or more words are still only met (a review day: Luna, or Mamá before chapter 8, shows a notebook bubble and asks the oldest of them, `G.chapters.review`); `when: 'morning'` chapters
 open only as the first chapter of a session, `when: 'evening'` ones only in the evening at home (day.js runs their
 `evening: 'dusk' | 'dawn'` beats). A chapter that has started can always be finished. Chapters without a script
 (`'unwritten'`) are skipped by nothing: the older errands run after the last written chapter

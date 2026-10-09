@@ -1001,7 +1001,8 @@ Most are in `LEARNING_DESIGN.md`'s build step 1; these are the content-facing on
 Chapters 1-10 are in the game (`src/chapters.js`, `content/es/story-c01-c10.js`; the words, pages and the chapter
 table in `content/es/words.js`). They follow §4 step by step; where the build differs:
 - **Gating** (§3.1 made concrete, `G.chapters.gate`): at most 6 new words a game day and 8 a calendar date; no new
-  chapter while 10 or more words are only met (a review day); C3, C7 and C8 (and C19) are *morning* chapters, opened
+  chapter while 10 or more words are only met (a review day: Profesora Luna, or Mamá before C8, has a notebook
+  bubble and asks the 5 oldest of them, so the story always goes on); C3, C7 and C8 (and C19) are *morning* chapters, opened
   only as the first chapter of a session; C9 is the *evening* chapter: after C8 the sunset comes about 5 minutes later
   and C9 plays at home at dusk and at dawn. A started chapter can always be finished. While the next chapter waits its
   giver shows a sun coming up (a moon for C9) and says *¡Mañana!*.

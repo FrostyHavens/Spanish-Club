@@ -24,7 +24,8 @@
 // Opening (gate(id) -> null when it may start, else why not):
 //   'prev'      the chapter before isn't done          'unwritten'  no script yet (chapters 11-21 for now)
 //   'budget'    its new words don't fit today: at most 6 new words a day (G.words.day) and 8 a calendar date
-//   'busy'      10 or more words are still only met (stage 1, never picked without a cue): a review day
+//   'busy'      10 or more words are still only met (stage 1, never picked without a cue): a review day (the
+//               reviewer, Luna or Mamá, has a notebook bubble and asks 5 of them: .needsReview(), .review(who))
 //   'morning'   a morning chapter opens only as the first chapter of a session (a new day, a night at home)
 //   'evening'   an evening chapter opens only in the evening at home (after C8 the sunset comes ~5 minutes later)
 // A started chapter can always be finished. While the next chapter waits, its giver shows a "tomorrow" bubble (a sun
@@ -151,10 +152,24 @@
 
   // ---------- who says what (maps.js) ----------
   // the bubble over someone: the beat waiting for them, the next chapter's giver (or "tomorrow")
+  // a review day (10+ words only met): the teacher (Profesora Luna once her school is met, else Mamá) has a notebook
+  // bubble and asks the oldest of them, so the story can go on (nothing waits on a word that never comes back)
+  CH.reviewer = () => (G.words.met('escuela') ? 'luna' : 'mama');
+  CH.needsReview = () => !!G.state && !CH.current() && CH.stage1() >= CH.LIMITS.busy;
+  CH.review = function* (who, n = 5) {
+    const say = (...p) => G.say(p, { portrait: G.portraitOf(who), name: G.nameOf(who), who, show: { icon: 'pagina' } });
+    yield say(TT('¡[hola], {name}! ¿Y tus palabras?', 'Hi, {name}! Let\'s practise your new words.'));
+    const ids = Object.keys(G.state.words).filter(id => G.words.stage(id) === 1).map(id => [id, G.words.rec(id)])
+      .sort((a, b) => (a[1].met || 0) - (b[1].met || 0)).slice(0, n).map(a => a[0]);
+    for (const id of ids) yield* G.review.ask(id, { who });
+    yield say(TT('¡Muy bien, {name}!', 'Very good, {name}!'));
+    G.st.autosave();
+  };
   CH.alert = function (who) {
     if (!G.state) return null;
     const L = live();
     if (L && L.b.who === who && when(L)) { const bb = L.b.bubble; return typeof bb === 'function' ? bb(CH.ctx(L.id)) : bb != null ? bb : true; }
+    if (CH.needsReview() && who === CH.reviewer()) return 'pagina';
     if (!CH.current()) {
       const nx = CH.next(), c = nx && CH.def(nx), g = nx && CH.gate(nx);
       if (c && g && c.giver === who && scripts[nx] && g !== 'prev') return g === 'evening' ? { icon: 'noche', wait: true } : { icon: 'manana', wait: true };
@@ -166,6 +181,7 @@
     if (!G.state) return false;
     const L = live();
     if (L && L.b.who === who && when(L)) return yield* play(L.id, f || G.field, L.k);
+    if (CH.needsReview() && who === CH.reviewer()) { yield* CH.review(who); return true; }
     if (!CH.current()) {
       const nx = CH.next(), c = nx && CH.def(nx), g = nx && CH.gate(nx);
       if (c && g && c.giver === who && scripts[nx] && g !== 'prev') { yield* tomorrow(who, g); return true; }
@@ -288,6 +304,7 @@
   };
   // does something wait inside map m (for the hand at a door)?
   CH.waitsIn = function (m) {
+    if (CH.needsReview() && m === (CH.reviewer() === 'luna' ? 'escuela' : 'casa')) return true;
     const L = live(); if (!L || !when(L)) return false;
     const b = L.b, def = G.maps[m];
     if (spotsOf(b).some(sp => sp.map === m)) return true;

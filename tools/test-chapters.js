@@ -69,6 +69,7 @@ async function watchStarts(g) {
 }
 // speak the answer of the question on top (when it has a mic) -> true when it was taken
 async function speakIt(g) {
+  await g.until(() => G.top().constructor.name !== 'Choice' || G.top().t >= 12, null, 'the question to settle', 5000).catch(() => {}); // (a busy machine: frames come slowly)
   const said = await g.ev(() => { const s = G.top(); if (s.constructor.name !== 'Choice' || !s.mic || s.won || s.t < 12) return null; const a = s.ch[s.o.answer]; return a && a.word ? G.data.words[a.word].es.split(' / ')[0] : null; });
   if (!said) return false;
   await g.ev(t => window.__sr.queue.push({ results: [t] }), said);
@@ -212,8 +213,12 @@ async function budget(browser) {
     check('budget: 10+ words only met (stage 1): no new chapter today ("busy")', await g.ev(() => G.chapters.gate('c3') === 'busy' || G.chapters.gate('c3') === 'budget'));
     await g.ev(() => { G.debug.dayShift++; G.words.newSession('load'); });
     check('budget: the next day too, until they are used ("busy")', await g.ev(() => G.chapters.gate('c3') === 'busy'));
-    await g.ev(() => { for (const id of ['hueso', 'sientate', 'si', 'no', 'manzana']) G.words.answerRight(id, { firstTry: true, mode: 'text' }); });
-    check('budget: used: it opens again', await g.ev(() => !G.chapters.gate('c3')));
+    check('budget: a review day: Mamá has a notebook bubble (Luna\'s, once her school is met)', await g.ev(() => G.chapters.needsReview() && G.field.npc('mama').alert() === 'pagina'));
+    await g.tapTile(...await g.ev(() => { const n = G.field.npc('mama'); return [n.x, n.y]; }));
+    await g.until(() => G.top() !== G.field, null, 'Mamá\'s review');
+    await g.shot('review_day');
+    await settle(g, 'the review');
+    check('budget: she asks the oldest words only met; used, they move on and chapter 3 opens again', await g.ev(() => G.chapters.stage1() < 10 && !G.chapters.gate('c3')), await g.ev(() => G.chapters.stage1() + ' ' + G.chapters.gate('c3')));
     // a started chapter can always be finished, whatever the budget
     await g.ev(() => { G.chapters.start('c3'); for (const id of ['cama', 'agua', 'escuela', 'bien', 'banco', 'fuente']) G.words.meet(id, 'test'); });
     check('budget: a started chapter goes on (its beats are live)', await g.ev(() => G.chapters.active('c3') && !!G.chapters.live() && G.chapters.live().id === 'c3'));
