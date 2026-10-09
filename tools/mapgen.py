@@ -181,7 +181,8 @@ g = M(13, 9, 'z'); g.border('V', 1)
 g.put(3, 0, 'C'); g.put(9, 0, 'C')                       # two little windows in the back wall
 g.put(1, 1, 'U')                                         # the trough, in the stall
 g.vline(4, 1, 4, 'F'); g.hline(1, 4, 4, 'F')             # the stall's fence
-g.pos['establo'] = [1, 1, 3, 3]                          # the horse lives here
+g.put(3, 1, 'H')                                         # her hay
+g.pos['establo'] = [2, 2, 2, 2]                          # the horse lives here
 g.put(5, 1, 'm')                                         # the milk can
 for x in (7, 8, 9): g.put(x, 1, 'E')                     # nest boxes; the hens sit on the perch on top
 g.pos['roost'] = [7, 1, 3, 1]

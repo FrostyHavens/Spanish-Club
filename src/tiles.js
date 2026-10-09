@@ -178,6 +178,9 @@
     let best = null, bn = 0;
     for (const b of BASE_PREF) if ((cnt[b] || 0) > bn) { bn = cnt[b]; best = b; }
     if (best) return best;
+    for (let k = 1; k < 8; k += 2) { const b = BASEMAP[map.get(x + DX[k], y + DY[k])]; if (b) cnt[b] = (cnt[b] || 0) + 1; } // (boxed in by things: the corners)
+    for (const b of BASE_PREF) if ((cnt[b] || 0) > bn) { bn = cnt[b]; best = b; }
+    if (best) return best;
     return INDOOR_OBJ.has(code) ? 'i' : '.';
   }
   function groundOf(map, x, y) {

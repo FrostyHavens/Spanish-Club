@@ -2,6 +2,37 @@
 
 A running record of what changed in Club de Español and why. Newest first.
 
+## 2026-10-09 — The barn opens, hide-and-seek, doors that say why (from the first playtest)
+A 4-year-old's first session (`docs/PLAYTEST_NOTES.md`): finding the cat on the fence post was the best moment; "the
+door that was locked, I never got to go in there" the worst.
+- **The barn opens** (`G.maps.granja`, a 13x9 interior from `tools/mapgen.py`): new tiles in the same hand-drawn style
+  (a straw floor, plank walls with two windows, a horseshoe and a coil of rope, square hay bales, nest boxes with a
+  perch, a trough, a milk can, a basket of apples). Inside: a cream horse in her fenced stall (a second look, `tint`),
+  two hens on the perch (`perch` in animals.js) and one scratching about, Canelo tagging along. Everything with a word
+  names itself (`things`: huevo, agua, leche, manzana; the animals); before its word is met it's a "?" and its picture,
+  as everywhere (the banner is the barn's picture only before chapter 7). A hay bale rustles (a map's `poke`). The
+  *¿Qué dicen?* page puzzle moved from the barn's door into the barn. Entering asks the barn's name when it's due (like
+  the other buildings), and Tomás's "go to the farm" favour also counts walking into the barn.
+- **Chapter beats at the barn stay outside**: chapter 7's find-it ("¡La granja!" while Canelo barks in the barn) now
+  also counts walking into the barn's door as finding it, so a child who heads for the door isn't sent inside an
+  empty barn; Canelo comes out as before. Chapters 19 and 21 (the paddock gate, the party in front of the barn) are
+  unchanged: they're big outdoor scenes with the whole town.
+- **¿Dónde están?** (`src/seek.js`): once a day, when no chapter is going on, Nico has a magnifying-glass bubble and
+  starts hide-and-seek: two or three animals whose words are met (cat, rabbit, hen, goat, duckling, frog) hide in 13
+  spots (a farm fence post, the bakery roof, behind your house and the library, in the trees, in the fountain, behind
+  hay bales, bushes and barrels, three in the barn; one in the barn when it fits). They peek (an ear, a comb), pop up
+  to their eyes every few seconds (more often, with their cry, when you're close); their own selves are away
+  meanwhile. Tap one: it pops out with a chime and a star, its name in the word bubble (say-it-back), a review
+  question when its word is due; all found: confetti, a star and a heart from Nico. Hints: Nico holds up the place's
+  picture; Canelo, after ~15 s with nothing found, sniffs and leaves paw prints toward the nearest one (or the barn's
+  door). A little panel shows who's still hiding. No word is introduced (the budget is untouched); it waits while a
+  chapter is going on, so the story's animals are always where the story needs them.
+- **Doors**: audited every exit. The barn was the only door that never opened; every `D` / `K` in town is now an exit
+  (the test checks it). The front door before chapter 1 is over (the puppy hiding) no longer says only "¡Luz!": Mamá
+  says *¿Y el perro?* and points at his hiding place. Chapter `door:` beats were already scenes with their reason.
+- Tests: `tools/test-barn.js` (new): in and out by taps, the barn's things before and after their words, hide-and-seek
+  from Nico's bubble to the last find (no word met, the chapter pause), Canelo's trail, the doors.
+
 ## 2026-10-09 — The mic no longer disappears on iPad
 - On iPad Safari the mic test worked but no mic showed up in the game. Two refusals from Safari (it sometimes refuses
   while the voice is still finishing a line) used to hide every mic button for the rest of the session. Now a refusal

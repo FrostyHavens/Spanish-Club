@@ -73,7 +73,7 @@ async function story(browser) {
     const seenKind = {};
     g.beforeAct = async (s) => {
       if (s.name !== 'Choice' || s.t < 12) return false;
-      const k = await g.ev(() => { const sh = G.top().o.show; return sh && typeof sh === 'object' ? (sh.sign ? 'sign' : sh.count ? 'count' : sh.list ? 'heap' : null) : null; });
+      const k = await g.ev(() => { const t = G.top(), sh = t && t.o && t.o.show; return sh && typeof sh === 'object' ? (sh.sign ? 'sign' : sh.count ? 'count' : sh.list ? 'heap' : null) : null; });
       if (k && !seenKind[k]) { seenKind[k] = 1; await g.shot('question_' + k); }
       return false;
     };

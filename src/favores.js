@@ -73,6 +73,7 @@
     return s.list;
   };
   const mine = who => FV.today().find(v => v.who === who && !v.done) || null;
+  FV.pending = who => !!mine(who); // (seek.js: Nico's favour comes before his hide-and-seek)
   const onNow = () => FV.today().find(v => v.on && !v.done) || null;
   // the story first: no favour while that person has something for the chapter (or the story waits for them today)
   const storyHas = who => !!G.chapters && !!G.chapters.alert(who);

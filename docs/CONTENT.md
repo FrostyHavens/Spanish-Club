@@ -147,6 +147,15 @@ Add it to `C.pages` / `C.pageOrder` in `content/es/words.js` (its topic in `C.to
 
 ## Maps
 Edit `tools/mapgen.py` and run `python3 tools/mapgen.py` to regenerate `src/mapdata.js`. Tile codes are listed in `G.TERRAIN` in `src/tiles.js`. Doors (`D`, `K`) become exits in `src/maps.js`.
+- **Every door opens** (docs/PLAYTEST_NOTES.md: a closed door is a disappointment). `tools/test-barn.js` fails for a
+  `D` / `K` tile in town that isn't an exit. A door that can't be used *just now* says why before the player steps
+  back off it, in the exit's `run` (return `false` to stay): a person's line (`stepBack(f, dir)` in `src/maps.js`, then
+  `say(...)`, like Mamá's *¿Y el perro?* while chapter 1's puppy is hiding), or a chapter's `door:` beat. Never a
+  silent refusal.
+- **The barn** (`G.maps.granja`, the `granja` grid in mapgen.py): its own tiles are `z` (straw floor), `V` / `C`
+  (plank wall / with a window), `H` (square hay bales), `E` (nest boxes with a perch on top), `U` (the trough), `m` (a
+  milk can), `A` (a basket of apples); fences (`F`) and barrels (`k`) work indoors too. A map's `poke(f, x, y)`
+  (true = handled) answers A or a tap on a thing without a word (the hay rustles) instead of "...".
 
 ## A living map (`src/ambient.js`)
 - `ambient: { birds: 8, butterflies: 5, cat: [x, y] }` in a map definition adds birds (on grass, paths and the plaza; they fly off when you come close or tap them, and come back later), butterflies over flower tiles (`o`) and a cat on a fence post.
@@ -168,8 +177,22 @@ things: {
 ## A new animal (`src/animals.js`)
 1. The word (and a sound word if it has one) in `content/es/words.js`, with pictures. Tapping it shows only its picture and a "?" until a chapter introduces its word.
 2. `G.animals.KINDS.id = { word, sound, cry: '¡...!' }`, its pixel frames in `SPR` (rows of letters, facing right, the same size every frame), a `CRY` sound and a case in `tick()` / `frameOf()` for its behaviour.
-3. Give it a home in a map definition: `animals: [{ kind: 'id', n: 2, area: 'tag' }]`, where `tag` is a `[x, y, w, h]` area added in `tools/mapgen.py` (`t.pos['tag'] = [...]`).
+3. Give it a home in a map definition: `animals: [{ kind: 'id', n: 2, area: 'tag' }]`, where `tag` is a `[x, y, w, h]` area added in `tools/mapgen.py` (`t.pos['tag'] = [...]`). `tint: 1` gives it its second look (`TINT` in animals.js: the white hen, the cream horse); `perch: 6` sits one on each tile of the area, pinned, its feet 6 px down the tile (the barn's hens on their perch). The ground animals walk on is `LAND` (grass, paths, the plaza, the barn's straw).
 Tapping it then does the rest: its reaction, the word bubble with its sound, the album (`G.state.album[id]`) and say-it-back. An animal drawn elsewhere (like the birds in ambient.js) calls `G.animals.tap(id, x, y)` when tapped.
+
+## Hide-and-seek (`src/seek.js`)
+Once a day (when no chapter is going on) Nico's magnifying-glass bubble starts *¿Dónde están?*: two or three animals
+whose words are **met** hide (`G.seek.KINDS`; one in the barn when it fits), peeking out, and the child taps them: a
+star, the name (the say-it-back mic), a review question when the word is due. Nothing is introduced, so the budget is
+untouched. A hiding place is an entry in `G.seek.SPOTS`:
+```js
+{ id: 'tejado', map: 'villa', at: [30, 4], how: 'sit', y: 9, kinds: ['gato'], place: 'panaderia' },     // sitting on top, all of it showing
+{ id: 'paja', map: 'villa', at: [45, 4], how: 'over', cut: 6, dx: 2, kinds: ['gallina', 'conejo'], place: 'granja' }, // behind it: peeks over a line cut px down the tile
+```
+`place` is the picture Nico holds up as a hint; Canelo's trail of paw prints (after ~15 s with nothing found) leads to
+the nearest one. A hiding animal's own self on the map is away meanwhile (`G.seek.hides(f, a)`, read by animals.js and
+the cat's `hid` in ambient.js). Keep spots off chapter places, page sparkles and side-job tiles, and check new ones by
+screenshot (`tools/test-barn.js` shoots each one it finds).
 
 ## Hearts, greetings and Canelo (`src/hearts.js`, `src/pet.js`)
 - A townsperson's talk starts with `yield* hello('id')` (maps.js): their once-a-day voice greeting (from chapter 3 on; the right one for the time of day, *buenos días* early in a session, *buenas noches* after sunset, else *hola*, each once it's met; then one word that's due from that person's pool, `G.hearts.POOLS`) and any 3- or 5-heart surprise. Use `say(who, ...)` so their hearts show over the portrait.

@@ -49,7 +49,7 @@
   ];
   const spot = id => SK.SPOTS.find(s => s.id === id);
   // how much shows: lo (an ear, a comb, horns), hi (up to the eyes) in px from the top of the picture
-  const PEEK = { gato: [4, 8], conejo: [5, 9], gallina: [4, 7], cabra: [4, 7], pato: [3, 5], rana: [3, 4] };
+  const PEEK = { gato: [4, 8], conejo: [5, 9], gallina: [4, 7], cabra: [5, 8], pato: [4, 6], rana: [3, 4] };
 
   // ---------- today's game ----------
   const st = () => { const s = G.state; if (!s.seek || typeof s.seek !== 'object' || !Array.isArray(s.seek.list)) s.seek = { day: -1, list: [], on: false, done: false }; return s.seek; };
@@ -89,12 +89,13 @@
   };
 
   // ---------- Nico (maps.js: his bubble, errands.js: his talk) ----------
+  const favour = who => !!G.favores && !!G.favores.pending && G.favores.pending(who); // (his favour of the day first)
   SK.alert = function (who) {
-    if (who !== SK.HOST || !SK.ready() || story()) return null;
+    if (who !== SK.HOST || !SK.ready() || story() || favour(who)) return null;
     const s = SK.today(); return s && !s.on && !s.done ? { icon: 'lupa' } : null;
   };
   SK.talk = function* (who, f) {
-    if (who !== SK.HOST || !SK.ready() || story()) return false;
+    if (who !== SK.HOST || !SK.ready() || story() || favour(who)) return false;
     const s = SK.today(); if (!s || s.done) return false;
     if (!s.on) {
       yield say(who, TT('¡{name}! ¡A jugar a las escondidas!', '{name}! Let\'s play hide-and-seek! The animals are hiding.'));
