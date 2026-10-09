@@ -49,6 +49,8 @@
   const ORDER = Object.keys(AN.KINDS);
   ORDER.forEach((k, i) => { AN.KINDS[k].order = i; });
   AN.list = () => ORDER.slice();
+  // meeting an animal's word in the story (a chapter's puzzle) meets the animal too: its album card fills in
+  if (G.words && G.words.meet) { const wm = G.words.meet; G.words.meet = function (id, ...a) { const r = wm.call(this, id, ...a); if (r && AN.KINDS[id] && G.state) AN.meet(id); return r; }; }
   const album = () => (G.state.album || (G.state.album = {}));
   AN.met = id => !!(G.state && G.state.album && G.state.album[id]);
   AN.meet = function (id) {
