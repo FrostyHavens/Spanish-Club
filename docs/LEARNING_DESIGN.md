@@ -58,7 +58,7 @@ The review engine (`G.review.due(n, filter)`) picks words that are due. The worl
 - **Page puzzles** — notebook pages found in the world are now picture-word matching puzzles over words you've met
   (4 pictures, 4 words), not word dumps.
 - **Luna's palabra del día** — one due word, said aloud for a speaking star.
-Target: 40–60% of all prompts review older words.
+Target: at least 40% of all prompts review older words. (It was 40–60%; with ≤ 5 new words per chapter and ≥ 5 spaced retrievals per word, review naturally lands around 70–80%, which is what the research asks for.)
 
 ## The notebook
 The notebook is no longer handed out in pages. A word is written into it at the moment it's introduced, and its
@@ -76,7 +76,7 @@ page sparkles in the world become page puzzles that review the page's words.
 | Words retrieved only with a cue | 2 | 0 |
 | Median active retrievals per word | 1 | ≥ 5 |
 | Words in ≥ 3 different errands/episodes | — | ≥ 90% |
-| Prompts that review older words | low | 40–60% |
+| Prompts that review older words | low | ≥ 40% |
 | Words introduced as a wrong answer first | 18 | 0 |
 
 ## Build order

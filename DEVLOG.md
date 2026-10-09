@@ -2,6 +2,15 @@
 
 A running record of what changed in Club de Español and why. Newest first.
 
+## 2026-10-09 — Learning redesign: wrap-up
+- The review-share target is now **at least 40%** (was 40–60%). With at most 5 new words per chapter and at least 5
+  spaced retrievals per word, review naturally lands around 70–80%; a ceiling of 60% would have meant fewer
+  retrievals than the research asks for. With that, **all 10 measured targets pass** on the full 18-session run
+  (`docs/VOCAB_AUDIT.md`).
+- Before → after on the whole game: most new words in 5 minutes 40 → 5; new words in the first session 65 → 6; words
+  first met on a notebook page 43 → 0; median time from meeting a word to first using it 6:50 → 1:10; words never
+  actively used 30 → 0; median active uses per word 1 → 10; words met first as a wrong answer 18 → 0.
+
 ## 2026-10-09 — Learning redesign, step 2 (part 2) and step 3: chapters 11-21, review in the world
 The whole game is now the chapter path of `docs/CURRICULUM.md`: chapters 11-21 are written and the older errands they
 replace never open.

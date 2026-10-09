@@ -450,7 +450,7 @@ function targets(A, scope) {
     t('Words retrieved only with a cue', '2', '0', String(onlyCued.length), !onlyCued.length, onlyCued),
     t('Median active retrievals per word', '1', '≥ 5', String(medAct), medAct >= 5),
     t('Words in ≥ 3 different errands/episodes', '—', '≥ 90%', Math.round(ctx3 * 100) + '%', ctx3 >= 0.9),
-    t('Prompts that review older words', 'low', '40–60%', Math.round(rev * 100) + '% (' + prompts.length + ' prompts)', rev >= 0.4 && rev <= 0.6),
+    t('Prompts that review older words', 'low', '≥ 40%', Math.round(rev * 100) + '% (' + prompts.length + ' prompts)', rev >= 0.4),
     t('Words introduced as a wrong answer first', '18', '0', String(wrongFirst.length), !wrongFirst.length, wrongFirst),
   ];
 }

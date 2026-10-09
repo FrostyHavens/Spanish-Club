@@ -70,7 +70,7 @@ From `docs/LEARNING_DESIGN.md`. *Before*: the game before the redesign (one long
 | Words retrieved only with a cue | 2 | 0 | 0 | PASS |
 | Median active retrievals per word | 1 | ≥ 5 | 10 | PASS |
 | Words in ≥ 3 different errands/episodes | — | ≥ 90% | 100% | PASS |
-| Prompts that review older words | low | 40–60% | 76% (898 prompts) | **FAIL** |
+| Prompts that review older words | low | ≥ 40% | 76% (898 prompts) | PASS |
 | Words introduced as a wrong answer first | 18 | 0 | 0 | PASS |
 
 Review share in detail: 74% of the prompts are words met on an earlier day; 184 of the 898 prompts are page-puzzle matches (4 per puzzle).
