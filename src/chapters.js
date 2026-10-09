@@ -177,7 +177,7 @@
     if (!G.state || !G.pet || !G.pet.mine()) return false;
     if (G.errands && G.errands.lost()) return false;
     const now = G.words.now(), ss = G.words.sess(), s = st(), cool = s.nudgeAt != null && now >= s.nudgeAt && now - s.nudgeAt < 40;
-    return Object.keys(G.state.words).some(id => { const r = G.words.rec(id); return r && r.st >= 1 && r.how !== 'old' && r.ms === ss && r.met != null && (now - r.met < 60 || (cool && now - r.met <= 600)) && (r.last == null || r.last - r.met < 20); });
+    return Object.keys(G.state.words).some(id => { const r = G.words.rec(id); return r && r.st >= 1 && r.how !== 'old' && r.ms === ss && r.met != null && (now - r.met < 60 || (cool && now - r.met <= 600)) && (r.ru == null || r.ru - r.met < 20); });
   };
   CH.nudge = function () {
     if (!G.state || !G.pet || !G.pet.mine() || (G.errands && G.errands.lost())) return null;
@@ -188,7 +188,7 @@
       const r = G.words.rec(id);
       if (!r || r.st < 1 || r.how === 'old' || r.ms !== ss || r.met == null) continue;
       const age = now - r.met;
-      if (age < 60 || age > 600 || (r.last != null && r.last - r.met >= 20)) continue;
+      if (age < 60 || age > 600 || (r.ru != null && r.ru - r.met >= 20)) continue;
       if (!best || r.met < best[1]) best = [id, r.met];
     }
     return best && best[0];

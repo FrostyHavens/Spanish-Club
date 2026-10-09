@@ -136,7 +136,7 @@
     const r = W.rec(id, true); if (!r) return { stage: 0, up: false, star: false, gold: false };
     const first = o.firstTry !== false, mode = o.mode || 'both', day = G.today(), st0 = r.st, cued = !!o.cued || st0 < 1; // (meeting a word by answering is its puzzle, not a retrieval)
     if (st0 < 1) W.meet(id, o.how || 'answer');
-    r.last = W.now(); r.n++; r.ret++;
+    r.last = W.now(); r.ru = r.last; r.n++; r.ret++; // (ru: the last retrieval, chapters.js nudge)
     if (first) r.right++; // (a miss was counted by answerWrong)
     if (cued) r.cue++;
     let star = false;
