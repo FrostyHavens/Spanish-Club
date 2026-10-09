@@ -76,7 +76,7 @@
         alert: () => CA('pepe') || (S.active('mercado') && !F().compra ? [['manzana', 3], ['platano', 2]] : EA('pepe')),
         talk: talker('pepe', pepeTalk) },
       { id: 'rosa', npc: 'rosa', x: 7, y: 7, dir: 'down', wander: 1,
-        alert: () => CA('rosa') || (S.active('mercado') && F().compra ? true : EA('rosa')),
+        alert: () => CA('rosa') || (S.active('mercado') && F().compra ? true : !S.quest('mercado') && G.errands && G.errands.offer('mercado') ? [['manzana', 3], ['platano', 2]] : EA('rosa')),
         talk: talker('rosa', rosaTalk) },
       { id: 'tomas', npc: 'tomas', x: 20, y: 12, dir: 'down', // his mail round (ambient.js): the plaza, beside the bakery door, Rosa's
         route: [[20, 12, 'down', 150], [28, 7, 'up', 120], [4, 7, 'up', 120]],
@@ -166,7 +166,7 @@
       } })],
     npcs: [
       { id: 'mama', npc: 'mama', x: P('casa', 'mama')[0], y: P('casa', 'mama')[1], dir: 'down', fixed: true,
-        alert: () => CA('mama') || !!(G.day && G.day.over()) || EA('mama'),
+        alert: () => CA('mama') || !!(G.day && G.day.over() && !(G.field && G.field.evening)) || EA('mama'), // (not while the evening is going on)
         talk: function* (f) {
           if (G.day && G.day.over()) { yield* G.day.evening(f); return; } // already home when the sun went down
           yield* hello('mama');

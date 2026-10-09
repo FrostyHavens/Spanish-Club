@@ -250,8 +250,14 @@
           if (mine) { ctx.fillStyle = (wt >> 2) & 1 ? (won.spoken ? '#d8f8ff' : '#fff8c0') : (won.spoken ? '#70e0ff' : '#f8d040'); ctx.fillRect(x - 2, y0 - 1, cw + 4, h + 2); ctx.fillRect(x - 1, y0 - 2, cw + 2, h + 4); }
           G.win(ctx, x, y0 - bob, cw, h, c.off ? { fill1: '#5c6074', fill2: '#363a4c' } : sel ? { fill1: '#3a56c8', fill2: '#1c2c8c' } : {}); // (leaves globalAlpha at 1)
           ctx.globalAlpha = c.off ? 1 - 0.5 * grey(k) : 1;
-          G.drawIcon16(ctx, v.icon || D().words[c.word] || c.icon, x + cw / 2 - 16, y0 + 12 - bob, 2, sel && !c.off ? 'sel' : 'card');
-          if (v.label) G.textC(ctx, v.label, x + cw / 2, y0 + 56 - bob, c.off ? '#a8acb8' : v.col);
+          const ic = v.icon || (!v.label || !c.word ? D().words[c.word] || c.icon : null); // (a word-only card has no picture: read it, or say it)
+          if (ic) {
+            G.drawIcon16(ctx, ic, x + cw / 2 - 16, y0 + 12 - bob, 2, sel && !c.off ? 'sel' : 'card');
+            if (v.label) G.textC(ctx, v.label, x + cw / 2, y0 + 56 - bob, c.off ? '#a8acb8' : v.col);
+          } else if (v.label) {
+            const big = G.textWidth(v.label) * 2 <= cw - 6, col = c.off ? '#a8acb8' : v.col;
+            if (big) G.bigText(ctx, v.label, x + cw / 2, y0 + 30 - bob, 2, col); else G.textC(ctx, v.label, x + cw / 2, y0 + 34 - bob, col);
+          }
           const d = back(k); if (d) { ctx.globalAlpha = d; ctx.fillStyle = '#080c28'; ctx.fillRect(x + 1, y0 - bob + 1, cw - 2, h - 2); }
           ctx.restore();
           if (sel && !won && (this.t >> 3) % 4 !== 3) G.textC(ctx, '\u0001', x + cw / 2, y0 - 10 - bob, '#f8e060');

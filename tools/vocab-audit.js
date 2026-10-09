@@ -181,9 +181,11 @@ async function play() {
       await pace(5); // (getting going again)
       sessT0 = await now();
     }
-    await playToEnd(g, { beforeStep: async () => {
+    // (the story spreads itself over days: a chapter opens when the day's new-word budget allows, so a session also
+    // ends when nothing is left to do today: nextDay)
+    await playToEnd(g, { nextDay: nextSession, beforeStep: async () => {
       await pace(STEP_PACE); // looking around and choosing where to go next
-      if (sess < DAYS && await now() - sessT0 >= SESSION) { await nextSession(); return 'skip'; }
+      if (await now() - sessT0 >= SESSION) { await nextSession(); return 'skip'; }
       if (PAGE_NEAR && await sparkle(PAGE_NEAR)) return 'skip';
     } });
     check('vocab: every errand done', await g.ev(() => G.data.badgeOrder.every(G.st.done)));
@@ -216,6 +218,7 @@ async function play() {
     const out = await g.ev(() => ({
       log: G.vocabLog, end: G.vlog.time(),
       words: Object.keys(G.data.words).map(id => ({ id, es: G.data.words[id].es, topic: G.data.words[id].topic })),
+      chapters: G.data.chapters.map(c => ({ id: c.id, words: c.words, written: G.chapters.written(c.id) })),
       pages: G.data.pages, quests: Object.keys(G.data.quests).map(id => ({ id, name: G.data.quests[id].name, giver: G.data.quests[id].giver })),
       state: { words: G.state.words, stars: G.state.stars, wm: G.state.wm },
     }));
@@ -406,12 +409,23 @@ function analyse(D) {
   P.never = Object.values(W).filter(r => r.never);
   const A = { W, ctx: ctxList, sessions, minute, P, qStart, qDone, qName, END, L, evenings, isQuest, starts, ctxOf };
   A.T = targets(A);
+  // the chapters written so far, on their own: their words, up to the moment the last of them was done (the older
+  // errands after them still meet words in bulk; they are what the next chapters replace)
+  const chs = (D.chapters || []).filter(c => c.written);
+  if (chs.length) {
+    const last = chs[chs.length - 1].id, ids = [].concat(...chs.map(c => c.words));
+    A.scope = { label: 'Chapters ' + chs[0].id.slice(1) + '-' + last.slice(1), ids, until: qDone[last] != null ? qDone[last] : END, done: qDone[last] != null };
+    A.TS = targets(A, A.scope);
+  }
   return A;
 }
 
 // ---- the measured targets of docs/LEARNING_DESIGN.md ----
-function targets(A) {
-  const L = A.L, W = A.W, ids = Object.keys(W).filter(id => !W[id].never && W[id].firstHow !== 'old' && W[id].firstHow !== 'test');
+// scope (optional): { ids: the words to judge, until: game time (the prompts after it don't count) } -> the targets for one
+// part of the game, e.g. chapters 1-10 (the chapters written so far) before the older errands after them
+function targets(A, scope) {
+  const until = scope && scope.until != null ? scope.until : Infinity;
+  const L = A.L.filter(e => e.t <= until), W = A.W, ids = Object.keys(W).filter(id => !W[id].never && W[id].firstHow !== 'old' && W[id].firstHow !== 'test' && (!scope || scope.ids.includes(id)));
   const meetT = ids.map(id => W[id].first).sort((a, b) => a - b);
   let max5 = 0; meetT.forEach(t => { max5 = Math.max(max5, meetT.filter(u => u >= t && u < t + 300).length); });
   const firstSess = ids.filter(id => W[id].firstSess === 0).length;
@@ -422,7 +436,7 @@ function targets(A) {
   const medAct = median(ids.map(id => W[id].active));
   const ctx3 = ids.filter(id => W[id].ctxAfter >= 3).length / Math.max(1, ids.length);
   const prompts = L.filter(e => e.ty === 'prompt'), rev = prompts.filter(e => e.kind === 'review').length / Math.max(1, prompts.length);
-  const wrongFirst = Object.keys(W).filter(id => { const x = W[id].exposedFirst; return x && x.ty === 'choice-shown' && !x.ans && (W[id].never || x.t < W[id].first); });
+  const wrongFirst = Object.keys(W).filter(id => { const x = W[id].exposedFirst; return x && x.t <= until && x.ty === 'choice-shown' && !x.ans && (W[id].never || x.t < W[id].first); });
   const t = (name, before, target, now, ok, list) => ({ name, before, target, now, ok, list: list || null });
   const fm = s => (s === Infinity ? 'never' : fmt(s));
   return [
@@ -489,6 +503,15 @@ function report(A, D) {
   o.push('| --- | --- | --- | --- | --- |');
   for (const t of A.T) o.push(`| ${t.name} | ${t.before} | ${t.target} | ${t.now}${t.list && t.list.length ? ': ' + wl(t.list, 12) : ''} | ${t.ok ? 'PASS' : '**FAIL**'} |`);
   o.push('');
+  if (A.TS) {
+    o.push(`### ${A.scope.label} on their own`);
+    o.push(`The same targets for the ${A.scope.ids.length} words of the chapters written so far, up to ${A.scope.done ? 'the moment the last of them was done (' + fmt(A.scope.until) + ')' : 'the end of the run (not finished!)'}. After them the older errands still run, meeting their words in bulk: they are what chapters 11-21 replace.`);
+    o.push('');
+    o.push('| Measure | Target | Now | |');
+    o.push('| --- | --- | --- | --- |');
+    for (const t of A.TS) o.push(`| ${t.name} | ${t.target} | ${t.now}${t.list && t.list.length ? ': ' + wl(t.list, 12) : ''} | ${t.ok ? 'PASS' : '**FAIL**'} |`);
+    o.push('');
+  }
   const stg = [0, 1, 2, 3, 4].map(k => Object.keys(W).filter(id => ((D.state.words[id] || {}).st | 0) === k).length);
   o.push(`Words by stage at the end: unmet ${stg[0]}, met ${stg[1]}, known ${stg[2]}, remembered ${stg[3]}, solid ${stg[4]}.`);
   o.push('');
@@ -592,9 +615,17 @@ function writeReport(text) {
   fs.writeFileSync(DUMP.replace(/\.json$/, '') + '-summary.json', JSON.stringify(sum, null, 1));
   console.log('report: ' + REPORT + '\nchart: ' + SVG + '\nsummary: ' + DUMP.replace(/\.json$/, '') + '-summary.json');
   console.log('game time ' + fmt(A.END) + ', ' + A.sessions.length + ' sessions, words met ' + sum.met + '/' + sum.words + ', problems: ' + Object.entries(A.P).map(([k, v]) => k + '=' + (Array.isArray(v) ? v.length : v)).join(' '));
-  console.log('\nMeasured targets (docs/LEARNING_DESIGN.md):');
+  console.log('\nMeasured targets (docs/LEARNING_DESIGN.md), the whole run:');
   for (const t of A.T) console.log('  ' + (t.ok ? 'PASS' : 'FAIL') + '  ' + t.name + ': ' + t.now + '  (target ' + t.target + ')');
   const bad = A.T.filter(t => !t.ok).length;
   console.log(bad ? bad + ' of ' + A.T.length + ' targets fail' : 'all targets pass');
-  if (STRICT && bad) process.exit(1);
+  let badS = 0;
+  if (A.TS) {
+    console.log('\n' + A.scope.label + ' on their own (until ' + fmt(A.scope.until) + '):');
+    for (const t of A.TS) console.log('  ' + (t.ok ? 'PASS' : 'FAIL') + '  ' + t.name + ': ' + t.now + '  (target ' + t.target + ')');
+    badS = A.TS.filter(t => !t.ok).length;
+    console.log(badS ? badS + ' of ' + A.TS.length + ' targets fail' : 'all targets pass');
+  }
+  if (STRICT && (bad || badS)) process.exit(1);
+  if (ARGS.includes('--strict-chapters') && badS) process.exit(1);
 })().catch(e => { console.log('FAIL: ' + (e.stack || e.message)); process.exit(1); });
