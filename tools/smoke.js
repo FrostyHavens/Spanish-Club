@@ -105,6 +105,9 @@ async function touchRun(browser) {
     await g.drive(() => { const b = G.chapters.beat('c1'); return !!b && !!b.door && G.top() === G.field && !G.field.locked; }, 'chapter 1');
     check('ipad: found him: chapter 1 played by tapping (hola, perro, guau, ven), Canelo is yours', await g.ev(() => ['hola', 'perro', 'guau', 'ven'].every(G.st.seen) && G.pet.mine()));
 
+    // (played fast here: a child takes a few minutes over chapter 1; chapter 2 waits until at most 5 new words fall in
+    // 5 minutes of play, chapters.js 'soon')
+    await g.ev(() => G.words.addTime(300));
     const door = await g.ev(() => [G.maps.casa.exits[0].x, G.maps.casa.exits[0].y]);
     await g.tapTile(...door);
     await g.drive(() => G.field && G.field.mapId === 'villa' && (G.state.ch.step.c2 | 0) >= 1 && G.top() === G.field && !G.field.locked && G.fade.a === 0, 'out of the house: Canelo at the door, then the butterfly');
@@ -314,7 +317,7 @@ async function keyboardRun(browser) {
     await g.press('z'); // facing the table he hides under
     await g.drive(() => { const b = G.chapters.beat('c1'); return !!b && !!b.door && G.top() === G.field && !G.field.locked; }, 'chapter 1 by keys');
     check('desktop: chapter 1 played with the keyboard', await g.ev(() => ['hola', 'perro', 'guau', 'ven'].every(G.st.seen)));
-    await g.ev(() => { const p = G.field.player; p.x = 4; p.y = 5; p.dir = 'down'; G.field.snapCam(); });
+    await g.ev(() => { const p = G.field.player; p.x = 4; p.y = 5; p.dir = 'down'; G.field.snapCam(); G.words.addTime(300); }); // (a few minutes of play: chapter 2 may open)
     await g.page.keyboard.down('ArrowDown');
     await g.until(() => G.field.mapId === 'villa' || G.top() !== G.field || G.field.locked, null, 'the door');
     await g.page.keyboard.up('ArrowDown');

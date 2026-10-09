@@ -660,6 +660,10 @@
       yield* ask(null, '¿...?', 'He looks at you, still panting. What does he want?', 'agua', ['hueso', 'pelota'], { point: n });
       yield* G.pet.play('drink'); K.heart(f, n);
     } },
+    { evening: 'dusk', run: function* (f) { // ¡Buenas noches! (Mamá, as you get ready for bed)
+      yield* sayShow('mama', 'buenasnoches', T('¡[buenasnoches], {name}!', 'Good night, {name}! (the moon is out)'));
+      yield* ask('mama', 'Mamá: ¡...!', 'Answer Mom!', 'buenasnoches', ['buenosdias', 'ven'], { intro: true, how: 'show', look: { buenasnoches: 'text', buenosdias: 'both', ven: 'both' }, show: { icon: 'noche' } });
+    } },
     { evening: 'dusk', run: function* (f, c) { // ¡a la cama! (find your bed), Canelo hops off: tell him
       const n = dog(f);
       yield* say('mama', T('Canelo, ¡a la [cama]!', 'Canelo, to bed!'));
@@ -674,15 +678,13 @@
       yield* ask(null, '¡Canelo! ¡...!', 'Canelo hopped off his cushion, wide awake! Tell him where to go.', 'cama', ['ven', 'pelota'], { point: tile(7, 5) });
       yield* K.walk(f, n, 7, 5, 3); n.dir = 'left'; G.pet.state().sleep = true; G.pet.sound('snore');
       c.data.bed = 1;
-    } },
-    { evening: 'dusk', run: function* (f) { // ¡Buenas noches!
-      yield* sayShow('mama', 'buenasnoches', T('¡[buenasnoches], {name}!', 'Good night, {name}! (the moon is out)'));
-      yield* ask('mama', 'Mamá: ¡...!', 'Answer Mom!', 'buenasnoches', ['buenosdias', 'ven'], { intro: true, how: 'show', look: { buenasnoches: 'text', buenosdias: 'both', ven: 'both' }, show: { icon: 'noche' } });
+      yield 30;
       yield* ask(null, 'Canelo: ...¡...!', 'Canelo yawns. Say good night to him!', 'buenasnoches', ['buenosdias', 'agua'], { point: dog(f) });
       G.pet.sound('snore');
     } },
     { evening: 'dawn', run: function* (f) { // the next morning
       const n = dog(f);
+      yield* ask(null, '¿...?', 'Canelo stretches on his cushion. Where did he sleep?', 'cama', ['hueso', 'pelota'], { point: tile(7, 5) });
       yield* ask(null, 'Canelo: ¡...!', 'Canelo hops up: the sun is up! Say it!', 'buenosdias', ['buenasnoches', 'cama'], { show: { icon: 'sol' }, point: n });
       bark(f); dogAt(f, 2, 4, 'left'); G.pet.sound('pant');
       yield* ask(null, '¿...?', 'His bowl is empty again. What does he want?', 'agua', ['hueso', 'pelota'], { point: tile(1, 4) });

@@ -172,6 +172,12 @@
   // Canelo's "?": a word met this session a minute or more ago and not used since its puzzle comes back through him
   // (tap him: a review question for it), so every new word is used again within a minute or two (at most one every
   // 40 seconds of play)
+  // the next nudge: a word that will put the "?" over Canelo within a minute (tools/playflow.js waits for it)
+  CH.nudgeSoon = function () {
+    if (!G.state || !G.pet || !G.pet.mine()) return false;
+    const now = G.words.now(), ss = G.words.sess();
+    return Object.keys(G.state.words).some(id => { const r = G.words.rec(id); return r && r.st >= 1 && r.how !== 'old' && r.ms === ss && r.met != null && now - r.met < 60 && (r.last == null || r.last - r.met < 20); });
+  };
   CH.nudge = function () {
     if (!G.state || !G.pet || !G.pet.mine() || (G.errands && G.errands.lost())) return null;
     const now = G.words.now(), ss = G.words.sess(), s = st();

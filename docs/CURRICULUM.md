@@ -1012,7 +1012,9 @@ table in `content/es/words.js`). They follow §4 step by step; where the build d
 - **C2** starts by itself the first time you step outside after C1 (the butterfly chase).
 - **C6**: Marta sends you to the pond with *Los patos... ¡por allá!* (*granja* is C7's word).
 - **C8**: Luna says *¡Pregunta a tus amigos!* (no *tres* before C12).
-- **C9**: the bed find has no picture bubbles (your bed is the right spot, the table and a shelf the wrong ones); the
+- **C9**: Mamá's *¡Buenas noches!* (step 5) comes before the bed (steps 3-4), and saying it to Canelo (step 6) after
+  he is back on his cushion, so its second use is a minute later; at dawn Canelo stretches on his cushion first
+  ([**cama** · hueso · pelota]). The bed find has no picture bubbles (your bed is the right spot, the table and a shelf the wrong ones); the
   dawn beat ends with Mamá pointing at the fountain (the water side job opens).
 - **C10**: the letters are *Esta / Y esta* (no numbers before C11).
 - **Canelo's "?"**: a word met in this session a minute ago and not used since its puzzle puts a "?" over

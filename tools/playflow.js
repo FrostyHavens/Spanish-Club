@@ -161,10 +161,11 @@ async function playToEnd(g, o = {}) {
         console.log('    waiting for the sunset (an evening chapter)');
         await g.until(() => G.day.over(), null, 'the sunset', 15 * 60 * 1000); idle = 0; continue;
       }
-      if (await g.ev(() => { const n = G.chapters.next(); return !!n && G.chapters.gate(n) === 'soon'; })) { // the next chapter opens in a few minutes of play: play on (faster)
-        console.log('    the next chapter in a few minutes');
+      const soon = await g.ev(() => { const n = G.chapters.next(); return !!n && G.chapters.gate(n) === 'soon'; });
+      if (soon || await g.ev(() => G.chapters.nudgeSoon())) { // the next chapter opens in a few minutes of play, or Canelo has a "?" within a minute: play on (faster)
+        if (soon) console.log('    the next chapter in a few minutes');
         await g.ev(() => { window.__sm = G.speedMul; G.speedMul = Math.max(G.speedMul, 8); });
-        await g.until(() => { const n = G.chapters.next(); return !n || G.chapters.gate(n) !== 'soon' || G.top() !== G.field; }, null, 'the next chapter to open', 10 * 60 * 1000);
+        await g.until(() => { const n = G.chapters.next(); return !!G.chapters.nudge() || G.top() !== G.field || ((!n || G.chapters.gate(n) !== 'soon') && !G.chapters.nudgeSoon()); }, null, 'the next chapter to open', 10 * 60 * 1000);
         await g.ev(() => { G.speedMul = window.__sm; });
         idle = 0; continue;
       }

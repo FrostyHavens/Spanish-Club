@@ -60,6 +60,7 @@ async function firstMinutes(browser) {
     const dxy = await tileXY(g, ...door);
     check('ipad: then the hand points at the door', near(await hintAt(g), dxy[0], dxy[1]), JSON.stringify([await hintAt(g), dxy]));
     await g.frames(30); await g.shot('hand_door');
+    await g.ev(() => G.words.addTime(300)); // (a child takes a few minutes over chapter 1: chapter 2 may open, chapters.js 'soon')
     await g.tap(...dxy);
     check('ipad: tapping hides it (and walks)', !(await hintAt(g)) && await g.ev(() => !!G.field.route));
     await g.drive(() => G.field.mapId === 'villa' && (G.state.ch.step.c2 | 0) >= 1 && G.top() === G.field && !G.field.locked && G.fade.a === 0, 'out of the house (Canelo, then the butterfly)');
@@ -112,7 +113,7 @@ async function keyboard(browser) {
     check('desktop: once Canelo is yours, a strip shows Z / X / C', true);
     await g.frames(20); await g.shot('key_strip');
     // the strip goes away by itself
-    await g.ev(() => { const p = G.field.player; p.x = 4; p.y = 5; p.dir = 'down'; G.field.snapCam(); });
+    await g.ev(() => { const p = G.field.player; p.x = 4; p.y = 5; p.dir = 'down'; G.field.snapCam(); G.words.addTime(300); });
     await g.page.keyboard.down('ArrowDown');
     await g.until(() => G.field.mapId === 'villa' || G.top() !== G.field || G.field.locked, null, 'leaving the house');
     await g.page.keyboard.up('ArrowDown');
