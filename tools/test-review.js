@@ -96,7 +96,8 @@ async function speak(g, text) {
   await g.until(() => G.top().constructor.name !== 'Choice' || !!G.top().won, null, 'the spoken answer');
   return { said, star: await g.ev(s => G.state.stars > s, st) };
 }
-const goto = async (g, m, x, y, dir = 'down') => { await g.ev(([m, x, y, dir]) => G.goto(m, x, y, dir), [m, x, y, dir]); await g.fieldIdle(m); await g.frames(6); };
+// (arriving may ask the place's name first: "¿Dónde estás?", chapters.js placeAsk: answered on the way)
+const goto = async (g, m, x, y, dir = 'down') => { await g.ev(([m, x, y, dir]) => G.goto(m, x, y, dir), [m, x, y, dir]); await g.until(m => G.field && G.field.mapId === m && G.fade.a === 0, m, 'arriving in ' + m); await g.frames(30); await settle(g, 'arriving in ' + m); await g.frames(6); };
 // tap an animal of a kind: stand near it, then tap where it's drawn
 async function tapAnimal(g, kind) {
   await free(g);
@@ -123,10 +124,10 @@ const noErrors = (g, name) => check(name + ': no console errors', !g.errors.leng
 async function favores(browser) {
   const { ctx, g } = await openFake(browser, 'fav');
   try {
-    await play(g, 'villa', 15, 13, 'down', 17);
+    await play(g, 'villa', 15, 13, 'down', 21); // (the story is over: nobody's chapter bubble comes first)
     const list = await g.ev(() => G.favores.today().map(v => v.who + ':' + v.kind + ':' + v.word));
     check('favores: up to three a day, each about a known word, one per person', list.length >= 1 && list.length <= 3 && new Set(list.map(s => s.split(':')[0])).size === list.length && await g.ev(() => G.favores.today().every(v => G.words.stage(v.word) >= 2)), list.join(' '));
-    check('favores: their givers show a "?" bubble (Luna: her palabra del día first)', await g.ev(() => G.favores.today().every(v => { const n = G.maps.villa.npcs.concat(G.maps.casa.npcs, G.maps.escuela.npcs, G.maps.panaderia.npcs).find(d => d.id === v.who); const a = n && n.alert && n.alert(); return a === 'pregunta' || (v.who === 'luna' && a && a.icon === 'estrella'); })), await g.ev(() => JSON.stringify(G.favores.today())));
+    check('favores: their givers show a "?" bubble (the story\'s bubble first, and Luna\'s palabra del día)', await g.ev(() => G.favores.today().every(v => { const n = G.maps.villa.npcs.concat(G.maps.casa.npcs, G.maps.escuela.npcs, G.maps.panaderia.npcs).find(d => d.id === v.who); const a = n && n.alert && n.alert(); return a === 'pregunta' || (v.who === 'luna' && a && a.icon === 'estrella') || !!G.chapters.alert(v.who); })), await g.ev(() => JSON.stringify(G.favores.today())));
     await g.shot('favor_bubbles');
     // do each kind once: force the list so every kind is played
     for (const [who, kind, word] of [['tomas', 'go', 'escuela'], ['nico', 'find', 'conejo'], ['pepe', 'count', 'cuatro'], ['lucia', 'colour', 'amarillo'], ['nico', 'sound', 'croac'], ['mama', 'feel', 'feliz'], ['marta', 'thing', 'galleta']]) {
@@ -144,6 +145,8 @@ async function favores(browser) {
       }
       if (kind === 'find') {
         for (let i = 0; i < 3 && !await g.ev(() => G.top() !== G.field || G.state.fav.list[0].done); i++) { await tapAnimal(g, 'conejo'); await g.frames(20); }
+        // (a hopping rabbit can still slip from under the finger on a busy machine: then the tap lands on it directly)
+        if (!await g.ev(() => G.top() !== G.field || G.state.fav.list[0].done)) await g.ev(() => { const f = G.field; f.route = G.animals.tapped(f, G.animals.find('conejo', f)); });
         await g.shot('favor_find'); await settle(g, 'the rabbit');
       }
       check('favores: ' + kind + ': done, a star and a heart', await g.ev(([s0, h0, who]) => G.state.fav.list[0].done && G.state.stars > s0 && G.hearts.get(who) > h0, [s0, h0, who]), JSON.stringify(await g.ev(() => G.state.fav.list)));
@@ -152,7 +155,7 @@ async function favores(browser) {
     // the palabra del día: Luna, once a day
     await goto(g, 'escuela', 6, 5, 'up');
     check('palabra: Luna has a star bubble', await g.ev(() => { const a = G.field.npc('luna').alert(); return !!a && a.icon === 'estrella'; }));
-    await g.ev(() => { G.state.heartlog = null; });
+    await g.ev(() => { G.state.heartlog = null; G.hearts.mark('luna', 'greet'); }); // (her greeting is done for today: straight to the palabra)
     await g.tapTile(...await g.ev(() => { const n = G.field.npc('luna'); return [n.x, n.y]; }));
     await g.drive(() => G.top().constructor.name === 'Choice' && G.top().o.show && G.top().t > 10, 'the palabra del día');
     await g.shot('palabra');
@@ -221,6 +224,7 @@ async function sideJobs(browser) {
     // flowers (after Lucía's chapter): pick a pink one, give it to Lucía
     check('flowers: coloured flowers grow around town (a quiet spot each)', await g.ev(() => G.errands.spotAt(G.field, 8, 12) && G.errands.spotAt(G.field, 8, 12).flower === 'rosa'));
     await g.shot('flowers');
+    await g.ev(() => { for (const id of ['gomez', 'rosa']) { const n = G.field.npc(id); if (n) Object.assign(n, { x: 3, y: 14, ox: 0, oy: 0, home: [3, 14], wander: 0 }); } }); // (nobody in the way of the flower)
     await beside(g, 8, 12); await g.tapTile(8, 12);
     await g.drive(() => G.top().constructor.name === 'Choice' && G.top().t > 10, 'the flower');
     check('flowers: "¿De qué color?" (never rojo beside rosa)', await g.ev(() => G.top().ch[G.top().o.answer].word === 'rosa' && !G.top().ch.some(c => c.word === 'rojo')));

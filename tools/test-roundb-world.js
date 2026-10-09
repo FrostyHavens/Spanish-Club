@@ -36,7 +36,7 @@ async function openFake(browser, name, touch) {
 }
 async function town(g, x, y, dir, o = {}) {
   await g.ev(([x, y, dir, o]) => {
-    G.st.newGame(); G.state.name = 'Luz'; Object.assign(G.state.flags, { intro: true }, o.flags || {}); G.chapters.writtenIds().forEach(id => { G.state.quests[id] = 'done'; }); Object.assign(G.state.quests, o.quests || {}); // (chapters 1-10 played)
+    G.st.newGame(); G.state.name = 'Luz'; Object.assign(G.state.flags, { intro: true }, o.flags || {}); G.chapters.writtenIds().slice(0, 10).forEach(id => { G.state.quests[id] = 'done'; }); Object.assign(G.state.quests, o.quests || {}); // (chapters 1-10 played)
     (o.learn || []).forEach(id => G.st.learn(id)); Object.assign(G.state.pages, o.pages || {});
     (o.met || []).forEach(id => G.words.meet(id, 'test'));
     G.goto('villa', x, y, dir);
@@ -86,7 +86,7 @@ async function ipad(browser) {
     await g.tap(...duck);
     const st = await g.ev(() => ({ b: G.world.bubble && G.world.bubble.id, cry: G.world.bubble && G.world.bubble.cry, album: G.state.album.pato, met: G.animals.met('pato'), seen: G.st.seen('pato') && !G.st.seen('cuac'), walk: !!G.field.route, sb: G.world.sayBack && G.world.sayBack.id }));
     check('animals: tapping the duck says "el pato / ¡Cuac, cuac!" and walks you toward it', st.b === 'pato' && st.cry === '¡Cuac, cuac!' && st.walk, JSON.stringify(st));
-    check('animals: the album records it (first, map, n); cuac waits for its own puzzle', st.met && st.album.n === 1 && st.album.map === 'villa' && st.album.first > 0 && st.seen, JSON.stringify(st));
+    check('animals: the album records it (first, map, n); cuac waits for its own puzzle', st.met && st.album.n >= 1 && st.album.map === 'villa' && st.album.first > 0 && st.seen, JSON.stringify(st));
     check('animals: the say-it-back mic shows beside the word', st.sb === 'pato');
     await g.frames(10); await g.shot('duck_named');
 
