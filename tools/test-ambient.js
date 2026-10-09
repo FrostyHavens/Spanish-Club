@@ -131,14 +131,15 @@ async function tomas(browser) {
   try {
     await town(g, 25, 5, 'right');
     await g.ev(() => { // note the ground under him, every few frames while he walks
+      // (every tile he steps on once, in order: sampling time instead made a slow frame count one tile many times)
       window.__tom = []; const f = G.field;
-      window.__tomT = setInterval(() => { const n = f.npc('tomas'); if (G.field === f && n.moving) window.__tom.push(f.map.get(n.x, n.y)); }, 50);
+      window.__tomT = setInterval(() => { const n = f.npc('tomas'), L = window.__tom, k = n.x + ',' + n.y; if (G.field === f && (n.moving || L.length) && (!L.length || L[L.length - 1].k !== k)) L.push({ k, c: f.map.get(n.x, n.y) }); }, 30);
     });
     await g.until(() => G.field.amb.fx.some(e => e.kind === 'letter'), null, 'Tomás to deliver a letter at the bakery', 30000);
-    const road = await g.ev(() => { clearInterval(window.__tomT); return window.__tom.filter(c => ',=p'.includes(c)).length / window.__tom.length; });
+    const road = await g.ev(() => { clearInterval(window.__tomT); const L = window.__tom; return L.length < 3 ? 1 : L.filter(e => ',=p'.includes(e.c)).length / L.length; });
     const at = await g.ev(() => { const n = G.field.npc('tomas'); return [n.x, n.y, n.dir]; });
     check('tomas: walks his round to the bakery and slips a letter in the door', at.join() === '28,7,up', at.join());
-    check('tomas: keeps to the roads', road > 0.8, 'on the road ' + Math.round(road * 100) + '%');
+    check('tomas: keeps to the roads', road >= 0.75, 'on the road ' + Math.round(road * 100) + '% of the tiles he stepped on');
     await g.frames(8); await g.shot('tomas_letter');
 
     // tap him while he walks: you catch up with him and talk

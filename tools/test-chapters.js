@@ -8,7 +8,7 @@
 //   - every new word is met in its chapter (the words of chapters 1-10 exactly), and no card ever shows a word not met
 //     yet (no unmet distractors)
 //   - a save and reload in the middle of chapter 7 (Canelo lost: he stays lost, the chapter goes on where it was)
-//   - the first evening (chapter 9) comes ~5 minutes after chapter 8; after chapter 10 the older errands open
+//   - the first evening (chapter 9) comes ~5 minutes after chapter 8; after chapter 10, chapter 11 (never an older errand)
 //   - older saves: a Round A + B game maps onto the chapters (no crash, Canelo still yours), a very old one starts at
 //     chapter 1; the keyboard plays a chapter too
 //   NODE_PATH=$(npm root -g) node tools/test-chapters.js [screenshot dir]        (ONLY=day1,old to run some)
@@ -177,15 +177,15 @@ async function chapters(browser) {
     check('chapters: some answers were said out loud', spoke > 3, String(spoke));
     const cards = await g.ev(() => window.__unmetCards);
     check('chapters: no card ever showed an unmet word', !cards.length, cards.slice(0, 8).join('; '));
-    // after chapter 10: the older errands open (mercado first), Misiones shows them; the next chapter is "to be written"
+    // after chapter 10: chapter 11 is next (the next day), no older errand opens; Misiones shows it
     await g.ev(() => { G.debug.dayShift = (G.debug.dayShift || 0) + 1; G.words.newSession('night'); });
-    check('chapters: after chapter 10 the older errands open (mercado first)', await g.ev(() => G.errands.offer('mercado') && G.chapters.gate('c11') === 'unwritten'));
+    check('chapters: after chapter 10, chapter 11 (Rosa\'s hens) opens; no older errand', await g.ev(() => !G.errands.offer('mercado') && G.chapters.next() === 'c11' && G.chapters.gate('c11') !== 'unwritten'));
     await g.ev(() => { G.field.menuReq = true; });
     await g.until(() => G.top().constructor.name === 'FieldMenu', null, 'the menu');
     await g.tapRect(await g.ev(() => G.top().rect('quest')));
     await g.until(() => G.top().constructor.name === 'QuestLog', null, 'Misiones');
     await g.frames(10); await g.shot('misiones_after_c10');
-    check('chapters: Misiones lists the market errand waiting', await g.ev(() => G.top().rows().some(r => r.id === 'mercado' && r.st === 'new')));
+    check('chapters: Misiones lists chapter 11 next', await g.ev(() => G.top().rows().some(r => r.id === 'c11') && !G.top().rows().some(r => r.id === 'mercado')));
     await g.tap(160, 120);
     noErrors(g, 'chapters');
   } finally { await ctx.close(); }
@@ -248,10 +248,10 @@ async function oldSaves(browser) {
     await g.until(() => G.field && G.top() === G.field && G.fade.a === 0, null, 'the old game');
     await g.frames(20);
     const a = await g.ev(() => ({ q: G.state.quests, v: G.state.ch.v, mine: G.pet.mine(), tricks: G.state.pet.tricks, next: G.chapters.next(), bag: G.state.bag.items.map(i => i.id + (i.q ? ':' + i.q : '')), st: G.words.stage('hola'), map: G.field.mapId }));
-    check('old: a Round A + B save loads: its errands map onto chapters 1-10 (saludos -> c8, carta / canelo -> c10...)', a.v === 2 && ['c1', 'c4', 'c7', 'c8', 'c10'].every(k => a.q[k] === 'done'), JSON.stringify(a.q));
-    check('old: an older errand going on (picnic) after chapters 1-10 goes on, its things stay in the bag', a.q.picnic === 'active' && a.bag.join() === 'pan:picnic,manzana', JSON.stringify(a));
+    check('old: a Round A + B save loads: its errands map onto chapters 1-10 (saludos -> c8, carta / canelo -> c10...)', a.v === 3 && ['c1', 'c4', 'c7', 'c8', 'c10'].every(k => a.q[k] === 'done'), JSON.stringify(a.q));
+    check('old: an older errand going on (the picnic, now chapter 13) is let go; its things leave the bag', !a.q.picnic && a.bag.join() === 'manzana', JSON.stringify(a));
     check('old: Canelo is still yours, with his tricks; the words keep their stages', a.mine && a.tricks.ven === 3 && a.tricks.sientate === 3 && a.st >= 2, JSON.stringify(a));
-    check('old: after chapter 10, the older errands go on (no chapter 11 yet)', a.next === 'c11' && await g.ev(() => G.chapters.gate('c11') === 'unwritten'));
+    check('old: after chapter 10, chapter 11 comes next', a.next === 'c11' && await g.ev(() => G.chapters.gate('c11') !== 'unwritten'));
     await g.shot('old_loaded');
     // walk around a little and open Misiones: nothing breaks
     const t = await nextTap(g);
@@ -267,7 +267,7 @@ async function oldSaves(browser) {
     await g.until(() => G.chapters.active('c1') || G.top() !== G.field, null, 'chapter 1 to start at home');
     await settle(g, 'chapter 1 in a very old game');
     const b = await g.ev(() => ({ q: G.state.quests, v: G.state.ch.v, hola: G.words.stage('hola'), finds: !!G.state.finds.perro }));
-    check('old: a very old save (only the first lesson) starts chapter 1 at home; hola stays known', b.v === 2 && b.q.c1 === 'active' && b.finds && b.hola >= 2, JSON.stringify(b));
+    check('old: a very old save (only the first lesson) starts chapter 1 at home; hola stays known', b.v === 3 && b.q.c1 === 'active' && b.finds && b.hola >= 2, JSON.stringify(b));
     noErrors(g, 'very old');
   } finally { await ctx.close(); }
 }

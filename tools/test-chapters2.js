@@ -19,18 +19,19 @@ const FIRST10 = ['hola', 'perro', 'guau', 'ven', 'gato', 'miau', 'buenosdias', '
   'parque', 'banco', 'fuente', 'granja', 'cabra', 'escuela', 'bien', 'comoestas', 'agua', 'cama', 'buenasnoches', 'cansado', 'carta', 'casa', 'caballo', 'adios'];
 const noErrors = (g, name) => check(name + ': no console errors', !g.errors.length, g.errors.join('\n'));
 
-// a game where chapters 1-10 are done (yesterday): their words known, Canelo yours with ven and siéntate
-function after10(first10) {
+// a game where chapters 1..n are done (yesterday): their words known, Canelo yours with the tricks of those chapters
+// (n = 10 normally; FROM=15 starts the test later, to try the last chapters quickly)
+function afterN(n) {
   G.st.erase(1); G.st.newGame(); G.state.name = 'Luz'; G.state.look = G.data.defaultLook('nina');
   G.st.begin(1);
-  for (const id of first10) { G.words.meet(id, 'test'); G.words.answerRight(id, { firstTry: true, mode: 'text' }); }
-  for (let i = 1; i <= 10; i++) G.state.quests['c' + i] = 'done';
+  for (const id of G.chapters.ids().slice(0, n)) { G.state.quests[id] = 'done'; for (const w of G.chapters.def(id).words) { G.words.meet(w, 'test'); G.words.answerRight(w, { firstTry: true, mode: 'text' }); } }
   Object.assign(G.state.flags, { intro: true, canelo: true, petStart: true });
-  G.state.pet.tricks.ven = 3; G.state.pet.tricks.sientate = 3;
+  Object.assign(G.state.pet.tricks, { ven: 3, sientate: 3 }, n >= 14 ? { pata: 3, salta: 3 } : {}, n >= 16 ? { busca: 3 } : {}, n >= 17 ? { gira: 3 } : {});
   G.state.ch.lastDoneSess = G.words.sess();
   G.debug.dayShift = (G.debug.dayShift || 0) + 1; G.words.newSession('load');
   G.st.saveNow();
 }
+const FROM = +(process.env.FROM || 10);
 async function watch(g) {
   await g.ev(() => {
     window.__unmetCards = window.__unmetCards || []; window.__starts = window.__starts || {}; window.__metIn = window.__metIn || {};
@@ -59,7 +60,7 @@ async function watch(g) {
 async function story(browser) {
   const { ctx, g } = await open(browser, 'ch2', true);
   try {
-    await g.ev(after10, FIRST10);
+    await g.ev(afterN, FROM);
     await g.ev(() => G.toTitle());
     await g.until(() => G.top().constructor.name === 'Title' && G.top().t > 32, null, 'the title');
     await g.tap(160, 180);
@@ -81,8 +82,8 @@ async function story(browser) {
       },
     }).catch(e => { if (e.message !== 'UNTIL') throw e; });
     const r = await g.ev(() => ({ q: G.state.quests, metIn: window.__metIn, starts: window.__starts, cards: window.__unmetCards, tricks: G.state.pet.tricks, day: G.words.day(), old: G.data.tailOrder.length, offered: ['mercado', 'picnic', 'show', 'flores', 'sonidos', 'cuenta', 'fiestab'].filter(id => G.state.quests[id]) }));
-    const ids = Object.keys(CH_WORDS).filter(id => r.q[id] === 'done');
-    check('story: chapters done: ' + ids.join(' '), ids.length >= (until ? 1 : 11), JSON.stringify(r.q));
+    const ids = Object.keys(CH_WORDS).filter(id => r.q[id] === 'done' && +id.slice(1) > FROM);
+    check('story: chapters done: ' + ids.join(' '), ids.length >= (until ? 1 : 21 - FROM), JSON.stringify(r.q));
     const wrong = ids.filter(id => (r.metIn[id] || []).slice().sort().join() !== CH_WORDS[id].slice().sort().join());
     check('story: each chapter met exactly its own new words', !wrong.length, wrong.map(id => id + ': ' + (r.metIn[id] || []).join(',') + ' (want ' + CH_WORDS[id].join(',') + ')').join('; ') + ' | other: ' + JSON.stringify(r.metIn.none || []));
     const over = Object.entries(r.starts).filter(([id, s]) => s.today + s.n > 6 || s.date + s.n > 8 || (s.n && s.stage1 >= 10));
@@ -90,10 +91,10 @@ async function story(browser) {
     check('story: no card ever showed an unmet word', !r.cards.length, r.cards.slice(0, 8).join('; '));
     check('story: the older errands never opened', !r.old && !r.offered.length, r.offered.join());
     if (!until) {
-      check('story: Canelo learned dame la pata, salta, busca and gira in the story', ['pata', 'salta', 'busca', 'gira'].every(t => r.tricks[t] === 3), JSON.stringify(r.tricks));
+      check('story: Canelo learned dame la pata, salta, busca and gira (all six tricks)', ['pata', 'salta', 'busca', 'gira'].every(t => r.tricks[t] === 3), JSON.stringify(r.tricks));
       check('story: the animal party and the diploma', r.q.c21 === 'done' && g.seen.has('Diploma'));
       check('story: favores and Luna\'s palabra del día came up on the way', sawFavor && sawPalabra, JSON.stringify({ sawFavor, sawPalabra }));
-      check('story: it took several days (one chapter a day, about)', r.day >= 8, 'day ' + r.day);
+      check('story: it took several days (one chapter a day, about)', FROM > 10 || r.day >= 8, 'day ' + r.day);
     }
     noErrors(g, 'story');
   } finally { await ctx.close(); }

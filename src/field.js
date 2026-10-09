@@ -90,7 +90,7 @@
           else { // arrived (or can't get any closer): face the target, then talk / search like A
             const r = this.route; this.route = null;
             if (pl && pl.face) p.dir = pl.face;
-            if (pl && pl.act) { this.locked = true; yield* this.interact(); this.locked = false; continue; }
+            if (pl && pl.act) { this.locked = true; yield* this.interact(r.npc); this.locked = false; continue; } // (the one tapped, when two share a tile)
             if (pl && r.name && G.world) G.world.arrive(this, r); // a thing with a word: it names itself (world.js)
           }
         }
@@ -120,9 +120,11 @@
     tapTarget(tap) {
       const T = G.TILE, wx = tap.x + Math.round(this.cam.x), wy = tap.y + Math.round(this.cam.y), tx = Math.floor(wx / T), ty = Math.floor(wy / T);
       const ppl = this.npcs.filter(n => !n.ghost).concat(this.npcs.filter(n => n.ghost)); // (someone tagging along, a ghost, gives way)
-      const talker = (x, y) => ppl.find(n => n.talk && n.spec && !n.hidden && n.x === x && n.y === y);
+      // (two on one tile, like Nico tagging along beside Canelo: the one with something to say wins)
+      const pick = L => L.find(n => { try { const a = n.alert && n.alert(); return !!a && !a.wait; } catch (e) { return false; } }) || L[0];
+      const talker = (x, y) => pick(ppl.filter(n => n.talk && n.spec && !n.hidden && n.x === x && n.y === y));
       // a person where they are drawn (mid-step too, sliding between tiles), or `up` tiles above that (the head)
-      const drawn = up => ppl.find(n => n.talk && n.spec && !n.hidden && wx >= n.x * T + n.ox && wx < n.x * T + n.ox + T && wy >= (n.y - up) * T + n.oy && wy < (n.y - up + 1) * T + n.oy);
+      const drawn = up => pick(ppl.filter(n => n.talk && n.spec && !n.hidden && wx >= n.x * T + n.ox && wx < n.x * T + n.ox + T && wy >= (n.y - up) * T + n.oy && wy < (n.y - up + 1) * T + n.oy));
       const c = this.map.get(tx, ty);
       let n = drawn(0) || talker(tx, ty) || drawn(1) || talker(tx, ty + 1);
       const story = (G.chapters && G.chapters.spotAt(this, tx, ty)) || G.intro.spotAt(this, tx, ty); // a puzzle's thing on a counter is the thing, not the person behind it
@@ -175,9 +177,10 @@
       G.goto(ex.to, ex.tx, ex.ty, ex.dir || this.player.dir);
     }
     facing() { const [dx, dy] = G.DIRS[this.player.dir]; return [this.player.x + dx, this.player.y + dy]; }
-    *interact() {
+    *interact(want) {
       const [fx, fy] = this.facing();
-      let n = this.npcs.find(o => o.x === fx && o.y === fy && !o.hidden); // (someone hidden, like a puppy under the table, isn't there to talk to)
+      const here = this.npcs.filter(o => o.x === fx && o.y === fy && !o.hidden); // (someone hidden, like a puppy under the table, isn't there to talk to)
+      let n = (want && here.includes(want) ? want : null) || here.find(o => { try { const a = o.alert && o.alert(); return !!a && !a.wait; } catch (e) { return false; } }) || here[0];
       // talk across counters
       const story = (G.chapters && G.chapters.spotAt(this, fx, fy)) || G.intro.spotAt(this, fx, fy); // a puzzle's thing on a counter: search it
       if (!n && !story) { const t = this.map.get(fx, fy); if (t === 'e' || t === 't' || t === 'a' || t === 'Y') { const [dx, dy] = G.DIRS[this.player.dir]; n = this.npcs.find(o => o.x === fx + dx && o.y === fy + dy && !o.hidden); } }

@@ -1,6 +1,6 @@
 // ===== Villa Sol: maps and townsfolk (original content) =====
 // Who says what comes from the story's chapters first (src/chapters.js, content/es/story-*.js), then the older errands
-// (src/errands.js), then each person's own line. Dialogue is short Spanish with [word] tokens (an unmet word shows
+// (src/errands.js: presents, the shops), then the day's review (src/favores.js), then each person's own line. Dialogue is short Spanish with [word] tokens (an unmet word shows
 // only its picture, a met one picture + word, a remembered one the gold word).
 // T('Spanish', 'English') — the English is only shown with the parents' option on.
 'use strict';
@@ -16,14 +16,13 @@
   // (+1 heart), and any 3- or 5-heart surprise that's due
   function* hello(who) { if (G.hearts) { yield* G.hearts.greet(who); yield* G.hearts.milestones(who); } }
   // the story (chapters.js) comes first: CA(who) their bubble from it, CT(who, f) their part of a talk (true if it
-  // handled it); then the older errands (errands.js): EA / ET; the tail errand mercado is here (Rosa and Don Pepe)
+  // handled it); then errands.js (EA / ET: a present they'd like, the shops)
   const CA = who => (G.chapters ? G.chapters.alert(who) : null);
   function* CT(who, f) { return !!G.chapters && (yield* G.chapters.talk(who, f)); }
   const EA = who => (G.errands ? G.errands.alert(who) : false);
   function* ET(who, f) { return !!G.errands && (yield* G.errands.talk(who, f)); }
-  // then the day's review in the world (favores.js): someone's small favour, Luna's palabra del día, Inés's pages
+  // and the day's review in the world (favores.js): someone's small favour, Luna's palabra del día, Inés's pages
   const FA = who => (G.favores ? G.favores.alert(who) : null);
-  function* FT(who, f) { return !!G.favores && (yield* G.favores.talk(who, f)); }
   const EF = who => EA(who) || FA(who);
   const CH = () => G.chapters;
   // a townsperson's whole talk: greeting, story, errands, then their own line
@@ -31,17 +30,9 @@
     return function* (f) {
       yield* hello(who);
       if (yield* CT(who, f)) return;
-      if (yield* ET(who, f)) return;
-      if (yield* FT(who, f)) return;
+      if (yield* ET(who, f)) return; // (a present, the day's favour, the shop: errands.js, favores.js)
       yield* (typeof line === 'function' ? line(f) : say(who, line));
     };
-  }
-  const words = (...ids) => ids.map(id => ({ word: id }));
-  function* newQuest(id) { S.startQuest(id); yield G.questCard(id); }
-  function* finishQuest(id) {
-    S.finishQuest(id); yield G.badge(id);
-    const giver = G.data.quests[id] && G.data.quests[id].giver; // finishing someone's errand, +2 hearts
-    if (G.hearts && giver && G.hearts.add(giver, 2, 'errand')) { yield 40; yield* G.hearts.milestones(giver); }
   }
   // a plain line that only uses words the child has met (an unmet one would be its picture: fine, but keep it short)
   const met = id => S.seen(id);
@@ -78,10 +69,10 @@
     things: { areas: { escuelaArea: 'escuela', rosaArea: 'casa', casaArea: 'casa', panaderiaArea: 'panaderia', bibliotecaArea: 'biblioteca', granja: 'granja' } },
     npcs: [
       { id: 'pepe', npc: 'pepe', x: P('villa', 'pepe')[0], y: P('villa', 'pepe')[1], dir: 'down', fixed: true,
-        alert: () => CA('pepe') || (S.active('mercado') && !F().compra ? [['manzana', 3], ['platano', 2]] : EF('pepe')),
+        alert: () => CA('pepe') || EF('pepe'),
         talk: talker('pepe', pepeTalk) },
       { id: 'rosa', npc: 'rosa', x: 7, y: 7, dir: 'down', wander: 1,
-        alert: () => CA('rosa') || (S.active('mercado') && F().compra ? true : !S.quest('mercado') && G.errands && G.errands.offer('mercado') ? [['manzana', 3], ['platano', 2]] : EF('rosa')),
+        alert: () => CA('rosa') || EF('rosa'),
         talk: talker('rosa', rosaTalk) },
       { id: 'tomas', npc: 'tomas', x: 20, y: 12, dir: 'down', // his mail round (ambient.js): the plaza, beside the bakery door, Rosa's
         route: [[20, 12, 'down', 150], [28, 7, 'up', 120], [4, 7, 'up', 120]],
@@ -114,42 +105,12 @@
     G.audio.sfx('select'); yield 20;
   }
 
-  // ---------- Don Pepe's fruit stall (and the market errand, mercado: after chapter 10) ----------
-  function* pepeTalk(f) {
-    if (S.active('mercado') && !F().compra) { yield* market(); return; }
+  // ---------- Don Pepe's fruit stall; Abuela Rosa ----------
+  function* pepeTalk() {
     if (met('manzana')) yield* say('pepe', T('¡Fruta! ¡[manzana:Manzanas]!', 'Fruit! Apples!'));
     else yield* say('pepe', T('¡Hola! ¡Fruta!', 'Hello! Fruit!'));
   }
-  function* market() {
-    yield* say('pepe', T('¿Qué quieres?', 'What would you like?'));
-    const fruits = ['manzana', 'platano', 'naranja'];
-    for (const [fruit, num, howMany] of [['manzana', 'tres', '¿Cuántas?'], ['platano', 'dos', '¿Cuántos?']]) {
-      const c = G.wordChoices(fruit, fruits, 3);
-      yield* G.ask({ prompt: '¿Qué quieres?', en: 'What would you like? (Grandma Rosa wants ' + W(fruit).en.replace('the ', '') + 's)', choices: c.choices, answer: c.answer, layout: 'cards', who: 'pepe' });
-      const d = G.wordChoices(num, G.data.numberWords, 3);
-      yield* G.ask({ prompt: howMany, en: 'How many?', show: fruit, choices: d.choices, answer: d.answer, layout: 'cards', who: 'pepe' });
-    }
-    yield* G.ask({ prompt: 'Tú: [tres] [manzana:manzanas] y [dos] [platano:plátanos]...', en: 'You: three apples and two bananas...', choices: words('no', 'porfavor', 'adios'), answer: 1, layout: 'cards', who: 'pepe' });
-    yield* G.ask({ prompt: '¡Aquí tienes!', en: 'Here you go!', choices: words('gracias', 'hola', 'no'), answer: 0, layout: 'cards', who: 'pepe', show: 'manzana' });
-    yield* say('pepe', T('¡De nada, amig{o/a}! ¡[adios]!', 'You\'re welcome, friend! Goodbye!'));
-    F().compra = true;
-  }
-  function* rosaTalk(f) {
-    if (!S.quest('mercado') && G.errands && G.errands.offer('mercado')) {
-      yield* say('rosa', T('¡[hola], {name}!', 'Hello, {name}!'), T('[tres] [manzana:manzanas] y [dos] [platano:plátanos], ¿[porfavor]?', 'Three apples and two bananas, please?'));
-      if (G.chapters) G.chapters.tailStarted();
-      yield* newQuest('mercado');
-      return;
-    }
-    if (S.active('mercado')) {
-      if (!F().compra) { yield* say('rosa', T('[tres] [manzana:manzanas] y [dos] [platano:plátanos], ¿[porfavor]?', 'Three apples and two bananas, please?'), T('¡Don Pepe!', 'Don Pepe has the fruit!')); return; }
-      yield* say('rosa', T('¡La fruta!', 'The fruit!'));
-      const c = G.wordChoices('dos', G.data.numberWords, 3);
-      yield* G.ask({ prompt: '¿Cuántos [platano:plátanos]?', en: 'How many bananas?', show: 'platano', choices: c.choices, answer: c.answer, layout: 'cards', who: 'rosa' });
-      yield* say('rosa', T('¡[si]! [dos]. ¡Qué list{o/a}! ¡[gracias], {name}!', 'Yes! Two. How clever! Thank you, {name}!'));
-      yield* finishQuest('mercado');
-      return;
-    }
+  function* rosaTalk() {
     yield* say('rosa', met('casa') ? T('¡[hola], {name}! Mi [casa].', 'Hello, {name}! My house.') : T('¡[hola], {name}!', 'Hello, {name}!'));
   }
 
@@ -176,8 +137,7 @@
           if (G.day && G.day.over()) { yield* G.day.evening(f); return; } // already home when the sun went down
           yield* hello('mama');
           if (yield* CT('mama', f)) return;
-          if (yield* ET('mama', f)) return; // the older errands (errands.js)
-          if (yield* FT('mama', f)) return; // a favour (favores.js)
+          if (yield* ET('mama', f)) return; // a present, a favour (errands.js, favores.js)
           if (S.done('fiestab') || S.done('c21')) yield* say('mama', T('¡{name}! ¡Muy bien!', '{name}! Well done!'));
           else if (G.pet && G.pet.mine()) yield* say('mama', T('¡Canelo y {name}! ¡A jugar!', 'Canelo and {name}! Off you go and play!'));
           else yield* say('mama', T('¡{name}!', '{name}!'));

@@ -13,7 +13,7 @@
 // Done: a star and a heart (one favour per person a day). Favours are never needed to go on: the story never waits.
 // Palabra del día (from chapter 8): once a day Profesora Luna holds up a picture of a word the child knows that is due:
 // say it (the mic) or pick its word from four. A star.
-// From chapter 16, Inés's library holds the notebook's page puzzles: any page that is ready, once a day each.
+// From chapter 16, Inés's library holds the notebook's page puzzles: she offers one that is ready, once a day.
 // Hooks: maps.js asks G.favores.alert(who) / talk(who, f) after the story and the older errands; field.js frames come
 // through G.errands.update, the hint hand's places through G.errands.targets, taps on animals through G.animals.tapped.
 // API: G.favores.today() (today's favours: [{who, kind, word, done, on}]), .palabraDone(), .ready() (they have started).
@@ -217,9 +217,10 @@
   }
 
   // ---------- Inés's library: the notebook's page puzzles ----------
-  FV.pageReady = () => !!G.state && ch('c16') && !storyHas('ines') && !!G.data.pageOrder.find(p => G.pages.ready(p));
+  FV.pageReady = () => !!G.state && ch('c16') && st().pageDay !== G.words.day() && !storyHas('ines') && !!G.data.pageOrder.find(p => G.pages.ready(p) && G.pages.words(p).length >= 4);
   function* pages() {
-    const pg = G.data.pageOrder.find(p => G.pages.ready(p)); if (!pg) return;
+    const pg = G.data.pageOrder.find(p => G.pages.ready(p) && G.pages.words(p).length >= 4); if (!pg) return;
+    st().pageDay = G.words.day(); G.st.autosave(); // (one a day: she keeps the rest for tomorrow)
     yield sayShow('ines', { icon: 'pagina' }, TT('Shhh... ¡Una página! ¿Jugamos?', 'Shhh... a notebook page to play with! Match each picture with its word.'));
     yield* G.pages.run(pg);
   }

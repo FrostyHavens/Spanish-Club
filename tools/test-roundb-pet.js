@@ -99,7 +99,7 @@ async function ipad(browser) {
     // the pet menu
     await openMenu(g);
     const m = await g.ev(() => G.top().cards().map(c => c.id + ':' + c.st).join(' '));
-    check('menu: tricks (ven known, learning siéntate, pata next, the rest "?") and the care cards', m === 'ven:known sientate:learn pata:next salta:lock gira:lock hueso:care galleta:care agua:care pelota:care mimo:care cama:care', m);
+    check('menu: six tricks (ven known, learning siéntate, pata next, the rest "?") and the care cards', m === 'ven:known sientate:learn pata:next salta:lock busca:lock gira:lock hueso:care galleta:care agua:care pelota:care mimo:care cama:care', m);
     check('menu: it has the mic, and the hand would point at the trick he is learning', await g.ev(() => !!G.top().mic && !!G.top().hintXY()));
     await g.shot('pet_menu');
     // say it straight at the menu: a good try (2/3) and a speaking star
@@ -177,21 +177,16 @@ async function ipad(browser) {
   } finally { await ctx.close(); }
 }
 
-// ---------- every trick's animation, in town; Sofía and Nico teach ----------
+// ---------- every trick's animation, in town (all six are taught by the chapters) ----------
 async function tricks(browser) {
   const { ctx, g } = await openFake(browser, 'pet-tricks', true);
   try {
     await play(g, 'villa', 19, 13, 'down', { chapters: G_ALL, flags: { canelo: true, petStart: true }, pet: { tricks: { sientate: 3, ven: 3 } } }); // (after chapter 10)
     await g.until(() => !!G.pet.npc() && !G.pet.npc().moving, null, 'Canelo beside you');
-    check('teach: Sofía\'s bubble shows dame la pata next', await g.ev(() => G.field.npc('sofia').alert() === 'pata'));
-    await g.ev(() => { const [x, y] = G.MAPDATA.villa.pos.sofia; G.field.player.x = x; G.field.player.y = y + 1; G.field.player.dir = 'up'; G.field.snapCam(); });
-    await g.frames(10);
-    await g.tapTile(...await g.ev(() => G.MAPDATA.villa.pos.sofia));
-    await settle(g, 'Sofía teaches la pata');
-    check('teach: Sofía teaches dame la pata', await g.ev(() => G.pet.learning() === 'pata' && G.pet.tries('pata') === 1));
+    check('teach: every trick is taught by its chapter now: nobody has a trick bubble', await g.ev(() => !G.pet.canTeach('sofia') && !G.pet.canTeach('nico') && G.field.npc('sofia').alert() !== 'pata'));
     // the other tricks, all known: one screenshot each mid-trick
-    await g.ev(() => { Object.assign(G.state.pet.tricks, { pata: 3, salta: 3, gira: 3 }); G.state.pet.learning = null; });
-    for (const [id, at] of [['ven', 30], ['pata', 40], ['salta', 24], ['gira', 20]]) {
+    await g.ev(() => { Object.assign(G.state.pet.tricks, { pata: 3, salta: 3, busca: 3, gira: 3 }); G.state.pet.learning = null; for (const w of ['pata', 'salta', 'busca', 'gira']) G.words.meet(w, 'test'); });
+    for (const [id, at] of [['ven', 30], ['pata', 40], ['salta', 24], ['busca', 30], ['gira', 20]]) {
       await openMenu(g);
       if (id === 'ven') await g.shot('menu_all_tricks');
       await tapCard(g, id, { shotAt: at, shot: 'trick_' + id });
@@ -200,10 +195,7 @@ async function tricks(browser) {
       await free(g);
     }
     check('tricks: every trick plays and the menu closes with its button', true);
-    check('teach: with all five learned nobody teaches more', await g.ev(() => !G.pet.canTeach('nico') && !G.pet.canTeach('sofia')));
-    // Nico teaches gira when it's his turn
-    await g.ev(() => { G.state.pet.tricks.gira = 0; });
-    check('teach: Nico\'s bubble shows gira when it\'s his turn', await g.ev(() => G.field.npc('nico').alert() === 'gira'));
+    check('tricks: all six known: the menu\'s top row is six gold cards', await g.ev(() => G.pet.known().length === 6));
     // a voice greeting in town: Don Pepe
     await g.ev(() => { const [x, y] = G.MAPDATA.villa.pos.pepe; G.field.player.x = x; G.field.player.y = y + 1; G.field.player.dir = 'up'; G.field.snapCam(); });
     await g.frames(6);
@@ -318,7 +310,7 @@ async function keys(browser) {
     await g.press('ArrowLeft');
     check('keys: arrows move along the cards', await g.ev(() => G.top().cards()[G.top().sel].id === 'ven'));
     await g.press('ArrowDown');
-    check('keys: down goes to the care row', await g.ev(() => G.top().sel >= 5));
+    check('keys: down goes to the care row', await g.ev(() => G.top().sel >= G.pet.TRICKS.length));
     await g.press('ArrowUp'); await g.press('Enter');
     await g.until(() => !!G.pet.npc().pa && G.pet.npc().pa.k === 'come', null, 'the trick');
     check('keys: Enter does the trick', true);
