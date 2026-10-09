@@ -98,7 +98,7 @@ async function day1(browser) {
     check('day1: a wrong hiding place: not found, the word bubble is a "?" (unmet things stay mysterious)', await g.ev(() => !G.state.finds.perro.found && !G.words.met('perro')));
     // play on with taps, saying some answers
     let spoke = 0;
-    g.beforeAct = async (s) => { if (s.name === 'Choice' && spoke < 3 && await g.ev(() => { const s = G.top(); return s.ch[s.o.answer] && s.ch[s.o.answer].word === 'ven' && G.words.met('ven'); })) { if (await speakIt(g)) { spoke++; return true; } } return false; };
+    g.beforeAct = async (s) => { if (s.name === 'Choice' && spoke < 3 && await g.ev(() => { const s = G.top(); return !!s.o && !!s.ch && s.ch[s.o.answer] && s.ch[s.o.answer].word === 'ven' && G.words.met('ven'); })) { if (await speakIt(g)) { spoke++; return true; } } return false; };
     await playToEnd(g, { nextDay: async () => { throw new Error('STOP'); } }).catch(e => { if (e.message !== 'STOP') throw e; });
     g.beforeAct = null;
     const st = await g.ev(() => ({ q: G.state.quests, met: G.words.list(1).sort(), mine: G.pet.mine(), ven: G.pet.knows('ven'), t: G.sessionTime }));
@@ -131,7 +131,7 @@ async function chapters(browser) {
     await g.ev(() => { G.speedMul = 2; });
     await newGame(g);
     let reloaded = false, spoke = 0, sunsetAfterC8 = null, shots = {};
-    g.beforeAct = async (s) => { if (s.name === 'Choice' && (spoke % 7 === 0 || spoke < 2) && await g.ev(() => { const s = G.top(); const a = s.ch[s.o.answer]; return !!(a && a.word && G.words.met(a.word)); })) { spoke++; if (await speakIt(g)) return true; } else if (s.name === 'Choice') spoke++; return false; };
+    g.beforeAct = async (s) => { if (s.name === 'Choice' && (spoke % 7 === 0 || spoke < 2) && await g.ev(() => { const s = G.top(); const a = s.o && s.ch && s.ch[s.o.answer]; return !!(a && a.word && G.words.met(a.word)); })) { spoke++; if (await speakIt(g)) return true; } else if (s.name === 'Choice') spoke++; return false; };
     const shotEach = async () => { const c = await g.ev(() => G.chapters.current()); if (c && !shots[c]) { shots[c] = 1; await g.frames(10); await g.shot(c + '_start'); } };
     await playToEnd(g, {
       nextDay: async () => {

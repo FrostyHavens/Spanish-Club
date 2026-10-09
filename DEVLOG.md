@@ -31,7 +31,9 @@ door that was locked, I never got to go in there" the worst.
   (the test checks it). The front door before chapter 1 is over (the puppy hiding) no longer says only "¡Luz!": Mamá
   says *¿Y el perro?* and points at his hiding place. Chapter `door:` beats were already scenes with their reason.
 - Tests: `tools/test-barn.js` (new): in and out by taps, the barn's things before and after their words, hide-and-seek
-  from Nico's bubble to the last find (no word met, the chapter pause), Canelo's trail, the doors.
+  from Nico's bubble to the last find (no word met, the chapter pause), Canelo's trail, the doors. `test-chapters` and
+  `test-chapters2`: their peek at the question on top no longer crashes when it has just closed (it flaked when
+  several browser tests ran at once).
 
 ## 2026-10-09 — The mic no longer disappears on iPad
 - On iPad Safari the mic test worked but no mic showed up in the game. Two refusals from Safari (it sometimes refuses
