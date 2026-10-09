@@ -13,11 +13,20 @@
 //         'wrong'        picked wrongly (ans: the right word)
 //         'picked'       picked in a free choice with no right answer (a shop, Canelo's menu)
 //         'said'         said out loud and matched (productive; via: the scene it was said in)
-//         'learned'      G.st.learn flipped it to learned
+//         'learned'      G.st.learn made it gold at once (tests, older content)
+//   the word model (words.js, learn.js, intro.js):
+//         'meet'         met: stage 0 -> 1 (how: show / find / watch / listen / answer / co / tap / old)
+//         'prompt'       a question whose answer is this word (kind: intro / new / review, st: its stage then, mode:
+//                        both / text / pic / match, cued: it could be found by matching the prompt; via: page)
+//         'retrieval'    an active use credited to the model (said, cued, mode, first, st0 -> st, review, star)
+//         'stage'        its stage went up (st)
+//         'find-start' / 'find-wrong'  a find-it puzzle began / a wrong thing was tapped
+//   'choice-shown' carries ans (it was the right answer) and 'recognized' carries cued.
 //     w: word id, map, who (who is talking or asking, when known), ep (the episode: see below), g (a greeting) }
 // Cue flags on 'recognized': pic (the answer card showed its picture), show (the question's picture IS the answer),
 // prompt (the answer word is in the prompt text).
-// Other entries (no w): { ty: 'quest', q, st: 'start' | 'done' }, { ty: 'mark', label } (G.vlog.mark, from tests), and
+// Other entries (no w): { ty: 'quest', q, st: 'start' | 'done' }, { ty: 'mark', label } (G.vlog.mark, from tests),
+// { ty: 'session', sess, day, date, why } (words.js: a new session or day), { ty: 'puzzle', page } (a page puzzle), and
 // { ty: 'ep', ep, ch } when an episode ends: an episode runs until the child is free to walk again (state.js
 // fieldTick); ch is what changed in G.state meanwhile ({q: {id: status}, f: [flag keys], s: new searched spots,
 // pg: [pages], pet, jobs, bag, h}), which tells the audit which errand the episode belonged to.
@@ -47,7 +56,7 @@
   V.ev = function (o) { const L = G.vocabLog; if (!L) return; sync(L); L.push(Object.assign({ t: now(), ep: V.ep, map: G.field ? G.field.mapId : null }, o)); };
   V.mark = (label, o) => V.ev(Object.assign({ ty: 'mark', label }, o || {}));
   // a test's model of a child's pace: sec more seconds pass (reading, listening, thinking); the day's clock moves too
-  V.pace = function (sec) { const L = G.vocabLog; if (!L || !(sec > 0)) return; sync(L); extra += sec; G.sessionTime += sec; };
+  V.pace = function (sec) { const L = G.vocabLog; if (!L || !(sec > 0)) return; sync(L); extra += sec; G.sessionTime += sec; if (G.words) G.words.addTime(sec); };
   V.time = () => (G.vocabLog ? (sync(G.vocabLog), now()) : 0);
 
   // ---------- what the voice said: [id] tokens, else a line that is only words ("el gato. ¡Miau!") ----------

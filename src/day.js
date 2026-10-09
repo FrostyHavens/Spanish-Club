@@ -1,10 +1,10 @@
 // ===== The end of the day: a sunset over Villa Sol after a good long play, then home to bed and a new morning =====
 // G.sessionTime counts the seconds of play since this game was started or opened (it is never saved). After
 // G.day.SUNSET_AT the town warms to a sunset, its windows light up and a moon bubble floats over the home door.
-// Going home then plays the evening: Mamá's "¡Buenas noches!", the "Hoy" card (the words learned today, as
+// Going home then plays the evening: Mamá's "¡Buenas noches!", the "Hoy" card (the words met or grown today, as
 // pictures, and the stars earned today), the night sky, a sunrise and Mamá's "¡Buenos días!"; the game is saved
 // and the clock starts again. Nothing is forced: staying out to play changes nothing.
-// "Today" is what changed since the session began (a snapshot of the learned words and stars), so the save
+// "Today" is what changed since the session began (a snapshot of the words' stages and the stars), so the save
 // format doesn't change. G.debug.sunsetAt (seconds) brings the sunset sooner, for tests and curious grown-ups.
 'use strict';
 (function () {
@@ -18,22 +18,23 @@
 
   // ---------- the session: since the game was started or opened, or since this morning ----------
   function newDay() {
-    const W = G.state.words;
-    base = { state: G.state, learned: new Set(Object.keys(W).filter(id => W[id] && W[id].learned)), stars: G.state.stars | 0, said: G.st.micStars() };
+    const st = {}; for (const id in G.data.words) st[id] = G.st.stage(id); // each word's stage this morning (words.js)
+    base = { state: G.state, st, stars: G.state.stars | 0, said: G.st.micStars() };
     today = []; G.sessionTime = 0; glow = 0;
   }
   DY.sunsetAt = () => (G.debug && G.debug.sunsetAt != null ? G.debug.sunsetAt : DY.SUNSET_AT);
   DY.over = () => !!(G.state && G.state.flags.intro) && G.sessionTime >= DY.sunsetAt();
-  // words learned today (in the order they were learned), stars earned today and how many of them were speaking stars
-  DY.today = () => base && base.state === G.state ? { words: today.slice(), stars: Math.max(0, (G.state.stars | 0) - base.stars), said: Math.max(0, (G.st.micStars()) - base.said) } : { words: [], stars: 0, said: 0 };
+  // words met or grown a stage today (in that order), stars earned today and how many of them were speaking stars
+  const sweep = () => { for (const id in G.state.words) if (today.indexOf(id) < 0 && G.st.stage(id) > (base.st[id] | 0)) today.push(id); };
+  DY.today = () => base && base.state === G.state && (sweep(), 1) ? { words: today.slice(), stars: Math.max(0, (G.state.stars | 0) - base.stars), said: Math.max(0, (G.st.micStars()) - base.said) } : { words: [], stars: 0, said: 0 };
   // core.js, every frame: the clock runs while a game is on (a map is in the scene stack, maybe under a talk)
   DY.step = function () {
     const f = G.field;
     if (!f || !G.state || G.scenes.indexOf(f) < 0) return;
     if (!base || base.state !== G.state) newDay(); // a new game, or one just opened: a new session
     G.sessionTime += 1 / 60;
-    const W = G.state.words;
-    for (const id in W) if (W[id] && W[id].learned && !base.learned.has(id) && today.indexOf(id) < 0) today.push(id);
+    if (G.words) G.words.step(); // the word model's play clock (words.js)
+    if (G.frame % 30 === 0) sweep();
     glow = G.clamp(glow + (DY.over() ? 1 / 480 : -1 / 30), 0, 1); // the sun goes down over ~8 s
   };
   DY.glow = () => glow;
@@ -105,7 +106,7 @@
     Object.assign(f.player, { x: BED[0], y: BED[1], dir: 'left', ox: 0, oy: 0 }); f.snapCam();
     if (G.pet) G.pet.night(f); // Canelo curls up on his cushion (pet.js)
     yield DY.night(); // the night sky, then the sunrise (it fades itself in and out)
-    newDay();
+    newDay(); if (G.words) G.words.newSession('night'); // a new day for the word model too: yesterday's words come back
     G.audio.play(f.def.music || 'town', true);
     yield G.fadeTo(0, 0.04, '#fff2d0'); // out of the morning light (the night left the fade there)
     if (G.pet) G.pet.morning(f); // and Canelo hops up

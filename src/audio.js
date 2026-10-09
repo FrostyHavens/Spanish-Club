@@ -268,6 +268,7 @@
       case 'micstar': sfxNotes([[79, 0, 0.06], [84, 0.07, 0.06], [88, 0.14, 0.06], [91, 0.21, 0.06], [96, 0.28, 0.34]], 'bell', 0.1); sweep(500, 1600, 0.3, 'sine', 0.05); sfxNotes([[100, 0.3, 0.05], [103, 0.36, 0.2]], 'square', 0.025); break; // said it out loud!
       case 'micland': sfxNotes([[96, 0, 0.04], [100, 0.05, 0.04], [103, 0.1, 0.24]], 'bell', 0.08); break; // a speaking star lands
       case 'huh': sfxNotes([[72, 0, 0.08], [77, 0.1, 0.16]], 'flute', 0.1); break;                 // the mic didn't catch it: "again?"
+      case 'note': noiseHit(0.14, 4200, 0.1, 'bandpass'); sfxNotes([[86, 0.04, 0.06], [91, 0.1, 0.18]], 'bell', 0.07); break; // a word goes in the notebook (paper + a little bell)
       case 'pop': sweep(260, 820, 0.09, 'sine', 0.12); noiseHit(0.06, 3000, 0.08, 'bandpass'); break; // a card springs open
     }
   };

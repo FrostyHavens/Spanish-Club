@@ -64,9 +64,9 @@ async function firstLaunch(browser) {
     check('first: the game fills slot 1 as soon as the name is chosen', await g.ev(() => { const s = JSON.parse(localStorage.getItem('spanishclub_slot1')); return G.st.slot === 1 && s.look.gender === 'nina' && !s.flags.intro; }));
 
     await scene(g, 'TextBox', 'Mamá to speak');
-    await g.drive(() => G.st.knows('hola'), 'Mamá\'s first question');
-    await g.until(() => { const s = JSON.parse(localStorage.getItem('spanishclub_slot1')); return s.words.hola && s.words.hola.learned; }, null, 'the new word to be saved', 3000);
-    check('first: learning a word saves it (mid-scene, within a second)', true);
+    await g.drive(() => G.st.seen('hola'), 'Mamá\'s first question');
+    await g.until(() => { const s = JSON.parse(localStorage.getItem('spanishclub_slot1')); return s.words.hola && s.words.hola.st >= 1; }, null, 'the new word to be saved', 3000);
+    check('first: meeting a word saves it (mid-scene, within a second)', true);
     await g.drive(() => G.state.flags.intro && G.top() === G.field && !G.field.locked, 'the rest of Mamá\'s intro');
     await g.until(() => JSON.parse(localStorage.getItem('spanishclub_slot1')).flags.intro, null, 'the finished intro to be saved', 3000);
     check('first: a finished scene saves', true);
@@ -96,7 +96,7 @@ async function firstLaunch(browser) {
     await g.frames(8); await g.shot('slots_one');
     await g.tapRect(await g.ev(() => G.top().cardRect(0)));
     await g.fieldIdle('villa');
-    check('first: tapping it continues where the player was, with what they learned', await g.ev(s => G.field.player.x === s[0] && G.field.player.y === s[1] && G.st.knows('hola') && G.state.name === 'Luz' && G.st.slot === 1, spot));
+    check('first: tapping it continues where the player was, with what they learned', await g.ev(s => G.field.player.x === s[0] && G.field.player.y === s[1] && G.st.seen('hola') && G.state.name === 'Luz' && G.st.slot === 1, spot));
     check('first: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
 }
@@ -109,7 +109,7 @@ async function slotScreen(browser) {
     await seed(g, { 1: nico, 3: sofi });
     await g.tap(160, 180);
     await scene(g, 'Slots', 'the slot screen');
-    check('slots: two filled cards and an empty one, the last played picked', await g.ev(() => { const s = G.top(), c = s.cards; return c[0].name === 'Nico' && c[0].stars === 7 && c[0].words === 1 && !c[1] && c[2].name === 'Sofi' && c[2].words === 3 && s.i === 2; }));
+    check('slots: two filled cards and an empty one (words: those in the notebook, an older save\'s seen ones too), the last played picked', await g.ev(() => { const s = G.top(), c = s.cards; return c[0].name === 'Nico' && c[0].stars === 7 && c[0].words === 2 && !c[1] && c[2].name === 'Sofi' && c[2].words === 3 && s.i === 2; }));
     await g.frames(8); await g.shot('slots_two');
     check('slots: the screen says "¿Quién juega?" out loud', await g.ev(() => window.__speak.some(s => s.text === '¿Quién juega?')));
 
@@ -346,10 +346,10 @@ async function robust(browser) {
     await g.drive(() => G.top() === G.field && !G.field.locked, 'talking to Mamá');
     check('robust: when storage fails, play goes on without errors', !g.errors.length && await g.ev(() => !G.st.saveNow()), g.errors.join('\n'));
     await g.ev(() => { Storage.prototype.setItem = window.__set; });
-    check('robust: when storage works again, the next save has everything', await g.ev(() => G.st.saveNow()) && (await stored(g, 3)).words.gracias.learned);
+    check('robust: when storage works again, the next save has everything', await g.ev(() => G.st.saveNow()) && ((w => w.st >= 2 || w.learned)((await stored(g, 3)).words.gracias)));
 
     await g.ev(() => { G.state.flags.loop = G.state; });
-    check('robust: a state that can\'t be written leaves the save as it was', await g.ev(() => !G.st.saveNow()) && (await stored(g, 3)).words.gracias.learned);
+    check('robust: a state that can\'t be written leaves the save as it was', await g.ev(() => !G.st.saveNow()) && ((w => w.st >= 2 || w.learned)((await stored(g, 3)).words.gracias)));
     await g.ev(() => { delete G.state.flags.loop; });
 
     await g.ev(() => { G.state.flags.talked = 1; });

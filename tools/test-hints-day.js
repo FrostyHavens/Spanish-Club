@@ -96,7 +96,7 @@ async function firstMinutes(browser) {
     await g.frames(12); await g.shot('hand_notebook');
     await g.tapBtn(cl);
     // a card that a tap closes ("¡Palabra nueva!"): the hand below it
-    await g.ev(() => { window.__w = G.learnWords(['uvas']); });
+    await g.ev(() => { window.__w = G.learnWords(['uvas'], { force: true }); });
     await waitHint(g, 'below the new word card');
     check('ipad: a new-word card left waiting gets the hand below it', await g.ev(() => G.top().constructor.name === 'WordCard' && G.hint.at.y > 180));
     await g.frames(20); await g.shot('hand_wordcard');
@@ -159,7 +159,7 @@ async function endOfDay(browser) {
     await g.ev(() => { G.st.learn('manzana'); G.st.practiced('manzana', true); G.st.learn('tres'); G.st.practiced('tres', true); G.st.practiced('hola', true); });
     await g.frames(2);
     check('day: today\'s words and stars are tracked', await g.ev(() => { const d = G.day.today(); return d.words.join() === 'manzana,tres' && d.stars === 3; }), JSON.stringify(await g.ev(() => G.day.today())));
-    check('day: the save format is unchanged by the day (only Round B album / sayback / pet / hearts / heartlog / friends / bag / jobs are new in G.state)', await g.ev(() => Object.keys(G.state).every(k => ['flags', 'searched', 'playTime', 'loc', 'words', 'pages', 'quests', 'stars', 'opts', 'look', 'name', 'savedAt', 'album', 'sayback', 'pet', 'hearts', 'heartlog', 'friends', 'bag', 'jobs'].includes(k))), await g.ev(() => Object.keys(G.state).join()));
+    check('day: the save format is unchanged by the day (only Round B album / sayback / pet / hearts / heartlog / friends / bag / jobs and the word model wm / finds are new in G.state)', await g.ev(() => Object.keys(G.state).every(k => ['flags', 'searched', 'playTime', 'loc', 'words', 'pages', 'quests', 'stars', 'opts', 'look', 'name', 'savedAt', 'album', 'sayback', 'pet', 'hearts', 'heartlog', 'friends', 'bag', 'jobs', 'wm', 'finds'].includes(k))), await g.ev(() => Object.keys(G.state).join()));
 
     await g.ev(() => { G.debug.sunsetAt = G.sessionTime + 1; });
     await g.until(() => G.day.over() && G.day.glow() >= 1, null, 'the sunset');

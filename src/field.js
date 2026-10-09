@@ -128,7 +128,7 @@
       if (door) return { exit: true, x: door.x, y: door.y }; // the wall or sign around a door, the dark just outside one
       const pg = (this.def.pages || {})[key(tx, ty)];
       const name = G.world ? G.world.wordAt(this, tx, ty) : null;
-      const special = !!((pg && !G.st.hasPage(pg)) || (this.def.searches || {})[key(tx, ty)] || (G.errands && G.errands.spotAt(this, tx, ty))); // these win over an animal on them
+      const special = !!((pg && G.pages.ready(pg)) || (this.def.searches || {})[key(tx, ty)] || (G.errands && G.errands.spotAt(this, tx, ty)) || G.intro.spotAt(this, tx, ty)); // these win over an animal on them
       if (special || THING.includes(c)) return { search: true, x: tx, y: ty, name, special };
       if (name) return this.blocked(tx, ty, this.player) && !(this.player.x === tx && this.player.y === ty) ? { search: true, x: tx, y: ty, name } : { x: tx, y: ty, name };
       return { x: tx, y: ty };
@@ -189,8 +189,10 @@
       if (fx === undefined) [fx, fy] = this.facing();
       const sp = G.errands && G.errands.spotAt(this, fx, fy); // a place an errand sends you (errands.js)
       if (sp) { yield* G.errands.runSpot(this, sp); return; }
+      const fd = G.intro.spotAt(this, fx, fy); // a find-it puzzle: the thing someone needs, or not that one (intro.js)
+      if (fd) { yield* G.intro.runFind(this, fd, fx, fy); return; }
       const pg = (this.def.pages || {})[key(fx, fy)];
-      if (pg && !G.st.hasPage(pg)) { yield* G.findPage(pg); return; }
+      if (pg && G.pages.ready(pg)) { yield* G.pages.run(pg); return; } // a notebook page puzzle (intro.js)
       const k = this.mapId + ':' + key(fx, fy);
       const s = (this.def.searches || {})[key(fx, fy)];
       if (s) {
@@ -265,8 +267,8 @@
         ctx.fillStyle = '#3a2008'; ctx.fillRect(sx - 1, sy - 1, 18, 18); ctx.fillStyle = '#f4ecd8'; ctx.fillRect(sx, sy, 16, 16);
         G.drawIcon16(ctx, sg.icon, sx, sy);
       }
-      for (const k in this.def.pages || {}) { // a hidden notebook page twinkles
-        if (G.st.hasPage(this.def.pages[k])) continue;
+      for (const k in this.def.pages || {}) { // a notebook page puzzle waiting (4+ met words of its page) twinkles
+        if (!G.pages.ready(this.def.pages[k])) continue;
         const [px, py] = k.split(',').map(Number), ph = (this.t + px * 7) % 60;
         if (ph < 30) { const sx = px * T - cx + 12, sy = py * T - cy + 8 - (ph >> 3); ctx.fillStyle = '#ffffff'; ctx.fillRect(sx - 2, sy, 5, 1); ctx.fillRect(sx, sy - 2, 1, 5); ctx.fillStyle = '#f8e060'; ctx.fillRect(sx, sy, 1, 1); }
       }
@@ -333,11 +335,12 @@
     ctx.fillStyle = '#ffffff'; ctx.fillRect(ex + 10, by + 21, 3, 2); ctx.fillRect(ex + 11, by + 23, 1, 1);
     G.drawGoal(ctx, goal, bx + 4, by + 3);
   };
-  // found a notebook page: open the notebook right at it
+  // someone hands you the notebook (Mamá): open it at a page (when it has a word you've met). Pages are no longer
+  // found: a word is written in when it's met, and the sparkles on the map are page puzzles (intro.js)
   G.findPage = function* (id) {
     G.audio.jingle('item');
-    G.st.findPage(id);
-    G.toast('\u0005 ¡Una página! \u0005', 90);
+    G.state.flags.notebook = true; G.st.autosave();
+    G.toast('\u0005 ¡Tu cuaderno! \u0005', 90);
     yield 30;
     yield G.notebook(id);
   };

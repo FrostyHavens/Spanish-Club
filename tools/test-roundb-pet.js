@@ -89,8 +89,8 @@ async function ipad(browser) {
     await g.frames(20); await g.shot('mama_hearts_row');
     check('hearts: her hearts show over her portrait', await g.ev(() => G.top().opts.who === 'mama' && G.hearts.shows('mama')));
     await settle(g, 'Mamá gives you Canelo');
-    const s1 = await g.ev(() => ({ mine: G.pet.mine(), page: G.st.hasPage('mascota'), l: G.pet.learning(), tries: G.pet.tries('sientate'), alert: G.field.npc('mama').alert(), n: !!G.pet.npc(), album: G.animals.met('perro') }));
-    check('pet: Mamá gives you Canelo, the Mi perro page and his first trick (siéntate, one try done)', s1.mine && s1.page && s1.l === 'sientate' && s1.tries === 1 && s1.n && s1.album, JSON.stringify(s1));
+    const s1 = await g.ev(() => ({ mine: G.pet.mine(), page: !!G.state.flags.notebook, l: G.pet.learning(), tries: G.pet.tries('sientate'), alert: G.field.npc('mama').alert(), n: !!G.pet.npc(), album: G.animals.met('perro') }));
+    check('pet: Mamá gives you Canelo, opens the notebook and teaches his first trick (siéntate, one try done)', s1.mine && s1.page && s1.l === 'sientate' && s1.tries === 1 && s1.n && s1.album, JSON.stringify(s1));
     check('pet: her "!" is gone while he learns', !s1.alert, JSON.stringify(s1));
     await g.frames(30); await g.shot('learning_bubble');
 
@@ -114,10 +114,12 @@ async function ipad(browser) {
     check('tap: the learning card asks "¡Dile a Canelo!" with picture cards and a mic', await g.ev(() => G.top().o.prompt === '¡Dile a Canelo!' && G.top().ch[G.top().o.answer].word === 'sientate' && !!G.top().mic));
     await g.shot('practice_question');
     await g.tapRect(await g.ev(() => G.top().rects()[G.top().o.answer]));
-    await g.until(() => G.pet.knows('sientate'), null, 'siéntate learned');
+    // (met in Mamá's lesson, known when said at the menu, remembered now: its word card picked without its picture)
+    await g.until(() => G.top().constructor.name === 'WordCard', null, 'the gold word card');
+    check('learned: the third good try remembers siéntate: the gold "¡Palabra de oro!" card', await g.ev(() => G.st.knows('sientate')));
+    await g.drive(() => G.pet.knows('sientate') && G.hearts.get('canelo') === 1 && G.top().constructor.name !== 'WordCard', 'siéntate learned');
     await g.frames(30); await g.shot('sit_learned');
-    await g.until(() => G.top().constructor.name === 'WordCard', null, 'the new word card');
-    check('learned: 3 good tries -> siéntate is learned, a "¡Palabra nueva!" and a heart from Canelo', await g.ev(() => G.st.knows('sientate') && !G.pet.learning() && G.hearts.get('canelo') === 1));
+    check('learned: 3 good tries -> Canelo knows siéntate, and a heart from Canelo', await g.ev(() => G.pet.knows('sientate') && !G.pet.learning() && G.hearts.get('canelo') === 1));
     await waitMenu(g);
     check('menu: siéntate is gold now, ven is Mamá\'s next', await g.ev(() => G.top().cards().slice(0, 2).map(c => c.st).join() === 'known,next'));
     // a known trick by tap, and by voice
@@ -147,8 +149,8 @@ async function ipad(browser) {
     // a care word said: the ball, a star, and the word is learned
     await g.ev(() => window.__sr.queue.push({ results: ['la pelota'] }));
     await g.tapRect(await g.ev(() => G.top().micRect()));
-    await g.until(() => G.top().constructor.name === 'WordCard' || G.st.knows('pelota'), null, 'la pelota learned');
-    check('voice: "la pelota" said to Canelo throws it, a speaking star, and the word is learned', await g.ev(() => G.st.saidCount('pelota') === 1 && G.st.knows('pelota')));
+    await g.until(() => G.st.saidCount('pelota') === 1, null, 'la pelota said');
+    check('voice: "la pelota" said to Canelo throws it, a speaking star, and the word is met (words.js)', await g.ev(() => G.st.saidCount('pelota') === 1 && G.st.seen('pelota')));
     await waitMenu(g);
     // his bed: at home he goes to sleep
     await tapCard(g, 'cama');

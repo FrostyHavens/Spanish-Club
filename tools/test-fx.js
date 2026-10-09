@@ -77,7 +77,10 @@ async function touchRun(browser) {
     await g.until(() => G.top().constructor.name !== 'Choice', null, 'the question to close');
     check('fx: the question closes itself after the pop', await g.ev(() => window.__c.won.t >= 24));
 
-    // "¡Palabra nueva!": springs open, confetti, the word spoken, sparkles
+    // "¡Palabra de oro!" (a word just remembered, learn.js): springs open, confetti, the word spoken, sparkles
+    await g.until(() => window.__r !== null, null, 'the question to finish');
+    check('fx: a word met by a cued answer gets no gold card', await g.ev(() => G.top() === G.field && G.st.stage('hola') === 1));
+    await g.ev(() => { G.field.tasks.add((function* () { yield G.learnWords(['hola'], { force: true }); })()); });
     await g.until(() => G.top().constructor.name === 'WordCard' && G.top().t >= 2, null, 'the word card');
     check('fx: the word card pops open with confetti', await heard(g, 'pop') && await g.ev(() => G.fx.live('confetti') >= 30));
     await g.until(() => G.top().t >= 9, null, 'the card to spring');
@@ -87,12 +90,13 @@ async function touchRun(browser) {
     await g.until(() => G.top().t >= 44, null, 'the card to settle');
     await still(g, 'wordcard');
     await g.tap(150, 200);
-    await g.until(() => window.__r !== null, null, 'the question to finish');
     check('fx: a wrong first try earns no star', await g.ev(() => window.__r === false && G.state.stars === 0));
     await g.fieldIdle('villa');
 
     // the first try: a star flies to the corner and the counter there counts it
-    await ask(g, { prompt: '¡[adios]!', layout: 'cards', choices: cards('hola', 'adios', 'gracias'), answer: 1, learn: 'adios' });
+    // (adiós already known: its picture, pick its word -> remembered, and the gold card)
+    await g.ev(() => { G.words.meet('adios', 'test'); G.words.rec('adios').st = 2; });
+    await ask(g, { prompt: '¿...?', show: 'adios', layout: 'cards', choices: cards('hola', 'adios', 'gracias'), answer: 1 });
     await choiceUp(g);
     await g.ev(() => { window.__sfx.length = 0; });
     await g.tapRect(await g.ev(() => G.top().rects()[1]));

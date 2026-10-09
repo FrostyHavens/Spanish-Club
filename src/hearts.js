@@ -176,7 +176,7 @@
   const say = (npc, ...pages) => G.say(pages, { portrait: G.portraitOf(npc), name: G.nameOf(npc) || (npc === 'canelo' ? 'Canelo' : null), who: npc });
   function* secret(npc) {
     if (npc === 'canelo') { yield say(npc, T_('¡Guau, guau!', 'Woof, woof! (he wags his tail)')); return; }
-    const pg = G.data.pageOrder.find(p => !G.st.hasPage(p) && PAGE_PLACE[p] && p !== 'saludos');
+    const pg = G.data.pageOrder.find(p => G.pages.ready(p) && PAGE_PLACE[p] && p !== 'saludos'); // a page puzzle waiting (intro.js)
     if (!pg) { yield say(npc, T_('¡Eres muy simpátic{o/a}, {name}!', 'You\'re very nice, {name}!')); return; }
     yield say(npc, T_('¡Un secreto! Una página... ¡[' + PAGE_PLACE[pg] + ']!', 'A secret! A notebook page... near the ' + G.data.words[PAGE_PLACE[pg]].en.replace('the ', '') + '!'));
   }

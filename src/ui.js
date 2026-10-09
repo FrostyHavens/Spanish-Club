@@ -25,8 +25,10 @@
   };
 
   // ---------- Rich text: words grow from pictures ----------
-  // In dialogue, [id] or [id:shown form] marks a vocabulary word. A word the player hasn't learned yet
-  // is drawn as its picture plus the word in blue; once learned, the picture drops away and the word is gold.
+  // In dialogue, [id] or [id:shown form] marks a vocabulary word, drawn by how well the child knows it (words.js):
+  // unmet: only its picture (like Tunic's unreadable text; the voice still says it), met: picture + blue word,
+  // known: the blue word, remembered or solid: the gold word. o.mask (ids) draws those as a little speaker instead:
+  // heard, not read (a listening question, learn.js).
   const TOK = /\[([a-z0-9]+)(?::([^\]]+))?\]/g;
   const COL = { text: '#ffffff', seen: '#a8d8ff', known: '#f8d860' };
   G.baseForm = id => { const w = G.data.words[id]; return w ? w.es.split(' / ')[0].replace(/^(el|la|los|las) /, '') : id; };
@@ -40,15 +42,21 @@
     text(s.slice(last));
     return out;
   }
-  const known = id => G.st && G.st.knows(id);
-  const itemW = it => G.textWidth(it.text) + (it.id && !known(it.id) ? 18 : 0);
-  G.richLayout = function (s, maxW) {
+  // how a word token looks now: 'pic' (unmet), 'both' (met), 'text' (known), 'gold' (remembered+), 'mask' (heard only)
+  G.wordLook = function (id, mask) {
+    if (mask && mask.indexOf(id) >= 0) return 'mask';
+    const st = G.st && G.data.words[id] ? G.st.stage(id) : 3;
+    return st >= 3 ? 'gold' : st === 2 ? 'text' : st === 1 ? 'both' : 'pic';
+  };
+  const itemW = it => (!it.id ? G.textWidth(it.text) : it.look === 'pic' ? 16 : it.look === 'mask' ? 14 : G.textWidth(it.text) + (it.look === 'both' ? 18 : 0));
+  const itemChars = it => (!it.id ? it.text.length : it.look === 'pic' || it.look === 'mask' ? 1 : it.text.length + (it.look === 'both' ? 1 : 0));
+  G.richLayout = function (s, maxW, o = {}) {
     const lines = [{ items: [], w: 0 }];
     for (const p of String(s).split('\n')) {
       if (lines[lines.length - 1].items.length) lines.push({ items: [], w: 0 });
       // chunks: runs of items with no space between them wrap together
       const its = items(p), chunks = [];
-      its.forEach(it => { if (it.gap || !chunks.length) chunks.push([it]); else chunks[chunks.length - 1].push(it); });
+      its.forEach(it => { if (it.id) it.look = G.wordLook(it.id, o.mask); if (it.gap || !chunks.length) chunks.push([it]); else chunks[chunks.length - 1].push(it); });
       for (const ch of chunks) {
         const cw = ch.reduce((a, it) => a + itemW(it), 0);
         let L = lines[lines.length - 1];
@@ -57,9 +65,15 @@
         ch.forEach((it, k) => { it.sp = k === 0 && L.items.length ? 4 : 0; L.items.push(it); L.w += it.sp + itemW(it); });
       }
     }
-    lines.forEach(L => { L.chars = L.items.reduce((a, it) => a + it.text.length + (it.id ? 1 : 0), 0); });
+    lines.forEach(L => { L.chars = L.items.reduce((a, it) => a + itemChars(it), 0); });
     return lines;
   };
+  // a small speaker (a word to listen to), 12 x 9
+  function earGlyph(ctx, x, y) {
+    ctx.fillStyle = '#a8e8ff';
+    ctx.fillRect(x, y + 3, 3, 4); ctx.fillRect(x + 3, y + 2, 1, 6); ctx.fillRect(x + 4, y + 1, 1, 8); ctx.fillRect(x + 5, y, 1, 10);
+    ctx.fillRect(x + 7, y + 3, 1, 4); ctx.fillRect(x + 9, y + 1, 1, 2); ctx.fillRect(x + 10, y + 3, 1, 4); ctx.fillRect(x + 9, y + 7, 1, 2);
+  }
   // draw lines[from..from+n) ; chars limits the typewriter reveal; returns nothing
   G.richDraw = function (ctx, lines, x, y, o = {}) {
     const lh = o.lineH || 16, from = o.from || 0, n = o.n || lines.length;
@@ -70,9 +84,11 @@
         if (chars <= 0) return;
         cx += it.sp;
         if (it.id) {
-          const k = known(it.id);
-          if (!k) { G.drawIcon16(ctx, G.data.words[it.id] || it.id, cx, cy); cx += 18; chars--; }
-          const t = it.text.slice(0, Math.max(0, chars)); G.text(ctx, t, cx, cy + 5, k ? COL.known : COL.seen);
+          const lk = it.look || 'gold';
+          if (lk === 'mask') { earGlyph(ctx, cx + 1, cy + 3); cx += 14; chars--; continue; }
+          if (lk === 'pic' || lk === 'both') { G.drawIcon16(ctx, G.data.words[it.id] || it.id, cx, cy); cx += lk === 'pic' ? 16 : 18; chars--; }
+          if (lk === 'pic') continue;
+          const t = it.text.slice(0, Math.max(0, chars)); G.text(ctx, t, cx, cy + 5, lk === 'gold' ? COL.known : COL.seen);
         } else G.text(ctx, it.text.slice(0, Math.max(0, chars)), cx, cy + 5, o.color || COL.text);
         chars -= it.text.length; cx += G.textWidth(it.text);
       }
@@ -80,7 +96,7 @@
   };
 
   // ---------- Dialogue ----------
-  // G.say(pages, {name, portrait, pos:'bottom'|'top', auto, silent, noVoice}) -> Wait
+  // G.say(pages, {name, portrait, pos:'bottom'|'top', auto, silent, noVoice, show: word id or picture held up}) -> Wait
   // A page is a string or {t: 'Spanish text with [words]', en: 'English (parents option)'}.
   class TextBox {
     constructor(pages, opts, w) {
@@ -93,7 +109,7 @@
       this.boxX = hasP ? 70 : 8; this.boxW = G.W - this.boxX - 8;
       const t = this.pages[this.pi].t;
       if (G.vocabLog) G.vlog('shown', G.richIds(t), { via: 'dialogue', who: this.opts.who || null }); // (the dev-only log, vocablog.js)
-      G.richIds(t).forEach(id => G.st && G.st.see(id));
+      G.richIds(t).forEach(id => G.st && G.st.see(id)); // (a met word met again; an unmet one stays unmet)
       this.lines = G.richLayout(t, this.boxW - 18 - (this.opts.noVoice ? 0 : 24)); // room for the speaker button
       this.shown = 0; this.scroll = 0; this.t = 0;
       this.spoke = !!this.opts.noVoice;
@@ -137,6 +153,12 @@
           G.win(ctx, 6, hy, 60, 12, { fill1: pl ? '#ffe0ec' : '#fff4f8', fill2: '#f8d8e4', alpha: 1 });
           G.hearts.row(ctx, who, 16, hy + 3);
         }
+      }
+      if (this.opts.show) { // something held up to look at (G.intro.show): a framed picture over the box, bobbing
+        const bob = Math.round(Math.sin(this.t / 9) * 2), px = this.boxX + this.boxW / 2 - 26, py = (top ? y + h + 8 : y - 66) + bob;
+        G.win(ctx, px, py, 52, 52, { fill1: '#fff8e8', fill2: '#f0e4c8', alpha: 1 });
+        G.drawIcon16(ctx, this.opts.show, px + 2, py + 2, 3);
+        if (this.t % 40 === 0 && G.fx.twinkle) G.fx.twinkle(px + 46, py + 6);
       }
       G.win(ctx, this.boxX, y, this.boxW, h);
       const name = this.opts.name;

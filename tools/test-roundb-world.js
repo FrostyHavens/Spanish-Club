@@ -37,6 +37,7 @@ async function openFake(browser, name, touch) {
 async function town(g, x, y, dir, o = {}) {
   await g.ev(([x, y, dir, o]) => {
     G.st.newGame(); G.state.name = 'Luz'; Object.assign(G.state.flags, { intro: true }, o.flags || {}); Object.assign(G.state.quests, o.quests || {}); Object.assign(G.state.pages, o.pages || {});
+    (o.met || []).forEach(id => G.words.meet(id, 'test'));
     G.goto('villa', x, y, dir);
   }, [x, y, dir, o]);
   await g.fieldIdle('villa');
@@ -81,9 +82,9 @@ async function ipad(browser) {
     const duck = await g.ev(() => { const a = G.animals.find('pato'); Object.assign(a, { x: 40 * 24 + 12, y: 21 * 24 + 16, st: 'idle', t: 1e9, react: 0 }); return G.animals.screen(a); }); // on screen
     await g.until(([x, y]) => !!G.animals.hit(G.field, { x, y }), duck, 'the duck under the tap');
     await g.tap(...duck);
-    const st = await g.ev(() => ({ b: G.world.bubble && G.world.bubble.id, cry: G.world.bubble && G.world.bubble.cry, album: G.state.album.pato, met: G.animals.met('pato'), seen: G.st.seen('pato') && G.st.seen('cuac'), walk: !!G.field.route, sb: G.world.sayBack && G.world.sayBack.id }));
+    const st = await g.ev(() => ({ b: G.world.bubble && G.world.bubble.id, cry: G.world.bubble && G.world.bubble.cry, album: G.state.album.pato, met: G.animals.met('pato'), seen: G.st.seen('pato') && !G.st.seen('cuac'), walk: !!G.field.route, sb: G.world.sayBack && G.world.sayBack.id }));
     check('animals: tapping the duck says "el pato / ¡Cuac, cuac!" and walks you toward it', st.b === 'pato' && st.cry === '¡Cuac, cuac!' && st.walk, JSON.stringify(st));
-    check('animals: the album records it (first, map, n) and pato + cuac are seen', st.met && st.album.n === 1 && st.album.map === 'villa' && st.album.first > 0 && st.seen, JSON.stringify(st));
+    check('animals: the album records it (first, map, n); asking what it is meets pato (cuac waits for its own puzzle)', st.met && st.album.n === 1 && st.album.map === 'villa' && st.album.first > 0 && st.seen, JSON.stringify(st));
     check('animals: the say-it-back mic shows beside the word', st.sb === 'pato');
     await g.frames(10); await g.shot('duck_named');
 
@@ -96,10 +97,9 @@ async function ipad(browser) {
     await g.until(() => G.st.saidCount('pato') === 1, null, 'the speaking star');
     const sr = await g.ev(s0 => ({ stars: G.state.stars - s0, day: G.state.sayback.pato === G.world.today(), said: G.state.album.pato.said }), s0);
     check('saying: "el pato" gives a speaking star, marks today and the album', sr.stars === 1 && sr.day && sr.said, JSON.stringify(sr));
-    await g.until(() => G.top().constructor.name === 'WordCard', null, 'the new word card');
-    check('saying: the word is learned, with a "¡Palabra nueva!" card that has no mic of its own', await g.ev(() => G.st.knows('pato') && !G.top().mic));
-    await g.frames(25); await g.shot('pato_learned');
-    await g.drive(() => G.top() === G.field && !G.field.locked, 'the word card');
+    await g.frames(60);
+    check('saying: said right after hearing it, it\'s a cued use: no gold card, the word stays met', await g.ev(() => G.top() === G.field && G.st.stage('pato') === 1 && G.state.words.pato.cue === 1));
+    await g.frames(25); await g.shot('pato_said');
     await idle(g);
     // once per word per day
     await g.ev(() => { const a = G.animals.find('pato'); a.st = 'idle'; a.t = 1e9; });
@@ -123,7 +123,7 @@ async function ipad(browser) {
     await g.press('v');
     await g.until(() => G.st.saidCount('banco') === 1, null, 'the speaking star by V');
     check('saying: V listens too, "el banco" -> a speaking star', await g.ev(s1 => G.state.stars === s1 + 1, s1));
-    await g.drive(() => G.top() === G.field && !G.field.locked && G.st.knows('banco'), 'the word card');
+    await g.drive(() => G.top() === G.field && !G.field.locked && G.st.saidCount('banco') === 1, 'the map');
 
     // a far object: walk up to the fountain, it names itself (its page was found already); the fish jumps
     await town(g, 18, 15, 'up', { pages: { numeros: true } });
@@ -175,11 +175,12 @@ async function before(browser) {
     await g.drive(() => G.top() === G.field && !G.field.locked, 'the search');
     check('before: a search spot still searches (it wins over an animal on it)', await g.ev(() => !!G.state.searched['villa:13,22']));
     // a page sparkle on a named thing: the page first
-    await town(g, 13, 10, 'up');
+    await town(g, 13, 10, 'up', { met: ['arbol', 'flor', 'fuente', 'banco'] });
     await g.tapTile(13, 9);
-    await g.until(() => G.top().constructor.name === 'Notebook', null, 'the page on the bench');
-    check('before: a notebook page on a bench is found first', await g.ev(() => G.st.hasPage('cosas')));
-    await g.drive(() => G.top() === G.field && !G.field.locked, 'the notebook');
+    await g.until(() => G.top().constructor.name === 'PagePuzzle', null, 'the page puzzle on the bench');
+    check('before: a notebook page puzzle on a bench comes first', await g.ev(() => G.top().page === 'cosas'));
+    await g.drive(() => G.top() === G.field && !G.field.locked, 'the page puzzle');
+    check('before: solved, the page puzzle is done (no sparkle)', await g.ev(() => G.st.hasPage('cosas') && !G.pages.ready('cosas')));
     check('before: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
 }

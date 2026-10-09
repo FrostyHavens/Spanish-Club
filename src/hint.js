@@ -33,6 +33,7 @@
     const take = (x, y, ox, oy) => { const d = Math.abs(x - p.x) + Math.abs(y - p.y); if (!best || d < best.d) best = { d, x: x * T + ox + T / 2 - cx, y: y * T + oy + T / 2 - cy }; };
     for (const n of f.npcs) if (n.spec && !n.hidden && alerting(n)) take(n.x, n.y, n.ox || 0, n.oy || 0);
     if (G.errands) for (const g of G.errands.targets(f)) take(Math.floor(g.x / T), Math.floor(g.y / T), g.x % T - T / 2, g.y % T - T / 2); // errand places, animals to find
+    if (G.intro) for (const g of G.intro.targets(f)) take(Math.floor(g.x / T), Math.floor(g.y / T), 0, 0); // a find-it puzzle's thing (intro.js)
     const home = G.day && G.day.homeDoor && G.day.homeDoor(f); if (home) take(home[0], home[1], 0, 0);
     if (!best) for (const ex of f.def.exits || []) if (ex.to && (!ex.cond || ex.cond()) && waitsInside(ex.to)) take(ex.x, ex.y, 0, 0);
     if (!best || (best.x >= 10 && best.x <= G.W - 10 && best.y >= 10 && best.y <= G.H - 10)) return best && place(best.x, best.y);
@@ -51,6 +52,7 @@
     const name = s.constructor && s.constructor.name;
     if (name === 'TextBox' && !(s.opts && s.opts.auto) && s.lines && s.shown >= s.chars(0, s.scroll + 3)) return place(s.boxX + s.boxW - 11, s.boxY() + 51, true);
     if (name === 'Notebook' && s.closeXY) { const [x, y] = s.closeXY(); return place(x + 10, y + 12); }
+    if (name === 'PagePuzzle' && s.closeXY) return null; // a page puzzle: never point at an answer
     if (TAP_ON[name]) return place(G.W / 2, G.H - 32, true); // a tap anywhere goes on: below the card
     return null;
   }

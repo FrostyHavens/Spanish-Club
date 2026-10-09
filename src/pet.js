@@ -10,7 +10,7 @@
 // it (a speaking star, once per word per day; a care word works too: "¡la pelota!" throws the ball). Tapping works too.
 // Learning a trick takes 3 good tries: tapping its card asks "¡Dile a Canelo!" (G.ask with {word} cards, so the mic is
 // built in); saying it straight at the menu counts too. Try 1: he tilts his head and half does it; try 2: nearly;
-// try 3: he does it, confetti, a heart and "¡Palabra nueva!" for the command.
+// try 3: he does it, confetti and a heart (and the gold card for the command once the word model says it's remembered).
 // Care: food (crunch crunch, el hueso is his favourite: a gift heart), water (lap lap), the ball (thrown; he fetches
 // it), a pat (hearts float up), la cama (at home he goes to his bed and sleeps, z z z; he sleeps there at night too).
 // Every action shows Canelo's own hearts (G.hearts 'canelo': care +1 up to the daily cap, +1 per trick learned).
@@ -328,14 +328,16 @@
   // one question: "¡Dile a Canelo!" (picture cards; say it or tap it) -> true if right on the first try
   P.ask = function* (id, o = {}) {
     const c = G.wordChoices(id, [id].concat(others(id, o.pool)), 3, { label: k => LABEL[k] || null });
-    return yield* G.ask({ prompt: o.prompt || '¡Dile a Canelo!', en: o.en || 'Tell Canelo! (say the trick, or tap it)', show: o.show === false ? null : id, choices: c.choices, answer: c.answer, layout: 'cards', who: 'canelo' });
+    // (the trick's picture over the question only while it's new: once met, the child has to remember it)
+    return yield* G.ask({ prompt: o.prompt || '¡Dile a Canelo!', en: o.en || 'Tell Canelo! (say the trick, or tap it)', show: o.show === false || S.seen(id) ? null : id, choices: c.choices, answer: c.answer, layout: 'cards', who: 'canelo' });
   };
   // for errands (a show): ask for any trick, then he does it
   P.command = function* (id, o = {}) { const first = yield* P.ask(id, o); yield* P.trick(id, { amp: P.knows(id) ? 1 : 0.7 }); return first; };
   // one good try at the trick he's learning; spoken: it was said straight at the menu (no question)
   P.practice = function* (id, spoken) {
     id = id || P.learning(); if (!id) return;
-    if (!spoken) { const first = yield* P.ask(id); S.practiced(id, first); }
+    if (!spoken) yield* P.ask(id); // (G.ask credits the word, words.js)
+    else G.words.answerRight(id, { said: true, mode: 'both', noStar: true }); // said at the menu, where its card is written
     const p = st(); p.learning = id; p.tricks[id] = Math.min(P.NEED, (p.tricks[id] | 0) + 1);
     const k = p.tricks[id], [x, y] = dogXY();
     S.autosave();
@@ -521,14 +523,15 @@
   P.act = function* (v) {
     const f = G.field, id = v.id, spoken = !!v.spoken;
     if (trick(id)) {
-      if (P.knows(id)) { if (spoken) spokeStar(id); yield* P.trick(id); careHeart(); G.fx.say('¡Muy bien!', ...dogXY().map((q, i) => q - (i ? 26 : 0)), '#f8e060', true); yield 10; }
+      if (P.knows(id)) { if (spoken) { spokeStar(id); G.words.answerRight(id, { said: true, mode: 'both', noStar: true }); } yield* P.trick(id); careHeart(); G.fx.say('¡Muy bien!', ...dogXY().map((q, i) => q - (i ? 26 : 0)), '#f8e060', true); yield 10; }
       else if (id === P.learning()) { if (spoken) spokeStar(id); yield* P.practice(id, spoken); }
       if (G.hearts) yield* G.hearts.milestones('canelo');
       return false;
     }
     if (W(id)) { if (G.vocabLog && !spoken) G.vlog('picked', id, { via: 'pet-menu' }); S.see(id); }
     let learnIt = false;
-    if (spoken) { spokeStar(id); learnIt = !S.knows(id); }
+    // said from its picture (the care cards have no words): a retrieval that can make it gold (words.js)
+    if (spoken) { spokeStar(id); learnIt = !!(W(id) && G.words.answerRight(id, { said: true, mode: 'say', noStar: true }).gold); }
     if (id === 'hueso' || id === 'galleta') { yield* P.play('eat', { item: id }); if (!(G.hearts && G.hearts.gift('canelo', id))) careHeart(); }
     else if (id === 'agua') { yield* P.play('drink'); careHeart(); }
     else if (id === 'pelota') { yield* P.play('fetch'); careHeart(); }

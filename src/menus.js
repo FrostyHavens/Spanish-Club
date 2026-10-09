@@ -94,68 +94,83 @@
   }
   G.kidMenu = function () { const w = new G.Wait(); G.push(new FieldMenu(w)); return w; };
 
-  // ---------- Cuaderno: one page per topic, found around town ----------
+  // ---------- Cuaderno: one page per topic; a word is written in the moment it is met ----------
+  // Only topics with a met word have a page (G.pages.visible, intro.js). On a page: each met word's picture and word
+  // (blue, or gold once remembered), its stars (known 1, remembered 2, solid 3) and a little mic if it was said; the
+  // words still to meet are empty dotted frames. Tap a word to hear it; < > (or left / right) turns the page.
   class Notebook {
-    constructor(w, start) { G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; this.pi = Math.max(0, D().pageOrder.indexOf(start)); this.wi = 0; }
-    page() { return D().pageOrder[this.pi]; }
-    words() { return D().pages[this.page()].words; }
+    constructor(w, start) {
+      G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; this.list = G.pages.visible();
+      this.pi = Math.max(0, this.list.indexOf(start)); this.wi = 0; this.flip = 0;
+    }
+    page() { return this.list[this.pi]; }
+    words() { return this.page() ? D().pages[this.page()].words : []; }
     // tap areas (shared with draw): word k on the page, the < > page buttons around the page dots, close
-    cellRect(k) { return { x: 18 + (k % 3) * 96, y: 34 + Math.floor(k / 3) * 58, w: 92, h: 56 }; }
-    prevXY() { return [G.W / 2 - 82, 4]; } // the page dots sit between these (14 pages since Round B)
+    cellRect(k) { return { x: 22 + (k % 3) * 94, y: 36 + Math.floor(k / 3) * 58, w: 90, h: 56 }; }
+    prevXY() { return [G.W / 2 - 82, 4]; }
     nextXY() { return [G.W / 2 + 62, 4]; }
     closeXY() { return [G.W - 30, 8]; }
-    turn(dx) { this.pi = (this.pi + dx + D().pageOrder.length) % D().pageOrder.length; this.wi = 0; G.audio.sfx('select'); }
+    turn(dx) { if (this.list.length < 2) return; this.pi = (this.pi + dx + this.list.length) % this.list.length; this.wi = 0; this.flip = 8 * dx; G.audio.sfx('note'); }
+    say(k) { const id = this.words()[k]; if (id && S().seen(id)) { G.speak(G.baseForm(id)); return true; } G.audio.sfx('boop'); return false; }
     update() {
-      this.t++;
-      const d = G.input.repDir(14, 5), found = S().hasPage(this.page()), n = this.words().length;
+      this.t++; if (this.flip) this.flip -= Math.sign(this.flip);
+      const d = G.input.repDir(14, 5), n = this.words().length;
       if (G.input.p('B') || G.closeHit(...this.closeXY())) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); return; }
       if (G.btnHit(...this.prevXY())) { this.turn(-1); return; }
       if (G.btnHit(...this.nextXY())) { this.turn(1); return; }
-      if (found) for (let k = 0; k < n; k++) if (G.tapIn(this.cellRect(k))) { // tap a word: hear it
-        if (this.wi !== k) G.audio.sfx('cursor');
-        this.wi = k; if (S().seen(this.words()[k])) G.speak(G.baseForm(this.words()[k]));
-      }
+      for (let k = 0; k < n; k++) if (G.tapIn(this.cellRect(k))) { if (this.wi !== k) G.audio.sfx('cursor'); this.wi = k; this.say(k); } // tap a word: hear it
       // left/right moves within the page's 3-column grid, and past its edge turns the page
       if (d === 'left' || d === 'right') {
         const col = this.wi % 3, dx = d === 'left' ? -1 : 1;
-        if (found && col + dx >= 0 && col + dx < 3 && this.wi + dx < n) { this.wi += dx; G.audio.sfx('cursor'); }
+        if (col + dx >= 0 && col + dx < 3 && this.wi + dx < n) { this.wi += dx; G.audio.sfx('cursor'); }
         else { this.turn(dx); return; }
       }
-      if (found && (d === 'up' || d === 'down')) { const k = this.wi + (d === 'up' ? -3 : 3); if (k >= 0 && k < n) { this.wi = k; G.audio.sfx('cursor'); } }
-      if (found && (G.input.p('A') || G.input.p('C'))) { const id = this.words()[this.wi]; if (S().seen(id)) G.speak(G.baseForm(id)); }
+      if (d === 'up' || d === 'down') { const k = this.wi + (d === 'up' ? -3 : 3); if (k >= 0 && k < n) { this.wi = k; G.audio.sfx('cursor'); } }
+      if (G.input.p('A') || G.input.p('C')) this.say(this.wi);
     }
     draw(ctx) {
       G.win(ctx, 6, 6, G.W - 12, G.H - 12, { fill1: '#f4ecd8', fill2: '#e0d4b8', alpha: 1 });
-      const pid = this.page(), found = S().hasPage(pid);
-      G.iconBtn(ctx, 'back', ...this.prevXY()); G.iconBtn(ctx, 'next', ...this.nextXY()); G.closeBtn(ctx, ...this.closeXY());
-      // page dots
-      const n = D().pageOrder.length, step = Math.min(14, Math.floor(118 / n)), dw = Math.max(5, step - 3);
-      D().pageOrder.forEach((p, k) => {
-        const x = Math.round(G.W / 2 - (n * step - (step - dw)) / 2 + k * step);
-        ctx.fillStyle = k === this.pi ? '#a05020' : S().hasPage(p) ? '#c8a070' : '#e8dcc0';
-        ctx.fillRect(x, 11, dw, 6); ctx.fillStyle = '#7a4a20'; ctx.fillRect(x, 17, dw, 1);
-      });
-      if (!found) {
-        ctx.globalAlpha = 0.35; G.drawIcon16(ctx, 'pagina', G.W / 2 - 24, 64, 3); ctx.globalAlpha = 1;
+      for (let y = 30; y < G.H - 12; y += 12) { ctx.fillStyle = '#e8dcc0'; ctx.fillRect(18, y, G.W - 30, 1); } // ruled lines
+      for (let y = 22; y < G.H - 16; y += 22) { ctx.fillStyle = '#7a4a20'; ctx.fillRect(9, y, 6, 4); ctx.fillStyle = '#c8b090'; ctx.fillRect(10, y + 1, 4, 2); } // the rings
+      G.closeBtn(ctx, ...this.closeXY());
+      const pid = this.page();
+      if (!pid) { // nothing met yet: the notebook waits for its first word
+        ctx.globalAlpha = 0.4; G.drawIcon16(ctx, 'pagina', G.W / 2 - 24, 64, 3); ctx.globalAlpha = 1;
         G.bigText(ctx, '?', G.W / 2, 140, 3, '#a08060', null);
         return;
       }
-      const tp = D().topics[D().pages[pid].topic];
-      G.textC(ctx, tp.name, G.W / 2, 24, '#a05020', null);
-      if (G.enVisible()) G.text(ctx, tp.en, 16, 24, '#a09070', null);
-      this.words().forEach((id, k) => {
-        const R = this.cellRect(k), cx = R.x + 4, cy = R.y + 2, sel = k === this.wi;
-        const wd = D().words[id], seen = S().seen(id), kn = S().knows(id);
-        if (sel) { ctx.fillStyle = '#f8e0a0'; ctx.fillRect(cx - 4, cy - 2, 92, 56); }
-        G.drawIcon16(ctx, wd, cx + 26, cy, 2);
-        if (seen) G.textC(ctx, wd.es.split(' / ')[0], cx + 42, cy + 35, kn ? '#a06008' : '#2860a8', null);
-        else G.textC(ctx, '? ? ?', cx + 42, cy + 35, '#b8a888', null);
-        if (G.enVisible()) G.textC(ctx, wd.en, cx + 42, cy + 45, '#a09070', null);
-        else if (kn) { const st = S().wordStars(id); for (let s = 0; s < 3; s++) G.text(ctx, STAR, cx + 30 + s * 8, cy + 45, s < st ? '#e0a010' : '#d8ccb0', null); }
-        if (seen && S().saidCount(id)) { // said out loud (the mic): a little mic with a sound wave
-          G.mic.glyph(ctx, cx + 72, cy + 2, '#2a8a9a');
-          ctx.fillStyle = '#2a8a9a'; ctx.fillRect(cx + 81, cy + 2, 1, 1); ctx.fillRect(cx + 82, cy + 3, 1, 3); ctx.fillRect(cx + 81, cy + 6, 1, 1);
+      if (this.list.length > 1) { G.iconBtn(ctx, 'back', ...this.prevXY()); G.iconBtn(ctx, 'next', ...this.nextXY()); }
+      // page dots (one per page you have)
+      const n = this.list.length, step = Math.min(14, Math.floor(118 / Math.max(1, n))), dw = Math.max(5, step - 3);
+      this.list.forEach((p, k) => {
+        const x = Math.round(G.W / 2 - (n * step - (step - dw)) / 2 + k * step);
+        ctx.fillStyle = k === this.pi ? '#a05020' : '#c8a070'; ctx.fillRect(x, 11, dw, 6); ctx.fillStyle = '#7a4a20'; ctx.fillRect(x, 17, dw, 1);
+      });
+      const ws = this.words(), got = ws.filter(id => S().seen(id)).length, tp = D().topics[D().pages[pid].topic];
+      G.textC(ctx, tp.name, G.W / 2, 25, '#a05020', null);
+      G.textR(ctx, got + '/' + ws.length, G.W - 40, 25, '#a08060', null);
+      if (G.enVisible()) G.text(ctx, tp.en, 22, 25, '#a09070', null);
+      const dx = this.flip * 3;
+      ws.forEach((id, k) => {
+        const R = this.cellRect(k), cx = R.x + dx, cy = R.y + 2, sel = k === this.wi, st = S().stage(id);
+        if (st < 1) { // still to meet: an empty dotted frame
+          ctx.fillStyle = '#d0c0a0'; for (let i = 0; i < 32; i += 4) { ctx.fillRect(cx + 29 + i, cy + 2, 2, 1); ctx.fillRect(cx + 29 + i, cy + 33, 2, 1); ctx.fillRect(cx + 29, cy + 2 + i, 1, 2); ctx.fillRect(cx + 60, cy + 2 + i, 1, 2); }
+          return;
         }
+        const wd = D().words[id], r = G.words.rec(id), fresh = r && r.met != null && G.words.now() - r.met < 120;
+        if (sel) { ctx.fillStyle = '#f8e0a0'; ctx.fillRect(cx - 2, cy - 2, R.w, R.h); }
+        const hop = sel ? Math.round(Math.abs(Math.sin(this.t / 8)) * -2) : 0;
+        ctx.fillStyle = st >= 3 ? '#e8b830' : '#c8b8e8'; ctx.fillRect(cx + 27, cy + hop, 36, 36);
+        ctx.fillStyle = '#fffaf0'; ctx.fillRect(cx + 28, cy + 1 + hop, 34, 34);
+        G.drawIcon16(ctx, wd, cx + 29, cy + 2 + hop, 2);
+        G.textC(ctx, wd.es.split(' / ')[0], cx + 45, cy + 38, st >= 3 ? '#a06008' : '#2860a8', null);
+        if (G.enVisible()) G.textC(ctx, wd.en, cx + 45, cy + 47, '#a09070', null);
+        else { const ns = S().wordStars(id); for (let s2 = 0; s2 < 3; s2++) G.text(ctx, STAR, cx + 33 + s2 * 8, cy + 47, s2 < ns ? '#e0a010' : '#d8ccb0', null); }
+        if (S().saidCount(id)) { // said out loud (the mic): a little mic with a sound wave
+          G.mic.glyph(ctx, cx + 68, cy + 2, '#2a8a9a');
+          ctx.fillStyle = '#2a8a9a'; ctx.fillRect(cx + 77, cy + 2, 1, 1); ctx.fillRect(cx + 78, cy + 3, 1, 3); ctx.fillRect(cx + 77, cy + 6, 1, 1);
+        }
+        if (fresh && (this.t + k * 7) % 40 < 20) { ctx.fillStyle = '#ffffff'; ctx.fillRect(cx + 24, cy + 2, 5, 1); ctx.fillRect(cx + 26, cy, 1, 5); ctx.fillStyle = '#f8c020'; ctx.fillRect(cx + 26, cy + 2, 1, 1); } // just met: it twinkles
       });
     }
   }

@@ -55,7 +55,9 @@ async function start(g, o = {}) {
 }
 const heard = (g, n) => g.ev(n => window.__sfx.includes(n), n);
 async function still(g, label) { await g.ev(() => { G.speedMul = 0; }); await g.page.waitForTimeout(60); await g.shot(label); await g.ev(() => { G.speedMul = 1; }); }
-const ask = (g, q) => g.ev(q => { window.__r = null; G.field.tasks.add((function* () { window.__r = yield* G.ask(q); })()); }, q);
+// (the gold "¡Palabra de oro!" card now comes when the word model says a word is remembered, learn.js; this test is about
+// the mic on questions and on that card, so each question is followed by the card for its word, made gold)
+const ask = (g, q) => g.ev(q => { window.__r = null; G.field.tasks.add((function* () { const r = yield* G.ask(q); yield G.learnWords(q.learn, { force: true }); window.__r = r; })()); }, q);
 const choiceUp = g => g.until(() => G.top().constructor.name === 'Choice' && G.top().t > 8 && G.input.ready(), null, 'the question');
 const cards = (...ids) => ids.map(id => ({ word: id }));
 const overlap = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;

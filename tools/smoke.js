@@ -100,7 +100,7 @@ async function touchRun(browser) {
     check('ipad: the house waits for Mamá\'s intro (a tap doesn\'t walk)', await g.ev(() => G.field.locked && !G.field.route));
     await g.until(() => G.top().constructor.name === 'TextBox', null, 'Mamá to speak');
     await g.drive(() => G.state.flags.intro && G.top() === G.field && !G.field.locked, 'Mamá\'s intro', { wrongFirst: true });
-    check('ipad: Mamá\'s intro played (once) by tapping', await g.ev(() => ['hola', 'buenosdias', 'adios'].every(G.st.knows) && window.__intros === 1), 'intros: ' + await g.ev(() => window.__intros));
+    check('ipad: Mamá\'s intro played (once) by tapping: hola, buenos días and adiós are met', await g.ev(() => ['hola', 'buenosdias', 'adios'].every(G.st.seen) && window.__intros === 1), 'intros: ' + await g.ev(() => window.__intros));
     await g.shot('home');
 
     const door = await g.ev(() => [G.maps.casa.exits[0].x, G.maps.casa.exits[0].y]);
@@ -116,6 +116,7 @@ async function touchRun(browser) {
     check('ipad: the menu button opens the menu and doesn\'t walk', await g.ev(b => !G.field.route && G.field.player.x === b[0] && G.field.player.y === b[1], before));
     await g.frames(4); await g.shot('menu');
     const tapIcon = async k => g.tapRect(await g.ev(k => G.top().rect(k), k));
+    await g.ev(() => G.words.meet('uno', 'test')); // a second topic met: a second page
     await tapIcon('book');
     await g.until(() => G.top().constructor.name === 'Notebook', null, 'the notebook');
     await g.tapBtn(await g.ev(() => G.top().nextXY()));
@@ -182,9 +183,13 @@ async function walkRun(browser) {
     check('walk: tapping an object walks up to it and searches it', String(await facing()) === '2,6');
 
     await go('villa', 22, 23, 'up', { intro: true });
-    await g.tapTile(21, 20); // a hidden notebook page sparkles here
-    await g.until(() => G.top().constructor.name === 'Notebook', null, 'the page to be found');
-    check('walk: tapping a sparkle finds the page', await g.ev(() => G.st.hasPage('colores')) && String(await facing()) === '21,20');
+    check('walk: a page puzzle waits until 4 words of its page are met (no sparkle)', await g.ev(() => !G.pages.ready('colores')));
+    await g.ev(() => ['rojo', 'azul', 'verde', 'amarillo'].forEach(id => G.words.meet(id, 'test')));
+    await g.tapTile(21, 20); // a notebook page puzzle sparkles here
+    await g.until(() => G.top().constructor.name === 'PagePuzzle', null, 'the page puzzle');
+    check('walk: tapping a sparkle opens its page puzzle', await g.ev(() => G.top().page === 'colores') && String(await facing()) === '21,20');
+    await g.tapBtn(await g.ev(() => G.top().closeXY()));
+    check('walk: closing the puzzle leaves the sparkle', await g.ev(() => G.top() !== null && G.pages.ready('colores') && !G.st.hasPage('colores')));
 
     await go('villa', 5, 18, 'down', { intro: true });
     await g.tapTile(10, 21);
@@ -298,7 +303,7 @@ async function keyboardRun(browser) {
     await g.until(() => G.field && G.field.mapId === 'casa' && G.state.name === 'Leo', null, 'the house');
     await g.until(() => G.top().constructor.name === 'TextBox', null, 'Mamá to speak');
     await g.drive(() => G.state.flags.intro && G.top() === G.field && !G.field.locked, 'Mamá\'s intro');
-    check('desktop: Mamá\'s intro played with the keyboard', await g.ev(() => ['hola', 'buenosdias', 'adios'].every(G.st.knows)));
+    check('desktop: Mamá\'s intro played with the keyboard', await g.ev(() => ['hola', 'buenosdias', 'adios'].every(G.st.seen)));
     await g.page.keyboard.down('ArrowDown');
     await g.until(() => G.field.mapId === 'villa', null, 'leaving the house');
     await g.page.keyboard.up('ArrowDown');

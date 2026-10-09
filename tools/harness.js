@@ -73,6 +73,10 @@ class Game {
         if (r.name === 'Choice') Object.assign(r, { answer: s.o.answer == null ? 0 : s.o.answer, rects: s.rects(), off: s.ch.map(c => !!c.off), cards: s.cards, i: s.i, spk: s.spk() });
         if (r.name === 'TextBox') Object.assign(r, { pi: s.pi, shown: s.shown, all: s.chars(0, s.scroll + 3), spk: s.spk(), noVoice: !!s.opts.noVoice });
         if (r.name === 'Notebook' || r.name === 'PetMenu' || r.name === 'Album') r.close = s.closeXY();
+        if (r.name === 'PagePuzzle') { // the next picture to match and its word (intro.js)
+          const k = s.pics.findIndex((p, k) => !s.match[k]);
+          Object.assign(r, { done: s.done, pic: k >= 0 ? s.picRect(k) : null, word: k >= 0 ? s.wordRect(s.words.indexOf(s.pics[k])) : null, sel: s.sel });
+        }
         return r;
       });
       const first = s.name && !this.seen.has(s.name + (s.cards ? 'c' : ''));
@@ -119,6 +123,13 @@ class Game {
         }
         case 'PetMenu': case 'Album': // Round B screens nobody asked for here: just close them
           if (this.touch) await this.tapBtn(s.close); else await this.press('x');
+          break;
+        case 'PagePuzzle': // a page puzzle: tap a picture, then its word (o.puzzleWrong: one wrong pair first)
+          if (s.t <= 10) { await this.frames(12 - s.t); break; }
+          if (first) { await this.shot('page_puzzle'); this.seen.add('PagePuzzle'); }
+          if (s.done) { if (s.done > 72) await this.tap(160, 120); else await this.frames(8); break; }
+          if (this.touch) { await this.tapRect(s.pic); await this.tapRect(await this.ev(() => { const s = G.top(), k = s.pics.findIndex((p, k) => !s.match[k]); return s.wordRect(s.words.indexOf(s.pics[k])); })); }
+          else { await this.press('Enter'); const j = await this.ev(() => { const s = G.top(); return s.words.indexOf(s.pics[s.sel.k]); }); for (let n = 0; n < 4 && await this.ev(() => G.top().ki) !== j; n++) await this.press('ArrowRight'); await this.press('Enter'); }
           break;
         case 'Notebook':
           if (first) { await this.frames(4); await this.shot('notebook'); this.seen.add('Notebook'); }

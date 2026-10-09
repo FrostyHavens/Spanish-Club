@@ -13,10 +13,12 @@
     return {
       flags: {}, searched: {}, playTime: 0,
       loc: { map: 'casa', x: 4, y: 4, dir: 'down' },
-      // words: id -> {learned, right: first-try correct answers, wrong, said: times said out loud (mic.js; older
-      // saves don't have it)}. Present = seen at least once.
+      // words: id -> the word model's record (words.js: stage, Leitner box, due, counts). Older saves held
+      // {learned, right, wrong, said} (present = seen); words.js migrates those when it first reads them.
       words: {},
-      pages: {},          // notebook pages found: id -> true
+      wm: { clock: 0, sess: 0, day: 0, date: '' }, // words.js: play-time clock, session and day counters
+      finds: {},          // intro.js: find-it puzzles going on: word id -> {who, map, at, wrong, found}
+      pages: {},          // notebook page puzzles solved (intro.js): id -> {d: the day it was solved} (older saves: true)
       quests: {},         // id -> 'active' | 'done'
       stars: 0,
       opts: { english: false },
@@ -44,29 +46,29 @@
   S.playerName = () => (G.state && G.state.name) || D().player.name;
   S.isGirl = () => !!(G.state && G.state.look && G.state.look.gender === 'nina');
 
-  // ---------- Words: unseen -> seen (met in a sentence or on a page) -> learned (used correctly) ----------
-  const rec = id => G.state.words[id] || (G.state.words[id] = { learned: false, right: 0, wrong: 0 });
-  // (G.vocabLog: the dev-only vocabulary log, src/vocablog.js; off and never saved unless a test turns it on)
-  S.see = id => { if (D().words[id] && !G.state.words[id]) { rec(id); S.autosave(); if (G.vocabLog) G.vlog('seen-first', id); } };
-  S.seen = id => !!G.state.words[id];
-  S.knows = id => !!(G.state.words[id] && G.state.words[id].learned);
-  S.learn = function (id) { const w = rec(id); if (w.learned) return false; w.learned = true; S.autosave(); if (G.vocabLog) G.vlog('learned', id); return true; };
-  S.practiced = function (id, firstTry) {
-    const w = rec(id);
-    if (firstTry) { w.right++; G.state.stars++; } else w.wrong++;
-    S.autosave();
-  };
+  // ---------- Words: the older helpers, now thin wrappers over the word model (words.js) ----------
+  // seen = met (stage 1+), knows = gold (stage 3+, "remembered"), learned count = known (stage 2+). Appearing in a
+  // sentence, on a card or in the bag no longer makes a word seen: see() only counts a meeting of a word already met.
+  const WM = () => G.words;
+  S.see = id => WM().encounter(id, 'seen');
+  S.seen = id => WM().met(id);
+  S.knows = id => WM().stage(id) >= 3;
+  S.stage = id => WM().stage(id);
+  // (tests and tools) make a word gold at once; true if it wasn't
+  S.learn = function (id) { const r = WM().rec(id, true); if (!r || r.st >= 3) return false; if (r.st < 1) WM().meet(id, 'learn'); r.st = 3; r.learned = true; r.s3 = WM().day(); S.autosave(); if (G.vocabLog) G.vlog('learned', id); return true; };
+  S.practiced = (id, firstTry) => (firstTry ? WM().answerRight(id, { firstTry: true }) : WM().answerWrong(id));
   // said out loud with the mic (mic.js): a bonus star, counted in stars; S.micStars() is the speaking stars so far
-  S.said = function (id) { const w = rec(id); w.said = (w.said | 0) + 1; G.state.stars++; S.autosave(); if (G.vocabLog) G.vlog('said', id, { via: G.top() && G.top().constructor.name }); };
+  S.said = function (id) { const w = WM().rec(id, true); if (!w) return; w.said = (w.said | 0) + 1; WM().encounter(id); G.state.stars++; S.autosave(); if (G.vocabLog) G.vlog('said', id, { via: G.top() && G.top().constructor.name }); };
   S.saidCount = id => (G.state.words[id] && G.state.words[id].said) | 0;
   S.micStars = (s = G.state) => Object.keys(s.words).reduce((n, id) => n + ((s.words[id] && s.words[id].said) | 0), 0);
-  // 0..3 stars per word, from first-try answers
-  S.wordStars = id => { const w = G.state.words[id]; return w ? Math.min(3, w.right) : 0; };
-  S.learnedCount = () => Object.keys(G.state.words).filter(S.knows).length;
+  // 0..3 stars per word: its stage (known 1, remembered 2, solid 3)
+  S.wordStars = id => WM().stars(id);
+  S.learnedCount = () => WM().count(2);
 
-  // ---------- Notebook pages ----------
-  S.findPage = id => { const fresh = !G.state.pages[id]; G.state.pages[id] = true; if (fresh && G.vocabLog) G.vlog('page', D().pages[id].words, { page: id }); (D().pages[id].words || []).forEach(S.see); S.autosave(); return fresh; };
-  S.hasPage = id => !!G.state.pages[id];
+  // ---------- Notebook page puzzles (intro.js) ----------
+  S.solvePage = id => { G.state.pages[id] = { d: WM().day() }; S.autosave(); };
+  S.hasPage = id => !!G.state.pages[id]; // its puzzle was solved (a page is no longer handed out)
+  S.findPage = S.solvePage; // (the old name)
 
   // ---------- Errands ----------
   S.quest = id => G.state.quests[id];
@@ -104,7 +106,7 @@
   S.summary = function (n) {
     const s = S.read(n); if (!s) return null;
     return { slot: n, name: s.name || D().player.name, look: s.look, stars: s.stars | 0, savedAt: s.savedAt || 0,
-      words: Object.keys(s.words).filter(id => s.words[id] && s.words[id].learned).length };
+      words: Object.keys(s.words).filter(id => { const r = s.words[id]; return r && (r.st == null || r.st >= 1); }).length }; // words in the notebook (met; an older save's seen words count)
   };
   S.anySave = () => [1, 2, 3].some(n => S.read(n));
   S.hasSave = S.anySave; S.save = () => S.saveNow(); // the old names (there is no manual saving any more)
@@ -113,10 +115,11 @@
     const s = S.read(n); if (!s) return false;
     clearTimeout(timer); timer = 0;
     G.state = devicePrefs(s); S.slot = n; bound = s;
+    if (G.words) G.words.newSession('load'); // a new session (and a new day on a new date)
     return true;
   };
   // a new game (G.state, after the creator) takes slot n from now on, saved right away
-  S.begin = function (n) { S.slot = n; bound = G.state; return S.saveNow(); };
+  S.begin = function (n) { S.slot = n; bound = G.state; if (G.words && !G.state.wm.sess) G.words.newSession('new'); return S.saveNow(); };
   // leaving the game (back to the title): save, then stop saving
   S.close = function () { S.saveNow(); S.slot = null; bound = null; };
   S.erase = function (n) { G.store.del(S.slotKey(n)); if (S.slot === n) { S.slot = null; bound = null; } };

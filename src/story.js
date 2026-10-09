@@ -25,16 +25,10 @@
     if (f) f.introBusy = false;
   };
 
-  // ---------- Review: words seen but not yet learned come first ----------
+  // ---------- Review (Luna's "¿Repaso?"): the words due first (words.js), then the weakest met words ----------
   ST.review = function* (n = 5) {
-    const Wd = G.data.words, seen = Object.keys(G.state.words).filter(id => Wd[id]);
-    const shuffle = a => a.sort(() => G.rand() - 0.5);
-    const picks = shuffle(seen.filter(id => !S.knows(id))).concat(shuffle(seen.filter(S.knows))).slice(0, n);
-    for (const id of picks) {
-      let pool = seen.filter(k => Wd[k].topic === Wd[id].topic); if (pool.length < 3) pool = seen;
-      const c = G.wordChoices(id, pool, 3, { text: true });
-      yield* G.ask({ prompt: '¿...?', en: 'What is it?', show: Wd[id], choices: c.choices, answer: c.answer, layout: 'list', learn: id, who: 'luna' });
-    }
+    const due = G.review.due(n), weak = G.words.list(1).filter(id => due.indexOf(id) < 0).sort((a, b) => G.words.stage(a) - G.words.stage(b) || G.rand() - 0.5);
+    for (const id of due.concat(weak).slice(0, n)) yield* G.review.ask(id, { who: 'luna' });
   };
 
   // ---------- Diploma ----------

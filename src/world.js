@@ -1,9 +1,11 @@
 // ===== Round B: tap anything. Things in town say their Spanish word; say it back for a speaking star =====
 // A tap on a thing that has a word (a tree, a flower, the fountain, a bench, a window, the barn, the pond...) shows a
-// word bubble over it with its picture and its Spanish word ("el árbol"), says the word, marks it seen and gives the
-// thing a little wiggle and a sparkle. With the mic on, a small pink mic bubble sits beside the word for ~5 s: tap it
-// (or press V, or hold Space while you talk) and say the word -> a speaking star (G.mic.award), the word is learned
-// if it wasn't ("¡Palabra nueva!", without its own mic), and that word gives no more say-it-back stars today (one per
+// word bubble over it with its picture and its Spanish word ("el árbol"), says the word and gives the thing a little
+// wiggle and a sparkle. A word not met yet (words.js) is met this way when the new-word budget allows (WD.introOnTap:
+// the child chose to ask "what's this?"; G.intro.note's small celebration); otherwise its bubble shows the picture and
+// "?" and says nothing: it waits for its own puzzle. With the mic on, a small pink mic bubble sits beside a met word
+// for ~5 s: tap it (or press V, or hold Space while you talk) and say the word -> a speaking star (G.mic.award; a cued
+// retrieval for the word model: it was just heard), and that word gives no more say-it-back stars today (one per
 // word per calendar day, kept in G.state.sayback[id] = 'YYYY-M-D', so it can't be farmed). A miss: "¡Otra vez!", the
 // bubble stays a little longer, no penalty. Animals (animals.js, ambient.js, Canelo) use the same bubble, with their
 // sound under the word ("el gato" / "¡Miau!").
@@ -28,7 +30,7 @@
 // A map without `things` names nothing (and A there still says "...").
 //
 // API: G.world.wordAt(f, x, y)        the word id of tile x, y on field f, or null
-//      G.world.name(id, wx, wy, o)    name a word at world px wx, wy (the top of the thing): the bubble, the voice, seen,
+//      G.world.name(id, wx, wy, o)    name a word at world px wx, wy (the top of the thing): the bubble, the voice, met,
 //                                     sparkles; then the say-it-back mic. o: {cry: '¡Miau!' (a second line, also spoken),
 //                                     animal: id (for the album's `said`), tile: [x, y] (wiggles it), delay: frames
 //                                     before speaking, noMic, walkOn (the 20 s rule)}. Returns the bubble or null.
@@ -43,11 +45,12 @@
   const T = G.TILE, WD = G.world = {};
   const key = (x, y) => x + ',' + y;
   WD.TILES = { T: 'arbol', f: 'arbol', o: 'flor', l: 'fuente', w: 'agua', J: 'banco', N: 'ventana', D: 'puerta', j: 'cama' };
+  WD.introOnTap = true; // a tap on an unmet thing meets its word when G.budget.canIntro(1) (words.js)
   const LIFE = 170, SAY_LIFE = 330, WALK_AGAIN = 20 * 60;
   WD.bubble = null; WD.sayBack = null;
   let speakAt = null, walked = {}; // a line waiting to be spoken {f, text, at}; word -> G.frame it was named by walking onto it
 
-  WD.today = () => { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
+  WD.today = () => G.today(); // (words.js: the date, which tests and the audit can move on)
   const sbook = () => (G.state.sayback || (G.state.sayback = {}));
 
   // ---------- which word a tile has ----------
@@ -70,17 +73,21 @@
     if (o.walkOn && walked[id] != null && G.frame - walked[id] < WALK_AGAIN) return null;
     if (o.walkOn) walked[id] = G.frame;
     if (G.vocabLog) G.vlog('tapped-object', id, { via: o.animal ? 'animal' : o.walkOn ? 'walk-on' : 'tap' }); // (the dev-only log, vocablog.js)
-    G.st.see(id);
-    const b = WD.bubble = { id, x: wx, y: wy, t: 0, cry: o.cry || null, f };
+    let fresh = false;
+    if (!G.st.seen(id) && WD.introOnTap && !o.walkOn && G.budget.canIntro(1)) fresh = G.words.meet(id, 'tap'); // asked "what's this?": met
+    else G.st.see(id);
+    const unk = !G.st.seen(id); // not met yet: its picture and "?", and no voice
+    const b = WD.bubble = { id, x: wx, y: wy, t: 0, cry: o.cry || null, f, unk };
     if (o.tile) f.wig = { x: o.tile[0], y: o.tile[1], t: 18 };
-    const text = w.es.split(' / ')[0] + (o.cry ? '. ' + o.cry : '');
-    if (o.delay) speakAt = { f, text, at: G.frame + o.delay }; else { speakAt = null; G.speak(text); }
+    const text = unk ? (o.cry || '') : w.es.split(' / ')[0] + (o.cry ? '. ' + o.cry : '');
+    if (!text) speakAt = null; else if (o.delay) speakAt = { f, text, at: G.frame + o.delay }; else { speakAt = null; G.speak(text); }
+    if (fresh) G.intro.note([id]);
     G.audio.sfx('cursor');
     const [sx, sy] = [wx - Math.round(f.cam.x), wy - Math.round(f.cam.y)];
     for (let i = 0; i < 3; i++) G.fx.twinkle(sx + (Math.random() - 0.5) * 22, sy + (Math.random() - 0.5) * 12);
     WD.lastNamed = { id, frame: G.frame, x: wx, y: wy };
     if (WD.sayBack) { WD.sayBack.off(); WD.sayBack = null; }
-    if (!o.noMic && WD.canSayBack(id)) WD.offerSayBack(id, b, o.animal);
+    if (!o.noMic && !unk && WD.canSayBack(id)) WD.offerSayBack(id, b, o.animal);
     return b;
   };
   WD.nameTile = function (f, x, y, o = {}) {
@@ -142,7 +149,7 @@
       G.fx.say('¡Bien dicho!', cx, cy - 18, '#a8f0ff', true);
       sbook()[id] = WD.today();
       if (this.animal && G.state.album && G.state.album[this.animal]) G.state.album[this.animal].said = true;
-      if (!G.st.knows(id)) f.tasks.add((function* () { yield 40; f.locked = true; yield G.learnWords([id], { noMic: true }); f.locked = false; })());
+      G.words.answerRight(id, { said: true, cued: true, mode: 'say', noStar: true }); // (said after hearing it: a cued use)
       G.st.autosave();
     }
     // -> true when it used this frame's input
@@ -163,7 +170,7 @@
   };
 
   // ---------- where things go on screen ----------
-  function lines(b) { const w = G.data.words[b.id]; return [w.es.split(' / ')[0]].concat(b.cry ? [b.cry] : []); }
+  function lines(b) { const w = G.data.words[b.id]; return [b.unk ? '?' : w.es.split(' / ')[0]].concat(b.cry ? [b.cry] : []); }
   WD.bubbleRect = function (f, b) {
     const ls = lines(b), tw = Math.max(...ls.map(s => G.textWidth(s))), w = 30 + tw, h = ls.length > 1 ? 26 : 22;
     let x = Math.round(b.x - f.cam.x - w / 2), y = Math.round(b.y - f.cam.y) - h - 6;
@@ -215,7 +222,7 @@
     else { ctx.fillRect(tx - 1, y + r.h - 1, 3, 2); ctx.fillRect(tx, y + r.h + 1, 1, 1); }
     const hop = b.t < 30 ? Math.round(Math.abs(Math.sin(b.t / 30 * Math.PI * 2)) * -2) : 0;
     G.drawIcon16(ctx, w, r.x + 5, y + (r.h - 16) / 2 + hop);
-    G.text(ctx, ls[0], r.x + 25, y + (ls.length > 1 ? 4 : 7), G.st.knows(b.id) ? '#a06008' : '#2860a8', null);
+    G.text(ctx, ls[0], r.x + 25, y + (ls.length > 1 ? 4 : 7), b.unk ? '#a08060' : G.st.knows(b.id) ? '#a06008' : '#2860a8', null);
     if (ls[1]) G.text(ctx, ls[1], r.x + 25, y + 14, '#e06010', null);
     ctx.globalAlpha = 1;
     if (WD.sayBack && WD.sayBack.b === b && WD.sayBack.f === f) WD.sayBack.mic.draw(ctx);
