@@ -429,7 +429,7 @@
       unguest(f, 'rosa');
       yield* say('marta', T('¡Y [pan] para los [pato:patos]!', 'And bread for the ducks!'));
       yield* ask('marta', 'Marta: ¡Para los [pato:patos]!', 'Another loaf, for the ducks. What do you say?', 'gracias', ['hola', 'no'], { show: 'pan' });
-      yield* sayShow('marta', 'pato', T('Los [pato:patos]... ¡en la [granja]!', 'The ducks are at the farm pond, east of the plaza!'));
+      yield* sayShow('marta', 'pato', T('Los [pato:patos]... ¡por allá!', 'The ducks are at the farm pond, east of the plaza!'));
     } },
     { who: 'nico', bubble: 'pato', run: function* (f) { // ¡Un pato! ¡cuac!
       swim(f); G.animals.cry('pato'); yield 20;
@@ -620,7 +620,7 @@
       yield* ask(null, 'Tú: ¿...?', 'Ask Canelo how he is', 'comoestas', ['hola', 'gracias'], { intro: true, how: 'overheard', look: { comoestas: 'text', hola: 'both', gracias: 'both' }, show: { icon: 'pregunta' } });
       bark(f); K.heart(f, n); yield* G.pet.play('dance');
       yield* ask('luna', '¿Cómo está Canelo?', 'How is Canelo?', 'bien', ['no', 'hola'], { point: n });
-      yield* say('luna', T('¡Pregunta a [tres] amigos! Nico, Sofía y Rosa.', 'Ask three friends how they are: Nico, Sofía and Rosa!'));
+      yield* say('luna', T('¡Pregunta a tus amigos! Nico, Sofía y Rosa.', 'Ask three friends how they are: Nico, Sofía and Rosa!'));
       yield G.questCard('c8');
       unguest(f, 'nico'); void nico;
     } },
@@ -634,7 +634,7 @@
     } },
     { who: 'rosa', bubble: { icon: 'pregunta' }, part: 'pregunta', run: function* (f) { yield* asked(f, 'rosa', 'Rosa'); yield* say('rosa', T('¡Luna! ¡La [escuela]!', 'Back to Luna at the school!')); } },
     { who: 'luna', run: function* () { // three friends: a gold star
-      yield* say('luna', T('¡[tres] amigos! ¡Muy bien, {name}!', 'Three friends! Very good, {name}!'));
+      yield* say('luna', T('¡Tus amigos están [bien]! ¡Muy bien, {name}!', 'Your friends are fine! Very good, {name}!'));
       yield* ask('luna', 'Luna: ¡Para ti!', 'A gold star sticker for you! What do you say?', 'gracias', ['hola', 'no'], { show: { icon: 'estrella' } });
       yield* say('luna', T('¡Hasta pronto!', 'See you soon!'));
     } },
@@ -719,7 +719,7 @@
       yield* siNo('tomas', '¿Me ayudas?', 'Will you help me deliver them?', true);
       for (const to of ['casa', 'escuela', 'granja']) bag().add('carta', { q: 'c10', to });
       yield* G.intro.find('casa', { who: 'tomas', map: 'villa', at: [5, 7], wrong: [[17, 5], [29, 7]], pics: [[5, 7, 'casa'], [17, 5, 'escuela'], [29, 7, 'panaderia']],
-        prompt: '[uno]: para la [casa] de Rosa.', en: 'The first one: for Grandma Rosa\'s house! (which one? tap it)' });
+        prompt: 'Esta: para la [casa] de Rosa.', en: 'The first one: for Grandma Rosa\'s house! (which one? tap it)' });
     } },
     { auto: 'villa', when: found('casa'), part: 'casa', run: function* (f) { // Rosa's letter; an apple
       yield* CH.banner('casa', ['escuela', 'parque']);
@@ -730,7 +730,7 @@
       yield* say('rosa', T('¡Mi [carta]! Y para ti...', 'My letter! And for you...'));
       yield* ask('rosa', 'Rosa: ¡Para ti!', 'She gives you an apple. What do you say?', 'gracias', ['hola', 'no'], { show: 'manzana' });
       bag().add('manzana', { q: 'c10' });
-      yield* tell(T('[dos]: para la [escuela].', 'The second letter: for the school.'));
+      yield* tell(T('Y esta: para la [escuela].', 'The second letter: for the school.'));
     } },
     { auto: 'escuela', part: 'escuela', run: function* () { // Luna's letter
       if (G.hearts) yield* G.hearts.greet('luna');
@@ -738,7 +738,7 @@
       yield* ask('luna', '¿Qué es?', 'What is it?', 'carta', ['pelota', 'pan'], { show: { icon: 'sobre' } });
       bag().take('carta', { q: 'c10', to: 'escuela' });
       yield* say('luna', T('¡[gracias]!', 'Thank you!'));
-      yield* tell(T('[tres]: para la [granja].', 'The third letter: for the farm.'));
+      yield* tell(T('Y esta: para la [granja].', 'The third letter: for the farm.'));
     } },
     { spot: { map: 'villa', at: PADDOCK, quiet: true }, part: 'granja', run: function* (f) { // the horse eats the letter!
       const h = G.animals.find('caballo', f);

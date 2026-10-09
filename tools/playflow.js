@@ -163,7 +163,7 @@ async function playToEnd(g, o = {}) {
       }
       idle = 0;
       if (++days > 60) throw new Error('more than 60 days and still not done: ' + JSON.stringify(st.q));
-      const why = await g.ev(() => { const n = G.chapters.next(); return n ? n + ':' + G.chapters.gate(n) : 'tail ' + G.chapters.tailGate(); });
+      const why = await g.ev(() => { const n = G.chapters.next(); const C = G.chapters, b = ' [new today ' + C.newToday() + ', on the date ' + C.newOnDate() + ', only met ' + C.stage1() + ']'; return (n ? n + ':' + C.gate(n) : 'tail ' + C.tailGate()) + b; });
       console.log('    nothing more today (' + why + '): the next day');
       if (o.nextDay) await o.nextDay(); else await nextDay(g);
       continue;

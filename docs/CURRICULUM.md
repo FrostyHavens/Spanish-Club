@@ -996,3 +996,31 @@ Most are in `LEARNING_DESIGN.md`'s build step 1; these are the content-facing on
 - `src/world.js`: `TILES` maps `N` to *ventana* and `D` to *puerta*; set them to `null`.
 - `src/hearts.js`: `PAGE_PLACE` lists *numeros2*, *campo*, *colores2*; `H.greet` uses *hola/buenos días/bien* pools
   (replace with the time-of-day greeting and the pools in §2.2).
+
+### 7.5 As built: chapters 1-10 (part 1)
+Chapters 1-10 are in the game (`src/chapters.js`, `content/es/story-c01-c10.js`; the words, pages and the chapter
+table in `content/es/words.js`). They follow §4 step by step; where the build differs:
+- **Gating** (§3.1 made concrete, `G.chapters.gate`): at most 6 new words a game day and 8 a calendar date; no new
+  chapter while 10 or more words are only met (a review day); C3, C7 and C8 (and C19) are *morning* chapters, opened
+  only as the first chapter of a session; C9 is the *evening* chapter: after C8 the sunset comes about 5 minutes later
+  and C9 plays at home at dusk and at dawn. A started chapter can always be finished. While the next chapter waits its
+  giver shows a sun coming up (a moon for C9) and says *¡Mañana!*.
+- **C1**: the puppy hides under the table (two other spots in the room are wrong); the notebook is not handed over, its
+  pages appear as their first words are met. Leaving the house is the door beat (call Canelo from his bowl).
+- **C2** starts by itself the first time you step outside after C1 (the butterfly chase).
+- **C6**: Marta sends you to the pond with *Los patos... ¡por allá!* (*granja* is C7's word).
+- **C8**: Luna says *¡Pregunta a tus amigos!* (no *tres* before C12).
+- **C9**: the bed find has no picture bubbles (your bed is the right spot, the table and a shelf the wrong ones); the
+  dawn beat ends with Mamá pointing at the fountain (the water side job opens).
+- **C10**: the letters are *Esta / Y esta* (no numbers before C11).
+- **Engine pieces of §7.3 in place**: unmet things and animals show only a "?" (the album too), arrival banners
+  (*¿Dónde estás?*, up to 3 times while the place word is due), picture-only answer cards (`pic`), time-of-day
+  greetings (from C3 on; `src/hearts.js`), the daily budget with the sun bubble, the moon and *busca* icons. Still to
+  build with chapters 11-21: picture signs for tricks, *busca* running to a target, animals following *¡ven!*, and
+  request bubbles that turn to "?" once their word is known.
+- **After C10**, until C11-C21 are written, the older errands run (market, picnic, dog show, flowers, sounds, the
+  animal count, the party: `G.data.tailOrder`), one new one a day. Side jobs open with the chapter that teaches their
+  words (ducks C6, the sleepy cat C2, water C9, the horse C10); the shops with C4 and C6.
+- **Older saves** load with their errands mapped onto chapters (`G.chapters.migrate()`: the market C4, the ball C5,
+  the lost Canelo C7, greetings C8, letters and anything later C10); an older errand still going on is kept when every
+  chapter is done, otherwise let go.

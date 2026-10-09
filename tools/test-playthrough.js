@@ -1,7 +1,8 @@
-// Full tap-only playthrough on an iPad context: new game -> intro -> the Round A errands -> Canelo -> all eight Round B
-// errands (src/errands.js) -> sunset/evening -> the animal party -> diploma, with a reload midway to confirm autosave.
-// Taps only, choosing what to do next like the hint hand does (people with bubbles, errand places, animals to count or
-// find, a trick to practise with Canelo).
+// Full tap-only playthrough on an iPad context: new game -> chapters 1-10 (src/chapters.js, content/es/story-c01-c10.js)
+// over several days (the next chapter waits for tomorrow when the day's new words are used up) -> the older errands
+// after them (src/errands.js) -> sunset/evening -> the animal party -> diploma, with a reload midway to confirm
+// autosave. Taps only, choosing what to do next like the hint hand does (people with bubbles, a chapter's places and
+// puzzles, errand places, animals to count or find, a trick to practise with Canelo).
 //   NODE_PATH=$(npm root -g) node tools/test-playthrough.js [screenshot dir]
 'use strict';
 const { open, check, run } = require('./harness');
@@ -29,14 +30,14 @@ run('Full tap playthrough (iPad)', async browser => {
         await g.shot('resumed');
         return 'skip';
       }
-      // after three errands, bring the sunset forward and go home for the evening
-      if (doneN >= 3 && !sunset) { sunset = true; await g.ev(() => { G.debug.sunsetAt = G.sessionTime + 1; }); await g.frames(500); await g.shot('sunset'); }
-      if (sunset && st.map === 'casa' && await g.ev(() => G.sessionTime < 30 && G.debug.sunsetAt != null)) {
-        await g.ev(() => { G.debug.sunsetAt = null; });
-        check('play: the evening ran (Hoy card, night, a new morning) and the game was saved', g.seen.has('TodayCard') && g.seen.has('Night') && await g.ev(() => { const s = JSON.parse(localStorage.getItem('spanishclub_slot1') || 'null'); return !!s && s.loc && s.loc.map === 'casa'; }));
+      // the evening (chapter 9 brings the sunset; the sun goes down quickly here): the Hoy card, the night, a morning
+      if (!sunset && g.seen.has('Night') && st.map === 'casa' && await g.ev(() => G.sessionTime < 30)) {
+        sunset = true;
+        check('play: the evening ran (Hoy card, night, a new morning) and the game was saved', g.seen.has('TodayCard') && await g.ev(() => { const s = JSON.parse(localStorage.getItem('spanishclub_slot1') || 'null'); return !!s && s.loc && s.loc.map === 'casa'; }));
       }
-    } });
-    check('play: every errand is done, Round A and Round B, and the animal party', await g.ev(() => G.data.badgeOrder.every(G.st.done)), await g.ev(() => JSON.stringify(G.state.quests)));
+    }, fastSunset: true });
+    check('play: the evening came (chapter 9)', sunset);
+    check('play: chapters 1-10, then the older errands, and the animal party: every badge', await g.ev(() => G.data.badgeOrder.every(G.st.done)), await g.ev(() => JSON.stringify(G.state.quests)));
     check('play: diploma seen', g.seen.has('Diploma'));
     await g.frames(30); await g.shot('end');
     check('play: no console errors', !g.errors.length, g.errors.join('\n'));

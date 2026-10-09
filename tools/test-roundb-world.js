@@ -36,7 +36,8 @@ async function openFake(browser, name, touch) {
 }
 async function town(g, x, y, dir, o = {}) {
   await g.ev(([x, y, dir, o]) => {
-    G.st.newGame(); G.state.name = 'Luz'; Object.assign(G.state.flags, { intro: true }, o.flags || {}); Object.assign(G.state.quests, o.quests || {}); Object.assign(G.state.pages, o.pages || {});
+    G.st.newGame(); G.state.name = 'Luz'; Object.assign(G.state.flags, { intro: true }, o.flags || {}); G.chapters.writtenIds().forEach(id => { G.state.quests[id] = 'done'; }); Object.assign(G.state.quests, o.quests || {}); // (chapters 1-10 played)
+    (o.learn || []).forEach(id => G.st.learn(id)); Object.assign(G.state.pages, o.pages || {});
     (o.met || []).forEach(id => G.words.meet(id, 'test'));
     G.goto('villa', x, y, dir);
   }, [x, y, dir, o]);
@@ -56,14 +57,14 @@ async function data(browser) {
       return {
         n: ids.length, noPic: ids.filter(id => !G.iconDrawn(id)), offPage: ids.filter(id => !onPage.has(id)),
         badTopic: ids.filter(id => !D.topics[D.words[id].topic]), unplaced: D.pageOrder.slice(5).filter(p => !placed.has(p) && p !== 'mascota'), // Round A's saludos page and Round B's Mi perro page come from Mamá
-        big: D.pageOrder.filter(p => D.pages[p].words.length > 9), order: D.pageOrder.length === Object.keys(D.pages).length,
+        big: D.pageOrder.filter(p => D.pages[p].words.length > (p === 'numeros' ? 12 : 9)), order: D.pageOrder.length === Object.keys(D.pages).length,
         kinds: G.animals.list(), animalWords: G.animals.list().every(k => D.words[G.animals.KINDS[k].word]),
         sounds: G.animals.list().map(k => G.animals.KINDS[k].sound).filter(Boolean).every(id => D.words[id]),
       };
     });
     check('data: about 75-80 words (Round A 30 + Round B)', d.n >= 70 && d.n <= 80, 'n=' + d.n);
     check('data: every word has its own picture (no placeholder)', !d.noPic.length, d.noPic.join(','));
-    check('data: every word is on a notebook page of at most 9, with a topic', !d.offPage.length && !d.badTopic.length && !d.big.length && d.order, JSON.stringify(d));
+    check('data: every word is on a notebook page of at most 9 (the numbers: 10, in four columns), with a topic', !d.offPage.length && !d.badTopic.length && !d.big.length && d.order, JSON.stringify(d));
     check('data: every Round B notebook page is placed somewhere in the world', !d.unplaced.length, d.unplaced.join(','));
     check('data: 11 animals, each with its word (and sound word)', d.kinds.length === 11 && d.animalWords && d.sounds, JSON.stringify(d.kinds));
     check('data: no console errors', !g.errors.length, g.errors.join('\n'));
@@ -79,12 +80,13 @@ async function ipad(browser) {
     const live = await g.ev(() => G.animals.here().map(a => a.kind));
     check('animals: ducks, hens, the fish, the frog, the rabbit, the horse and the goat live in Villa Sol', ['pato', 'gallina', 'pez', 'rana', 'conejo', 'caballo', 'cabra'].every(k => live.includes(k)), live.join(','));
     await g.shot('farm');
+    await g.ev(() => G.words.meet('pato', 'listen')); // (met in chapter 6: an unmet animal is only a "?", tools/test-words.js)
     const duck = await g.ev(() => { const a = G.animals.find('pato'); Object.assign(a, { x: 40 * 24 + 12, y: 21 * 24 + 16, st: 'idle', t: 1e9, react: 0 }); return G.animals.screen(a); }); // on screen
     await g.until(([x, y]) => !!G.animals.hit(G.field, { x, y }), duck, 'the duck under the tap');
     await g.tap(...duck);
     const st = await g.ev(() => ({ b: G.world.bubble && G.world.bubble.id, cry: G.world.bubble && G.world.bubble.cry, album: G.state.album.pato, met: G.animals.met('pato'), seen: G.st.seen('pato') && !G.st.seen('cuac'), walk: !!G.field.route, sb: G.world.sayBack && G.world.sayBack.id }));
     check('animals: tapping the duck says "el pato / ¡Cuac, cuac!" and walks you toward it', st.b === 'pato' && st.cry === '¡Cuac, cuac!' && st.walk, JSON.stringify(st));
-    check('animals: the album records it (first, map, n); asking what it is meets pato (cuac waits for its own puzzle)', st.met && st.album.n === 1 && st.album.map === 'villa' && st.album.first > 0 && st.seen, JSON.stringify(st));
+    check('animals: the album records it (first, map, n); cuac waits for its own puzzle', st.met && st.album.n === 1 && st.album.map === 'villa' && st.album.first > 0 && st.seen, JSON.stringify(st));
     check('animals: the say-it-back mic shows beside the word', st.sb === 'pato');
     await g.frames(10); await g.shot('duck_named');
 
@@ -108,10 +110,10 @@ async function ipad(browser) {
 
     // an object: the bench in the plaza (adjacent: named at once); a miss, then V
     await idle(g);
-    await town(g, 22, 13, 'up');
+    await town(g, 22, 13, 'up', { met: ['banco'] }); // (met in chapter 7)
     await g.tapTile(22, 12);
     await g.until(() => G.world.bubble && G.world.bubble.id === 'banco', null, 'the bench to say its name');
-    check('things: tapping the bench beside you names it "el banco" (seen, a wiggle), no dialogue', await g.ev(() => G.st.seen('banco') && !!G.field.wig && G.top() === G.field && !!G.world.sayBack));
+    check('things: tapping the bench beside you (met) names it "el banco" (a wiggle), no dialogue', await g.ev(() => G.st.seen('banco') && !!G.field.wig && G.top() === G.field && !!G.world.sayBack));
     await g.frames(6); await g.shot('bench_named');
     const s1 = await g.ev(() => G.state.stars);
     await g.ev(() => window.__sr.queue.push({ results: ['manzana', 'mansana'] }));
@@ -164,18 +166,20 @@ async function before(browser) {
     // a person: Don Pepe (his stall is a counter)
     await town(g, 14, 8, 'down');
     await g.tapTile(14, 9);
-    await g.until(() => G.top().constructor.name === 'TextBox' && G.top().opts.name === 'Don Pepe', null, 'Don Pepe to talk');
+    await g.until(() => (G.top().constructor.name === 'TextBox' && G.top().opts.name === 'Don Pepe') || G.top().constructor.name === 'Choice', null, 'Don Pepe to talk (or greet you)');
     check('before: tapping a person still talks to them', true);
     await g.drive(() => G.top() === G.field && !G.field.locked, 'Don Pepe');
-    // a search spot in the park (the ball errand), even with the rabbit hopping about
-    await town(g, 13, 23, 'up', { quests: { pelota: 'active' }, flags: { canelo: false } });
+    // a find-it spot in the park (intro.js: a story's puzzle), even with the rabbit hopping about on it
+    await town(g, 13, 23, 'up', { flags: { canelo: false } });
+    await g.ev(() => { G.field.tasks.add((function* () { yield* G.intro.find('pelota', { who: 'sofia', map: 'villa', at: [13, 22], wrong: [], silent: true }); })()); });
     await g.ev(() => { const r = G.animals.find('conejo'); r.x = 13 * 24 + 12; r.y = 22 * 24 + 20; r.st = 'eat'; r.t = 1e9; });
+    await g.frames(4);
     await g.tapTile(13, 22);
-    await g.until(() => G.top().constructor.name !== 'Field', null, 'the search');
-    await g.drive(() => G.top() === G.field && !G.field.locked, 'the search');
-    check('before: a search spot still searches (it wins over an animal on it)', await g.ev(() => !!G.state.searched['villa:13,22']));
+    await g.until(() => G.top().constructor.name !== 'Field' || G.words.met('pelota'), null, 'the find');
+    await g.drive(() => G.top() === G.field && !G.field.locked, 'the find');
+    check('before: a find-it spot still finds (it wins over an animal on it)', await g.ev(() => G.words.met('pelota')));
     // a page sparkle on a named thing: the page first
-    await town(g, 13, 10, 'up', { met: ['arbol', 'flor', 'fuente', 'banco'] });
+    await town(g, 13, 10, 'up', { learn: ['arbol', 'flor', 'fuente', 'banco'] });
     await g.tapTile(13, 9);
     await g.until(() => G.top().constructor.name === 'PagePuzzle', null, 'the page puzzle on the bench');
     check('before: a notebook page puzzle on a bench comes first', await g.ev(() => G.top().page === 'cosas'));

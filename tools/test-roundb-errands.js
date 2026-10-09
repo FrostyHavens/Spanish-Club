@@ -1,4 +1,5 @@
-// Round B stage 2b: the eight story errands (src/errands.js), the bag, gifts, the shops and the side jobs.
+// The older story errands after chapters 1-10 (src/errands.js), the bag, gifts, the shops and the side jobs. (The lost
+// Canelo and tired Tomás errands are chapters 7 and 10 now: tools/test-chapters.js.)
 // Every errand is played start to finish on an iPad page with taps, with some answers SPOKEN through a fake recognizer
 // (as in tools/test-speaking.js); one is saved and reloaded halfway; the unlock order, Misiones, the hint hand's targets
 // and a keyboard run are checked too. Screenshots of each errand's key moments go to the shots folder.
@@ -33,19 +34,21 @@ async function openFake(browser, name, touch = true) {
   await g.until(() => window.G && G.top() && G.top().constructor.name === 'Title' && G.top().t > 32, null, 'the title after reload');
   return { ctx, g };
 }
-const A_DONE = { saludos: 'done', mercado: 'done', pelota: 'done', carta: 'done' };
+const CHAPTERS = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9', 'c10'];
+const A_DONE = { mercado: 'done' }; // (with every chapter done: play() below)
 // a game in slot 1 (so it saves) at map m; o: flags, quests, pet, hearts, bag, words
 async function play(g, m, x, y, dir, o = {}) {
-  await g.ev(([m, x, y, dir, o]) => {
+  await g.ev(([m, x, y, dir, o, CHAPTERS]) => {
     G.st.erase(1); G.st.newGame(); G.state.name = 'Luz'; G.state.look = G.data.defaultLook('nina');
     Object.assign(G.state.flags, { intro: true, canelo: true, petStart: true, pepeSiNo: true }, o.flags || {});
+    if (!o.fresh) CHAPTERS.forEach(id => { G.state.quests[id] = 'done'; });
     Object.assign(G.state.quests, o.quests || {});
     Object.assign(G.state.pet, { tricks: { sientate: 3, ven: 3 } }, o.pet || {});
     if (o.hearts) Object.assign(G.state.hearts, o.hearts);
     if (o.bag) G.state.bag.items = o.bag;
     for (const id of o.learned || []) G.state.words[id] = { learned: true, right: 1, wrong: 0 };
     G.st.begin(1); G.goto(m, x, y, dir);
-  }, [m, x, y, dir, o]);
+  }, [m, x, y, dir, o, CHAPTERS]);
   await g.fieldIdle(m);
   await g.frames(10);
 }
@@ -98,68 +101,6 @@ const toQuestion = (g, what) => g.drive(() => G.top().constructor.name === 'Choi
 const quest = (g, id) => g.ev(id => G.state.quests[id], id);
 const noErrors = (g, name) => check(name + ': no console errors', !g.errors.length, g.errors.join('\n'));
 
-// ---------- 1: ¿Dónde está Canelo? ----------
-async function errandCanelo(browser) {
-  const { ctx, g } = await openFake(browser, 'e1-canelo');
-  try {
-    await play(g, 'casa', 3, 4, 'up', { quests: { saludos: 'done', mercado: 'done' } });
-    check('canelo: unlocked after the first Round A errand (Canelo is yours)', await g.ev(() => G.errands.offer('canelo') && G.field.npc('mama').alert() === true));
-    await g.tapTile(3, 2);
-    await toQuestion(g, 'Mamá\'s greeting');
-    await speak(g); // her greeting, by voice
-    await g.drive(() => G.errands.lost() && !G.field.npc('canelo'), 'Canelo to run off');
-    await g.frames(10); await g.shot('mama_canelo_gone');
-    check('canelo: Canelo runs out of the door and is gone (lost)', await g.ev(() => !G.field.npc('canelo') && G.st.active('canelo')));
-    await toQuestion(g, 'Mamá: ¿Qué buscas?');
-    const v = await speak(g);
-    check('canelo: "el perro" said to Mamá counts (a speaking star)', v.star, JSON.stringify(v));
-    await settle(g, 'the errand card');
-    // out to town: Gómez has the first clue (his bubble shows the dog)
-    await g.ev(() => G.goto('villa', 6, 11, 'left')); await g.fieldIdle('villa');
-    check('canelo: Canelo is not in town either', await g.ev(() => !G.field.npc('canelo')));
-    check('canelo: only Gómez has a dog bubble (one clue at a time)', await g.ev(() => G.field.npc('gomez').alert() === 'perro' && G.field.npc('lucia').alert() !== 'perro' && G.field.npc('tomas').alert() !== 'perro'));
-    await g.shot('gomez_bubble');
-    await talk(g, 'gomez', 'asking Gómez');
-    check('canelo: Gómez gave the first clue (the park bench)', await g.ev(() => G.errands.fl('canelo').clue === 1 && !!G.errands.spotAt(G.field, 20, 18)));
-    await beside(g, 20, 18); await g.frames(10); await g.shot('paw_bubble');
-    await spot(g, 'paw', 'the paw print');
-    check('canelo: the paw print found; now Lucía has the clue', await g.ev(() => G.errands.fl('canelo').paw === 1 && G.field.npc('lucia').alert() === 'perro'));
-    // Lucía: by voice
-    await free(g);
-    const lu = await g.ev(() => { const n = G.field.npc('lucia'); return [n.x, n.y]; });
-    await beside(g, ...lu); await g.tapTile(...await g.ev(() => { const n = G.field.npc('lucia'); return [n.x, n.y]; }));
-    await toQuestion(g, 'Lucía');
-    let q = await g.ev(() => G.top().ch[G.top().o.answer].word);
-    if (q !== 'perro') { await speak(g); await toQuestion(g, 'Lucía: the dog question'); } // (her greeting first)
-    check('canelo: you ask about Canelo by voice: "el perro"', (await speak(g)).star);
-    await settle(g, 'Lucía\'s clue');
-    await spot(g, 'ball', 'the ball at the fountain');
-    check('canelo: his ball goes in the bag', await g.ev(() => G.errands.bag.has('pelota', { q: 'canelo' })));
-    await talk(g, 'tomas', 'Tomás\'s clue');
-    check('canelo: Tomás: the farm; the barn door has a bubble', await g.ev(() => G.errands.fl('canelo').clue === 3 && G.errands.spotAt(G.field, 41, 4).id === 'barn'));
-    await beside(g, 41, 4); await g.frames(10); await g.shot('barn_bubble');
-    await g.tapTile(41, 4);
-    await g.drive(() => G.top().constructor.name === 'Choice' && G.top().o.prompt === '¡Dile a Canelo!', 'the barn');
-    check('canelo: at the barn, "¡Dile a Canelo!" with ven', await g.ev(() => G.top().ch[G.top().o.answer].word === 'ven'));
-    check('canelo: "¡ven!" by voice', (await speak(g, 'ven')).star);
-    await g.until(() => G.field.npc('canelo') && G.field.npc('canelo').pa, null, 'Canelo bursting out');
-    await g.frames(20); await g.shot('canelo_and_goat');
-    await settle(g, 'Canelo found');
-    check('canelo: found, he follows you again', await g.ev(() => G.errands.fl('canelo').found === 1 && !G.errands.lost() && !!G.field.npc('canelo')));
-    // home: Mamá
-    await g.ev(() => G.goto('casa', 3, 4, 'up')); await g.fieldIdle('casa');
-    check('canelo: Mamá has a "!" and Canelo is home', await g.ev(() => G.field.npc('mama').alert() === true && !!G.field.npc('canelo')));
-    await g.tapTile(3, 2);
-    await toQuestion(g, 'Mamá: ¿Cómo está Canelo?');
-    check('canelo: "feliz" by voice', (await speak(g, 'feliz')).star);
-    await g.drive(() => G.top().constructor.name === 'BadgeCard', 'the badge');
-    await g.frames(42); await g.shot('badge');
-    await settle(g, 'the end');
-    check('canelo: done, his ball is back (not in the bag), Mamá +2 hearts', await g.ev(() => G.st.done('canelo') && !G.errands.bag.has('pelota') && G.hearts.get('mama') >= 2));
-    noErrors(g, 'canelo');
-  } finally { await ctx.close(); }
-}
-
 // reload the page and continue slot 1 (autosave check)
 async function reload(g) {
   await g.ev(() => G.st.saveNow());
@@ -200,8 +141,8 @@ async function tapAnimal(g, kind, o = {}) {
 async function errandPicnic(browser) {
   const { ctx, g } = await openFake(browser, 'e2-picnic');
   try {
-    await play(g, 'villa', 7, 9, 'up', { quests: Object.assign({ canelo: 'done' }, A_DONE) });
-    check('picnic: unlocked (canelo + mercado done): Rosa shows a basket', await g.ev(() => G.field.npc('rosa').alert() === 'canasta'));
+    await play(g, 'villa', 7, 9, 'up', { quests: Object.assign({}, A_DONE) });
+    check('picnic: unlocked (mercado done): Rosa shows a basket', await g.ev(() => G.field.npc('rosa').alert() === 'canasta'));
     await g.shot('rosa_basket');
     await talk(g, 'rosa', 'Rosa\'s picnic');
     check('picnic: started; Marta and Don Pepe have bubbles; the hay and the pail too', await g.ev(() => G.st.active('picnic') && G.field.npc('pepe').alert() === 'queso' && G.errands.spotAt(G.field, 1, 7).id === 'egg' && G.errands.spotAt(G.field, 39, 12).id === 'milk'));
@@ -242,7 +183,7 @@ async function errandPicnic(browser) {
 async function errandShow(browser) {
   const { ctx, g } = await openFake(browser, 'e3-show');
   try {
-    await play(g, 'villa', 18, 22, 'up', { quests: Object.assign({ canelo: 'done' }, A_DONE) });
+    await play(g, 'villa', 18, 22, 'up', { quests: Object.assign({}, A_DONE) });
     check('show: Sofía shows a ribbon', await g.ev(() => G.field.npc('sofia').alert() === 'cinta'));
     await talk(g, 'sofia', 'the dog show');
     check('show: started; Sofía now teaches dame la pata (the show needs it)', await g.ev(() => G.st.active('show') && G.field.npc('sofia').alert() === 'pata'));
@@ -262,7 +203,7 @@ async function errandShow(browser) {
 async function errandShowVoice(browser) {
   const { ctx, g } = await openFake(browser, 'e3-showvoice');
   try {
-    await play(g, 'villa', 18, 22, 'up', { quests: Object.assign({ canelo: 'done', show: 'active' }, A_DONE), pet: { tricks: { sientate: 3, ven: 3, pata: 3, salta: 3 } }, flags: { e_show: { nico: 1 } } });
+    await play(g, 'villa', 18, 22, 'up', { quests: Object.assign({ show: 'active' }, A_DONE), pet: { tricks: { sientate: 3, ven: 3, pata: 3, salta: 3 } }, flags: { e_show: { nico: 1 } } });
     const at = await g.ev(() => { const n = G.field.npc('sofia'); return [n.x, n.y]; });
     await beside(g, ...at); await g.tapTile(...at);
     await g.drive(() => G.top().constructor.name === 'Choice' && G.top().o.prompt === '¡Dile a Canelo!' && !G.top().won, 'the first trick');
@@ -280,43 +221,12 @@ async function errandShowVoice(browser) {
   } finally { await ctx.close(); }
 }
 
-// ---------- 4: Tomás está cansado ----------
-async function errandCansado(browser) {
-  const { ctx, g } = await openFake(browser, 'e4-cansado');
-  try {
-    await play(g, 'villa', 19, 13, 'up', { quests: Object.assign({ canelo: 'done' }, A_DONE) });
-    await g.frames(10);
-    check('cansado: tired Tomás waits by the plaza bench, a "cansado" bubble', await g.ev(() => { const n = G.field.npc('tomas'); return n.x === 21 && n.y === 12 && !n.route && n.alert() === 'cansado'; }));
-    await g.shot('tomas_tired');
-    await talk(g, 'tomas', 'Tomás\'s letters');
-    check('cansado: three letters in the bag', await g.ev(() => G.state.bag.items.filter(i => i.id === 'carta').length === 3));
-    await talk(g, 'rosa', 'Rosa\'s letter');
-    await spot(g, 'letter', 'the barn letter');
-    check('cansado: the horse ate the barn letter; Don Pepe shows an apple', await g.ev(() => G.errands.fl('cansado').granja === 1 && G.field.npc('pepe').alert() === 'manzana' && G.errands.spotAt(G.field, 42, 12).id === 'horse'));
-    await beside(g, 42, 12); await g.frames(8); await g.shot('horse_bubble');
-    await talk(g, 'pepe', 'an apple');
-    await beside(g, 42, 12); await g.tapTile(42, 12);
-    await toQuestion(g, 'the horse');
-    check('cansado: "la manzana" for the horse, by voice', (await speak(g, 'la manzana')).star);
-    await settle(g, 'the horse');
-    check('cansado: the letter is back', await g.ev(() => G.errands.fl('cansado').granja === 2));
-    await goto(g, 'biblioteca', 5, 4, 'up');
-    check('cansado: Inés waits for hers', await g.ev(() => G.field.npc('ines').alert() === 'carta'));
-    await g.tapTile(5, 2); await settle(g, 'Inés');
-    await goto(g, 'villa', 19, 13, 'up');
-    check('cansado: Tomás has a "!"', await g.ev(() => G.field.npc('tomas').alert() === true));
-    await talk(g, 'tomas', 'Tomás again');
-    check('cansado: done, Tomás back on his round, no letters left', await g.ev(() => G.st.done('cansado') && !!G.field.npc('tomas').route && !G.errands.bag.has('carta')));
-    noErrors(g, 'cansado');
-  } finally { await ctx.close(); }
-}
-
 // ---------- 5: ¿Cuántos animales? ----------
 async function errandCuenta(browser) {
   const { ctx, g } = await openFake(browser, 'e5-cuenta');
   try {
-    await play(g, 'escuela', 6, 4, 'up', { quests: Object.assign({ canelo: 'done', picnic: 'done', show: 'done' }, A_DONE) });
-    check('cuenta: unlocked after three Round B errands', await g.ev(() => G.field.npc('luna').alert() === 'pregunta'));
+    await play(g, 'escuela', 6, 4, 'up', { quests: Object.assign({ picnic: 'done', show: 'done', flores: 'done', sonidos: 'done' }, A_DONE) });
+    check('cuenta: unlocked after flores and sonidos', await g.ev(() => G.field.npc('luna').alert() === 'pregunta'));
     await g.tapTile(6, 2); await settle(g, 'Luna\'s count');
     await goto(g, 'villa', 37, 19, 'down');
     for (const [k, n] of [['pato', 3], ['gallina', 2], ['caballo', 1], ['cabra', 1], ['conejo', 1], ['rana', 1]]) {
@@ -351,11 +261,11 @@ async function errandCuenta(browser) {
 async function errandSonidos(browser) {
   const { ctx, g } = await openFake(browser, 'e6-sonidos');
   try {
-    await play(g, 'villa', 15, 13, 'down', { quests: Object.assign({ canelo: 'done', picnic: 'done', show: 'done', cansado: 'done' }, A_DONE) });
+    await play(g, 'villa', 15, 13, 'down', { quests: Object.assign({ picnic: 'done', show: 'done' }, A_DONE) });
     check('sonidos: Nico shows a music note', await g.ev(() => G.field.npc('nico').alert() === 'nota'));
     await talk(g, 'nico', 'Nico\'s game');
     check('sonidos: Nico tags along', await g.ev(() => G.errands.nicoFollows() && G.field.npc('nico').ghost));
-    for (const [k, snd] of [['pato', 'cuac'], ['rana', 'croac'], ['cabra', 'bee']]) {
+    for (const [k, snd] of [['pato', 'cuac'], ['rana', 'croac'], ['cabra', 'la cabra']]) { // (the goat: "¿Quién es?")
       await tapAnimal(g, k);
       if (process.env.DBG) console.log(await g.ev(() => JSON.stringify([G.top().constructor.name, G.field.locked, G.field.route, G.field.player.x, G.field.player.y, G.field.npc('nico') && [G.field.npc('nico').x, G.field.npc('nico').y], G.errands.fl('sonidos'), G.errands.nicoFollows()])));
       await toQuestion(g, 'what the ' + k + ' says');
@@ -379,7 +289,7 @@ async function errandSonidos(browser) {
 async function errandFlores(browser) {
   const { ctx, g } = await openFake(browser, 'e7-flores');
   try {
-    await play(g, 'villa', 26, 14, 'up', { quests: Object.assign({ canelo: 'done', picnic: 'done', show: 'done', cansado: 'done' }, A_DONE) });
+    await play(g, 'villa', 26, 14, 'up', { quests: Object.assign({ picnic: 'done', show: 'done' }, A_DONE) });
     check('flores: Lucía looks sad (a "triste" bubble)', await g.ev(() => G.field.npc('lucia').alert() === 'triste'));
     await talk(g, 'lucia', 'Lucía\'s flowers');
     check('flores: started; coloured flowers grow around town; the hand would point at the ones she wants', await g.ev(() => G.errands.spots(G.field).filter(s => s.flower).length === 9 && G.errands.targets(G.field).filter(t => /^flor/.test(t.spot)).length === 6));
@@ -411,9 +321,9 @@ async function errandFlores(browser) {
 async function errandFiesta(browser) {
   const { ctx, g } = await openFake(browser, 'e8-fiesta');
   try {
-    const six = { canelo: 'done', picnic: 'done', show: 'done', cansado: 'done', cuenta: 'done', sonidos: 'done' };
+    const six = { picnic: 'done', show: 'done', flores: 'done', cuenta: 'done', sonidos: 'done' };
     await play(g, 'escuela', 6, 4, 'up', { quests: Object.assign(six, A_DONE), pet: { tricks: { sientate: 3, ven: 3, pata: 3 } }, hearts: { rosa: 5 } });
-    check('fiesta: unlocked after Round A and six Round B errands: Luna\'s star', await g.ev(() => G.field.npc('luna').alert() === 'estrella'));
+    check('fiesta: unlocked after the six older errands: Luna\'s star', await g.ev(() => G.field.npc('luna').alert() === 'estrella'));
     await g.tapTile(6, 2); await settle(g, 'the party errand');
     await goto(g, 'villa', 15, 13, 'down');
     for (const w of ['rosa', 'pepe', 'sofia', 'nico']) await talk(g, w, 'inviting ' + w);
@@ -443,7 +353,7 @@ async function errandFiesta(browser) {
 async function sideJobs(browser) {
   const { ctx, g } = await openFake(browser, 'jobs');
   try {
-    await play(g, 'panaderia', 5, 5, 'up', { quests: Object.assign({ canelo: 'done', picnic: 'done' }, A_DONE) });
+    await play(g, 'panaderia', 5, 5, 'up', { quests: Object.assign({ picnic: 'done' }, A_DONE) });
     await g.tapTile(5, 2);
     await g.drive(() => G.top().constructor.name === 'Choice' && G.top().o.mic === true, 'Marta\'s shop');
     await g.frames(8); await g.shot('shop');
@@ -492,15 +402,16 @@ async function sideJobs(browser) {
 async function unlocks(browser) {
   const { ctx, g } = await openFake(browser, 'unlock', false);
   try {
-    await play(g, 'villa', 36, 21, 'right', { quests: { saludos: 'done' } });
-    const u = q => g.ev(q => { Object.assign(G.state.quests, q); return G.errands.B.concat(['fiestab']).filter(G.errands.offer).join(); }, q);
-    check('unlock: nothing until a Round A errand', await u({}) === '');
-    check('unlock: canelo first', await u({ mercado: 'done' }) === 'canelo');
-    check('unlock: then picnic (mercado done)', await u({ canelo: 'done' }) === 'picnic');
-    check('unlock: show and cansado with their Round A errands', await u({ pelota: 'done', carta: 'done' }) === 'picnic,show,cansado');
-    check('unlock: cuenta after 3', await u({ picnic: 'done', show: 'done' }) === 'cansado,cuenta');
-    check('unlock: sonidos and flores after 4', await u({ cansado: 'done' }) === 'cuenta,sonidos,flores');
-    check('unlock: the party after 6', await u({ cuenta: 'done', sonidos: 'done' }) === 'flores,fiestab');
+    await play(g, 'villa', 36, 21, 'right', { fresh: true });
+    const u = q => g.ev(q => { Object.assign(G.state.quests, q); return G.data.tailOrder.filter(G.errands.offer).join(); }, q);
+    check('unlock: nothing during chapters 1-10', await u({ c1: 'done', c2: 'done', c3: 'done', c4: 'done', c5: 'done', c6: 'done', c7: 'done', c8: 'done', c9: 'done' }) === '');
+    check('unlock: the market first, after chapter 10', await u({ c10: 'done' }) === 'mercado');
+    check('unlock: then the picnic and the show', await u({ mercado: 'done' }) === 'picnic,show');
+    check('unlock: flores and sonidos after both', await u({ picnic: 'done', show: 'done' }) === 'flores,sonidos');
+    check('unlock: cuenta after those', await u({ flores: 'done', sonidos: 'done' }) === 'cuenta');
+    check('unlock: the party after all six', await u({ cuenta: 'done' }) === 'fiestab');
+    check('unlock: the lost-Canelo and tired-Tomás errands never start (chapters 7 and 10)', await g.ev(() => !G.errands.offer('canelo') && !G.errands.offer('cansado')));
+    check('unlock: one new errand a day: started today, the next waits for tomorrow', await g.ev(() => { G.state.quests.fiestab = undefined; delete G.state.quests.fiestab; G.chapters.tailStarted(); return !G.errands.offer('fiestab'); }));
     // keyboard: buy bread... rather, feed the ducks by keys
     await g.ev(() => { G.state.bag.items = [{ id: 'pan' }]; G.state.jobs = {}; G.field.player.dir = 'right'; });
     await g.press('z');
@@ -510,8 +421,8 @@ async function unlocks(browser) {
   } finally { await ctx.close(); }
 }
 
-const SECTIONS = [['1. ¿Dónde está Canelo?', errandCanelo], ['2. picnic', errandPicnic], ['3. show', errandShow], ['3b. show by voice', errandShowVoice],
-  ['4. cansado', errandCansado], ['5. cuenta', errandCuenta], ['6. sonidos', errandSonidos], ['7. flores', errandFlores], ['8. fiesta', errandFiesta],
+const SECTIONS = [['2. picnic', errandPicnic], ['3. show', errandShow], ['3b. show by voice', errandShowVoice],
+  ['5. cuenta', errandCuenta], ['6. sonidos', errandSonidos], ['7. flores', errandFlores], ['8. fiesta', errandFiesta],
   ['side jobs, shops, presents', sideJobs], ['unlocking, keys', unlocks]];
 const only = (process.env.ONLY || '').split(',').filter(Boolean);
-run('Round B errands', SECTIONS.filter(([n, fn]) => !only.length || only.some(o => n.toLowerCase().includes(o) || fn.name.toLowerCase().includes(o))));
+run('The older errands (after chapter 10)', SECTIONS.filter(([n, fn]) => !only.length || only.some(o => n.toLowerCase().includes(o) || fn.name.toLowerCase().includes(o))));

@@ -1,5 +1,5 @@
 // Round B stage 2a: Canelo as your dog (src/pet.js), hearts (src/hearts.js) and the animal album (src/album.js).
-// Mamá gives you Canelo and the Mi perro page and teaches siéntate; tricks are learned in 3 good tries, by voice (a FAKE
+// Canelo is yours from chapter 1 (ven) and learns siéntate in chapter 3; tricks are learned in 3 good tries, by voice (a FAKE
 // recognizer, as in tools/test-speaking.js) and by tap; care (food, water, the ball, a pat, his bed); hearts rules
 // (once-a-day greetings, the daily cap, errands, gifts, 3- and 5-heart surprises, the row over the portrait); voice
 // greetings; the album (silhouettes, names and sounds, the count, the full-album party, the Amigos page); keys; and
@@ -7,6 +7,7 @@
 //   NODE_PATH=$(npm root -g) node tools/test-roundb-pet.js [screenshot dir]
 'use strict';
 const { open, check, run } = require('./harness');
+const G_ALL = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9', 'c10']; // (the chapters written so far, all done)
 
 function FAKE() { // each recognizer start() takes the next reply from window.__sr.queue
   const sr = window.__sr = { queue: [], starts: [] };
@@ -39,7 +40,7 @@ async function openFake(browser, name, touch) {
 async function play(g, m, x, y, dir, o = {}) {
   await g.ev(([m, x, y, dir, o]) => {
     G.st.erase(1); G.st.newGame(); G.state.name = 'Luz'; G.state.look = G.data.defaultLook('nina');
-    Object.assign(G.state.flags, { intro: true }, o.flags || {}); Object.assign(G.state.quests, { saludos: 'done' }, o.quests || {});
+    Object.assign(G.state.flags, { intro: true }, o.flags || {}); (o.chapters || ['c1', 'c2', 'c3']).forEach(id => { G.state.quests[id] = 'done'; }); Object.assign(G.state.quests, o.quests || {});
     if (o.pet) Object.assign(G.state.pet, o.pet);
     if (o.hearts) Object.assign(G.state.hearts, o.hearts);
     G.st.begin(1); G.goto(m, x, y, dir);
@@ -71,13 +72,15 @@ const waitMenu = async g => { // (a heart surprise may come first: the sticker)
 async function ipad(browser) {
   const { ctx, g } = await openFake(browser, 'pet-ipad', true);
   try {
-    check('pet: the Mi perro page is no longer on the shelf (Mamá hands it over)', await g.ev(() => !Object.values(G.maps.casa.pages || {}).includes('mascota')));
-    await play(g, 'casa', 3, 4, 'up');
-    check('pet: after the Saludos errand Mamá has a "!" for you', await g.ev(() => G.field.npc('mama').alert() === true && G.pet.startReady()));
+    check('pet: the Mi perro page puzzle is on Canelo\'s cushion at home', await g.ev(() => G.data.pagePlaces.casa[G.pet.BED.join()] === 'mascota'));
+    // after chapter 3: Canelo is yours (ven, chapter 1) and is learning siéntate (one good try in Mamá's lesson)
+    await play(g, 'casa', 3, 4, 'up', { flags: { canelo: true, petStart: true, notebook: true }, pet: { tricks: { ven: 3, sientate: 1 }, learning: 'sientate' } });
+    await g.ev(() => { ['hola', 'buenosdias', 'perro', 'ven', 'hueso', 'sientate', 'pelota'].forEach(id => G.words.meet(id, 'test')); G.animals.meet('perro'); });
+    check('pet: no "!" from Mamá for the old start (Canelo came in chapter 1)', await g.ev(() => !G.pet.startReady()));
     await g.tapTile(3, 2);
     // her greeting first (once a day): answered by voice
     await g.until(() => G.top().constructor.name === 'Choice' && G.top().t > 10, null, 'Mamá\'s greeting');
-    check('hearts: the first talk of the day starts with a greeting (a G.ask with a mic)', await g.ev(() => /Mamá: ¡\[buenosdias\]|Mamá: ¡\[hola\]/.test(G.top().o.prompt) && !!G.top().mic));
+    check('hearts: the first talk of the day starts with a greeting (a G.ask with a mic)', await g.ev(() => G.top().o.prompt.startsWith('Mamá: ') && ['hola', 'buenosdias', 'buenasnoches'].includes(G.top().ch[G.top().o.answer].word) && !!G.top().mic), await g.ev(() => G.top().o.prompt + ' mic ' + !!G.top().mic));
     await g.shot('greeting');
     const st0 = await g.ev(() => G.state.stars);
     const say = await g.ev(() => { const s = G.top(); return s.ch[s.o.answer].word === 'buenosdias' ? 'buenos días' : s.ch[s.o.answer].word === 'bien' ? 'bien' : 'hola'; });
@@ -88,16 +91,15 @@ async function ipad(browser) {
     await g.until(() => G.top().constructor.name === 'TextBox' && G.top().opts.who === 'mama', null, 'Mamá talking');
     await g.frames(20); await g.shot('mama_hearts_row');
     check('hearts: her hearts show over her portrait', await g.ev(() => G.top().opts.who === 'mama' && G.hearts.shows('mama')));
-    await settle(g, 'Mamá gives you Canelo');
-    const s1 = await g.ev(() => ({ mine: G.pet.mine(), page: !!G.state.flags.notebook, l: G.pet.learning(), tries: G.pet.tries('sientate'), alert: G.field.npc('mama').alert(), n: !!G.pet.npc(), album: G.animals.met('perro') }));
-    check('pet: Mamá gives you Canelo, opens the notebook and teaches his first trick (siéntate, one try done)', s1.mine && s1.page && s1.l === 'sientate' && s1.tries === 1 && s1.n && s1.album, JSON.stringify(s1));
-    check('pet: her "!" is gone while he learns', !s1.alert, JSON.stringify(s1));
+    await settle(g, 'Mamá');
+    const s1 = await g.ev(() => ({ mine: G.pet.mine(), l: G.pet.learning(), tries: G.pet.tries('sientate'), n: !!G.pet.npc(), album: G.animals.met('perro') }));
+    check('pet: Canelo is yours at home, learning siéntate', s1.mine && s1.l === 'sientate' && s1.tries === 1 && s1.n && s1.album, JSON.stringify(s1));
     await g.frames(30); await g.shot('learning_bubble');
 
     // the pet menu
     await openMenu(g);
     const m = await g.ev(() => G.top().cards().map(c => c.id + ':' + c.st).join(' '));
-    check('menu: tricks (learning siéntate, ven next by Mamá, the rest "?") and the care cards', m === 'sientate:learn ven:next pata:lock salta:lock gira:lock hueso:care galleta:care agua:care pelota:care mimo:care cama:care', m);
+    check('menu: tricks (ven known, learning siéntate, pata next, the rest "?") and the care cards', m === 'ven:known sientate:learn pata:next salta:lock gira:lock hueso:care galleta:care agua:care pelota:care mimo:care cama:care', m);
     check('menu: it has the mic, and the hand would point at the trick he is learning', await g.ev(() => !!G.top().mic && !!G.top().hintXY()));
     await g.shot('pet_menu');
     // say it straight at the menu: a good try (2/3) and a speaking star
@@ -121,7 +123,7 @@ async function ipad(browser) {
     await g.frames(30); await g.shot('sit_learned');
     check('learned: 3 good tries -> Canelo knows siéntate, and a heart from Canelo', await g.ev(() => G.pet.knows('sientate') && !G.pet.learning() && G.hearts.get('canelo') === 1));
     await waitMenu(g);
-    check('menu: siéntate is gold now, ven is Mamá\'s next', await g.ev(() => G.top().cards().slice(0, 2).map(c => c.st).join() === 'known,next'));
+    check('menu: ven and siéntate are both known now', await g.ev(() => G.top().cards().slice(0, 2).map(c => c.st).join() === 'known,known'));
     // a known trick by tap, and by voice
     await tapCard(g, 'sientate', { shotAt: 30, shot: 'sit' });
     await waitMenu(g);
@@ -150,7 +152,7 @@ async function ipad(browser) {
     await g.ev(() => window.__sr.queue.push({ results: ['la pelota'] }));
     await g.tapRect(await g.ev(() => G.top().micRect()));
     await g.until(() => G.st.saidCount('pelota') === 1, null, 'la pelota said');
-    check('voice: "la pelota" said to Canelo throws it, a speaking star, and the word is met (words.js)', await g.ev(() => G.st.saidCount('pelota') === 1 && G.st.seen('pelota')));
+    check('voice: "la pelota" said to Canelo (met in chapter 5) throws it, a speaking star', await g.ev(() => G.st.saidCount('pelota') === 1 && G.st.seen('pelota')));
     await waitMenu(g);
     // his bed: at home he goes to sleep
     await tapCard(g, 'cama');
@@ -158,12 +160,9 @@ async function ipad(browser) {
     await g.frames(40);
     check('care: la cama at home: he sleeps on his cushion (z z z)', await g.ev(() => G.pet.sleeping() && G.pet.npc().x === G.pet.BED[0] && G.pet.npc().y === G.pet.BED[1]));
     await g.shot('sleeping');
-    // Mamá teaches ven
+    // nobody teaches the other tricks before chapter 10 is done
     await free(g);
-    check('teach: Mamá\'s thought bubble shows ven next', await g.ev(() => G.field.npc('mama').alert() === 'ven'));
-    await g.tapTile(3, 2);
-    await settle(g, 'Mamá teaches ven');
-    check('teach: Mamá teaches ven next (one try done)', await g.ev(() => G.pet.learning() === 'ven' && G.pet.tries('ven') === 1));
+    check('teach: before chapter 10 nobody teaches a trick (Mamá has no trick bubble)', await g.ev(() => !G.pet.canTeach('sofia') && !G.pet.canTeach('nico') && G.field.npc('mama').alert() !== 'pata'));
     // save and reload
     await g.ev(() => G.st.saveNow());
     const before = await g.ev(() => JSON.stringify({ p: G.state.pet, h: G.state.hearts, f: G.state.flags.petStart }));
@@ -182,7 +181,7 @@ async function ipad(browser) {
 async function tricks(browser) {
   const { ctx, g } = await openFake(browser, 'pet-tricks', true);
   try {
-    await play(g, 'villa', 19, 13, 'down', { flags: { canelo: true, petStart: true }, quests: { pelota: 'done' }, pet: { tricks: { sientate: 3, ven: 3 } } });
+    await play(g, 'villa', 19, 13, 'down', { chapters: G_ALL, flags: { canelo: true, petStart: true }, pet: { tricks: { sientate: 3, ven: 3 } } }); // (after chapter 10)
     await g.until(() => !!G.pet.npc() && !G.pet.npc().moving, null, 'Canelo beside you');
     check('teach: Sofía\'s bubble shows dame la pata next', await g.ev(() => G.field.npc('sofia').alert() === 'pata'));
     await g.ev(() => { const [x, y] = G.MAPDATA.villa.pos.sofia; G.field.player.x = x; G.field.player.y = y + 1; G.field.player.dir = 'up'; G.field.snapCam(); });
@@ -275,7 +274,7 @@ async function album(browser) {
   const { ctx, g } = await open(browser, 'pet-album', true);
   try {
     await play(g, 'villa', 19, 13, 'down');
-    await g.ev(() => { ['pato', 'gato', 'rana', 'perro', 'caballo', 'pez', 'gallina'].forEach(id => G.animals.meet(id)); G.state.album.gato.said = true; G.album.count('pato'); });
+    await g.ev(() => { ['pato', 'gato', 'rana', 'perro', 'caballo', 'pez', 'gallina'].forEach(id => { G.animals.meet(id); G.words.meet(id, 'test'); }); G.words.meet('miau', 'test'); G.state.album.gato.said = true; G.album.count('pato'); });
     await g.tap(310, 16);
     await g.until(() => G.top().constructor.name === 'FieldMenu', null, 'the field menu');
     await g.frames(6); await g.shot('menu_with_album');
@@ -310,18 +309,18 @@ async function album(browser) {
 async function keys(browser) {
   const { ctx, g } = await open(browser, 'pet-keys', false);
   try {
-    await play(g, 'villa', 19, 13, 'down', { flags: { canelo: true, petStart: true }, pet: { tricks: { sientate: 3 }, learning: 'ven' } });
+    await play(g, 'villa', 19, 13, 'down', { flags: { canelo: true, petStart: true }, pet: { tricks: { ven: 3 }, learning: 'sientate' } });
     await g.until(() => !!G.pet.npc() && !G.pet.npc().moving && !G.pet.npc().slide, null, 'Canelo');
     await g.ev(() => { const n = G.pet.npc(), p = G.field.player; n.x = p.x; n.y = p.y + 1; n.ox = n.oy = 0; n.amb.idle = 0; p.dir = 'down'; });
     await g.press('z');
     await g.until(() => G.top().constructor.name === 'PetMenu' && G.top().t > 12, null, 'Z facing Canelo opens the menu');
-    check('keys: Z facing Canelo opens the pet menu, on the trick he is learning', await g.ev(() => G.top().cards()[G.top().sel].id === 'ven'));
+    check('keys: Z facing Canelo opens the pet menu, on the trick he is learning', await g.ev(() => G.top().cards()[G.top().sel].id === 'sientate'));
     await g.press('ArrowLeft');
-    check('keys: arrows move along the cards', await g.ev(() => G.top().cards()[G.top().sel].id === 'sientate'));
+    check('keys: arrows move along the cards', await g.ev(() => G.top().cards()[G.top().sel].id === 'ven'));
     await g.press('ArrowDown');
     check('keys: down goes to the care row', await g.ev(() => G.top().sel >= 5));
     await g.press('ArrowUp'); await g.press('Enter');
-    await g.until(() => !!G.pet.npc().pa && G.pet.npc().pa.k === 'sit', null, 'the trick');
+    await g.until(() => !!G.pet.npc().pa && G.pet.npc().pa.k === 'come', null, 'the trick');
     check('keys: Enter does the trick', true);
     await waitMenu(g);
     await g.press('Escape');

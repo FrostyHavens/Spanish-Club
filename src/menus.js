@@ -106,7 +106,8 @@
     page() { return this.list[this.pi]; }
     words() { return this.page() ? D().pages[this.page()].words : []; }
     // tap areas (shared with draw): word k on the page, the < > page buttons around the page dots, close
-    cellRect(k) { return { x: 22 + (k % 3) * 94, y: 36 + Math.floor(k / 3) * 58, w: 90, h: 56 }; }
+    cols() { return this.words().length > 9 ? 4 : 3; } // (a page of 10, the numbers: four narrower columns)
+    cellRect(k) { const c = this.cols(); return c === 4 ? { x: 18 + (k % 4) * 72, y: 36 + Math.floor(k / 4) * 58, w: 70, h: 56 } : { x: 22 + (k % 3) * 94, y: 36 + Math.floor(k / 3) * 58, w: 90, h: 56 }; }
     prevXY() { return [G.W / 2 - 82, 4]; }
     nextXY() { return [G.W / 2 + 62, 4]; }
     closeXY() { return [G.W - 30, 8]; }
@@ -119,13 +120,14 @@
       if (G.btnHit(...this.prevXY())) { this.turn(-1); return; }
       if (G.btnHit(...this.nextXY())) { this.turn(1); return; }
       for (let k = 0; k < n; k++) if (G.tapIn(this.cellRect(k))) { if (this.wi !== k) G.audio.sfx('cursor'); this.wi = k; this.say(k); } // tap a word: hear it
-      // left/right moves within the page's 3-column grid, and past its edge turns the page
+      // left/right moves within the page's grid (3 columns, or 4), and past its edge turns the page
+      const nc = this.cols();
       if (d === 'left' || d === 'right') {
-        const col = this.wi % 3, dx = d === 'left' ? -1 : 1;
-        if (col + dx >= 0 && col + dx < 3 && this.wi + dx < n) { this.wi += dx; G.audio.sfx('cursor'); }
+        const col = this.wi % nc, dx = d === 'left' ? -1 : 1;
+        if (col + dx >= 0 && col + dx < nc && this.wi + dx < n) { this.wi += dx; G.audio.sfx('cursor'); }
         else { this.turn(dx); return; }
       }
-      if (d === 'up' || d === 'down') { const k = this.wi + (d === 'up' ? -3 : 3); if (k >= 0 && k < n) { this.wi = k; G.audio.sfx('cursor'); } }
+      if (d === 'up' || d === 'down') { const k = this.wi + (d === 'up' ? -nc : nc); if (k >= 0 && k < n) { this.wi = k; G.audio.sfx('cursor'); } }
       if (G.input.p('A') || G.input.p('C')) this.say(this.wi);
     }
     draw(ctx) {
@@ -152,13 +154,13 @@
       if (G.enVisible()) G.text(ctx, tp.en, 22, 25, '#a09070', null);
       const dx = this.flip * 3;
       ws.forEach((id, k) => {
-        const R = this.cellRect(k), cx = R.x + dx, cy = R.y + 2, sel = k === this.wi, st = S().stage(id);
+        const R = this.cellRect(k), cx = R.x + dx + (R.w - 90) / 2, cy = R.y + 2, sel = k === this.wi, st = S().stage(id);
         if (st < 1) { // still to meet: an empty dotted frame
           ctx.fillStyle = '#d0c0a0'; for (let i = 0; i < 32; i += 4) { ctx.fillRect(cx + 29 + i, cy + 2, 2, 1); ctx.fillRect(cx + 29 + i, cy + 33, 2, 1); ctx.fillRect(cx + 29, cy + 2 + i, 1, 2); ctx.fillRect(cx + 60, cy + 2 + i, 1, 2); }
           return;
         }
         const wd = D().words[id], r = G.words.rec(id), fresh = r && r.met != null && G.words.now() - r.met < 120;
-        if (sel) { ctx.fillStyle = '#f8e0a0'; ctx.fillRect(cx - 2, cy - 2, R.w, R.h); }
+        if (sel) { ctx.fillStyle = '#f8e0a0'; ctx.fillRect(R.x + dx - 2, cy - 2, R.w, R.h); }
         const hop = sel ? Math.round(Math.abs(Math.sin(this.t / 8)) * -2) : 0;
         ctx.fillStyle = st >= 3 ? '#e8b830' : '#c8b8e8'; ctx.fillRect(cx + 27, cy + hop, 36, 36);
         ctx.fillStyle = '#fffaf0'; ctx.fillRect(cx + 28, cy + 1 + hop, 34, 34);

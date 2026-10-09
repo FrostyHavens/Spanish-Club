@@ -1,28 +1,29 @@
-// ===== Round B: the eight story errands, the bag, gifts, the shops and the side jobs (docs/ROUND_B_PLAN.md section 7) =====
-// Each errand is a little story that mixes walking, finding, tapping and SPEAKING (every question is a G.ask with {word}
-// picture cards, so the kids' mic comes with it). Who asks:
-//   canelo  ¿Dónde está Canelo?        Mamá: Canelo runs off; Gómez, Lucía and Tomás give clues (a paw print by the park
-//                                      bench, his ball at the fountain, barking in the barn); say "¡ven!" at the barn door
+// ===== The older story errands, the bag, gifts, the shops and the side jobs (docs/ROUND_B_PLAN.md section 7) =====
+// Chapters 1-10 (src/chapters.js, content/es/story-c01-c10.js) come first; these errands are what comes after them until
+// chapters 11-21 are written (docs/CURRICULUM.md). Each is a little story that mixes walking, finding, tapping and
+// SPEAKING (every question is a G.ask with {word} picture cards, so the kids' mic comes with it). Who asks:
+//   mercado El mercado (maps.js)        Rosa: three apples and two bananas from Don Pepe
 //   picnic  El día de campo            Rosa: pan (Marta), queso (Pepe), huevo (the hay by the hens), leche (the goat's pail),
 //                                      agua (the fountain); then a picnic on a blanket in the park
 //   show    El show de perros          Sofía: Canelo needs siéntate, dame la pata and salta; Nico brings his cat; Luna judges
-//   cansado Tomás está cansado         Tomás: three letters (Rosa, the barn, Inés); the horse eats one: an apple gets it back
 //   cuenta  ¿Cuántos animales?         Luna: tap every animal to count it (ducks 3, hens 2, horse, goat, rabbit, frog, fish);
 //                                      then say how many of each, and the total: ¡diez!
 //   sonidos ¿Qué dicen?                Nico tags along and plays a sound; find the animal and say its sound (cuac, croac,
-//                                      bee, miau); last, Nico barks and Canelo answers
+//                                      the goat: who is it?, miau); last, Nico barks and Canelo answers
 //   flores  Las flores de Lucía        Lucía is sad: a pink, a white and a yellow flower for her mom (coloured flowers grow
 //                                      around town; a butterfly sits on the last one)
-//   fiestab La fiesta de los animales  Luna (after the 3 Round A errands and 6 of these 7): invite 5 friends, hang 4 ribbons
+//   fiestab La fiesta de los animales  Luna (after the six above): invite 5 friends, hang 4 ribbons
 //                                      on the barn, feed the ducks, the horse and the hens, then the show and a group photo
-// How they unlock (UNLOCK below): canelo after the first Round A errand (Canelo must be yours); picnic / show / cansado
-// after canelo and the Round A errand of the same person; cuenta after 3 of them; sonidos and flores after 4; the party
-// after all of Round A and 6 of the 7. So there are usually 2-3 to choose from.
+// How they unlock (UNLOCK below): mercado once every written chapter is done; picnic and show after it; flores and
+// sonidos after those two; cuenta after flores and sonidos; the party after all six. At most one new one starts a day,
+// and only while the day's new words allow it (G.chapters.tailGate). canelo and cansado were replaced by chapters 7 and
+// 10: they never start now (an old save that had them going is mapped onto the chapters, chapters.js migrate()).
 //
 // The bag (G.state.bag.items): what you carry, drawn top-left on the map. Errand things carry `q` (their errand) and
 // can't be given away; the rest (bought from Marta and Don Pepe, a flower, an egg, water from the fountain) can be given
 // to someone who likes it (G.hearts.LIKES; Lucía only likes pink flowers): they notice it when you talk ("¿Para mí?").
-// Side jobs (once a day each, a star and sometimes a heart; G.state.jobs[id] = 'YYYY-M-D'): feed the ducks (bread from
+// Side jobs (once a day each, a star and sometimes a heart; G.state.jobs[id] = 'YYYY-M-D'; each opens with the chapter
+// that teaches its words: ducks c6, the cat c2, water c9, the horse c10): feed the ducks (bread from
 // Marta, tap the pond), the hens' egg (the hay bale by them, after the picnic; give it to Rosa), Canelo's water (his bowl at
 // home is empty each day: fill a bottle at the fountain), pet the horse (tap him from close by), the sleepy cat (tap her
 // while she naps and say "gato").

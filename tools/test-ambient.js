@@ -4,10 +4,10 @@
 'use strict';
 const { open, check, run } = require('./harness');
 
-// a fresh game in Villa Sol at x, y (Mamá's intro done; flags / quests as given)
+// a fresh game in Villa Sol at x, y (chapters 1-10 done unless o.quests says otherwise; flags / quests as given)
 async function town(g, x, y, dir, o = {}) {
   await g.ev(([x, y, dir, o]) => {
-    G.st.newGame(); G.state.name = 'Luz'; Object.assign(G.state.flags, { intro: true }, o.flags || {}); Object.assign(G.state.quests, o.quests || {});
+    G.st.newGame(); G.state.name = 'Luz'; Object.assign(G.state.flags, { intro: true }, o.flags || {}); if (!o.fresh) G.chapters.writtenIds().forEach(id => { G.state.quests[id] = 'done'; }); Object.assign(G.state.quests, o.quests || {});
     G.goto('villa', x, y, dir);
   }, [x, y, dir, o]);
   await g.fieldIdle('villa');
@@ -96,17 +96,11 @@ async function critters(browser) {
 async function canelo(browser) {
   const { ctx, g } = await open(browser, 'amb-canelo', true);
   try {
-    await town(g, 16, 7, 'right');
+    await town(g, 16, 9, 'right', { flags: { canelo: true, petStart: true } }); // (your dog since chapter 1)
     const dog = () => g.ev(() => { const n = G.field.npc('canelo'), p = G.field.player; return { x: n.x, y: n.y, d: Math.abs(n.x - p.x) + Math.abs(n.y - p.y), ghost: !!n.ghost, wander: n.wander, moving: n.moving || n.busy }; });
-    await g.ev(() => { const n = G.field.npc('canelo'); n.wander = 0; }); // hold still until we reach him
-    await g.tapTile(...await g.ev(() => { const n = G.field.npc('canelo'); return [n.x, n.y]; }));
-    await talking(g, 'canelo');
-    await g.drive(() => G.top() === G.field && !G.field.locked, 'Canelo');
-    check('canelo: after you talk to him he is your friend (saved in the flags)', await g.ev(() => G.state.flags.canelo === true));
     await g.frames(8); await g.shot('canelo_happy');
     let d = await dog();
-    check('canelo: he hops for joy, then follows as a ghost', d.ghost && !d.wander && await g.ev(() => G.field.amb.fx.some(e => e.kind === 'heart')), JSON.stringify(d));
-    await g.until(() => !G.field.npc('canelo').oy, null, 'the hop to end');
+    check('canelo: your dog follows you as a ghost', d.ghost && !d.wander, JSON.stringify(d));
 
     // walk away by tapping: he trots after you and stays close
     await g.tapTile(13, 12);
@@ -135,7 +129,7 @@ async function canelo(browser) {
 async function tomas(browser) {
   const { ctx, g } = await open(browser, 'amb-tomas', true);
   try {
-    await town(g, 25, 5, 'right', { quests: { saludos: 'done' } });
+    await town(g, 25, 5, 'right');
     await g.ev(() => { // note the ground under him, every few frames while he walks
       window.__tom = []; const f = G.field;
       window.__tomT = setInterval(() => { const n = f.npc('tomas'); if (G.field === f && n.moving) window.__tom.push(f.map.get(n.x, n.y)); }, 50);
@@ -146,7 +140,6 @@ async function tomas(browser) {
     check('tomas: walks his round to the bakery and slips a letter in the door', at.join() === '28,7,up', at.join());
     check('tomas: keeps to the roads', road > 0.8, 'on the road ' + Math.round(road * 100) + '%');
     await g.frames(8); await g.shot('tomas_letter');
-    check('tomas: his "carta" bubble is still up', await g.ev(() => G.field.npc('tomas').alert() === 'carta'));
 
     // tap him while he walks: you catch up with him and talk
     await g.until(() => G.field.npc('tomas').moving, null, 'Tomás to walk on', 20000);
@@ -158,8 +151,7 @@ async function tomas(browser) {
     const here = await g.ev(() => { const n = G.field.npc('tomas'); return [n.x, n.y]; });
     await g.frames(90);
     check('tomas: talking stops him', await g.ev(h => { const n = G.field.npc('tomas'); return n.x === h[0] && n.y === h[1] && !n.moving; }, here));
-    await g.drive(() => G.top() === G.field && !G.field.locked, 'Tomás\'s errand');
-    check('tomas: he gave you the letter errand', await g.ev(() => G.state.quests.carta === 'active'));
+    await g.drive(() => G.top() === G.field && !G.field.locked, 'Tomás');
     await g.until(h => { const n = G.field.npc('tomas'); return n.x !== h[0] || n.y !== h[1]; }, here, 'Tomás to go on with his round', 15000);
     check('tomas: then goes on with his round', true);
     check('tomas: no console errors', !g.errors.length, g.errors.join('\n'));
