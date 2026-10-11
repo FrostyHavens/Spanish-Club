@@ -5,6 +5,7 @@
 // the way, and the last line said before it (the instruction a child would have had to read). Moments where the bot
 // lost more than a few seconds get a small screenshot.
 //   NODE_PATH=$(npm root -g) node tools/audit-intuitive.js [out dir] [--days 3] [--label before]
+// Since step 2 (never a dead end) the bot plays every day to sunset and goes to bed (about an hour for 3 days).
 // Writes <out dir>/audit-<label>.json and its PNGs (default out dir: the scratchpad's shots/audit).
 'use strict';
 const path = require('path'), fs = require('fs');
@@ -31,6 +32,10 @@ const LIMIT = 45; // game seconds of looking before the moment counts as stuck (
       window.__lines = [];
       const say = G.say; G.say = function (pages, o) { try { (Array.isArray(pages) ? pages : [pages]).forEach(p => window.__lines.push(typeof p === 'string' ? { t: p } : { t: p.t, en: p.en })); window.__lines = window.__lines.slice(-4); } catch (e) { /* */ } return say.apply(this, arguments); };
     });
+    // a night at home (the bot goes to bed at sunset): the child comes back the next real day (a new calendar date, as
+    // tools/playflow.js nextDay does; the date's own new-word limit would otherwise keep the story closed)
+    let lastEve = -1;
+    g.hooks = { scene: async name => { if (name !== 'TodayCard') return; const d = await g.ev(() => G.words.day()); if (d === lastEve) return; lastEve = d; await g.ev(() => { G.debug.dayShift = (G.debug.dayShift || 0) + 1; G.state.wm.date = G.today(); }); } };
     const bot = new NaiveBot(g);
     let day = 1, stuckHere = 0;
     for (let step = 0; step < 2500; step++) {

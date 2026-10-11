@@ -124,11 +124,12 @@
       const pick = L => L.find(n => { try { const a = n.alert && n.alert(); return !!a && !a.wait; } catch (e) { return false; } }) || L[0];
       const talker = (x, y) => pick(ppl.filter(n => n.talk && n.spec && !n.hidden && n.x === x && n.y === y));
       // a person where they are drawn (mid-step too, sliding between tiles), or `up` tiles above that (the head)
-      const drawn = up => pick(ppl.filter(n => n.talk && n.spec && !n.hidden && wx >= n.x * T + n.ox && wx < n.x * T + n.ox + T && wy >= (n.y - up) * T + n.oy && wy < (n.y - up + 1) * T + n.oy));
+      // (Canelo is a small dog: nothing of him is drawn on the tile above his)
+      const drawn = up => pick(ppl.filter(n => n.talk && n.spec && !n.hidden && !(up && n.id === 'canelo') && wx >= n.x * T + n.ox && wx < n.x * T + n.ox + T && wy >= (n.y - up) * T + n.oy && wy < (n.y - up + 1) * T + n.oy));
       const c = this.map.get(tx, ty);
-      let n = drawn(0) || talker(tx, ty) || drawn(1) || talker(tx, ty + 1);
-      if (n && (n.ghost || n.id === 'canelo') && G.carry && G.carry.at(this, tx, ty)) n = null; // (Canelo standing on a thing to pick up: the thing)
       const story = (G.chapters && G.chapters.spotAt(this, tx, ty)) || G.intro.spotAt(this, tx, ty); // a puzzle's thing on a counter is the thing, not the person behind it
+      let n = drawn(0) || talker(tx, ty) || (story ? null : drawn(1) || talker(tx, ty + 1)); // (a story's place wins over the head of someone standing below it: the bushes of chapter 5)
+      if (n && (n.ghost || n.id === 'canelo') && G.carry && G.carry.at(this, tx, ty)) n = null; // (Canelo standing on a thing to pick up: the thing)
       if (!n && !story && COUNTER.includes(c)) n = DIR4.map(d => talker(tx + G.DIRS[d][0], ty + G.DIRS[d][1])).find(Boolean);
       if (n) return { npc: n, x: n.x, y: n.y };
       if (this.exitAt(tx, ty)) return { exit: true, x: tx, y: ty };

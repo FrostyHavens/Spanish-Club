@@ -321,8 +321,8 @@ async function keys(browser) {
     // the album with keys
     await g.press('x');
     await g.until(() => G.top().constructor.name === 'FieldMenu', null, 'the field menu');
-    await g.press('ArrowRight'); await g.press('ArrowRight');
-    check('keys: the menu has the album after Misiones', await g.ev(() => G.top().sel === 'album'));
+    await g.press('ArrowRight'); // (the kid's menu is the notebook and the album: Misiones moved to the grown-ups menu)
+    check('keys: the menu has the album after the notebook', await g.ev(() => G.top().sel === 'album'));
     await g.press('ArrowDown');
     check('keys: down still goes to the gear', await g.ev(() => G.top().sel === 'gear'));
     await g.press('ArrowUp'); await g.press('Enter');
