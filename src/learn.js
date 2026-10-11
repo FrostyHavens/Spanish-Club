@@ -66,7 +66,7 @@
       ctx.fillStyle = '#8898e0'; ctx.fillRect(px - 2, py - 2, pw + 4, pht + 4);
       ctx.fillStyle = '#f4ecd8'; ctx.fillRect(px - 1, py - 1, pw + 2, pht + 2);
       ctx.imageSmoothingEnabled = false; ctx.drawImage(G.icon(wd), px, py, pw, pht);
-      if (G.cards) { const id = this.ids[this.i]; G.cards.drawPlant(ctx, G.cards.pts(id), cx + 50, y + 80, { gold: G.words.stage(id) >= 4, s: 2 }); G.cards.drawPlant(ctx, G.cards.pts(id), cx - 50, y + 80, { gold: G.words.stage(id) >= 4, s: 2 }); } // its card has flowered (cards.js)
+      if (G.cards) { const id = this.ids[this.i]; G.cards.drawPlant(ctx, G.cards.pts(id), cx + 50, y + 80, { gold: G.words.stage(id) >= 4, s: 2 }); } // its card has flowered (cards.js)
       G.bigText(ctx, wd.es, cx, y + 92, 2, '#f8d860');
       if (G.enVisible()) G.textC(ctx, wd.en, cx, y + 112, '#a8b0d8');
       ctx.restore();

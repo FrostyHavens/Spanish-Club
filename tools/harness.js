@@ -73,6 +73,7 @@ class Game {
         if (r.name === 'Choice') Object.assign(r, { answer: s.o.answer == null ? 0 : s.o.answer, rects: s.rects(), off: s.ch.map(c => !!c.off), cards: s.cards, i: s.i, spk: s.spk() });
         if (r.name === 'TextBox') Object.assign(r, { pi: s.pi, shown: s.shown, all: s.chars(0, s.scroll + 3), spk: s.spk(), noVoice: !!s.opts.noVoice });
         if (r.name === 'Notebook' || r.name === 'Deck' || r.name === 'PetMenu' || r.name === 'Album') r.close = s.closeXY();
+        if (r.name === 'PetMenu' && s.want >= 0 && !s.won && s.t > 10) r.want = s.rect(s.want); // (the arrow the day's play shows over a card)
         if (r.name === 'PagePuzzle') { // the next picture to match and its word (intro.js)
           const k = s.pics.findIndex((p, k) => !s.match[k]);
           Object.assign(r, { done: s.done, pic: k >= 0 ? s.picRect(k) : null, word: k >= 0 ? s.wordRect(s.words.indexOf(s.pics[k])) : null, sel: s.sel });
@@ -121,7 +122,9 @@ class Game {
           if (this.touch) await this.tap(150, 200); else await this.press('z');
           break;
         }
-        case 'PetMenu': case 'Album': // Round B screens nobody asked for here: just close them
+        case 'PetMenu': case 'Album': // Round B screens nobody asked for here: just close them (or the card an arrow shows)
+          if (s.want && this.touch) { await this.tapRect(s.want); break; }
+          if (s.name === 'PetMenu' && s.t <= 10) { await this.frames(4); break; }
           if (this.touch) await this.tapBtn(s.close); else await this.press('x');
           break;
         case 'PagePuzzle': // a page puzzle: tap a picture, then its word (o.puzzleWrong: one wrong pair first)

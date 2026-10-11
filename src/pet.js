@@ -415,6 +415,10 @@
       this.sel = k >= 0 ? k : Math.max(0, C.findIndex(c => c.st === 'known'));
       if (this.sel < 0 || C[this.sel].st === 'lock') this.sel = TR;
       this.mic = G.mic && G.mic.on() ? new G.MicBtn(this, { rect: () => this.micRect(), ready: () => this.t > 10 && !this.won, heard: a => this.heard(a) }) : null;
+      // the day's play wants one of these (carry.js: a trick, a pat, food): a yellow arrow bounces over it
+      const want = G.carry && G.carry.petWant ? G.carry.petWant(G.field) : null;
+      this.want = want ? C.findIndex(c => c.id === want && this.usable(c)) : -1;
+      if (this.want >= 0) this.sel = this.want;
     }
     onEnter() { if (this.mic) this.mic.arm(); }
     onExit() { if (this.mic) this.mic.off(); }
@@ -427,7 +431,7 @@
     rect(k) { return k < TR ? { x: 9 + k * 45, y: 136, w: 43, h: 46 } : { x: 10 + (k - TR) * 44, y: 184, w: 40, h: 38 }; }
     micRect() { return { x: 279, y: 140, w: 36, h: 36 }; }
     closeXY() { return [G.W - 26, 6]; }
-    hintXY() { const k = this.cards().findIndex(c => c.st === 'learn'); if (k < 0) return null; const r = this.rect(k); return [r.x + r.w / 2, r.y + r.h / 2]; }
+    hintXY() { const k = this.want >= 0 ? this.want : this.cards().findIndex(c => c.st === 'learn'); if (k < 0) return null; const r = this.rect(k); return [r.x + r.w / 2, r.y + r.h / 2]; }
     usable(c) { return c.st === 'known' || c.st === 'learn' || c.st === 'care' || c.st === 'away'; }
     heard(alts) {
       const C = this.cards(), targets = C.map(c => (c.st === 'known' || c.st === 'learn' || c.st === 'care') && W(c.id) && S.seen(c.id) ? G.mic.target({ word: c.id }) : null); // (a word not met yet waits for its chapter)
@@ -503,6 +507,11 @@
         }
         if (sel && !this.won && (this.t >> 3) % 4 !== 3) G.textC(ctx, '\u0001', r.x + r.w / 2, y - 9, '#f8e060');
       });
+      if (this.want >= 0 && !this.won) { // the guide's arrow, over the card the day's play wants
+        const r = this.rect(this.want), ax = r.x + r.w / 2, ay = r.y - 6 - Math.round(Math.abs(Math.sin(this.t / 8)) * 4);
+        ctx.fillStyle = '#201828'; ctx.beginPath(); ctx.moveTo(ax - 8, ay - 9); ctx.lineTo(ax + 8, ay - 9); ctx.lineTo(ax, ay + 1); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#f8e060'; ctx.beginPath(); ctx.moveTo(ax - 6, ay - 8); ctx.lineTo(ax + 6, ay - 8); ctx.lineTo(ax, ay - 1); ctx.closePath(); ctx.fill();
+      }
       ctx.restore();
       // his name and hearts, top left
       G.win(ctx, 4, 4, 104, 28);

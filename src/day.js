@@ -151,9 +151,9 @@
     constructor(w) {
       G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; this.sel = -1; this.shown = 0; this.wait = 0; this.popT = [];
       const d = DY.today(); this.words = d.words; this.stars = d.stars; this.said = Math.min(d.said, d.stars); this.starsShown = 0; this.starT = [];
-      // the words' cards (cards.js), as big as fit: up to 6 in a row, then 8, then 11
-      const n = this.words.length, sc = n <= 6 ? 0.8 : n <= 16 ? 0.6 : 0.42, per = n <= 6 ? 6 : n <= 16 ? 8 : 11;
-      this.L = { sc, w: Math.round(40 * sc), s: Math.round(82 * sc), step: Math.round(40 * sc) + (n <= 6 ? 6 : 4), per, gap: 4, rows: Math.ceil(n / per) };
+      // the words' cards (cards.js), as big as fit: up to 5 in a row full size, then 7, then 11
+      const n = this.words.length, sc = n <= 5 ? 1 : n <= 14 ? 0.6 : 0.42, per = n <= 5 ? 5 : n <= 14 ? 7 : 11;
+      this.L = { sc, w: Math.round(40 * sc), s: Math.round(82 * sc), step: Math.round(40 * sc) + (n <= 5 ? 6 : 4), per, gap: 4, rows: Math.ceil(n / per) };
     }
     onEnter() { G.audio.sfx('buff'); }
     nStars() { return 0; } // (no stars for the child any more: today's cards show what grew; this.stars is still counted)

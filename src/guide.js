@@ -174,6 +174,7 @@
     if (dog && (f.player.moving || f.locked) && dog.amb && dog.amb.hold > 0 && !dog.busy) { dog.amb.hold = 0; trotted = null; } // you're off: he follows again
     const g = free(f) ? GD.goal(f) : null;
     lastGoal = g;
+    if (g) GD.lastWhy = g.why; // (kept while the map is locked: Canelo's menu asks what the day's play wanted, carry.js petWant)
     if (!g) { GD.at = null; shownT = 0; return; }
     shownT++;
     GD.at = layout(f, g);

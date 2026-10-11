@@ -283,6 +283,14 @@ async function variety(browser) {
     // hide-and-seek again: Nico starts a second round when the guide sends you to him
     const re = await g.ev(() => { G.state.bag.play.n = { truco: 5, mimo: 5, comida: 5 }; return G.seek.again() && (G.carry.more(G.field, null) || {}).who === 'nico'; });
     check('play: hide-and-seek again with Nico (the day\'s round done)', re);
+    // Canelo's menu shows an arrow over what the day's play wants (a trick, a pat, food)
+    await g.ev(() => { G.state.bag.play.n = {}; G.carry.plan = f => G.carry.more(f, null); /* (the day's plays all done) */ G.guide.at = null; G.guide.lastWhy = 'play: ' + G.carry.more(G.field, null).why; G.pet.openMenu(); });
+    await g.until(() => G.top().constructor.name === 'PetMenu' && G.top().t > 12, null, 'Canelo\'s menu');
+    const pw = await g.ev(() => { const s = G.top(); return { want: s.want, id: s.want >= 0 ? s.cards()[s.want].id : null, plan: G.carry.plan(G.field).pet }; });
+    check('play: Canelo\'s menu points at what the day\'s play wants', pw.want >= 0 && pw.id === pw.plan, JSON.stringify(pw));
+    await still(g, 'pet_menu_want');
+    await g.tapRect(await g.ev(() => G.top().rect(G.top().want)));
+    await g.until(() => G.top().constructor.name !== 'PetMenu', null, 'the menu to close');
     check('play: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
 }

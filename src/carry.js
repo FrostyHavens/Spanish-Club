@@ -304,12 +304,17 @@
   C.bump = k => { if (G.state) bump(k); };
   C.played = k => (G.state ? st().play.n[k] | 0 : 0);
   const MORE = {
-    truco: () => { const k = G.pet && G.pet.known ? G.pet.known() : []; return k.length ? { why: 'a trick for Canelo', dog: true, icon: k[(day() + C.played('truco')) % k.length] } : null; },
-    mimo: () => ({ why: 'pet Canelo', dog: true, icon: 'feliz' }),
-    comida: () => { const w = ['agua', 'galleta', 'hueso'].filter(id => G.words.met(id)); return w.length ? { why: 'food for Canelo', dog: true, icon: w[(day() + C.played('comida')) % w.length] } : null; },
+    truco: () => { const k = G.pet && G.pet.known ? G.pet.known() : []; if (!k.length) return null; const id = k[(day() + C.played('truco')) % k.length]; return { why: 'a trick for Canelo', dog: true, icon: id, pet: id }; },
+    mimo: () => ({ why: 'pet Canelo', dog: true, icon: 'feliz', pet: 'mimo' }),
+    comida: () => { const w = ['agua', 'galleta', 'hueso'].filter(id => G.words.met(id)); if (!w.length) return null; const id = w[(day() + C.played('comida')) % w.length]; return { why: 'food for Canelo', dog: true, icon: id, pet: id }; },
     seek: () => (G.seek && G.seek.again && G.seek.again() ? { why: 'hide-and-seek again', who: 'nico', icon: 'lupa' } : null),
     regalo: f => { const w = C.likerFor({ id: 'pelota', col: 'azul' }); return w ? go('the ball for ' + w, nearest(f, g => g.id === 'pelota')) : null; },
     fetch: (f, h) => (h && C.DOG[h.id] === 'fetch' ? { why: 'fetch', dog: true, icon: pic(h.id, h.col) } : go('fetch', nearest(f, g => C.DOG[g.id] === 'fetch'))),
+  };
+  // the card the day's play wants in Canelo's menu (pet.js draws an arrow over it), when the guide is showing that play
+  C.petWant = function (f) {
+    const why = G.guide && (G.guide.at ? G.guide.at.why : G.guide.lastWhy); if (!f || !/^play:/.test(why || '')) return null;
+    const p = C.plan(f); return p && p.pet ? p.pet : null;
   };
   C.more = function (f, h) {
     if (!fetchOk()) return null;
