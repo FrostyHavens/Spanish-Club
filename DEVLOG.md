@@ -2,6 +2,51 @@
 
 A running record of what changed in Club de Español and why. Newest first.
 
+## 2026-10-11 — Pick things up, and never a dead end (step 2 of the second playtest)
+The 7-year-old: "I want to be able to pick up stuff"; "didn't know what to do / ran out of things to do"; loves doing
+things with the dog (`docs/PLAYTEST_NOTES.md`). Step 1's audit left one thing: the gaps with nothing to do between
+chapters and at the end of a day (`docs/INTUITIVE_AUDIT.md`).
+- **Pick up and carry** (`src/carry.js`). Things lie about: apples under two apple trees (red apples drawn on them) and
+  in the barn's basket, sticks in the park, Canelo's blue ball in front of home, a bone by his cushion every morning,
+  eggs in the barn's hay, the coloured flowers, a letter Tomás dropped (after chapter 10). Tap one: you walk up to it,
+  pick it up and hold it up over your head in both hands; its name is said in the word bubble with its picture (a met
+  word: picture + word, a light encounter and the say-it-back mic; an unmet one: its picture and "?", never met this
+  way, so the new-word budget is untouched; the stick is a toy with no word). One kind at a time, a stack of up to three;
+  picking up another kind puts what you held down where the new thing was. A tap on yourself or on the thing in the
+  corner puts it down in front of you, and it stays there (saved). Things come back: apples and flowers a few minutes
+  after they're picked, sticks sooner, the bone and the eggs every morning, the ball a minute after it's nowhere.
+- **Giving.** Tap Canelo while you hold the ball or a stick: you throw it and he fetches it back to you (a heart); the
+  bone, a cookie, bread he eats (the bone is his favourite: a gift heart); a flower makes him sneeze and you keep it.
+  Tap a friend who loves it (their bubble already shows it): they take it for a heart (no yes/no question before *sí*
+  and *no* are met). Anyone else looks at it and says who'd love it, holding up that friend's face (*¿Para Luna?*);
+  Tomás takes his letter back.
+- **The bag is your hands**: the story's things are held up over your head too (Pepe's apple, Marta's bread, the
+  letters), and the corner shows what you hold as picture + word ("?" while unmet), the story's things after it.
+  Chapter 4's apple for Rosa is now a carry step: Don Pepe puts it in your hands, Rosa's bubble shows it, the guide's
+  arrow goes to her and her question comes when you bring it.
+- **Never a dead end** (the guide's last tier, `G.carry.plan`): when the story has nothing for now, the arrow points at
+  the day's play: what you hold goes to whoever would love it today (or Canelo, or the ducks); empty-handed, today's next
+  play in an order that turns every day (fetch with the ball, an apple for Luna or Gómez, a flower for Mamá, Rosa or
+  Lucía, the bone for Canelo, a stick, an egg for Rosa, Tomás's letter, bread from Marta for the ducks, a page puzzle);
+  a game of fetch is always there. All word-safe.
+- **Later, without words**: the next chapter's giver sleeps under a night-blue moon bubble with "z z" floating up
+  (tonight: the moon alone), never a sun and "¡Mañana!" alone; tapped, they yawn, "z" puffs float up and the line
+  holds up the sleeping picture (a moon over a pillow), then the sun coming up. Nico's *¡Hasta mañana!* and Luna's after
+  the palabra hold up the sunrise. At sunset the arrow points home, and at home to your bed: a tap on it is good night.
+- Tests: `tools/test-carry.js` (new: pick up, hold, the corner, "?" for an unmet word and the budget, a stack, a swap,
+  put down by a tap on yourself or the corner, saved; Canelo fetches the ball and the stick, eats the bone; Gómez's
+  heart; Nico's "¿Para Luna?"; apples, the bone, the ball and the eggs come back). `tools/test-guide.js`: never a dead
+  end (a play goal when the next chapter is a morning one or today's words are used up; the giver asleep; sunset home;
+  the bed), and the naive bot's day 1 now plays between chapters with no time lost. `test-chapters` and
+  `test-hints-day` follow the sleeping giver; `test-roundb-pet` follows step 1's kid menu (the album right after the
+  notebook). The naive bot counts picking something up as something happening.
+- **The audit** (`docs/INTUITIVE_AUDIT.md`, step 2): days 1-3 by the naive bot, each played to sunset and bed. Seconds
+  with nothing to do: **659 → 0** (stuck moments 7 → 0; the 14 s lost while there was a story step are unchanged).
+  Every day ended at sunset at home (step 1's ended stuck with nothing to do). The bot now sleeps into the next calendar
+  day, counts picking something up as something happening, and (in a chapter) only the story as progress. Two fixes it
+  found: a story's place wins over the head of someone standing below it (the bushes of chapter 5, with Canelo
+  below), and the last bush to look in no longer gets Canelo and the cat as decoys.
+
 ## 2026-10-11 — Always a next thing to do, in sight (from the second playtest)
 The 7-year-old "didn't know what to do next" and "ran out of things to do"; the parent: kids don't go into menus like
 Misiones, they need pointers and arrows, Spanish instructions aren't followed (`docs/PLAYTEST_NOTES.md`). Step 1 of a

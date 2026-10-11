@@ -1355,7 +1355,8 @@ G.store = {
       if (this.opts.show) { // something held up to look at (G.intro.show): a framed picture over the box, bobbing
         const bob = Math.round(Math.sin(this.t / 9) * 2), px = this.boxX + this.boxW / 2 - 26, py = (top ? y + h + 8 : y - 66) + bob;
         G.win(ctx, px, py, 52, 52, { fill1: '#fff8e8', fill2: '#f0e4c8', alpha: 1 });
-        G.drawIcon16(ctx, this.opts.show, px + 2, py + 2, 3);
+        if (this.opts.show.face && G.hearts) { ctx.save(); ctx.beginPath(); ctx.rect(px + 2, py + 2, 48, 48); ctx.clip(); G.hearts.face(ctx, this.opts.show.face, px + 2, py + 2, 48, this.t); ctx.restore(); } // a friend's face (carry.js: who'd love it)
+        else G.drawIcon16(ctx, this.opts.show, px + 2, py + 2, 3);
         if (this.t % 40 === 0 && G.fx.twinkle) G.fx.twinkle(px + 46, py + 6);
       }
       G.win(ctx, this.boxX, y, this.boxW, h);
@@ -6473,6 +6474,17 @@ G.store = {
       p.rect(9, 10, 2, 2, '#6a4020'); p.rect(11, 12, 2, 2, '#6a4020'); p.rect(13, 13, 2, 2, '#8a5a28');
       p.disc(6.5, 6.5, 5.5, '#c8a040'); p.disc(6.5, 6.5, 4.2, '#b8e0f8'); p.disc(5, 5, 1.6, '#ffffff'); p.put(8, 8, '#88c0e8'); p.put(9, 7, '#88c0e8');
     },
+    palo(p) { // a stick to throw for Canelo (no word: a toy, src/carry.js)
+      for (let i = 0; i < 12; i++) { p.put(2 + i, 13 - i, '#8a5a28'); p.put(3 + i, 13 - i, '#a87038'); p.put(2 + i, 12 - i, '#6a4018'); }
+      p.put(9, 6, '#6a4018'); p.put(9, 5, '#6a4018'); p.put(10, 4, '#6a4018'); // a little twig
+      p.ell(11, 3.5, 1.6, 1, '#58b048'); p.put(11, 3, '#88d870');            // and a leaf on it
+    },
+    dormir(p) { // asleep until tomorrow: a pillow, a crescent moon and "z z" (a chapter that opens after the night)
+      p.ell(8, 13, 7, 2.6, '#f4ecd8'); p.shade(8, 13, 7, '#d8ccb0');
+      p.disc(5.5, 6, 4.2, '#f8e070'); p.shade(5.5, 6, 4.2, '#e8c040'); p.disc(7.6, 4.6, 3.6, null);
+      p.rect(10, 1, 5, 1, '#ffffff'); p.put(13, 2, '#ffffff'); p.put(12, 3, '#ffffff'); p.put(11, 4, '#ffffff'); p.rect(10, 5, 5, 1, '#ffffff'); // a big "Z"
+      p.rect(13, 8, 3, 1, '#c8d8ff'); p.put(14, 9, '#c8d8ff'); p.rect(13, 10, 3, 1, '#c8d8ff');                                         // and a little one
+    },
     huella(p) { // a paw print on the ground
       p.ell(8, 11, 3.6, 3, '#6a4020'); [[3.6, 6.8], [6.6, 4.6], [9.6, 4.6], [12.4, 6.8]].forEach(([x, y]) => p.ell(x, y, 1.5, 1.8, '#6a4020'));
     },
@@ -9511,10 +9523,12 @@ G.store = {
       const pick = L => L.find(n => { try { const a = n.alert && n.alert(); return !!a && !a.wait; } catch (e) { return false; } }) || L[0];
       const talker = (x, y) => pick(ppl.filter(n => n.talk && n.spec && !n.hidden && n.x === x && n.y === y));
       // a person where they are drawn (mid-step too, sliding between tiles), or `up` tiles above that (the head)
-      const drawn = up => pick(ppl.filter(n => n.talk && n.spec && !n.hidden && wx >= n.x * T + n.ox && wx < n.x * T + n.ox + T && wy >= (n.y - up) * T + n.oy && wy < (n.y - up + 1) * T + n.oy));
+      // (Canelo is a small dog: nothing of him is drawn on the tile above his)
+      const drawn = up => pick(ppl.filter(n => n.talk && n.spec && !n.hidden && !(up && n.id === 'canelo') && wx >= n.x * T + n.ox && wx < n.x * T + n.ox + T && wy >= (n.y - up) * T + n.oy && wy < (n.y - up + 1) * T + n.oy));
       const c = this.map.get(tx, ty);
-      let n = drawn(0) || talker(tx, ty) || drawn(1) || talker(tx, ty + 1);
       const story = (G.chapters && G.chapters.spotAt(this, tx, ty)) || G.intro.spotAt(this, tx, ty); // a puzzle's thing on a counter is the thing, not the person behind it
+      let n = drawn(0) || talker(tx, ty) || (story ? null : drawn(1) || talker(tx, ty + 1)); // (a story's place wins over the head of someone standing below it: the bushes of chapter 5)
+      if (n && (n.ghost || n.id === 'canelo') && G.carry && G.carry.at(this, tx, ty)) n = null; // (Canelo standing on a thing to pick up: the thing)
       if (!n && !story && COUNTER.includes(c)) n = DIR4.map(d => talker(tx + G.DIRS[d][0], ty + G.DIRS[d][1])).find(Boolean);
       if (n) return { npc: n, x: n.x, y: n.y };
       if (this.exitAt(tx, ty)) return { exit: true, x: tx, y: ty };
@@ -9522,7 +9536,7 @@ G.store = {
       if (door) return { exit: true, x: door.x, y: door.y }; // the wall or sign around a door, the dark just outside one
       const pg = (this.def.pages || {})[key(tx, ty)];
       const name = G.world ? G.world.wordAt(this, tx, ty) : null;
-      const special = !!((pg && G.pages.ready(pg)) || (this.def.searches || {})[key(tx, ty)] || (G.chapters && G.chapters.spotAt(this, tx, ty)) || (G.errands && G.errands.spotAt(this, tx, ty)) || G.intro.spotAt(this, tx, ty)); // these win over an animal on them
+      const special = !!((pg && G.pages.ready(pg)) || (this.def.searches || {})[key(tx, ty)] || (G.chapters && G.chapters.spotAt(this, tx, ty)) || (G.errands && G.errands.spotAt(this, tx, ty)) || G.intro.spotAt(this, tx, ty) || (G.carry && G.carry.at(this, tx, ty))); // these win over an animal on them (a thing to pick up: carry.js)
       if (special || THING.includes(c)) return { search: true, x: tx, y: ty, name, special };
       if (name) return this.blocked(tx, ty, this.player) && !(this.player.x === tx && this.player.y === ty) ? { search: true, x: tx, y: ty, name } : { x: tx, y: ty, name };
       return { x: tx, y: ty };
@@ -9568,6 +9582,7 @@ G.store = {
       const [fx, fy] = this.facing();
       const here = this.npcs.filter(o => o.x === fx && o.y === fy && !o.hidden); // (someone hidden, like a puppy under the table, isn't there to talk to)
       let n = (want && here.includes(want) ? want : null) || here.find(o => { try { const a = o.alert && o.alert(); return !!a && !a.wait; } catch (e) { return false; } }) || here[0];
+      if (n && n !== want && (n.ghost || n.id === 'canelo') && G.carry && G.carry.at(this, fx, fy)) n = null; // (Canelo on a thing you came to pick up)
       // talk across counters
       const story = (G.chapters && G.chapters.spotAt(this, fx, fy)) || G.intro.spotAt(this, fx, fy); // a puzzle's thing on a counter: search it
       if (!n && !story) { const t = this.map.get(fx, fy); if (t === 'e' || t === 't' || t === 'a' || t === 'Y') { const [dx, dy] = G.DIRS[this.player.dir]; n = this.npcs.find(o => o.x === fx + dx && o.y === fy + dy && !o.hidden); } }
@@ -9601,6 +9616,7 @@ G.store = {
         if (s.run) yield* s.run(this);
         return;
       }
+      if (G.carry && G.carry.search(this, fx, fy)) return; // a thing lying there: pick it up (carry.js)
       if (G.seek && G.seek.poke(this, fx, fy)) return; // an animal hiding there (hide-and-seek, seek.js)
       if (G.ambient && G.ambient.poke(this, fx, fy)) return; // pet the cat on the fence
       if (this.def.poke && this.def.poke(this, fx, fy)) return; // the map's own (a hay bale in the barn rustles)
@@ -9635,10 +9651,12 @@ G.store = {
       if (this.route && (this.locked || G.input.dir() || ['up', 'down', 'left', 'right', 'A', 'B'].some(k => G.input.p(k)))) this.route = null;
       if (!this.locked && G.input.tap()) { // the menu button (= B, eats the tap), else tap-to-walk (field tasks still see the tap)
         if (G.btnHit(...HUD)) { G.input.eat(); this.menuReq = true; this.route = null; }
+        else if (G.carry && G.carry.tapHud(this, G.input.tap())) { G.input.eat(); this.route = null; } // the thing in your hands, in the corner: put it down (carry.js)
         else if (G.seek && G.seek.tap(this, G.input.tap())) { G.input.eat(); this.route = null; } // found a hiding animal (seek.js)
         else { // tap-to-walk; a tap on an animal (animals.js, not over a person or a door) names it and walks toward it
-          const tap = G.input.tap(), tt = this.tapTarget(tap), an = !tt.npc && !tt.exit && !tt.special && G.animals && G.animals.hit(this, tap);
-          this.route = an ? G.animals.tapped(this, an) : tt; this.plan(this.route);
+          const tap = G.input.tap(), tt = this.tapTarget(tap);
+          if (!tt.npc && !tt.exit && G.carry && G.carry.tapSelf(this, tap)) { G.input.eat(); this.route = null; } // a tap on yourself: put it down / pick up what you stand on (carry.js)
+          else { const an = !tt.npc && !tt.exit && !tt.special && G.animals && G.animals.hit(this, tap); this.route = an ? G.animals.tapped(this, an) : tt; this.plan(this.route); }
         }
       }
       this.tasks.update();
@@ -9688,6 +9706,7 @@ G.store = {
       if (G.animals) G.animals.draw(this, ctx, 'ground'); // lily pads, ripples, swimmers, shadows
       if (G.pet) G.pet.drawUnder(this, ctx); // Canelo's cushion and bowl at home
       if (G.errands) G.errands.drawUnder(this, ctx); // Lucía's flowers, the picnic blanket, the party ribbons (errands.js)
+      if (G.carry) G.carry.drawUnder(this, ctx); // things lying about to pick up (carry.js)
       if (G.seek) G.seek.draw(this, ctx); // animals hiding (hide-and-seek: an ear, a tail peeking out; seek.js)
       if (G.chapters) G.chapters.draw(this, ctx, 'under'); // a chapter's own things on the ground (chapters.js)
       if (G.intro && G.intro.drawUnder) G.intro.drawUnder(this, ctx); // a find-it puzzle's picture bubbles (intro.js)
@@ -9701,6 +9720,7 @@ G.store = {
         const img = G.unitSprite(e.spec, e.dir, fr), bob = Math.abs(e.ox + e.oy) >= 6 && Math.abs(e.ox + e.oy) <= 18 ? 1 : 0; // a hop mid-step
         ctx.drawImage(img, Math.round(e.x * T + e.ox - cx), Math.round(e.y * T + e.oy - cy - 3) - bob);
       }
+      if (G.carry) G.carry.drawHeld(this, ctx); // what you hold, up over your head (carry.js)
       if (G.ambient) G.ambient.draw(this, ctx, 'air'); // birds in flight, butterflies, the cat
       if (G.animals) G.animals.drawTop(this, ctx); // hearts and splashes
       if (G.pet) G.pet.drawTop(this, ctx); // Canelo's hearts, dust, crumbs; the trick he's learning
@@ -9713,8 +9733,8 @@ G.store = {
         G.drawAlert(ctx, al, Math.round(e.x * T + e.ox - cx), Math.round(e.y * T + e.oy - cy), this.t);
       }
       if (G.chapters) G.chapters.draw(this, ctx, 'top'); // a chapter's bubbles and pointing arrow (chapters.js)
-      if (G.world) G.world.draw(this, ctx); // the word bubble of a thing just named, and its say-it-back mic
       if (G.guide) G.guide.draw(this, ctx); // the arrow over the next thing to do, or at the screen's edge (guide.js)
+      if (G.world) G.world.draw(this, ctx); // the word bubble of a thing just named, and its say-it-back mic (over the arrow: it's short-lived)
       if (this.banner && G.top() !== this) this.banner.t = Math.min(this.banner.t, 0); // a talk or a card opened over the map: the name has done its job
       if (this.banner && this.banner.t > 0) {
         const a = Math.min(1, this.banner.t / 30), ic = this.banner.icon;
@@ -9732,6 +9752,7 @@ G.store = {
   // a thought bubble over a person or a place (ex, ey: the top-left of its tile on screen): "!" (al === true) or the
   // picture(s) of what they want (a word id, or a goal like [['manzana', 3]])
   G.drawAlert = function (ctx, al, ex, ey, t) {
+    if (al && (al.sleep || al.night) && G.day && G.day.moonBubble) { G.day.moonBubble(ctx, ex + 12, ey - 18, t, !!al.sleep); return; } // a chapter after the night (or tonight): the moon (chapters.js)
     const bob = Math.round(Math.sin(t / 8) * 2);
     if (al === true) {
       G.win(ctx, ex + 7, ey - 16 + bob, 11, 13, { fill1: '#f8f0c0', fill2: '#f8d860', alpha: 1 });
@@ -10659,7 +10680,7 @@ G.store = {
 //                                     sparkles; then the say-it-back mic. o: {cry: '¡Miau!' (a second line, also spoken),
 //                                     animal: id (for the album's `said`), tile: [x, y] (wiggles it), delay: frames
 //                                     before speaking, noMic, walkOn (the 20 s rule), noIntro (never meets an unmet
-//                                     word)}. Returns the bubble or null.
+//                                     word), pic (its own picture: the blue ball)}. Returns the bubble or null.
 //      G.world.nameTile(f, x, y)      name tile x, y if it has a word (true if it did)
 //      G.world.bubble                 the word bubble showing now {id, x, y, t, cry} or null
 //      G.world.sayBack                the say-it-back now {id, t, life, mic (a G.MicBtn), done} or null
@@ -10706,7 +10727,7 @@ G.store = {
     if (!G.st.seen(id) && WD.introOnTap && !o.walkOn && !o.noIntro && G.budget.canIntro(1)) fresh = G.words.meet(id, 'tap'); // asked "what's this?": met
     else G.st.see(id);
     const unk = !G.st.seen(id); // not met yet: its picture and "?", and no voice
-    const b = WD.bubble = { id, x: wx, y: wy, t: 0, cry: o.cry || null, f, unk };
+    const b = WD.bubble = { id, x: wx, y: wy, t: 0, cry: o.cry || null, f, unk, pic: o.pic || null }; // (pic: its own look, e.g. the blue ball: carry.js)
     if (o.tile) f.wig = { x: o.tile[0], y: o.tile[1], t: 18 };
     const text = unk ? '' : w.es.split(' / ')[0] + (o.cry ? '. ' + o.cry : ''); // (an unmet thing says nothing: its cry is only a sound)
     if (!text) speakAt = null; else if (o.delay) speakAt = { f, text, at: G.frame + o.delay }; else { speakAt = null; G.speak(text); }
@@ -10850,7 +10871,7 @@ G.store = {
     if (r.below) { ctx.fillRect(tx - 1, y - 2, 3, 2); ctx.fillRect(tx, y - 3, 1, 1); }
     else { ctx.fillRect(tx - 1, y + r.h - 1, 3, 2); ctx.fillRect(tx, y + r.h + 1, 1, 1); }
     const hop = b.t < 30 ? Math.round(Math.abs(Math.sin(b.t / 30 * Math.PI * 2)) * -2) : 0;
-    G.drawIcon16(ctx, w, r.x + 5, y + (r.h - 16) / 2 + hop);
+    G.drawIcon16(ctx, b.pic || w, r.x + 5, y + (r.h - 16) / 2 + hop);
     G.text(ctx, ls[0], r.x + 25, y + (ls.length > 1 ? 4 : 7), b.unk ? '#a08060' : G.st.knows(b.id) ? '#a06008' : '#2860a8', null);
     if (ls[1]) G.text(ctx, ls[1], r.x + 25, y + 14, '#e06010', null);
     ctx.globalAlpha = 1;
@@ -11370,17 +11391,24 @@ G.store = {
       ctx.fillStyle = '#f0a0a8'; ctx.fillRect(px - 1, py, 2, 2); ctx.fillRect(px - 3, py - 2, 1, 1); ctx.fillRect(px, py - 3, 1, 1); ctx.fillRect(px + 2, py - 2, 1, 1);
       if (o.paw > 0.9) { ctx.fillStyle = '#fff8b0'; ctx.fillRect(px + side * 6, py - 4, 1, 3); ctx.fillRect(px + side * 7, py, 2, 1); ctx.fillRect(px + side * 5, py + 4, 1, 1); } // a little "ta-da"!
     }
-    if (o.mouth) drawBall(ctx, bx + 12 + (o.dir === 'left' ? -7 : o.dir === 'right' ? 7 : 0), by + 15 - Math.round(o.z), 0);
-    if (o.ball) drawBall(ctx, bx - o.dx + 12 + o.ball[0], by - o.dy + 22 + o.ball[1] - o.ball[2], o.ball[2]);
+    const thing = a && a.k === 'fetch' ? a.item : null; // (carry.js: the ball or the stick you threw)
+    if (o.mouth) drawBall(ctx, bx + 12 + (o.dir === 'left' ? -7 : o.dir === 'right' ? 7 : 0), by + 15 - Math.round(o.z), 0, thing);
+    if (o.ball) drawBall(ctx, bx - o.dx + 12 + o.ball[0], by - o.dy + 22 + o.ball[1] - o.ball[2], o.ball[2], thing);
     if (o.hand) { const hx = bx + 10, hy = by + 1 - Math.round(o.hand * 4); ctx.fillStyle = '#1a1420'; ctx.fillRect(hx - 1, hy - 1, 9, 6); ctx.fillStyle = G.st.playerSpec().map.skin || '#f0c8a0'; ctx.fillRect(hx, hy, 7, 4); ctx.fillRect(hx + 7, hy + 1, 1, 2); }
     if (sl) for (let i = 0; i < 3; i++) { const k = ((G.frame + i * 40) % 120) / 120; ctx.globalAlpha = 1 - k; G.text(ctx, 'z', bx + 16 + Math.round(k * 8 + Math.sin(k * 6) * 2), by + 6 - Math.round(k * 18), '#ffffff', '#303060'); ctx.globalAlpha = 1; }
     return true;
   }
-  function drawBall(ctx, x, y, z) {
+  // the ball in the air or in his mouth (thing: {id, col} of what you threw: a stick, the blue ball)
+  function drawBall(ctx, x, y, z, thing) {
     x = Math.round(x); y = Math.round(y);
     if (z > 1) { ctx.fillStyle = 'rgba(16,28,8,0.3)'; ctx.fillRect(x - 2, y + Math.round(z) + 3, 4, 1); }
+    if (thing && thing.id === 'palo') { // a stick, crosswise
+      ctx.fillStyle = '#1a1420'; ctx.fillRect(x - 6, y - 2, 13, 4); ctx.fillStyle = '#a87038'; ctx.fillRect(x - 5, y - 1, 11, 2); ctx.fillStyle = '#6a4018'; ctx.fillRect(x - 5, y, 11, 1); ctx.fillStyle = '#58b048'; ctx.fillRect(x + 3, y - 3, 2, 1);
+      return;
+    }
+    const col = thing && thing.col && G.data.words[thing.col] ? G.data.words[thing.col].col : '#e03028';
     ctx.fillStyle = '#1a1420'; ctx.fillRect(x - 3, y - 2, 6, 5); ctx.fillRect(x - 2, y - 3, 4, 7);
-    ctx.fillStyle = '#e03028'; ctx.fillRect(x - 2, y - 2, 4, 5); ctx.fillRect(x - 3, y - 1, 6, 3);
+    ctx.fillStyle = col; ctx.fillRect(x - 2, y - 2, 4, 5); ctx.fillRect(x - 3, y - 1, 6, 3);
     ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 1, y - 2, 1, 1); ctx.fillStyle = '#f8e060'; ctx.fillRect(x - 3, y, 6, 1);
   }
   function drawBowl(ctx, x, y, what, left) {
@@ -11984,6 +12012,7 @@ G.MAPDATA = {
   function* caneloTalk(f, n) {
     if (yield* CT('canelo', f)) return;
     if (G.chapters && G.chapters.tapHook && G.chapters.tapHook('canelo', f)) { yield 20; return; }
+    if (G.carry && (yield* G.carry.giveDog(f, n))) return; // something in your hands: thrown for him to fetch, eaten, sniffed (carry.js)
     if (G.pet && G.pet.mine()) { yield* G.pet.menu(f, n); return; }
     // not yours yet: a hop, a heart, a bark (and his word bubble, world.js: "?" while el perro isn't met)
     if (G.ambient) G.ambient.happy(n);
@@ -12008,6 +12037,8 @@ G.MAPDATA = {
   G.maps.casa = {
     name: 'Mi casa', icon: 'casa', rows: MD.casa.rows, music: 'headquarters',
     things: { at: { '7,5': 'cama' } }, // world.js: the beds say "la cama" (yours, and Canelo's cushion)
+    // after sunset your bed is where the day ends (the guide's arrow is on it, guide.js): a tap and it's good night
+    poke: (f, x, y) => { if (f.map.get(x, y) !== 'j' || !(G.day && G.day.over()) || f.evening) return false; f.tasks.add(G.day.evening(f)); return true; },
     pages: PAGES('casa'),
     onEnter: function* (f) { if (G.day) yield* G.day.evening(f); }, // home after sunset: good night, Hoy, a new morning
     exits: [Object.assign(exitAt('casa', 'casaDoor'), {
@@ -12203,7 +12234,8 @@ G.MAPDATA = {
 // Tomás) never start now; an older game that had one going lets it go (G.chapters.migrate), and their badges stay in
 // Misiones for games that earned them. What lives here:
 //
-// The bag (G.state.bag.items): what you carry, drawn top-left on the map. A chapter's things carry `q` (their chapter)
+// The bag (G.state.bag.items): what you carry, held up over your head and shown top-left on the map (src/carry.js:
+// picking things up and putting them down, giving them to Canelo; one kind of free thing at a time). A chapter's things carry `q` (their chapter)
 // and can't be given away; the rest (bought from Marta and Don Pepe, a flower, an egg, water from the fountain, a
 // favour's present) can be given to someone who likes it (G.hearts.LIKES; Lucía only likes pink flowers): they notice
 // it when you talk ("¿Para mí?").
@@ -12269,11 +12301,12 @@ G.MAPDATA = {
     MAX: 8,
     list: () => bagS(),
     has: (id, o = {}) => bagS().some(it => match(it, id, o)),
-    add(id, o = {}) { const it = Object.assign({ id }, o); bagS().push(it); popIn = { it, t: 0 }; G.audio.sfx('item'); if (G.vocabLog) G.vlog('shown', id, { via: 'bag' }); S.see(id); S.autosave(); return it; },
+    add(id, o = {}) { if (!o.q && G.carry && G.carry.makeRoom) G.carry.makeRoom(id, o); const it = Object.assign({ id }, o); bagS().push(it); popIn = { it, t: 0 }; G.audio.sfx('item'); if (G.vocabLog) G.vlog('shown', id, { via: 'bag' }); S.see(id); S.autosave(); return it; },
     take(id, o = {}) { const L = bagS(), k = L.findIndex(it => match(it, id, o)); if (k < 0) return null; const it = L.splice(k, 1)[0]; S.autosave(); return it; },
     icon: it => (it.col ? { icon: W(it.id).icon, col: it.gold ? '#f8c820' : W(it.col).col } : W(it.id) || it.id),
     full: () => bagS().length >= 8,
   };
+  E.popT = it => (popIn && popIn.it === it ? Math.round(Math.sin(Math.min(1, popIn.t / 20) * Math.PI) * -6) : 0); // (carry.js: the corner)
   const free = id => B.has(id, { q: null }); // something of yours (not a chapter's)
 
   // ---------- side jobs and their stars ----------
@@ -12418,8 +12451,10 @@ G.MAPDATA = {
     const it = giftFor(who); if (!it) return false;
     const egg = it.id === 'huevo' && who === 'rosa';
     yield* say(who, TT('¡Oh! ¿Un regalo? ¿Para mí?', 'Oh! A present? For me?'));
-    const r = yield G.choose({ prompt: '¿Para ' + G.nameOf(who).replace(/ (el|la) .*/, '') + '?', en: 'Give it?', show: B.icon(it), choices: words('si', 'no'), layout: 'cards', mic: true });
-    if (r.result !== 0) { yield* say(who, TT('¡Oh! Bueno...', 'Oh! All right...')); return true; }
+    if (G.words.met('si') && G.words.met('no')) { // (before sí and no are met, tapping them with it in your hands is the yes)
+      const r = yield G.choose({ prompt: '¿Para ' + G.nameOf(who).replace(/ (el|la) .*/, '') + '?', en: 'Give it?', show: B.icon(it), choices: words('si', 'no'), layout: 'cards', mic: true });
+      if (r.result !== 0) { yield* say(who, TT('¡Oh! Bueno...', 'Oh! All right...')); return true; }
+    }
     B.take(it.id, { col: it.col, q: null });
     G.audio.jingle('item');
     yield* say(who, TT('¡[' + it.id + ']! ¡[gracias], {name}!', 'Thank you, {name}!'));
@@ -12611,8 +12646,10 @@ G.MAPDATA = {
 //               reviewer, Luna or Mamá, has a notebook bubble and asks 5 of them: .needsReview(), .review(who))
 //   'morning'   a morning chapter opens only as the first chapter of a session (a new day, a night at home)
 //   'evening'   an evening chapter opens only in the evening at home (after C8 the sunset comes ~5 minutes later)
-// A started chapter can always be finished. While the next chapter waits, its giver shows a "tomorrow" bubble (a sun
-// coming up: {icon: 'manana', wait: true}; the hint hand passes it by) and says so.
+// A started chapter can always be finished. While the next chapter waits, its giver shows a night-blue moon bubble
+// with "z z" floating up out of it ({icon: 'dormir', wait: true, sleep: true}: after the night; 'evening': the moon alone,
+// {icon: 'noche', night: true}: tonight); the hint hand and the guide pass it by (the guide points to the day's play,
+// src/carry.js), and tapping them shows it too: they yawn, the moon and the "z" over them, the sleeping picture.
 //
 // API: G.chapters.script(id, beats, opts), .ids(), .def(id), .written(id), .done(id), .current() (the active one),
 //   .next() (the next to open), .gate(id), .ready(id), .start(id), .ctx(id), .beat(id) (the current beat),
@@ -12793,7 +12830,7 @@ G.MAPDATA = {
     if (CH.needsReview() && who === CH.reviewer()) return 'pagina';
     if (!CH.current()) {
       const nx = CH.next(), c = nx && CH.def(nx), g = nx && CH.gate(nx);
-      if (c && g && c.giver === who && scripts[nx] && g !== 'prev' && g !== 'soon') return g === 'evening' ? { icon: 'noche', wait: true } : { icon: 'manana', wait: true };
+      if (c && g && c.giver === who && scripts[nx] && g !== 'prev' && g !== 'soon') return g === 'evening' ? { icon: 'noche', wait: true, night: true } : { icon: 'dormir', wait: true, sleep: true };
     }
     return null;
   };
@@ -12815,11 +12852,16 @@ G.MAPDATA = {
     }
     return false;
   };
+  // the giver of a chapter that opens later, tapped: never the words alone (docs/INTUITIVE_AUDIT.md). Tomorrow: they yawn,
+  // "z z" float up over them and the line holds up the sleeping picture (a moon over a pillow), then the sun coming up;
+  // tonight: the moon, then the house. Then the guide's arrow goes to the day's play (src/carry.js) and, at sunset, home.
   function* tomorrow(who, why) {
-    const say = (...p) => G.say(p, { portrait: G.portraitOf(who), name: G.nameOf(who), who, show: { icon: why === 'evening' ? 'noche' : 'manana' } });
-    if (why === 'evening') yield say(TT('¡Esta noche!', 'Tonight! (when the sun goes down, come home)'));
-    else if (why === 'busy') yield say(TT('¡Mañana! Hoy... ¡a jugar con Canelo!', 'Tomorrow! Today, play with Canelo and say hello to everyone.'));
-    else yield say(TT('¡Mañana!', 'Tomorrow! (a new chapter opens tomorrow)'));
+    const f = G.field, n = f && (f.npc(who) || f.npc(who + '_g'));
+    const say = (show, ...p) => G.say(p, { portrait: G.portraitOf(who), name: G.nameOf(who), who, show });
+    if (n && G.pet && G.pet.puff) for (let k = 0; k < 3; k++) G.pet.puff('txt', n.x * T + 14 + k * 5, n.y * T - 4 - k * 7, { s: 'z', life: 60 + k * 20, vy: -0.3 });
+    if (why === 'evening') { yield say({ icon: 'noche' }, TT('¡Esta noche!', 'Tonight! (when the sun goes down, come home)')); yield say({ icon: 'casa' }, TT('¡En [casa]!', 'At home!')); }
+    else if (why === 'busy') yield say({ icon: 'dormir' }, TT('¡Mañana! Hoy... ¡a jugar con Canelo!', 'Tomorrow! Today, play with Canelo and say hello to everyone.'));
+    else { G.audio.sfx('huh'); yield say({ icon: 'dormir' }, TT('¡Mañana!', 'Tomorrow! (a new chapter opens after the night)')); yield say({ icon: 'manana' }, TT('¡Aaah... mañana!', 'Yaaawn... tomorrow! (play now: follow the arrow)')); }
   }
 
   // ---------- places, taps and doors ----------
@@ -13301,7 +13343,8 @@ G.MAPDATA = {
       yield* say('nico', T('¡El [gato]! ¡Ja, ja!', 'The cat! Ha ha!'));
       yield* ask('nico', '¿Qué es?', 'Nico points at her: what is she?', 'gato', ['perro', 'miau'], { point: catP(f) });
       yield* ask('nico', '¿Y este?', 'And this one?', 'perro', ['gato', 'guau'], { point: dog(f) });
-      yield* say('nico', T('¡Hasta mañana, {name}!', 'See you tomorrow, {name}!'));
+      yield* sayShow('nico', { icon: 'manana' }, T('¡Hasta mañana, {name}!', 'See you tomorrow, {name}! (he waves; play on: follow the arrow)')); // (the sun coming up: tomorrow; then the guide points to the day's play)
+      G.pet.anim(dog(f), 'paw');
     } },
   ], {
     stage(f, c) {
@@ -13410,12 +13453,18 @@ G.MAPDATA = {
       yield* G.pet.play('sit');
       yield* siNo('pepe', '¿Y ahora? ¿[sientate]?', 'And now? Is he sitting?', true, { point: n });
     } },
-    { auto: 'villa', run: function* (f) { // una manzana; Abuela Rosa wants one
+    { auto: 'villa', run: function* (f) { // una manzana; Abuela Rosa wants one: Pepe puts it in your hands
       yield* G.intro.show('manzana', { who: 'pepe', prompt: '¡Mira! ¡Una [manzana]!', en: 'Look! An apple!', known: ['hueso', 'gato'] });
       const r = hold(f, 'rosa', 15, 10, 'left');
       if (r) { r.ox = 24; for (let i = 0; i < 8; i++) { r.ox -= 3; yield 2; } r.ox = 0; }
       yield* ask('rosa', 'Rosa: ¡...!', 'Grandma Rosa walks up and waves. Say hello!', 'hola', ['si', 'gato'], { show: { icon: 'hola' } });
-      yield* ask('rosa', '¿Una [manzana]?', 'Rosa wants one: tap its picture', 'manzana', ['hueso', 'perro'], { pic: true, mask: ['manzana'] });
+      G.errands.bag.add('manzana', { q: 'c4' }); // (held up over your head: carry it to her, src/carry.js)
+      yield* sayShow('pepe', 'manzana', T('¡Para Rosa!', 'For Rosa! (take it to her: tap her)'));
+    } },
+    { who: 'rosa', bubble: 'manzana', run: function* (f) { // you bring her the apple; Canelo wants something else
+      const r = f.npc('rosa');
+      yield* ask('rosa', '¿Una [manzana]?', 'Rosa sees what you bring her: tap its picture', 'manzana', ['hueso', 'perro'], { pic: true, mask: ['manzana'] });
+      G.errands.bag.take('manzana', { q: 'c4' });
       G.audio.jingle('item'); if (G.hearts) G.hearts.add('rosa', 1, 'gift');
       yield* say('rosa', T('¡Mmm! ¡[gracias]!', 'Mmm! Thank you!'));
       yield* siNo('pepe', '¿Una [manzana] para ti?', 'An apple for you?', true, { show: 'manzana' });
@@ -13426,7 +13475,9 @@ G.MAPDATA = {
       yield* G.pet.play('eat', { item: 'hueso' });
       if (r) Object.assign(r, { home: [7, 7], wander: 1 });
     } },
-  ]);
+  ], {
+    stage(f, c) { if (f.mapId === 'villa' && c.step === 3) hold(f, 'rosa', 15, 10, 'left'); }, // (Rosa waits beside the stall for her apple)
+  });
 
   // =====================================================================
   //  C5 · La pelota roja  (Sofía, the park)  pelota, rojo
@@ -15192,7 +15243,7 @@ G.MAPDATA = {
     st().pal = G.words.day(); G.st.autosave();
     G.state.stars++; G.fx.flyStar(G.W / 2, 90, 0); G.audio.sfx('star');
     if (G.hearts) G.hearts.add('luna', 1, 'care');
-    yield say('luna', TT('¡Muy bien! ¡Hasta mañana!', 'Very good! A new word tomorrow!'));
+    yield sayShow('luna', { icon: 'manana' }, TT('¡Muy bien! ¡Hasta mañana!', 'Very good! A new word tomorrow!')); // (the sun coming up: tomorrow)
   }
 
   // ---------- Inés's library: the notebook's page puzzles ----------
@@ -15557,8 +15608,9 @@ G.MAPDATA = {
     c.fillStyle = '#fff8c8'; c.beginPath(); c.arc(r - r * 0.25, r + 1 - r * 0.2, r * 0.45, 0, Math.PI * 2); c.fill();
     c.globalCompositeOperation = 'destination-out'; c.beginPath(); c.arc(r + 1 + r * 0.55, r + 1 - r * 0.4, r * 0.85, 0, Math.PI * 2); c.fill();
   });
-  // a night-blue thought bubble with the moon in it, trailing down to the door's sign: "time to go home"
-  function moonBubble(ctx, x, y, t) {
+  // a night-blue thought bubble with the moon in it, trailing down to the door's sign: "time to go home"; sleepy: "z z"
+  // drifting up out of it too (field.js G.drawAlert: a chapter's giver whose chapter opens after the night)
+  function moonBubble(ctx, x, y, t, sleepy) {
     const b = Math.round(Math.sin(t / 14) * 2); y += b;
     const puffs = [[-8, 2, 7], [0, -3, 9], [8, 2, 7], [0, 5, 7]], blob = (grow, col) => { ctx.fillStyle = col; for (const [dx, dy, r] of puffs) { ctx.beginPath(); ctx.arc(x + dx, y + dy, r + grow, 0, Math.PI * 2); ctx.fill(); } };
     blob(2, '#101030'); blob(1, '#e8ecff'); blob(0, '#283078');
@@ -15567,7 +15619,12 @@ G.MAPDATA = {
     const tw = (t >> 4) % 3;
     ctx.fillStyle = '#fff8c0';
     [[6, -5], [9, 3], [3, 6]].forEach(([dx, dy], k) => { if (k !== tw) { ctx.fillRect(x + dx, y + dy, 1, 1); } else { ctx.fillRect(x + dx - 1, y + dy, 3, 1); ctx.fillRect(x + dx, y + dy - 1, 1, 3); } });
+    if (sleepy) for (let k = 0; k < 2; k++) { // z z, floating up and away
+      const a = ((t + k * 45) % 90) / 90;
+      ctx.globalAlpha = Math.min(1, (1 - a) * 2); G.text(ctx, 'z', Math.round(x + 10 + a * 8 + Math.sin(a * 6 + k) * 2), Math.round(y - 8 - a * 14), '#e8ecff', '#283078'); ctx.globalAlpha = 1;
+    }
   }
+  DY.moonBubble = moonBubble;
 
   // ---------- home at sunset: the evening, the night and a new morning ----------
   // maps.js runs this when you come home (and when you talk to Mamá at home after sunset).
@@ -15757,6 +15814,375 @@ G.MAPDATA = {
 })();
 
 </script>
+<script>/* src/carry.js */
+// ===== Pick up and carry, and the day's play (docs/PLAYTEST_NOTES.md, 2026-10-11: "I want to be able to pick up stuff";
+// "didn't know what to do / ran out of things to do"; "you get to do stuff with the dog: feed him, play fetch") =====
+// Things lie about in the world: apples under the apple trees (and in the barn's basket), sticks in the park, Canelo's
+// blue ball in front of home, a bone by his cushion every morning, eggs in the barn's hay, the coloured flowers (picked
+// with a colour question once Lucía's chapter has taught them: errands.js), a letter Tomás dropped (after his chapter).
+// Tap one: you walk up to it and pick it up. You hold it up over your head, its name is said in the word bubble with
+// its picture (world.js: a met word is picture + word and a light encounter, with the say-it-back mic; an unmet one is
+// its picture and "?", and is never met by this: the new-word budget is untouched). The stick has no word: a toy.
+// You hold ONE kind of thing at a time, a small stack of up to three (three apples); picking up something else puts
+// what you held down where the new thing was. Tap yourself (or the thing in the corner) to put it down in front of you.
+// Things respawn: apples and flowers a few minutes after they're picked, sticks sooner, the bone and the eggs every
+// day, the ball when it's nowhere (given away). What you put down stays where you left it (saved).
+// Giving: walk to someone and tap them while you hold it. Canelo: the ball and the stick are thrown and he fetches them
+// back to you; the bone, a cookie, bread he eats (the bone is his favourite: a gift heart); water he drinks; the rest he
+// sniffs (a flower makes him sneeze) and you keep it. People: one who likes it takes it (errands.js gift(): a heart,
+// G.hearts.gift); Tomás takes his letter back; anyone else looks at it and says who'd love it (with that friend's face).
+// The bag is your hands: the story's things (G.errands.bag items with `q`) are held too and can't be put down or given
+// away like this; the corner shows what you hold (picture + word, "?" while unmet), the story's things after it.
+//
+// The day's play (G.carry.plan(f), read by the guide, src/guide.js, when the story has nothing for now): what you hold
+// goes to whoever would love it today (or Canelo, or the ducks); empty-handed, today's next play, in an order that
+// changes every day: a game of fetch with the ball, an apple for Luna or Señor Gómez, a flower for Mamá, Rosa or Lucía
+// (a pink one), the bone for Canelo, a stick to throw, an egg for Rosa, Tomás's letter, bread from Marta for the ducks,
+// a notebook page puzzle that's ready. When everything is done, a game of fetch with Canelo is always there.
+// Every play is word-safe: nothing here introduces a word.
+//
+// API: G.carry.held() -> {id, col, n, it} (your free stack) or null; .at(f, x, y) (what lies on that tile: {ground|src,
+//   id, col}); .pick(f, x, y); .drop(f); .giveDog(f, n) / .show(who, f) (generators); .plan(f) -> {why, who | dog |
+//   map+at, icon} or null; .SOURCES, .DOG; .tapSelf / .tapHud (field.js taps), .search (field.js), .makeRoom (errands.js
+//   bag.add), .drawUnder / .drawHeld / .drawHud (field.js). Saved in G.state.bag: items (the hands), ground [{id, col,
+//   map, x, y}], taken {source: {d: day, t: play s}}, play {day, n: {kind: times today}}.
+'use strict';
+(function () {
+  const C = G.carry = {}, T = G.TILE;
+  const TT = (t, en) => ({ t, en });
+  const W = id => G.data.words[id];
+  const chDone = id => !!G.chapters && G.chapters.done(id);
+  const day = () => (G.words ? G.words.day() : 0);
+  const clock = () => (G.words ? G.words.now() : 0);
+  const say = (who, show, ...pages) => G.say(pages, Object.assign({ portrait: G.portraitOf(who), name: G.nameOf(who), who }, show ? { show } : {}));
+  C.STACK = 3;       // a small stack of one kind
+  C.GROUND_MAX = 14; // things lying about on one map (more: the oldest rolls away)
+  C.FLY = 14;        // frames a thing flies between your hands and the ground
+  // what Canelo does with a thing you give him (anything else: he sniffs it and you keep it)
+  C.DOG = { pelota: 'fetch', palo: 'fetch', hueso: 'eat', galleta: 'eat', pan: 'eat', queso: 'eat', agua: 'drink', leche: 'drink' };
+
+  // ---------- where things are ----------
+  // every: play seconds before it's back after being picked up, or 'day' (a new one every morning); unique: there is
+  // only one (it's back only when it's nowhere: not in your hands, not lying about); hidden: the tile itself shows it
+  // (the barn's basket of apples); tree: the tile of the tree it fell from (drawn with apples on it)
+  C.SOURCES = [
+    { id: 'manzana1', map: 'villa', at: [12, 19], item: 'manzana', every: 150, tree: [12, 18] }, // under the park's apple tree
+    { id: 'manzana2', map: 'villa', at: [34, 4], item: 'manzana', every: 150, tree: [34, 3] },   // under the apple tree by the farm
+    { id: 'cesta', map: 'granja', at: [5, 4], item: 'manzana', every: 40, hidden: true },        // the barn's basket of apples
+    { id: 'palo1', map: 'villa', at: [13, 24], item: 'palo', every: 90 },                        // sticks in the park
+    { id: 'palo2', map: 'villa', at: [22, 18], item: 'palo', every: 90 },
+    { id: 'pelota', map: 'villa', at: [7, 19], item: 'pelota', col: 'azul', every: 60, unique: true }, // Canelo's blue ball, in front of home
+    { id: 'hueso', map: 'casa', at: [6, 5], item: 'hueso', every: 'day' },                       // a bone by his cushion every morning
+    { id: 'huevo1', map: 'granja', at: [10, 1], item: 'huevo', every: 'day' },                   // eggs in the hay by the nest boxes
+    { id: 'huevo2', map: 'granja', at: [11, 1], item: 'huevo', every: 'day' },
+    { id: 'carta', map: 'villa', at: [21, 14], item: 'carta', every: 'day', when: () => chDone('c10') }, // a letter Tomás dropped
+  ];
+  // the coloured flowers (errands.js): carried as they are before Lucía's chapter; from it on, errands.js picks them
+  // (once a day each, with "¿De qué color?")
+  (G.errands ? G.errands.FLOWERS : []).forEach(([x, y, col]) => C.SOURCES.push({ id: 'flor' + x + '_' + y, map: 'villa', at: [x, y], item: 'flor', col, every: 180, when: () => !chDone('c15') }));
+
+  // ---------- saved state (in G.state.bag, next to the hands) ----------
+  const bag = () => G.errands.bag;
+  function st() {
+    bag().list(); const b = G.state.bag;
+    if (!Array.isArray(b.ground)) b.ground = [];
+    if (!b.taken || typeof b.taken !== 'object' || Array.isArray(b.taken)) b.taken = {};
+    if (!b.play || typeof b.play !== 'object' || b.play.day !== day()) b.play = { day: day(), n: {} };
+    return b;
+  }
+  C.state = () => (G.state ? st() : null);
+  const sameKind = (a, b) => a.id === b.id && (a.col || null) === (b.col || null);
+  const free = () => bag().list().filter(it => !it.q);
+  C.held = () => { if (!G.state) return null; const L = free(); return L.length ? { id: L[0].id, col: L[0].col || null, n: L.length, it: L[0] } : null; };
+  C.holding = id => { const h = C.held(); return !!h && (!id || h.id === id); };
+  const exists = it => free().some(o => sameKind(o, it)) || st().ground.some(g => sameKind(g, it));
+  function avail(s) {
+    try { if (s.when && !s.when()) return false; } catch (e) { return false; }
+    if (s.unique && exists({ id: s.item, col: s.col })) return false;
+    const tk = st().taken[s.id]; if (!tk) return true;
+    if (s.every === 'day') return tk.d !== day();
+    return clock() - tk.t >= s.every || clock() < tk.t; // (a clock that went back counts as time passed)
+  }
+  C.avail = id => { const s = C.SOURCES.find(s => s.id === id); return !!s && !!G.state && avail(s); };
+  const groundAt = (map, x, y) => st().ground.filter(g => g.map === map && g.x === x && g.y === y);
+  const srcAt = (map, x, y) => C.SOURCES.find(s => s.map === map && s.at[0] === x && s.at[1] === y && avail(s)) || null;
+  // what lies on tile x, y of this map (a thing put down wins over a source)
+  C.at = function (f, x, y) {
+    if (!G.state || !f || !G.errands) return null;
+    const g = groundAt(f.mapId, x, y)[0]; if (g) return { ground: g, id: g.id, col: g.col || null };
+    const s = srcAt(f.mapId, x, y); return s ? { src: s, id: s.item, col: s.col || null } : null;
+  };
+  // the picture of a thing (a coloured flower, the blue ball)
+  const pic = (id, col) => (col ? { icon: W(id) ? W(id).icon : id, col: W(col) ? W(col).col : col } : (W(id) || id));
+  C.pic = it => pic(it.id, it.col);
+  // what the corner and the bubble say under it: the word once met, "?" before, nothing for a thing without a word
+  C.label = id => (!W(id) ? '' : G.st.seen(id) ? W(id).es.split(' / ')[0] : '?');
+
+  // ---------- picking up, putting down ----------
+  let fly = [], thrown = null; // things flying between your hands and the ground; the thing in the air while Canelo fetches it
+  const head = f => ({ x: f.player.x * T + f.player.ox + 12, y: f.player.y * T + f.player.oy - 10 });
+  const addFly = (f, it, from, to, toHand) => fly.push({ f, it: { id: it.id, col: it.col || null }, x0: from.x, y0: from.y, x1: to.x, y1: to.y, t: 0, toHand });
+  // a tile something can lie on: ground you can walk on, not a door, nobody's place in the story, no other kind there
+  C.canLie = function (f, x, y, id) {
+    if (x < 0 || y < 0 || x >= f.map.w || y >= f.map.h) return false;
+    const t = G.TERRAIN[f.map.get(x, y)] || G.TERRAIN['.'];
+    if (t.block || t.wall || f.exitAt(x, y)) return false;
+    if ((G.chapters && G.chapters.spotAt(f, x, y)) || (G.errands.spotAt(f, x, y)) || G.intro.spotAt(f, x, y) || srcAt(f.mapId, x, y)) return false;
+    if (f.npcs.some(n => !n.ghost && !n.hidden && n.x === x && n.y === y)) return false;
+    return !groundAt(f.mapId, x, y).some(g => g.id !== id);
+  };
+  // your free things go on tile x, y
+  function putDown(f, x, y, from) {
+    const L = bag().list(), fr = L.filter(it => !it.q); if (!fr.length) return;
+    for (const it of fr) {
+      L.splice(L.indexOf(it), 1);
+      st().ground.push(Object.assign({ id: it.id, col: it.col || null, map: f.mapId, x, y, f0: G.frame }, it.gold ? { gold: true } : {}));
+      addFly(f, it, from || head(f), { x: x * T + 12, y: y * T + 14 }, false);
+    }
+    const mine = st().ground.filter(g => g.map === f.mapId); // (too many lying about: the oldest rolls away)
+    while (mine.length > C.GROUND_MAX) { const g = mine.shift(); st().ground.splice(st().ground.indexOf(g), 1); }
+    G.st.autosave();
+  }
+  // where to put things down: in front of you, else beside you, else at your feet
+  function spotNear(f, id) {
+    const p = f.player, [dx, dy] = G.DIRS[p.dir];
+    const tries = [[p.x + dx, p.y + dy], [p.x, p.y + 1], [p.x - 1, p.y], [p.x + 1, p.y], [p.x, p.y - 1], [p.x - 1, p.y + 1], [p.x + 1, p.y + 1]];
+    return tries.find(([x, y]) => C.canLie(f, x, y, id)) || [p.x, p.y];
+  }
+  C.drop = function (f) {
+    f = f || G.field; const h = C.held(); if (!h || !f) return false;
+    const [x, y] = spotNear(f, h.id);
+    putDown(f, x, y);
+    G.audio.sfx('pop');
+    return true;
+  };
+  // errands.js bag.add: a free thing of another kind (or a fourth) coming into your hands puts what you held down
+  C.makeRoom = function (id, o = {}) {
+    const f = G.field, h = C.held(); if (!h || !f || !G.state || G.scenes.indexOf(f) < 0) return;
+    if (sameKind(h, { id, col: o.col }) && h.n < C.STACK) return;
+    const [x, y] = spotNear(f, h.id); putDown(f, x, y);
+  };
+  // pick up what lies on tile x, y (you're beside it or on it) -> true
+  C.pick = function (f, x, y) {
+    const a = C.at(f, x, y); if (!a) return false;
+    const h = C.held(), it = { id: a.id, col: a.col };
+    if (a.ground) st().ground.splice(st().ground.indexOf(a.ground), 1); else st().taken[a.src.id] = { d: day(), t: clock() };
+    if (h && (!sameKind(h, it) || h.n >= C.STACK)) putDown(f, x, y, { x: x * T + 12, y: y * T + 14 }); // (a swap: what you held goes where this was)
+    const o = Object.assign({}, a.col ? { col: a.col } : {}, a.ground && a.ground.gold ? { gold: true } : {});
+    bag().add(a.id, o);
+    addFly(f, it, { x: x * T + 12, y: y * T + 14 }, head(f), true);
+    if (W(a.id) && G.world) G.world.name(a.id, f.player.x * T + 12, f.player.y * T - 14, { noIntro: true, pic: pic(a.id, a.col) }); // its name, with its picture ("?" while unmet)
+    else for (let i = 0; i < 4; i++) G.fx.twinkle(x * T + 12 - Math.round(f.cam.x) + (Math.random() - 0.5) * 18, y * T + 8 - Math.round(f.cam.y) + (Math.random() - 0.5) * 12);
+    G.st.autosave();
+    return true;
+  };
+  // field.js search (A facing it, or a tap's walk ending beside it)
+  C.search = function (f, x, y) { return !!G.state && !!C.at(f, x, y) && C.pick(f, x, y); };
+
+  // ---------- taps (field.js update, before tap-to-walk) ----------
+  // a tap on yourself: put down what you hold (or pick up what you stand on)
+  C.tapSelf = function (f, tap) {
+    if (!G.state || !f || f.locked || !tap) return false;
+    const p = f.player, wx = tap.x + Math.round(f.cam.x), wy = tap.y + Math.round(f.cam.y);
+    const on = wx >= p.x * T + p.ox && wx < p.x * T + p.ox + T && wy >= p.y * T + p.oy - 6 && wy < p.y * T + p.oy + T;
+    if (!on || p.moving) return false;
+    if (C.held()) return C.drop(f);
+    if (C.at(f, p.x, p.y)) return C.pick(f, p.x, p.y);
+    return false;
+  };
+  let hud = null; // the corner's hand slot, as drawn (screen px)
+  C.tapHud = function (f, tap) {
+    if (!hud || !tap || !C.held() || f.locked) return false;
+    if (tap.x < hud.x || tap.x >= hud.x + hud.w || tap.y < hud.y || tap.y >= hud.y + hud.h) return false;
+    return C.drop(f);
+  };
+  C.hud = () => hud;
+
+  // ---------- giving ----------
+  const careHeart = () => { if (G.hearts) G.hearts.add('canelo', 1, 'care'); };
+  const bump = k => { const n = st().play.n; n[k] = (n[k] | 0) + 1; };
+  // Canelo, tapped while you hold something (maps.js caneloTalk, after the story): -> true when he took it up
+  C.giveDog = function* (f, n) {
+    const h = C.held(); if (!h || !n || !G.pet || !G.pet.mine()) return false;
+    while (n.moving) yield 1;
+    G.pet.place(f, n); yield 10;
+    const what = C.DOG[h.id] || 'sniff', [sx, sy] = [n.x * T + 12 - Math.round(f.cam.x), n.y * T - Math.round(f.cam.y)];
+    if (what === 'fetch') { // thrown from your hands: he runs, picks it up and brings it back to you
+      thrown = h.it;
+      try { yield* G.pet.play('fetch', { item: { id: h.id, col: h.col } }); } finally { thrown = null; }
+      careHeart(); bump(h.id); bump('fetch');
+      G.fx.say('¡Muy bien!', sx, sy - 20, '#f8e060', true);
+      yield 10;
+    } else if (what === 'eat' || what === 'drink') {
+      bag().take(h.id, { col: h.col || undefined, q: null }); G.audio.sfx('pop');
+      yield* G.pet.play(what, what === 'eat' ? { item: h.id } : {});
+      if (!(G.hearts && G.hearts.gift('canelo', h.id))) careHeart();
+      bump(h.id);
+      yield 10;
+    } else { // not for dogs: he sniffs it (a flower makes him sneeze) and gives it back
+      yield* G.pet.play('sniff', { amp: 0.5 });
+      if (h.id === 'flor') { G.pet.sound('woof'); G.pet.puff('txt', n.x * T + 12, n.y * T - 6, { s: '¡Achís!', life: 70 }); yield 30; }
+      yield* G.pet.play('huh');
+    }
+    if (G.hearts) yield* G.hearts.milestones('canelo');
+    return true;
+  };
+  // who would love it today (a gift heart they haven't had), nearest first; not `not`
+  const reach = who => { for (const m in G.maps) if ((G.maps[m].npcs || []).some(n => n.id === who && (!n.cond || n.cond()))) return m; return null; };
+  const likes = (who, it) => !!G.hearts && G.hearts.LIKES[who] === it.id && (who !== 'lucia' || it.col === 'rosa');
+  const wants = (who, it) => likes(who, it) && G.hearts.canAddToday(who, 'gift') && !!reach(who);
+  C.likerFor = function (it, not) {
+    if (!G.hearts) return null;
+    const f = G.field, p = f && f.player, here = who => (f ? f.npcs.find(n => n.id === who && !n.hidden) : null);
+    const L = G.hearts.WHO.filter(w => w !== not && w !== 'canelo' && wants(w, it));
+    L.sort((a, b) => { const na = here(a), nb = here(b); return (na ? 0 : 1) - (nb ? 0 : 1) || (na && nb && p ? Math.abs(na.x - p.x) + Math.abs(na.y - p.y) - Math.abs(nb.x - p.x) - Math.abs(nb.y - p.y) : 0); });
+    return L[0] || null;
+  };
+  // a townsperson tapped while you hold something nobody else's talk took (errands.js talk, after a present they like,
+  // a favour, hide-and-seek and the shop): Tomás takes his letter back; anyone else looks and says who'd love it
+  C.show = function* (who, f) {
+    const h = C.held(); if (!h || who === 'canelo') return false;
+    if (who === 'tomas' && h.id === 'carta') {
+      bag().take('carta', { q: null }); G.audio.jingle('item'); bump('carta');
+      yield say(who, null, TT('¡Mi [carta]! ¡[gracias], {name}!', 'My letter! Thank you, {name}!'));
+      if (G.hearts) { G.hearts.add('tomas', 1, 'care'); yield 20; yield* G.hearts.milestones('tomas'); }
+      return true;
+    }
+    const lk = C.likerFor(h.it, who);
+    if (lk) yield say(who, { face: lk }, TT('¡Oh! ¿Para ' + G.nameOf(lk).replace(/^(Profesora|Señor|Señora|Don|Doña|Abuela) /, '') + '?', 'Oh, nice! Take it to ' + G.nameOf(lk) + ': they love it!'));
+    else if (C.DOG[h.id] === 'fetch' && G.pet && G.pet.mine()) yield say(who, { icon: 'perro' }, TT('¡Para Canelo!', 'For Canelo! (tap him: he fetches it)'));
+    else yield say(who, C.pic(h), TT('¡Oh! ¡Mira!', 'Oh, look at that! (put it down: tap yourself)'));
+    return true;
+  };
+  if (G.errands) { // after everything else in a townsperson's talk; Tomás notices his letter
+    const et = G.errands.talk, ea = G.errands.alert;
+    G.errands.talk = function* (who, f) { if (yield* et(who, f)) return true; return yield* C.show(who, f); };
+    G.errands.alert = function (who) { const a = ea(who); if (a) return a; const h = G.state && C.held(); return h && who === 'tomas' && h.id === 'carta' ? [[pic('carta'), 1]] : false; };
+  }
+
+  // ---------- the day's play (the guide, src/guide.js) ----------
+  // the nearest place to pick up a thing that pred({id, col}) likes: lying about, a source, a flower to pick; here first
+  function nearest(f, pred) {
+    const p = f.player, out = [];
+    for (const g of st().ground) if (pred(g)) out.push({ map: g.map, at: [g.x, g.y], id: g.id, col: g.col || null });
+    for (const s of C.SOURCES) if (avail(s) && pred({ id: s.item, col: s.col || null })) out.push({ map: s.map, at: s.at, id: s.item, col: s.col || null });
+    if (G.errands && chDone('c15')) for (const sp of G.errands.SPOTS) { let on = null; try { on = sp.flower && sp.icon(); } catch (e) { /* */ } if (on && pred({ id: 'flor', col: sp.flower })) out.push({ map: sp.map, at: sp.at, id: 'flor', col: sp.flower }); }
+    const d = c => (c.map === f.mapId ? 0 : 1000) + Math.abs(c.at[0] - p.x) + Math.abs(c.at[1] - p.y);
+    out.sort((a, b) => d(a) - d(b));
+    return out[0] || null;
+  }
+  const go = (why, c) => (c ? { why, map: c.map, at: c.at, icon: pic(c.id, c.col) } : null);
+  const fetchOk = () => !!G.pet && G.pet.mine() && !(G.errands && G.errands.lost());
+  const pageAt = f => { // a notebook page puzzle that's ready (a sparkle), this map first
+    let best = null;
+    for (const m in G.maps) for (const k in G.maps[m].pages || {}) if (G.pages && G.pages.ready(G.maps[m].pages[k]) && (!best || m === f.mapId)) best = { map: m, at: k.split(',').map(Number), icon: 'pagina' };
+    return best;
+  };
+  C.PLAYS = {
+    pelota: f => (fetchOk() && (st().play.n.pelota | 0) < 3 ? go('fetch the ball', nearest(f, g => g.id === 'pelota')) : null),
+    manzana: f => { const w = C.likerFor({ id: 'manzana' }); return w ? go('an apple for ' + w, nearest(f, g => g.id === 'manzana')) : null; },
+    flor: f => {
+      const w = C.likerFor({ id: 'flor' }) || C.likerFor({ id: 'flor', col: 'rosa' }); if (!w) return null;
+      return go('a flower for ' + w, nearest(f, g => g.id === 'flor' && (w !== 'lucia' || g.col === 'rosa')));
+    },
+    hueso: f => (fetchOk() && G.hearts && G.hearts.canAddToday('canelo', 'gift') ? go('a bone for Canelo', nearest(f, g => g.id === 'hueso')) : null),
+    palo: f => (fetchOk() && (st().play.n.palo | 0) < 2 ? go('a stick to throw', nearest(f, g => g.id === 'palo')) : null),
+    huevo: f => (!G.errands.jobDone('huevo') && reach('rosa') ? go('an egg for Rosa', nearest(f, g => g.id === 'huevo')) : null),
+    carta: f => (chDone('c10') && !st().play.n.carta ? go('Tomás\'s letter', nearest(f, g => g.id === 'carta')) : null),
+    patos: () => (chDone('c6') && !G.errands.jobDone('patos') && G.words.met('pan') && !C.holding('pan') ? { why: 'bread for the ducks', who: 'marta', icon: 'pan' } : null),
+    pagina: f => { const p = pageAt(f); return p ? Object.assign({ why: 'a page puzzle' }, p) : null; },
+  };
+  C.ORDER = ['pelota', 'manzana', 'flor', 'hueso', 'palo', 'huevo', 'carta', 'patos', 'pagina'];
+  C.plan = function (f) {
+    if (!G.state || !f || !G.errands) return null;
+    const h = C.held();
+    if (h) { // what you hold, to whoever would love it
+      const w = C.likerFor(h.it); if (w) return { why: 'give ' + h.id + ' to ' + w, who: w, icon: pic(h.id, h.col) };
+      if (h.id === 'carta' && !st().play.n.carta && reach('tomas')) return { why: 'the letter to Tomás', who: 'tomas', icon: pic('carta') };
+      if (h.id === 'huevo' && !G.errands.jobDone('huevo') && reach('rosa')) return { why: 'the egg to Rosa', who: 'rosa', icon: pic('huevo') };
+      if (h.id === 'pan' && chDone('c6') && !G.errands.jobDone('patos')) return { why: 'bread for the ducks', map: 'villa', at: [37, 21], icon: 'pato' };
+      if (C.DOG[h.id] && fetchOk() && (C.DOG[h.id] !== 'fetch' || (st().play.n[h.id] | 0) < 5)) return { why: (C.DOG[h.id] === 'fetch' ? 'throw it for Canelo' : 'Canelo: ' + h.id), dog: true, icon: pic(h.id, h.col) };
+    }
+    const k0 = day() % C.ORDER.length;
+    for (let i = 0; i < C.ORDER.length; i++) {
+      const id = C.ORDER[(k0 + i) % C.ORDER.length]; if (h && h.id === id) continue;
+      let g = null; try { g = C.PLAYS[id](f); } catch (e) { if (!C.err) { C.err = 1; console.error(e); } }
+      if (g) return g;
+    }
+    if (!fetchOk()) return null;
+    if (h && C.DOG[h.id] === 'fetch') return { why: 'fetch', dog: true, icon: pic(h.id, h.col) };
+    return go('fetch', nearest(f, g => C.DOG[g.id] === 'fetch')); // (always there: a game of fetch)
+  };
+
+  // ---------- drawing (field.js) ----------
+  // things lying about (under the people): a soft shadow, a little bob, a twinkle now and then; apples on their trees
+  C.drawUnder = function (f, ctx) {
+    if (!G.state || !G.errands) return;
+    const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
+    const one = (it, x, y, k, f0) => {
+      if (f0 != null && G.frame - f0 < C.FLY) return; // (still flying down)
+      const X = x * T - cx, Y = y * T - cy; if (X < -24 || Y < -24 || X > G.W || Y > G.H) return;
+      const bob = Math.round(Math.sin((G.frame + x * 9 + k * 5) / 16));
+      ctx.fillStyle = 'rgba(16,28,8,0.3)'; ctx.fillRect(X + 6, Y + 19, 12, 2);
+      G.drawIcon16(ctx, C.pic(it), X + 4 + (k % 2) * 3, Y + 4 + bob - (k > 1 ? 3 : 0));
+      if ((G.frame + x * 13 + y * 7) % 90 < 10) { const u = ((G.frame + x * 13 + y * 7) % 90) / 10; ctx.fillStyle = '#ffffff'; ctx.fillRect(X + 17 + Math.round(u * 2), Y + 2, 1, 3); ctx.fillRect(X + 16 + Math.round(u * 2), Y + 3, 3, 1); }
+    };
+    for (const s of C.SOURCES) {
+      if (s.map !== f.mapId) continue;
+      if (s.tree) { const X = s.tree[0] * T - cx, Y = s.tree[1] * T - cy; for (const [dx, dy] of [[6, 6], [14, 4], [10, 11], [16, 10]]) { ctx.fillStyle = '#401010'; ctx.fillRect(X + dx - 1, Y + dy - 1, 4, 4); ctx.fillStyle = '#e03028'; ctx.fillRect(X + dx, Y + dy, 2, 2); } }
+      if (!s.hidden && avail(s)) one({ id: s.item, col: s.col }, s.at[0], s.at[1], 0);
+    }
+    const seen = {};
+    for (const g of st().ground) if (g.map === f.mapId) { const k = g.x + ',' + g.y; seen[k] = (seen[k] | 0) + 1; one(g, g.x, g.y, seen[k] - 1, g.f0); }
+  };
+  // what you hold, up over your head in both hands (after the people); things flying to and from your hands
+  C.drawHeld = function (f, ctx) {
+    if (!G.state || !G.errands) return;
+    const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y), p = f.player;
+    const L = bag().list(), fr = L.filter(it => !it.q && it !== thrown), qs = L.filter(it => it.q);
+    const show = fr.concat(qs).slice(0, 3);
+    const landing = fly.some(o => o.f === f && o.toHand);
+    if (show.length && !(landing && !qs.length && fr.length <= 1)) {
+      const moving = p.moving || p.ox || p.oy, bob = Math.abs(p.ox + p.oy) >= 6 && Math.abs(p.ox + p.oy) <= 18 ? 1 : 0;
+      const X = Math.round(p.x * T + p.ox - cx), Y = Math.round(p.y * T + p.oy - cy - 3) - bob - (moving ? 0 : Math.round(Math.abs(Math.sin(G.frame / 24))));
+      show.forEach((it, k) => G.drawIcon16(ctx, bag().icon(it), X + 4, Y - 12 - k * 6)); // (a little tower when there are more)
+      const skin = (G.st.playerSpec().map && G.st.playerSpec().map.skin) || '#f0c8a0'; // two hands holding it up
+      for (const hx of [X + 3, X + 18]) { ctx.fillStyle = '#1a1420'; ctx.fillRect(hx - 1, Y - 2, 5, 5); ctx.fillStyle = skin; ctx.fillRect(hx, Y - 1, 3, 3); }
+    }
+    fly = fly.filter(o => o.f === f && ++o.t <= C.FLY);
+    for (const o of fly) {
+      const u = o.t / C.FLY, to = o.toHand ? head(f) : { x: o.x1, y: o.y1 };
+      const x = o.x0 + (to.x - o.x0) * u, y = o.y0 + (to.y - o.y0) * u - Math.sin(u * Math.PI) * 14;
+      G.drawIcon16(ctx, C.pic(o.it), Math.round(x - 8 - cx), Math.round(y - 12 - cy));
+    }
+  };
+  // the corner: what you hold (picture + word, "?" while unmet; tap it to put it down), then the story's things
+  C.drawHud = function (f, ctx) {
+    hud = null;
+    if (!G.state || f.locked || G.top() !== f || (G.hint && G.hint.stripShowing())) return;
+    const L = bag().list(); if (!L.length) return;
+    const fr = L.filter(it => !it.q), qs = L.filter(it => it.q);
+    const lab = fr.length ? C.label(fr[0].id) : '', lw = lab ? G.textWidth(lab) + 6 : 0;
+    const fw = fr.length ? 22 + (fr.length - 1) * 5 + lw + 12 : 0, qw = qs.length ? qs.length * 15 + (fr.length ? 6 : 4) : 0;
+    G.win(ctx, 4, 4, 4 + fw + qw, 22, { fill1: '#ffffff', fill2: '#ece8f4', alpha: 0.95 });
+    let x = 8;
+    if (fr.length) {
+      const pop = G.errands.popT ? G.errands.popT(fr[0]) : 0;
+      fr.slice(0, C.STACK).forEach((it, k) => G.drawIcon16(ctx, bag().icon(it), x + k * 5, 7 + pop - (k ? 1 : 0)));
+      const tx = x + 20 + (fr.length - 1) * 5;
+      if (lab) G.text(ctx, lab, tx, 11, lab === '?' ? '#a08060' : G.st.knows(fr[0].id) ? '#a06008' : '#2860a8', null);
+      const ax = tx + lw, ay = 9; // a little arrow down to the ground: tap to put it down
+      ctx.fillStyle = '#8890b8'; ctx.fillRect(ax + 2, ay, 2, 5); ctx.fillRect(ax, ay + 4, 6, 1); ctx.fillRect(ax + 1, ay + 5, 4, 1); ctx.fillRect(ax + 2, ay + 6, 2, 1); ctx.fillRect(ax - 1, ay + 9, 8, 1);
+      hud = { x: 4, y: 4, w: fw + 4, h: 22 };
+      x += fw;
+      if (qs.length) { ctx.fillStyle = '#c8c0d8'; ctx.fillRect(x - 3, 8, 1, 14); }
+    }
+    qs.forEach((it, i) => G.drawIcon16(ctx, bag().icon(it), x + i * 15, 7));
+  };
+  if (G.errands) G.errands.drawHud = C.drawHud;
+})();
+
+</script>
 <script>/* src/guide.js */
 // ===== The guide: the next thing to do is always in sight while you're free to walk (docs/INTUITIVE_AUDIT.md) =====
 // Children don't read the Spanish instructions and don't open menus (docs/PLAYTEST_NOTES.md, 2026-10-11): so there is
@@ -15770,8 +16196,12 @@ G.MAPDATA = {
 // The goal, most important first: the story's chapter (its beat: a person, a place, an animal, a door, a find-it
 // puzzle; the next chapter's giver; a review day's teacher) > home at sunset > a favour going on or offered > Nico's
 // hide-and-seek (only the edge arrow: the peeking ears are the game; the arrow over one after a long wait) > Canelo's
-// "?", Luna's palabra del día, Inés's pages, a side job, anyone else with a bubble. Nothing to do (the next chapter
-// opens tomorrow): no arrow. A favour that sends you to a place or an animal named only by its word is the word being
+// "?", Luna's palabra del día, Inés's pages, a side job, anyone else with a bubble > the day's play (src/carry.js: what
+// you hold to whoever would love it, or Canelo; empty-handed, today's next play: fetch, an apple for Luna, a flower for
+// Mamá, the bone, an egg for Rosa, bread for the ducks, a page puzzle... and a game of fetch is always there). So there
+// is never a dead end: between chapters, while today's new words are used up, before the evening chapter, the arrow
+// points at something fun that teaches nothing new (docs/INTUITIVE_AUDIT.md, step 2); at sunset it's home, and at
+// home your bed. A favour that sends you to a place or an animal named only by its word is the word being
 // remembered: its arrow (and Canelo's trot) only come as a hint, after ~10 s of standing about.
 // The hint hand (hint.js) taps on the same goal after a few seconds of doing nothing, when it's on screen.
 // API: G.guide.goal(f) -> {why, map, pts: [{x, y, lift, npc?, icon?}] (world px; several = a choice), soft, via: 'door'}
@@ -15819,7 +16249,7 @@ G.MAPDATA = {
       const bubble = t => { const m = /^ch:[^:]+:(\d+)$/.exec(t.spot || ''), sp = m && spots[+m[1]]; return !!(sp && !sp.quiet && sp.icon); }; // (a place with a picture bubble: the arrow goes over it)
       const pts = ts.map(t => Object.assign({ x: t.x, y: t.y, lift: t.door ? 28 : t.npc ? 24 : t.cat || t.animal ? 14 : bubble(t) ? 42 : 14 }, t.npc ? { npc: here(f, t.npc) } : {}, t.door ? { door: true } : {}));
       const secret = ts.every(t => t.secret);
-      if (secret && pts.length === 1) addDecoys(f, pts); // (who says "¡miau!": the cat AND Canelo get an arrow)
+      if (secret && pts.length === 1 && (ts[0].cat || ts[0].animal || ts[0].npc)) addDecoys(f, pts); // (who says "¡miau!": the cat AND Canelo get an arrow; the last bush to look in is just that bush)
       return { why, pts, choice: secret };
     }
     if (b.who) {
@@ -15842,7 +16272,8 @@ G.MAPDATA = {
     if (G.animals && G.words.met('pato')) { const d = G.animals.find('pato', f); if (d) add(Math.round(d.x), Math.round(d.y - 6)); }
   }
   function sunsetGoal(f) {
-    if (!G.day || !G.day.over() || (f.mapId === 'casa')) return null;
+    if (!G.day || !G.day.over()) return null;
+    if (f.mapId === 'casa') return f.evening ? null : { why: 'bed (sunset)', pts: [tileP(7, 2, 20, { icon: 'noche' })] }; // (home already: your bed ends the day, maps.js)
     const d = G.day.homeDoor(f); if (d) return { why: 'home (sunset)', pts: [tileP(d[0], d[1], 48, { door: true, icon: 'noche' })] }; // (over the moon bubble)
     return { why: 'home (sunset)', map: 'casa', badge: { icon: 'noche' } };
   }
@@ -15887,7 +16318,17 @@ G.MAPDATA = {
     if (E && E.waitsIn) for (const m in G.maps) if (m !== f.mapId && E.waitsIn(m)) return { why: 'job in ' + m, map: m, badge: { icon: G.maps[m].icon || 'pregunta' } };
     return null;
   }
-  const TIERS = [chapterGoal, sunsetGoal, favourGoal, seekGoal, reviewGoal];
+  // the day's play (carry.js): never a dead end
+  function playGoal(f) {
+    const C = G.carry; if (!C || !C.plan) return null;
+    const p = C.plan(f); if (!p) return null;
+    const why = 'play: ' + p.why;
+    if (p.dog) { const n = G.pet && G.pet.npc(f); return n ? { why, play: true, pts: [Object.assign(person(n), { icon: p.icon })] } : { why, play: true, map: 'villa', badge: { icon: 'perro' } }; }
+    if (p.who) { const n = here(f, p.who); return n ? { why, play: true, pts: [person(n)] } : { why, play: true, map: mapOfNpc(p.who), badge: { who: p.who } }; }
+    if (p.map === f.mapId) return { why, play: true, pts: [tileP(p.at[0], p.at[1], 20, { icon: p.icon })] };
+    return { why, play: true, map: p.map, badge: { icon: p.icon } };
+  }
+  const TIERS = [chapterGoal, sunsetGoal, favourGoal, seekGoal, reviewGoal, playGoal];
 
   // on another map: the door that leads there (from town, its door; from a building, the way out)
   function viaDoor(f, g) {

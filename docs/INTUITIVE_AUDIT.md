@@ -2,7 +2,8 @@
 
 *2026-10-11, after the second playtest (`docs/PLAYTEST_NOTES.md`): the 7-year-old "didn't know what to do next" and
 "ran out of things to do"; the parent: kids don't go into menus like Misiones, they need pointers and arrows, and
-instructions in Spanish won't be followed. This is step 1 of a series; the later steps are listed at the end.*
+instructions in Spanish won't be followed. This is step 1 of a series; step 2 (never a dead end, picking things up) is
+the section before the last; the later steps are listed at the end.*
 
 ## How it was measured
 Days 1-3 (chapters 1-6) on an iPad-sized touch screen, played by a **naive bot** (`tools/naivebot.js`, driven by
@@ -23,7 +24,8 @@ Every moment free on the map is logged with the game seconds until something sta
 wandering or standing about, what finally showed the way, and the last line said before it (what a child would have
 had to read). After 45 s with nothing it counts as **stuck** and the bot is walked to the goal like the test bot.
 
-`NODE_PATH=$(npm root -g) node tools/audit-intuitive.js [out dir] --label before|after` reruns it (20-35 minutes).
+`NODE_PATH=$(npm root -g) node tools/audit-intuitive.js [out dir] --label before|after` reruns it (20-35 minutes; since
+step 2 about an hour: the bot plays every day to sunset, goes to bed and comes back the next calendar day).
 
 ## The numbers
 | | before | after (the guide) |
@@ -111,14 +113,58 @@ worked out.
 ![](audit-shots/a3-choice.png) ![](audit-shots/a4-door.png)
 ![](audit-shots/a5-canelo-trots.png) ![](audit-shots/a6-kid-menu.png)
 
+## Step 2: never a dead end, and things to pick up (2026-10-11)
+What step 1 left was time with **nothing to do at all**: the gaps between chapters (a chapter that opens a few minutes
+later, a morning chapter, today's new words used up) and the end of each day. Step 2 makes sure something fun is always
+there, and asks nothing new of the word budget:
+- **Pick up and carry** (`src/carry.js`; the child asked for it): apples under two apple trees and in the barn's basket,
+  sticks, Canelo's blue ball, his bone every morning, eggs in the barn, flowers, Tomás's lost letter. A tap picks it up;
+  it's held up over your head and shown in the corner as picture + word ("?" while unmet: never met this way). Canelo
+  fetches the ball and the stick from your hands and eats the bone; a friend who loves it takes it for a heart; anyone
+  else holds up the face of who'd love it. Chapter 4's apple for Rosa is now carried to her.
+- **The day's play** is the guide's last tier: what you hold goes to whoever would love it today (or Canelo, or the
+  ducks); empty-handed, today's next play (fetch, an apple for Luna or Gómez, a flower for Mamá, the bone, a stick, an
+  egg for Rosa, bread for the ducks, a page puzzle), and a game of fetch is always there.
+- **Waiting you can see**: the next chapter's giver sleeps under a night-blue moon bubble with "z z" floating up (the
+  moon alone: tonight) instead of a sun and *¡Mañana!*; tapped, they yawn and hold up the sleeping picture, then the
+  sunrise. *¡Hasta mañana!* (Nico, Luna) holds up the sunrise. At sunset the arrow goes home, at home to the bed: a tap
+  on it ends the day.
+
+| | step 1 (the guide) | step 2 (never a dead end) |
+| --- | --- | --- |
+| seconds wandering or standing about **with nothing to do** (no next story step), days 1-3 | **659** | **0** |
+| ... of them in daytime (before sunset) | 659 | 0 |
+| seconds lost while there was a story step | 14 | 14 |
+| moments stuck (45 s and nothing to tap) | 7 | 0 |
+| how each day ended | stuck with nothing to do, the bot sent to the next day (the rest of the day empty) | sunset, home, bed, at 18 minutes of play |
+| chapters done by the end of day 3 | 1-6 | 1-6 |
+| moments free on the map, days 1-3 | 60 | 945 (872 of them the day's play) |
+
+The step-1 run cut every empty gap off after ~40 s and ended each day there, so its 659 s is a floor: a child had the
+rest of the day (to sunset at 18 minutes) with nothing. With step 2 the bot played every day to sunset following only
+what it saw: 290, 289 and 271 moments a day with no story step, every one of them a play goal, none lost. The 14 s
+left are step 1's: on day 3 the guide showed Nico's hide-and-seek (whose arrow waits ~10 s on purpose: the peeking ears
+are the game) while bread for the ducks was also in hand.
+
+The day's play the bot followed (moments): fetch 793, throw the stick or the ball 30, an apple (picked, given) 13, an
+egg 12, a flower 9, a stick 5, the ball 5, the bone 4, a page puzzle 1. Once a day's dozen plays are done (few words
+are met on days 1-3, so few friends' presents), the arrow keeps suggesting a game of fetch: never empty, but samey
+(see what remains).
+
+`NODE_PATH=$(npm root -g) node tools/audit-intuitive.js [out dir] --label after2` (the bot sleeps into the next
+calendar day, so each day's own new-word limit opens the next chapter as it would for a child coming back tomorrow).
+
+![](audit-shots/c1-giver-asleep.png) ![](audit-shots/c2-manana-picture.png)
+![](audit-shots/c3-play-arrow.png) ![](audit-shots/c4-bed-at-sunset.png)
+![](audit-shots/c5-holding-ball.png) ![](audit-shots/c6-fetch.png)
+![](audit-shots/c7-three-apples.png) ![](audit-shots/c8-para-luna.png)
+
 ## What remains (the next steps)
-- **Never a dead end** (step 2): the gaps between chapters are now nearly all the time a child spends not knowing what
-  to do (the after column). Something to do must always exist: things to pick up and carry (the child asked for it:
-  "I want to be able to pick up stuff"), Canelo's games, favours from day 1, the next chapter's giver with a reason
-  to wait that a child can see.
+- **More kinds of play once the day's list is done** (after step 2): the arrow falls back to fetch; Canelo's tricks
+  and care (his menu), petting him, the ducks without bread, more friends' presents as words are met would vary it.
 - **Word cards that grow; picture and word always; ghost-hand demos** (step 3): stars mean little to a child; the
-  notebook comes too soon; a first-time action (calling Canelo, the say-it mic) should be shown by a ghost hand doing
-  it once.
+  notebook comes too soon; a first-time action (calling Canelo, the say-it mic, putting a thing down by tapping
+  yourself, throwing the ball to Canelo) should be shown by a ghost hand doing it once.
 - The puppy's tail under the table and the peeking balls are tiny: with the arrow they're found, but they could be
   bigger and livelier.
 - The guide shows one goal; a child who wants to wander still can, and the arrow waits. Whether the edge arrow is too
