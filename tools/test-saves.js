@@ -298,12 +298,19 @@ async function grownUpsField(browser) {
     await g.tap(310, 16); // the menu button
     await scene(g, 'FieldMenu', 'the field menu');
     await g.frames(6); await g.shot('fieldmenu');
-    check('field: the menu has the notebook, the album and a small gear (no Misiones, no Guardar)', await g.ev(() => { const s = G.top(), g = s.rect('gear'), b = s.rect('book'); return g.w * g.h < b.w * b.h / 4 && s.tiles().join() === 'book,album'; }));
+    check('field: the menu has the word cards, the album and a small gear (no Misiones, no Guardar; the book comes later)', await g.ev(() => { const s = G.top(), g = s.rect('gear'), b = s.rect('cards'); return g.w * g.h < b.w * b.h / 4 && s.tiles().join() === 'cards,album'; }));
+    await g.tapRect(await g.ev(() => G.top().rect('cards')));
+    await scene(g, 'Deck');
+    await g.tapBtn(await g.ev(() => G.top().closeXY()));
+    await scene(g, 'FieldMenu');
+    check('field: the word cards open by tapping', true);
+    await g.ev(() => { G.state.flags.book = true; });
+    await g.frames(2);
     await g.tapRect(await g.ev(() => G.top().rect('book')));
     await scene(g, 'Notebook');
     await g.tapBtn(await g.ev(() => G.top().closeXY()));
     await scene(g, 'FieldMenu');
-    check('field: Cuaderno opens by tapping', true);
+    check('field: once open, the Cuaderno opens by tapping', true);
     const gear = await g.ev(() => G.top().gearHit());
     await g.tapRect(gear);
     await g.frames(20);

@@ -124,11 +124,12 @@
 
   // a mouth talking (the mic demo): lips opening and closing, sound waves coming out
   function mouth(ctx, x, y, t) {
-    const open = Math.round(Math.abs(Math.sin(t / 5)) * 4);
-    ctx.fillStyle = '#401020'; ctx.fillRect(x - 6, y - 2 - open / 2, 12, 4 + open);
-    ctx.fillStyle = '#e04860'; ctx.fillRect(x - 6, y - 3 - open / 2, 12, 2); ctx.fillRect(x - 5, y + 1 + open / 2, 10, 2);
-    ctx.fillStyle = '#ffffff'; if (open > 1) ctx.fillRect(x - 3, y - 1 - open / 2, 6, 1);
-    if (G.mic) G.mic.waves(ctx, x + 2, y, 9, '#70e0ff', 2, t);
+    const open = 1 + Math.abs(Math.sin(t / 5)) * 4;
+    ctx.fillStyle = '#e04860'; ctx.beginPath(); ctx.ellipse(x, y, 8, open + 2.5, 0, 0, Math.PI * 2); ctx.fill();   // lips
+    ctx.fillStyle = '#5a1020'; ctx.beginPath(); ctx.ellipse(x, y, 6, open, 0, 0, Math.PI * 2); ctx.fill();         // inside
+    if (open > 2) { ctx.fillStyle = '#ff8098'; ctx.beginPath(); ctx.ellipse(x, y + open * 0.5, 3.5, open * 0.45, 0, 0, Math.PI * 2); ctx.fill(); } // tongue
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(x - 3), Math.round(y - open), 6, 1);                        // teeth
+    if (G.mic) G.mic.waves(ctx, x, y, 11, '#70e0ff', 2, t);
   }
   DM.draw = function (ctx) {
     const c = DM.cur; if (!c || !G.hint || !G.hint.hand) return;
@@ -136,7 +137,7 @@
     if (c.carry && c.down && G.carry) G.drawIcon16(ctx, G.carry.pic(c.carry), Math.round(c.x - 8), Math.round(c.y - 22)); // carried along
     if (c.drag != null && c.down) { ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(c.x - 30), Math.round(c.y - 12), 60, 24); G.textC(ctx, G.baseForm(c.drag), c.x, c.y - 4, '#2860a8', null); }
     G.hint.hand(ctx, { x: c.x, y: c.y, dir: 'up' }, c.push);
-    if (c.talk) { const mx = c.mic ? c.mic.x + c.mic.w / 2 : c.x, my = (c.mic ? c.mic.y : c.y) - 16; ctx.globalAlpha = Math.min(1, c.a); ctx.save(); ctx.translate(mx, my); ctx.scale(1.6, 1.6); mouth(ctx, 0, 0, c.talk); ctx.restore(); } // a mouth talking, over the mic
+    if (c.talk) { const mx = c.mic ? c.mic.x + c.mic.w / 2 : c.x, my = (c.mic ? c.mic.y : c.y) - 16; ctx.globalAlpha = Math.min(1, c.a); ctx.save(); ctx.translate(mx, my); ctx.scale(1.3, 1.3); mouth(ctx, 0, 0, c.talk); ctx.restore(); } // a mouth talking, over the mic
     ctx.restore();
   };
 })();

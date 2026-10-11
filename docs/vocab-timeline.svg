@@ -9,93 +9,92 @@
 <line x1="46" x2="656" y1="338" y2="338" stroke="#e4e3df"/><text x="40" y="342" text-anchor="end" fill="#52514e">0</text>
 <line x1="46" x2="656" y1="258" y2="258" stroke="#e4e3df"/><text x="40" y="262" text-anchor="end" fill="#52514e">5</text>
 <text x="46" y="250" fill="#0b0b0b">New words met in each minute</text>
-<line x1="72.9471130952381" x2="72.9471130952381" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="75.9471130952381" y="218" fill="#8a8984">day 2</text>
-<line x1="101.94147817460318" x2="101.94147817460318" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="104.94147817460318" y="218" fill="#8a8984">day 3</text>
-<line x1="139.21744047619046" x2="139.21744047619046" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="142.21744047619046" y="218" fill="#8a8984">day 4</text>
-<line x1="170.44181547619047" x2="170.44181547619047" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="173.44181547619047" y="218" fill="#8a8984">day 5</text>
-<line x1="210.63343253968253" x2="210.63343253968253" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="213.63343253968253" y="218" fill="#8a8984">day 6</text>
-<line x1="220.2445634920635" x2="220.2445634920635" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="223.2445634920635" y="218" fill="#8a8984">day 7</text>
-<line x1="257.22218253968254" x2="257.22218253968254" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="260.22218253968254" y="218" fill="#8a8984">day 8</text>
-<line x1="284.3266369047619" x2="284.3266369047619" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="287.3266369047619" y="218" fill="#8a8984">day 9</text>
-<line x1="313.00450396825397" x2="313.00450396825397" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="316.00450396825397" y="218" fill="#8a8984">day 10</text>
-<line x1="351.3975892857143" x2="351.3975892857143" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="354.3975892857143" y="218" fill="#8a8984">day 11</text>
-<line x1="389.07719246031746" x2="389.07719246031746" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="392.07719246031746" y="218" fill="#8a8984">day 12</text>
-<line x1="418.0261706349206" x2="418.0261706349206" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="421.0261706349206" y="218" fill="#8a8984">day 13</text>
-<line x1="453.73900793650796" x2="453.73900793650796" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="456.73900793650796" y="218" fill="#8a8984">day 14</text>
-<line x1="489.90874007936503" x2="489.90874007936503" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="492.90874007936503" y="218" fill="#8a8984">day 15</text>
-<line x1="530.2032341269842" x2="530.2032341269842" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="533.2032341269842" y="218" fill="#8a8984">day 16</text>
-<line x1="585.2073214285715" x2="585.2073214285715" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="588.2073214285715" y="218" fill="#8a8984">day 17</text>
-<line x1="619.5131646825397" x2="619.5131646825397" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="622.5131646825397" y="218" fill="#8a8984">day 18</text>
-<line x1="210.0312996031746" x2="210.0312996031746" y1="34" y2="338" stroke="#4a3aa7" stroke-width="1.5"/><text x="213.0312996031746" y="204" fill="#4a3aa7">evening</text>
-<rect x="47.0" y="274.0" width="1.6" height="64.0" rx="1" fill="#eb6834"><title>minute 0-1: 4 new words</title></rect>
-<rect x="65.2" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 5-6: 1 new word</title></rect>
-<rect x="68.8" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 6-7: 1 new word</title></rect>
-<rect x="72.4" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 7-8: 1 new word</title></rect>
-<rect x="76.0" y="306.0" width="1.6" height="32.0" rx="1" fill="#eb6834"><title>minute 8-9: 2 new words</title></rect>
-<rect x="94.2" y="306.0" width="1.6" height="32.0" rx="1" fill="#eb6834"><title>minute 13-14: 2 new words</title></rect>
-<rect x="97.8" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 14-15: 1 new word</title></rect>
-<rect x="105.1" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 16-17: 1 new word</title></rect>
-<rect x="108.7" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 17-18: 1 new word</title></rect>
-<rect x="123.3" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 21-22: 1 new word</title></rect>
-<rect x="126.9" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 22-23: 1 new word</title></rect>
-<rect x="130.5" y="306.0" width="1.6" height="32.0" rx="1" fill="#eb6834"><title>minute 23-24: 2 new words</title></rect>
-<rect x="145.0" y="306.0" width="1.6" height="32.0" rx="1" fill="#eb6834"><title>minute 27-28: 2 new words</title></rect>
-<rect x="148.7" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 28-29: 1 new word</title></rect>
-<rect x="152.3" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 29-30: 1 new word</title></rect>
-<rect x="155.9" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 30-31: 1 new word</title></rect>
-<rect x="181.3" y="306.0" width="1.6" height="32.0" rx="1" fill="#eb6834"><title>minute 37-38: 2 new words</title></rect>
-<rect x="185.0" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 38-39: 1 new word</title></rect>
-<rect x="206.8" y="290.0" width="1.6" height="48.0" rx="1" fill="#eb6834"><title>minute 44-45: 3 new words</title></rect>
-<rect x="228.5" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 50-51: 1 new word</title></rect>
-<rect x="232.2" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 51-52: 1 new word</title></rect>
-<rect x="235.8" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 52-53: 1 new word</title></rect>
-<rect x="246.7" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 55-56: 1 new word</title></rect>
-<rect x="250.3" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 56-57: 1 new word</title></rect>
-<rect x="264.9" y="274.0" width="1.6" height="64.0" rx="1" fill="#eb6834"><title>minute 60-61: 4 new words</title></rect>
-<rect x="268.5" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 61-62: 1 new word</title></rect>
-<rect x="297.5" y="290.0" width="1.6" height="48.0" rx="1" fill="#eb6834"><title>minute 69-70: 3 new words</title></rect>
-<rect x="301.2" y="306.0" width="1.6" height="32.0" rx="1" fill="#eb6834"><title>minute 70-71: 2 new words</title></rect>
-<rect x="323.0" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 76-77: 1 new word</title></rect>
-<rect x="330.2" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 78-79: 1 new word</title></rect>
-<rect x="333.8" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 79-80: 1 new word</title></rect>
-<rect x="337.5" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 80-81: 1 new word</title></rect>
-<rect x="341.1" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 81-82: 1 new word</title></rect>
-<rect x="359.3" y="306.0" width="1.6" height="32.0" rx="1" fill="#eb6834"><title>minute 86-87: 2 new words</title></rect>
-<rect x="370.2" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 89-90: 1 new word</title></rect>
-<rect x="377.4" y="306.0" width="1.6" height="32.0" rx="1" fill="#eb6834"><title>minute 91-92: 2 new words</title></rect>
-<rect x="395.6" y="290.0" width="1.6" height="48.0" rx="1" fill="#eb6834"><title>minute 96-97: 3 new words</title></rect>
-<rect x="402.8" y="306.0" width="1.6" height="32.0" rx="1" fill="#eb6834"><title>minute 98-99: 2 new words</title></rect>
-<rect x="424.6" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 104-105: 1 new word</title></rect>
-<rect x="431.9" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 106-107: 1 new word</title></rect>
-<rect x="435.5" y="306.0" width="1.6" height="32.0" rx="1" fill="#eb6834"><title>minute 107-108: 2 new words</title></rect>
-<rect x="457.3" y="290.0" width="1.6" height="48.0" rx="1" fill="#eb6834"><title>minute 113-114: 3 new words</title></rect>
-<rect x="460.9" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 114-115: 1 new word</title></rect>
-<rect x="479.1" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 119-120: 1 new word</title></rect>
-<rect x="508.1" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 127-128: 1 new word</title></rect>
-<rect x="519.0" y="306.0" width="1.6" height="32.0" rx="1" fill="#eb6834"><title>minute 130-131: 2 new words</title></rect>
-<rect x="562.6" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 142-143: 1 new word</title></rect>
-<rect x="566.2" y="322.0" width="1.6" height="16.0" rx="1" fill="#eb6834"><title>minute 143-144: 1 new word</title></rect>
-<path d="M49.6 214.5 L53.3 214.5 L56.9 214.5 L60.5 214.5 L64.2 214.5 L67.8 212.1 L71.4 209.8 L75.0 207.4 L78.7 202.6 L82.3 202.6 L85.9 202.6 L89.6 202.6 L93.2 202.6 L96.8 197.9 L100.5 195.5 L104.1 195.5 L107.7 193.1 L111.4 190.8 L115.0 190.8 L118.6 190.8 L122.3 190.8 L125.9 188.4 L129.5 186.0 L133.1 181.3 L136.8 181.3 L140.4 181.3 L144.0 181.3 L147.7 176.5 L151.3 174.1 L154.9 171.8 L158.6 169.4 L162.2 169.4 L165.8 169.4 L169.5 169.4 L173.1 169.4 L176.7 169.4 L180.3 169.4 L184.0 164.6 L187.6 162.3 L191.2 162.3 L194.9 162.3 L198.5 162.3 L202.1 162.3 L205.8 162.3 L209.4 155.1 L213.0 155.1 L216.7 155.1 L220.3 155.1 L223.9 155.1 L227.5 155.1 L231.2 152.8 L234.8 150.4 L238.4 148.0 L242.1 148.0 L245.7 148.0 L249.3 145.6 L253.0 143.3 L256.6 143.3 L260.2 143.3 L263.9 143.3 L267.5 133.8 L271.1 131.4 L274.8 131.4 L278.4 131.4 L282.0 131.4 L285.6 131.4 L289.3 131.4 L292.9 131.4 L296.5 131.4 L300.2 124.3 L303.8 119.5 L307.4 119.5 L311.1 119.5 L314.7 119.5 L318.3 119.5 L322.0 119.5 L325.6 117.1 L329.2 117.1 L332.8 114.8 L336.5 112.4 L340.1 110.0 L343.7 107.6 L347.4 107.6 L351.0 107.6 L354.6 107.6 L358.3 107.6 L361.9 102.9 L365.5 102.9 L369.2 102.9 L372.8 100.5 L376.4 100.5 L380.0 95.8 L383.7 95.8 L387.3 95.8 L390.9 95.8 L394.6 95.8 L398.2 88.6 L401.8 88.6 L405.5 83.9 L409.1 83.9 L412.7 83.9 L416.4 83.9 L420.0 83.9 L423.6 83.9 L427.3 81.5 L430.9 81.5 L434.5 79.1 L438.1 74.4 L441.8 74.4 L445.4 74.4 L449.0 74.4 L452.7 74.4 L456.3 74.4 L459.9 67.3 L463.6 64.9 L467.2 64.9 L470.8 64.9 L474.5 64.9 L478.1 64.9 L481.7 62.5 L485.3 62.5 L489.0 62.5 L492.6 62.5 L496.2 62.5 L499.9 62.5 L503.5 62.5 L507.1 62.5 L510.8 60.1 L514.4 60.1 L518.0 60.1 L521.7 55.4 L525.3 55.4 L528.9 55.4 L532.5 55.4 L536.2 55.4 L539.8 55.4 L543.4 55.4 L547.1 55.4 L550.7 55.4 L554.3 55.4 L558.0 55.4 L561.6 55.4 L565.2 53.0 L568.9 50.6 L572.5 50.6 L576.1 50.6 L579.8 50.6 L583.4 50.6 L587.0 50.6 L590.6 50.6 L594.3 50.6 L597.9 50.6 L601.5 50.6 L605.2 50.6 L608.8 50.6 L612.4 50.6 L616.1 50.6 L619.7 50.6 L623.3 50.6 L627.0 50.6 L630.6 50.6 L634.2 50.6 L637.8 50.6 L641.5 50.6 L645.1 50.6 L648.7 50.6 L652.4 50.6 L656.0 50.6" fill="none" stroke="#2a78d6" stroke-width="2"/>
-<path d="M49.6 224.0 L53.3 219.3 L56.9 219.3 L60.5 219.3 L64.2 219.3 L67.8 216.9 L71.4 212.1 L75.0 212.1 L78.7 209.8 L82.3 207.4 L85.9 207.4 L89.6 207.4 L93.2 207.4 L96.8 202.6 L100.5 200.3 L104.1 197.9 L107.7 197.9 L111.4 195.5 L115.0 193.1 L118.6 193.1 L122.3 193.1 L125.9 193.1 L129.5 193.1 L133.1 188.4 L136.8 183.6 L140.4 183.6 L144.0 183.6 L147.7 183.6 L151.3 183.6 L154.9 181.3 L158.6 178.9 L162.2 174.1 L165.8 174.1 L169.5 174.1 L173.1 174.1 L176.7 174.1 L180.3 174.1 L184.0 174.1 L187.6 171.8 L191.2 169.4 L194.9 169.4 L198.5 169.4 L202.1 169.4 L205.8 169.4 L209.4 169.4 L213.0 164.6 L216.7 159.9 L220.3 157.5 L223.9 155.1 L227.5 155.1 L231.2 155.1 L234.8 155.1 L238.4 155.1 L242.1 152.8 L245.7 150.4 L249.3 148.0 L253.0 148.0 L256.6 145.6 L260.2 143.3 L263.9 143.3 L267.5 140.9 L271.1 133.8 L274.8 133.8 L278.4 133.8 L282.0 133.8 L285.6 133.8 L289.3 133.8 L292.9 131.4 L296.5 131.4 L300.2 131.4 L303.8 129.0 L307.4 129.0 L311.1 124.3 L314.7 124.3 L318.3 124.3 L322.0 119.5 L325.6 119.5 L329.2 119.5 L332.8 119.5 L336.5 117.1 L340.1 117.1 L343.7 114.8 L347.4 112.4 L351.0 110.0 L354.6 110.0 L358.3 110.0 L361.9 105.3 L365.5 105.3 L369.2 105.3 L372.8 102.9 L376.4 100.5 L380.0 100.5 L383.7 100.5 L387.3 100.5 L390.9 100.5 L394.6 98.1 L398.2 98.1 L401.8 98.1 L405.5 95.8 L409.1 88.6 L412.7 86.3 L416.4 83.9 L420.0 83.9 L423.6 83.9 L427.3 83.9 L430.9 83.9 L434.5 83.9 L438.1 81.5 L441.8 79.1 L445.4 76.8 L449.0 76.8 L452.7 76.8 L456.3 76.8 L459.9 74.4 L463.6 72.0 L467.2 69.6 L470.8 69.6 L474.5 69.6 L478.1 67.3 L481.7 67.3 L485.3 64.9 L489.0 64.9 L492.6 64.9 L496.2 62.5 L499.9 62.5 L503.5 62.5 L507.1 62.5 L510.8 62.5 L514.4 60.1 L518.0 60.1 L521.7 60.1 L525.3 55.4 L528.9 55.4 L532.5 55.4 L536.2 55.4 L539.8 55.4 L543.4 55.4 L547.1 55.4 L550.7 55.4 L554.3 55.4 L558.0 55.4 L561.6 55.4 L565.2 55.4 L568.9 55.4 L572.5 55.4 L576.1 55.4 L579.8 55.4 L583.4 53.0 L587.0 53.0 L590.6 50.6 L594.3 50.6 L597.9 50.6 L601.5 50.6 L605.2 50.6 L608.8 50.6 L612.4 50.6 L616.1 50.6 L619.7 50.6 L623.3 50.6 L627.0 50.6 L630.6 50.6 L634.2 50.6 L637.8 50.6 L641.5 50.6 L645.1 50.6 L648.7 50.6 L652.4 50.6 L656.0 50.6" fill="none" stroke="#1baf7a" stroke-width="2"/>
+<line x1="71.8171546961326" x2="71.8171546961326" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="74.8171546961326" y="218" fill="#8a8984">day 2</text>
+<line x1="98.14488950276242" x2="98.14488950276242" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="101.14488950276242" y="218" fill="#8a8984">day 3</text>
+<line x1="135.01731123388583" x2="135.01731123388583" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="138.01731123388583" y="218" fill="#8a8984">day 4</text>
+<line x1="163.52947513812154" x2="163.52947513812154" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="166.52947513812154" y="218" fill="#8a8984">day 5</text>
+<line x1="202.2886279926335" x2="202.2886279926335" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="205.2886279926335" y="218" fill="#8a8984">day 6</text>
+<line x1="214.48581952117863" x2="214.48581952117863" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="217.48581952117863" y="218" fill="#8a8984">day 7</text>
+<line x1="246.89782688766113" x2="246.89782688766113" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="249.89782688766113" y="218" fill="#8a8984">day 8</text>
+<line x1="275.8368784530387" x2="275.8368784530387" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="278.8368784530387" y="218" fill="#8a8984">day 9</text>
+<line x1="307.79616022099447" x2="307.79616022099447" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="310.79616022099447" y="218" fill="#8a8984">day 10</text>
+<line x1="344.54725598526704" x2="344.54725598526704" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="347.54725598526704" y="218" fill="#8a8984">day 11</text>
+<line x1="381.1371454880295" x2="381.1371454880295" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="384.1371454880295" y="218" fill="#8a8984">day 12</text>
+<line x1="410.34019337016576" x2="410.34019337016576" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="413.34019337016576" y="218" fill="#8a8984">day 13</text>
+<line x1="450.8546408839779" x2="450.8546408839779" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="453.8546408839779" y="218" fill="#8a8984">day 14</text>
+<line x1="489.06052486187843" x2="489.06052486187843" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="492.06052486187843" y="218" fill="#8a8984">day 15</text>
+<line x1="528.2903775322284" x2="528.2903775322284" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="531.2903775322284" y="218" fill="#8a8984">day 16</text>
+<line x1="579.2686279926336" x2="579.2686279926336" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="582.2686279926336" y="218" fill="#8a8984">day 17</text>
+<line x1="622.3146316758748" x2="622.3146316758748" y1="34" y2="338" stroke="#8a8984" stroke-dasharray="3 3"/><text x="625.3146316758748" y="218" fill="#8a8984">day 18</text>
+<line x1="201.72468692449354" x2="201.72468692449354" y1="34" y2="338" stroke="#4a3aa7" stroke-width="1.5"/><text x="204.72468692449354" y="204" fill="#4a3aa7">evening</text>
+<rect x="47.0" y="290.0" width="1.4" height="48.0" rx="1" fill="#eb6834"><title>minute 0-1: 3 new words</title></rect>
+<rect x="50.4" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 1-2: 1 new word</title></rect>
+<rect x="67.2" y="306.0" width="1.4" height="32.0" rx="1" fill="#eb6834"><title>minute 6-7: 2 new words</title></rect>
+<rect x="74.0" y="290.0" width="1.4" height="48.0" rx="1" fill="#eb6834"><title>minute 8-9: 3 new words</title></rect>
+<rect x="90.8" y="306.0" width="1.4" height="32.0" rx="1" fill="#eb6834"><title>minute 13-14: 2 new words</title></rect>
+<rect x="94.2" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 14-15: 1 new word</title></rect>
+<rect x="100.9" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 16-17: 1 new word</title></rect>
+<rect x="104.3" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 17-18: 1 new word</title></rect>
+<rect x="121.1" y="306.0" width="1.4" height="32.0" rx="1" fill="#eb6834"><title>minute 22-23: 2 new words</title></rect>
+<rect x="124.5" y="306.0" width="1.4" height="32.0" rx="1" fill="#eb6834"><title>minute 23-24: 2 new words</title></rect>
+<rect x="141.4" y="306.0" width="1.4" height="32.0" rx="1" fill="#eb6834"><title>minute 28-29: 2 new words</title></rect>
+<rect x="144.7" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 29-30: 1 new word</title></rect>
+<rect x="148.1" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 30-31: 1 new word</title></rect>
+<rect x="151.5" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 31-32: 1 new word</title></rect>
+<rect x="175.1" y="290.0" width="1.4" height="48.0" rx="1" fill="#eb6834"><title>minute 38-39: 3 new words</title></rect>
+<rect x="198.7" y="290.0" width="1.4" height="48.0" rx="1" fill="#eb6834"><title>minute 45-46: 3 new words</title></rect>
+<rect x="218.9" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 51-52: 1 new word</title></rect>
+<rect x="225.6" y="306.0" width="1.4" height="32.0" rx="1" fill="#eb6834"><title>minute 53-54: 2 new words</title></rect>
+<rect x="235.7" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 56-57: 1 new word</title></rect>
+<rect x="239.1" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 57-58: 1 new word</title></rect>
+<rect x="256.0" y="274.0" width="1.4" height="64.0" rx="1" fill="#eb6834"><title>minute 62-63: 4 new words</title></rect>
+<rect x="259.3" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 63-64: 1 new word</title></rect>
+<rect x="296.4" y="306.0" width="1.4" height="32.0" rx="1" fill="#eb6834"><title>minute 74-75: 2 new words</title></rect>
+<rect x="299.8" y="290.0" width="1.4" height="48.0" rx="1" fill="#eb6834"><title>minute 75-76: 3 new words</title></rect>
+<rect x="316.6" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 80-81: 1 new word</title></rect>
+<rect x="323.4" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 82-83: 1 new word</title></rect>
+<rect x="330.1" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 84-85: 1 new word</title></rect>
+<rect x="333.5" y="306.0" width="1.4" height="32.0" rx="1" fill="#eb6834"><title>minute 85-86: 2 new words</title></rect>
+<rect x="350.3" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 90-91: 1 new word</title></rect>
+<rect x="353.7" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 91-92: 1 new word</title></rect>
+<rect x="367.2" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 95-96: 1 new word</title></rect>
+<rect x="370.5" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 96-97: 1 new word</title></rect>
+<rect x="373.9" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 97-98: 1 new word</title></rect>
+<rect x="387.4" y="306.0" width="1.4" height="32.0" rx="1" fill="#eb6834"><title>minute 101-102: 2 new words</title></rect>
+<rect x="390.8" y="306.0" width="1.4" height="32.0" rx="1" fill="#eb6834"><title>minute 102-103: 2 new words</title></rect>
+<rect x="394.1" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 103-104: 1 new word</title></rect>
+<rect x="421.1" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 111-112: 1 new word</title></rect>
+<rect x="424.5" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 112-113: 1 new word</title></rect>
+<rect x="427.8" y="306.0" width="1.4" height="32.0" rx="1" fill="#eb6834"><title>minute 113-114: 2 new words</title></rect>
+<rect x="464.9" y="274.0" width="1.4" height="64.0" rx="1" fill="#eb6834"><title>minute 124-125: 4 new words</title></rect>
+<rect x="475.0" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 127-128: 1 new word</title></rect>
+<rect x="505.3" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 136-137: 1 new word</title></rect>
+<rect x="512.1" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 138-139: 1 new word</title></rect>
+<rect x="515.5" y="322.0" width="1.4" height="16.0" rx="1" fill="#eb6834"><title>minute 139-140: 1 new word</title></rect>
+<rect x="562.6" y="306.0" width="1.4" height="32.0" rx="1" fill="#eb6834"><title>minute 153-154: 2 new words</title></rect>
+<path d="M49.4 216.9 L52.7 214.5 L56.1 214.5 L59.5 214.5 L62.9 214.5 L66.2 214.5 L69.6 209.8 L73.0 209.8 L76.3 202.6 L79.7 202.6 L83.1 202.6 L86.4 202.6 L89.8 202.6 L93.2 197.9 L96.6 195.5 L99.9 195.5 L103.3 193.1 L106.7 190.8 L110.0 190.8 L113.4 190.8 L116.8 190.8 L120.1 190.8 L123.5 186.0 L126.9 181.3 L130.3 181.3 L133.6 181.3 L137.0 181.3 L140.4 181.3 L143.7 176.5 L147.1 174.1 L150.5 171.8 L153.8 169.4 L157.2 169.4 L160.6 169.4 L164.0 169.4 L167.3 169.4 L170.7 169.4 L174.1 169.4 L177.4 162.3 L180.8 162.3 L184.2 162.3 L187.5 162.3 L190.9 162.3 L194.3 162.3 L197.7 162.3 L201.0 155.1 L204.4 155.1 L207.8 155.1 L211.1 155.1 L214.5 155.1 L217.9 155.1 L221.2 152.8 L224.6 152.8 L228.0 148.0 L231.4 148.0 L234.7 148.0 L238.1 145.6 L241.5 143.3 L244.8 143.3 L248.2 143.3 L251.6 143.3 L255.0 143.3 L258.3 133.8 L261.7 131.4 L265.1 131.4 L268.4 131.4 L271.8 131.4 L275.2 131.4 L278.5 131.4 L281.9 131.4 L285.3 131.4 L288.7 131.4 L292.0 131.4 L295.4 131.4 L298.8 126.6 L302.1 119.5 L305.5 119.5 L308.9 119.5 L312.2 119.5 L315.6 119.5 L319.0 117.1 L322.4 117.1 L325.7 114.8 L329.1 114.8 L332.5 112.4 L335.8 107.6 L339.2 107.6 L342.6 107.6 L345.9 107.6 L349.3 107.6 L352.7 105.3 L356.1 102.9 L359.4 102.9 L362.8 102.9 L366.2 102.9 L369.5 100.5 L372.9 98.1 L376.3 95.8 L379.6 95.8 L383.0 95.8 L386.4 95.8 L389.8 91.0 L393.1 86.3 L396.5 83.9 L399.9 83.9 L403.2 83.9 L406.6 83.9 L410.0 83.9 L413.3 83.9 L416.7 83.9 L420.1 83.9 L423.5 81.5 L426.8 79.1 L430.2 74.4 L433.6 74.4 L436.9 74.4 L440.3 74.4 L443.7 74.4 L447.0 74.4 L450.4 74.4 L453.8 74.4 L457.2 74.4 L460.5 74.4 L463.9 74.4 L467.3 64.9 L470.6 64.9 L474.0 64.9 L477.4 62.5 L480.8 62.5 L484.1 62.5 L487.5 62.5 L490.9 62.5 L494.2 62.5 L497.6 62.5 L501.0 62.5 L504.3 62.5 L507.7 60.1 L511.1 60.1 L514.5 57.8 L517.8 55.4 L521.2 55.4 L524.6 55.4 L527.9 55.4 L531.3 55.4 L534.7 55.4 L538.0 55.4 L541.4 55.4 L544.8 55.4 L548.2 55.4 L551.5 55.4 L554.9 55.4 L558.3 55.4 L561.6 55.4 L565.0 50.6 L568.4 50.6 L571.7 50.6 L575.1 50.6 L578.5 50.6 L581.9 50.6 L585.2 50.6 L588.6 50.6 L592.0 50.6 L595.3 50.6 L598.7 50.6 L602.1 50.6 L605.4 50.6 L608.8 50.6 L612.2 50.6 L615.6 50.6 L618.9 50.6 L622.3 50.6 L625.7 50.6 L629.0 50.6 L632.4 50.6 L635.8 50.6 L639.1 50.6 L642.5 50.6 L645.9 50.6 L649.3 50.6 L652.6 50.6 L656.0 50.6" fill="none" stroke="#2a78d6" stroke-width="2"/>
+<path d="M49.4 224.0 L52.7 219.3 L56.1 219.3 L59.5 219.3 L62.9 219.3 L66.2 216.9 L69.6 214.5 L73.0 212.1 L76.3 212.1 L79.7 207.4 L83.1 207.4 L86.4 207.4 L89.8 207.4 L93.2 202.6 L96.6 202.6 L99.9 200.3 L103.3 200.3 L106.7 197.9 L110.0 195.5 L113.4 195.5 L116.8 195.5 L120.1 195.5 L123.5 195.5 L126.9 190.8 L130.3 188.4 L133.6 186.0 L137.0 186.0 L140.4 186.0 L143.7 186.0 L147.1 186.0 L150.5 183.6 L153.8 181.3 L157.2 176.5 L160.6 174.1 L164.0 174.1 L167.3 174.1 L170.7 174.1 L174.1 174.1 L177.4 174.1 L180.8 169.4 L184.2 169.4 L187.5 169.4 L190.9 169.4 L194.3 169.4 L197.7 169.4 L201.0 169.4 L204.4 164.6 L207.8 162.3 L211.1 159.9 L214.5 159.9 L217.9 157.5 L221.2 157.5 L224.6 157.5 L228.0 157.5 L231.4 157.5 L234.7 155.1 L238.1 150.4 L241.5 150.4 L244.8 148.0 L248.2 148.0 L251.6 145.6 L255.0 145.6 L258.3 145.6 L261.7 140.9 L265.1 138.5 L268.4 138.5 L271.8 138.5 L275.2 138.5 L278.5 138.5 L281.9 136.1 L285.3 133.8 L288.7 131.4 L292.0 131.4 L295.4 131.4 L298.8 131.4 L302.1 131.4 L305.5 126.6 L308.9 126.6 L312.2 121.9 L315.6 121.9 L319.0 121.9 L322.4 121.9 L325.7 117.1 L329.1 114.8 L332.5 114.8 L335.8 114.8 L339.2 112.4 L342.6 110.0 L345.9 110.0 L349.3 110.0 L352.7 110.0 L356.1 105.3 L359.4 105.3 L362.8 105.3 L366.2 105.3 L369.5 105.3 L372.9 102.9 L376.3 102.9 L379.6 102.9 L383.0 100.5 L386.4 98.1 L389.8 98.1 L393.1 98.1 L396.5 95.8 L399.9 91.0 L403.2 86.3 L406.6 86.3 L410.0 86.3 L413.3 86.3 L416.7 86.3 L420.1 86.3 L423.5 86.3 L426.8 86.3 L430.2 83.9 L433.6 81.5 L436.9 79.1 L440.3 76.8 L443.7 76.8 L447.0 74.4 L450.4 74.4 L453.8 74.4 L457.2 74.4 L460.5 74.4 L463.9 74.4 L467.3 74.4 L470.6 72.0 L474.0 72.0 L477.4 72.0 L480.8 69.6 L484.1 69.6 L487.5 69.6 L490.9 67.3 L494.2 62.5 L497.6 62.5 L501.0 62.5 L504.3 62.5 L507.7 62.5 L511.1 62.5 L514.5 62.5 L517.8 60.1 L521.2 60.1 L524.6 57.8 L527.9 57.8 L531.3 55.4 L534.7 55.4 L538.0 55.4 L541.4 55.4 L544.8 55.4 L548.2 55.4 L551.5 55.4 L554.9 55.4 L558.3 55.4 L561.6 55.4 L565.0 55.4 L568.4 55.4 L571.7 53.0 L575.1 53.0 L578.5 53.0 L581.9 50.6 L585.2 50.6 L588.6 50.6 L592.0 50.6 L595.3 50.6 L598.7 50.6 L602.1 50.6 L605.4 50.6 L608.8 50.6 L612.2 50.6 L615.6 50.6 L618.9 50.6 L622.3 50.6 L625.7 50.6 L629.0 50.6 L632.4 50.6 L635.8 50.6 L639.1 50.6 L642.5 50.6 L645.9 50.6 L649.3 50.6 L652.6 50.6 L656.0 50.6" fill="none" stroke="#1baf7a" stroke-width="2"/>
 <text x="662" y="54.625" fill="#0b0b0b">met: 73</text><text x="662" y="54.625" fill="#0b0b0b">learned: 73</text>
 <line x1="46" x2="656" y1="224" y2="224" stroke="#52514e"/><line x1="46" x2="656" y1="338" y2="338" stroke="#52514e"/>
 <text x="46" y="352" text-anchor="middle" fill="#52514e">0</text>
-<text x="82.30952380952381" y="352" text-anchor="middle" fill="#52514e">10</text>
-<text x="118.61904761904762" y="352" text-anchor="middle" fill="#52514e">20</text>
-<text x="154.92857142857144" y="352" text-anchor="middle" fill="#52514e">30</text>
-<text x="191.23809523809524" y="352" text-anchor="middle" fill="#52514e">40</text>
-<text x="227.54761904761904" y="352" text-anchor="middle" fill="#52514e">50</text>
-<text x="263.8571428571429" y="352" text-anchor="middle" fill="#52514e">60</text>
-<text x="300.1666666666667" y="352" text-anchor="middle" fill="#52514e">70</text>
-<text x="336.4761904761905" y="352" text-anchor="middle" fill="#52514e">80</text>
-<text x="372.7857142857143" y="352" text-anchor="middle" fill="#52514e">90</text>
-<text x="409.0952380952381" y="352" text-anchor="middle" fill="#52514e">100</text>
-<text x="445.4047619047619" y="352" text-anchor="middle" fill="#52514e">110</text>
-<text x="481.7142857142857" y="352" text-anchor="middle" fill="#52514e">120</text>
-<text x="518.0238095238095" y="352" text-anchor="middle" fill="#52514e">130</text>
-<text x="554.3333333333334" y="352" text-anchor="middle" fill="#52514e">140</text>
-<text x="590.6428571428572" y="352" text-anchor="middle" fill="#52514e">150</text>
-<text x="626.952380952381" y="352" text-anchor="middle" fill="#52514e">160</text>
+<text x="79.70165745856353" y="352" text-anchor="middle" fill="#52514e">10</text>
+<text x="113.40331491712706" y="352" text-anchor="middle" fill="#52514e">20</text>
+<text x="147.1049723756906" y="352" text-anchor="middle" fill="#52514e">30</text>
+<text x="180.80662983425412" y="352" text-anchor="middle" fill="#52514e">40</text>
+<text x="214.5082872928177" y="352" text-anchor="middle" fill="#52514e">50</text>
+<text x="248.20994475138122" y="352" text-anchor="middle" fill="#52514e">60</text>
+<text x="281.91160220994476" y="352" text-anchor="middle" fill="#52514e">70</text>
+<text x="315.61325966850825" y="352" text-anchor="middle" fill="#52514e">80</text>
+<text x="349.31491712707185" y="352" text-anchor="middle" fill="#52514e">90</text>
+<text x="383.0165745856354" y="352" text-anchor="middle" fill="#52514e">100</text>
+<text x="416.7182320441989" y="352" text-anchor="middle" fill="#52514e">110</text>
+<text x="450.41988950276243" y="352" text-anchor="middle" fill="#52514e">120</text>
+<text x="484.121546961326" y="352" text-anchor="middle" fill="#52514e">130</text>
+<text x="517.8232044198895" y="352" text-anchor="middle" fill="#52514e">140</text>
+<text x="551.5248618784531" y="352" text-anchor="middle" fill="#52514e">150</text>
+<text x="585.2265193370165" y="352" text-anchor="middle" fill="#52514e">160</text>
+<text x="618.9281767955802" y="352" text-anchor="middle" fill="#52514e">170</text>
+<text x="652.6298342541437" y="352" text-anchor="middle" fill="#52514e">180</text>
 <text x="351" y="370" text-anchor="middle" fill="#52514e">game minutes (paced like a child)</text>
 <rect x="46" y="8" width="10" height="10" rx="2" fill="#2a78d6"/><text x="60" y="17" fill="#0b0b0b">words met (cumulative)</text>
 <rect x="236" y="8" width="10" height="10" rx="2" fill="#1baf7a"/><text x="250" y="17" fill="#0b0b0b">words learned (cumulative)</text>

@@ -38,7 +38,9 @@ organizer); any word with a picture should always show both; Spanish instruction
   hide-and-seek animal. It only draws; the child's own tap stops it. Map demos wait for 1.5 s of standing about.
 - **Variety when the day's plays are done** (`G.carry.more`): not endless fetch, but the next of a trick for Canelo (its
   picture by the arrow), petting him, water or a cookie, another round of hide-and-seek with Nico (new hiding places, up
-  to three a day), the ball for Nico, fetch, the one played least today first.
+  to three a day), the ball for Nico, fetch, the one played least today first. When it's Canelo's turn, his menu opens
+  with the guide's yellow arrow over that card (the trick, the pat, the water); the naive bot follows that arrow too and
+  counts a play done as something happening.
 - Tests: `tools/test-cards.js` (new: growth on pick, say, carry, find and its limits, the stage cap, the deck, cards before
   the book and its celebration, picture + word rendering and the masked choice, each demo once and saved, a tap stopping
   one, the variety). `smoke`, `test-guide`, `test-hints-day`, `test-roundb-pet`, `test-fx`, `test-speaking` follow the
