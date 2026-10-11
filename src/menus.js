@@ -1,4 +1,4 @@
-// ===== Field menu (Cuaderno, Misiones, and the grown-ups' gear), the grown-ups menu, press-and-hold buttons =====
+// ===== Field menu (Cuaderno, the animal album, and the grown-ups' gear), the grown-ups menu (with Misiones), press-and-hold buttons =====
 'use strict';
 (function () {
   const D = () => G.data, S = () => G.st;
@@ -41,19 +41,20 @@
       else return;
     }
   };
-  // Three big picture buttons, Cuaderno, Misiones and the animal album (a paw, Round B), plus a small gear that opens
-  // the grown-ups menu only after a 2 s press-and-hold (keyboard: move onto it and hold Z). Resolves 'book', 'quest',
-  // 'album' or null.
-  const KIDS = ['book', 'quest', 'album', 'gear'], TILES = ['book', 'quest', 'album'];
-  const KID_LABEL = { book: 'Cuaderno', quest: 'Misiones', album: 'Animales' };
+  // Two big picture buttons, no words: the notebook and the animal album (a paw), plus a small gear that opens the
+  // grown-ups menu only after a 2 s press-and-hold (keyboard: move onto it and hold Z). Children don't go into menus to
+  // find out what to do next (docs/PLAYTEST_NOTES.md): the guide's arrow on the map shows that (guide.js), so Misiones
+  // moved to the grown-ups menu. Resolves 'book', 'album' or null.
+  const KIDS = ['book', 'album', 'gear'], TILES = ['book', 'album'];
   class FieldMenu {
     constructor(w) { this.transparent = true; this.w = w; this.t = 0; this.sel = 'book'; this.gear = new G.Hold(120); }
-    // tap areas (shared with draw): the 'book', 'quest' and 'album' tiles, the 'gear' (and its padded hold area), close
+    // tap areas (shared with draw): the 'book' and 'album' tiles, the 'gear' (and its padded hold area), close
     box() { return { x: 22, y: 46, w: 276, h: 132 }; }
+    tiles() { return TILES.slice(); } // (tests)
     rect(k) {
       const b = this.box();
       if (k === 'gear') return { x: b.x + b.w - 32, y: b.y + b.h - 28, w: 24, h: 20 };
-      return { x: b.x + 14 + TILES.indexOf(k) * 86, y: b.y + 14, w: 76, h: 82 };
+      return { x: b.x + b.w / 2 - 94 + TILES.indexOf(k) * 104, y: b.y + 18, w: 84, h: 84 };
     }
     gearHit() { const r = this.rect('gear'); return { x: r.x - 4, y: r.y - 4, w: r.w + 8, h: r.h + 8 }; }
     closeXY() { return [G.W - 26, 6]; } // where the map's menu button was
@@ -68,7 +69,7 @@
       }
       const d = G.input.repDir(14, 6);
       if (d) {
-        const i = KIDS.indexOf(this.sel), n = d === 'down' ? 3 : d === 'up' ? (i === 3 ? 2 : i) : (i + (d === 'left' ? 3 : 1)) % 4;
+        const i = KIDS.indexOf(this.sel), n = d === 'down' ? 2 : d === 'up' ? (i === 2 ? 1 : i) : (i + (d === 'left' ? 2 : 1)) % 3;
         if (n !== i) { this.sel = KIDS[n]; G.audio.sfx('cursor'); }
       }
       if (G.input.p('A') && this.sel !== 'gear') this.pick(this.sel);
@@ -81,9 +82,8 @@
         const r = this.rect(k), sel = this.sel === k, bob = sel ? Math.round(Math.sin(this.t / 6) * 1.5) : 0;
         G.win(ctx, r.x, r.y - bob, r.w, r.h, sel ? { fill1: '#3a56c8', fill2: '#1c2c8c' } : { alpha: 0.55 });
         const big = G.cached('kidbtn_' + k + (sel ? 1 : 0), 24, 20, c => G.drawIcon(c, k, 0, 0, sel));
-        ctx.drawImage(big, r.x + (r.w - 48) / 2, r.y + 10 - bob, 48, 40);
-        G.textC(ctx, KID_LABEL[k], r.x + r.w / 2, r.y + 62 - bob, sel ? '#f8e060' : '#ffffff');
-        if (k === 'album' && G.state && G.animals) { const n = G.animals.list().filter(G.animals.met).length; G.textC(ctx, n + '/' + G.animals.list().length, r.x + r.w / 2, r.y + 72 - bob, '#a8d8ff'); }
+        ctx.drawImage(big, r.x + (r.w - 60) / 2, r.y + 14 - bob, 60, 50);
+        if (k === 'album' && G.state && G.animals) { const n = G.animals.list().filter(G.animals.met).length; G.textC(ctx, n + '/' + G.animals.list().length, r.x + r.w / 2, r.y + 70 - bob, '#a8d8ff'); }
         if (sel && (this.t >> 3) % 4 !== 3) G.textC(ctx, '\u0001', r.x + r.w / 2, r.y - 9 - bob, '#f8e060');
       });
       const g = this.rect('gear');
@@ -252,7 +252,7 @@
   // title. Nothing to save by hand: volumes, the voice, English help, the D-pad and speaking are kept per device
   // (G.prefs), and the game saves itself.
   // Up/down picks a row, left/right moves a volume, A changes the others; tap a row, tap or drag along a volume bar.
-  const ROW_H = 17, BAR = 168, CELL = 12; // volume bars: 10 cells from x = BAR; the speaker just left of it = 0
+  const ROW_H = 16, BAR = 168, CELL = 12; // volume bars: 10 cells from x = BAR; the speaker just left of it = 0
   class GrownUps {
     constructor(w, o) { this.transparent = true; this.w = w; this.o = o || {}; this.t = 0; this.i = 0; this.drag = null; this.tick = 0; }
     rows() {
@@ -268,12 +268,13 @@
           : { id: 'speak', label: 'Speaking (mic)', right: 'not available', off: true, help: 'No speech recognition here. iPad: Safari + Dictation on.' },
         { id: 'mic', label: 'Microphone test', right: mic ? '>' : 'not available', off: !mic, help: mic ? 'Does speech recognition hear Spanish words?' : 'The microphone test is not in this version.' },
         { id: 'help', label: 'Controls and tips', right: '>', help: 'The keys, and how the game teaches.' },
+        { id: 'story', label: 'Story progress', right: '>', off: !G.state, help: 'Misiones: the chapter going on, its steps, the bag, the badges.' },
       ];
       if (!this.o.title) R.push({ id: 'title', label: 'Back to title', right: '>', help: 'Progress is saved automatically.' });
       return R;
     }
     // tap areas (shared with draw): row k, its volume bar (with the speaker = 0 and the number), close
-    rowRect(k) { return { x: 10, y: 30 + k * ROW_H, w: G.W - 20, h: ROW_H }; }
+    rowRect(k) { return { x: 10, y: 27 + k * ROW_H, w: G.W - 20, h: ROW_H }; }
     barRect(k) { const r = this.rowRect(k); return { x: BAR - 18, y: r.y, w: r.x + r.w - (BAR - 18), h: r.h }; }
     level(x) { return x < BAR ? 0 : Math.min(10, Math.floor((x - BAR) / CELL) + 1); }
     closeXY() { return [G.W - 30, 8]; }
@@ -323,6 +324,7 @@
         if (r.off) { G.audio.sfx('error'); return; }
         G.audio.sfx('ok'); try { G.micTest(); } catch (e) { console.warn(e); }
       } else if (r.id === 'help') { G.audio.sfx('ok'); G.controlsHelp(); }
+      else if (r.id === 'story') { if (r.off) { G.audio.sfx('error'); return; } G.audio.sfx('ok'); G.questLog(); }
       else if (r.id === 'title') { G.audio.sfx('ok'); G.toTitle(); }
     }
     draw(ctx) {
@@ -352,7 +354,7 @@
       });
       let h = rows[this.i].help || '';
       while (h.length > 3 && G.textWidth(h) > G.W - 32) h = h.slice(0, -3) + '..';
-      G.text(ctx, h, 16, 206, '#a8b0d8');
+      G.text(ctx, h, 16, 208, '#a8b0d8');
     }
   }
   G.grownUps = function (o) { const w = new G.Wait(); G.push(new GrownUps(w, o)); return w; };

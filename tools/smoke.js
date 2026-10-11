@@ -132,11 +132,7 @@ async function touchRun(browser) {
     await g.shot('notebook_tapped');
     await g.tapBtn(await g.ev(() => G.top().closeXY()));
     await g.until(() => G.top().constructor.name === 'FieldMenu', null, 'back to the menu');
-    await tapIcon('quest');
-    await g.until(() => G.top().constructor.name === 'QuestLog', null, 'Misiones');
-    await g.frames(4); await g.shot('questlog');
-    await g.tap(160, 112);
-    await g.until(() => G.top().constructor.name === 'FieldMenu', null, 'back to the menu');
+    check('ipad: the kid menu is two pictures, no words: notebook and album (Misiones is for grown-ups)', await g.ev(() => G.top().tiles().join() === 'book,album'));
     await g.tap(G_W - 16, 16); // the close button sits where the menu button was
     await g.fieldIdle('villa');
     check('ipad: menu closed by its close button', true); // the grown-ups menu (was Opciones) is tested in tools/test-saves.js

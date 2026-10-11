@@ -28,6 +28,7 @@
   const waitsInside = id => { const m = G.maps[id]; return !!m && ((m.npcs || []).some(n => (!n.cond || n.cond()) && alerting(n)) || !!(G.errands && G.errands.waitsIn(id))); };
   function mapTarget(f) {
     const p = f.player; if (f.locked || p.moving || f.route) return null;
+    if (G.guide) { const a = G.guide.handAt(f); return a && place(a.x, a.y); } // the guide's goal, when it's on screen (guide.js)
     const T = G.TILE, cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
     let best = null;
     const take = (x, y, ox, oy) => { const d = Math.abs(x - p.x) + Math.abs(y - p.y); if (!best || d < best.d) best = { d, x: x * T + ox + T / 2 - cx, y: y * T + oy + T / 2 - cy }; };

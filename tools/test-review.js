@@ -234,9 +234,7 @@ async function sideJobs(browser) {
     await talk(g, 'lucia', 'a flower for Lucía');
     check('gift: Lucía loves pink flowers: +1 heart', await g.ev(l0 => G.hearts.get('lucia') > l0, l0));
     // Misiones: the chapter, the bag, today's side jobs
-    await g.ev(() => { G.field.menuReq = true; });
-    await g.until(() => G.top().constructor.name === 'FieldMenu', null, 'the menu');
-    await g.tapRect(await g.ev(() => G.top().rect('quest')));
+    await g.ev(() => { G.questLog(); }); // (Misiones: in the grown-ups menu, tools/test-saves.js)
     await g.until(() => G.top().constructor.name === 'QuestLog', null, 'Misiones');
     await g.frames(10); await g.shot('misiones');
     check('misiones: the next chapter (16) is listed; no older errand', await g.ev(() => { const r = G.top().rows(); return r.length === 1 && r[0].id === 'c16'; }));

@@ -180,9 +180,7 @@ async function chapters(browser) {
     // after chapter 10: chapter 11 is next (the next day), no older errand opens; Misiones shows it
     await g.ev(() => { G.debug.dayShift = (G.debug.dayShift || 0) + 1; G.words.newSession('night'); });
     check('chapters: after chapter 10, chapter 11 (Rosa\'s hens) opens; no older errand', await g.ev(() => !G.errands.offer('mercado') && G.chapters.next() === 'c11' && G.chapters.gate('c11') !== 'unwritten'));
-    await g.ev(() => { G.field.menuReq = true; });
-    await g.until(() => G.top().constructor.name === 'FieldMenu', null, 'the menu');
-    await g.tapRect(await g.ev(() => G.top().rect('quest')));
+    await g.ev(() => { G.questLog(); }); // (Misiones: in the grown-ups menu, tools/test-saves.js)
     await g.until(() => G.top().constructor.name === 'QuestLog', null, 'Misiones');
     await g.frames(10); await g.shot('misiones_after_c10');
     check('chapters: Misiones lists chapter 11 next', await g.ev(() => G.top().rows().some(r => r.id === 'c11') && !G.top().rows().some(r => r.id === 'mercado')));
@@ -209,7 +207,7 @@ async function budget(browser) {
     await g.ev(() => { G.words.newSession('load'); });
     check('budget: a new session on the same date: 6 met today, so 3 more would be 9: it waits (budget)', await g.ev(() => G.chapters.gate('c3') === 'budget'));
     await g.ev(() => { G.debug.dayShift = (G.debug.dayShift || 0) + 1; G.words.newSession('load'); });
-    check('budget: the next day: chapter 3 opens (Mamá has a "!")', await g.ev(() => !G.chapters.gate('c3') && G.field.npc('mama').alert() === true));
+    check('budget: the next day: chapter 3 opens (Mamá has its picture, a sun)', await g.ev(() => { const a = G.field.npc('mama').alert(); return !G.chapters.gate('c3') && !!a && a.icon === 'sol' && !a.wait; }));
     // 10 words only met: a review day
     await g.ev(() => { for (const id of ['hueso', 'sientate', 'si', 'no', 'manzana', 'pelota', 'rojo', 'pan', 'pato', 'cuac']) G.words.meet(id, 'test'); });
     check('budget: 10+ words only met (stage 1): no new chapter today ("busy")', await g.ev(() => G.chapters.gate('c3') === 'busy' || G.chapters.gate('c3') === 'budget'));

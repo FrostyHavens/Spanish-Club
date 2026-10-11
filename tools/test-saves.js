@@ -298,16 +298,12 @@ async function grownUpsField(browser) {
     await g.tap(310, 16); // the menu button
     await scene(g, 'FieldMenu', 'the field menu');
     await g.frames(6); await g.shot('fieldmenu');
-    check('field: the menu has Cuaderno, Misiones and a small gear (no Guardar)', await g.ev(() => { const s = G.top(), g = s.rect('gear'), b = s.rect('book'); return g.w * g.h < b.w * b.h / 4; }));
+    check('field: the menu has the notebook, the album and a small gear (no Misiones, no Guardar)', await g.ev(() => { const s = G.top(), g = s.rect('gear'), b = s.rect('book'); return g.w * g.h < b.w * b.h / 4 && s.tiles().join() === 'book,album'; }));
     await g.tapRect(await g.ev(() => G.top().rect('book')));
     await scene(g, 'Notebook');
     await g.tapBtn(await g.ev(() => G.top().closeXY()));
     await scene(g, 'FieldMenu');
-    await g.tapRect(await g.ev(() => G.top().rect('quest')));
-    await scene(g, 'QuestLog');
-    await g.tap(160, 112);
-    await scene(g, 'FieldMenu');
-    check('field: Cuaderno and Misiones open by tapping', true);
+    check('field: Cuaderno opens by tapping', true);
     const gear = await g.ev(() => G.top().gearHit());
     await g.tapRect(gear);
     await g.frames(20);
@@ -315,6 +311,12 @@ async function grownUpsField(browser) {
     await hold(g, gear, 130, { at: 80, fn: () => g.shot('field_gear_ring') });
     await scene(g, 'GrownUps');
     await g.frames(4); await g.shot('grownups_field');
+    await tapRow(g, 'story');
+    await scene(g, 'QuestLog');
+    await g.frames(4); await g.shot('grownups_misiones');
+    await g.tap(160, 112);
+    await scene(g, 'GrownUps');
+    check('field: Misiones opens from the grown-ups menu', true);
     await tapRow(g, 'english');
     await g.until(() => JSON.parse(localStorage.getItem('spanishclub_slot1')).opts.english === true, null, 'the English choice to be saved', 3000);
     check('field: a change in the grown-ups menu is saved', true);

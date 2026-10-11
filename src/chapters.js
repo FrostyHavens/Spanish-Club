@@ -209,7 +209,7 @@
   CH.alert = function (who) {
     if (!G.state) return null;
     const L = live();
-    if (L && L.b.who === who && when(L)) { const bb = L.b.bubble, v = typeof bb === 'function' ? bb(CH.ctx(L.id)) : bb != null ? bb : true; return CH.bubbleOf(v); }
+    if (L && L.b.who === who && when(L)) { const bb = L.b.bubble, v = typeof bb === 'function' ? bb(CH.ctx(L.id)) : bb != null ? bb : true; return v === true ? { icon: CH.def(L.id).icon } : CH.bubbleOf(v); } // (no "!": the chapter's picture)
     if (who === 'canelo' && CH.nudge()) return 'pregunta';
     if (CH.needsReview() && who === CH.reviewer()) return 'pagina';
     if (!CH.current()) {
