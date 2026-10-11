@@ -220,7 +220,8 @@
       yield* say('nico', T('¡El [gato]! ¡Ja, ja!', 'The cat! Ha ha!'));
       yield* ask('nico', '¿Qué es?', 'Nico points at her: what is she?', 'gato', ['perro', 'miau'], { point: catP(f) });
       yield* ask('nico', '¿Y este?', 'And this one?', 'perro', ['gato', 'guau'], { point: dog(f) });
-      yield* say('nico', T('¡Hasta mañana, {name}!', 'See you tomorrow, {name}!'));
+      yield* sayShow('nico', { icon: 'manana' }, T('¡Hasta mañana, {name}!', 'See you tomorrow, {name}! (he waves; play on: follow the arrow)')); // (the sun coming up: tomorrow; then the guide points to the day's play)
+      G.pet.anim(dog(f), 'paw');
     } },
   ], {
     stage(f, c) {
@@ -329,12 +330,18 @@
       yield* G.pet.play('sit');
       yield* siNo('pepe', '¿Y ahora? ¿[sientate]?', 'And now? Is he sitting?', true, { point: n });
     } },
-    { auto: 'villa', run: function* (f) { // una manzana; Abuela Rosa wants one
+    { auto: 'villa', run: function* (f) { // una manzana; Abuela Rosa wants one: Pepe puts it in your hands
       yield* G.intro.show('manzana', { who: 'pepe', prompt: '¡Mira! ¡Una [manzana]!', en: 'Look! An apple!', known: ['hueso', 'gato'] });
       const r = hold(f, 'rosa', 15, 10, 'left');
       if (r) { r.ox = 24; for (let i = 0; i < 8; i++) { r.ox -= 3; yield 2; } r.ox = 0; }
       yield* ask('rosa', 'Rosa: ¡...!', 'Grandma Rosa walks up and waves. Say hello!', 'hola', ['si', 'gato'], { show: { icon: 'hola' } });
-      yield* ask('rosa', '¿Una [manzana]?', 'Rosa wants one: tap its picture', 'manzana', ['hueso', 'perro'], { pic: true, mask: ['manzana'] });
+      G.errands.bag.add('manzana', { q: 'c4' }); // (held up over your head: carry it to her, src/carry.js)
+      yield* sayShow('pepe', 'manzana', T('¡Para Rosa!', 'For Rosa! (take it to her: tap her)'));
+    } },
+    { who: 'rosa', bubble: 'manzana', run: function* (f) { // you bring her the apple; Canelo wants something else
+      const r = f.npc('rosa');
+      yield* ask('rosa', '¿Una [manzana]?', 'Rosa sees what you bring her: tap its picture', 'manzana', ['hueso', 'perro'], { pic: true, mask: ['manzana'] });
+      G.errands.bag.take('manzana', { q: 'c4' });
       G.audio.jingle('item'); if (G.hearts) G.hearts.add('rosa', 1, 'gift');
       yield* say('rosa', T('¡Mmm! ¡[gracias]!', 'Mmm! Thank you!'));
       yield* siNo('pepe', '¿Una [manzana] para ti?', 'An apple for you?', true, { show: 'manzana' });
@@ -345,7 +352,9 @@
       yield* G.pet.play('eat', { item: 'hueso' });
       if (r) Object.assign(r, { home: [7, 7], wander: 1 });
     } },
-  ]);
+  ], {
+    stage(f, c) { if (f.mapId === 'villa' && c.step === 3) hold(f, 'rosa', 15, 10, 'left'); }, // (Rosa waits beside the stall for her apple)
+  });
 
   // =====================================================================
   //  C5 · La pelota roja  (Sofía, the park)  pelota, rojo

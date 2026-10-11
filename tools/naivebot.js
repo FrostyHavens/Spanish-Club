@@ -9,7 +9,8 @@
 // way a child does; the seconds spent like that are counted (game time, 60 frames a second). Dialogue, questions and
 // cards are played by harness.drive (a question's right card: the audit is about the map, not the words).
 //   const bot = new NaiveBot(g, { log, shot })
-//   await bot.free(limitSec)  -> {cue, idle, wander} until the bot tapped a cue that started something (or the limit)
+//   await bot.free(limitSec)  -> {cue, idle, wander} until the bot tapped a cue that started something (a scene, or a thing
+//                             picked up or put down, src/carry.js: {picked: true}) (or the limit)
 // Used by tools/audit-intuitive.js and tools/test-guide.js.
 'use strict';
 const path = require('path'), fs = require('fs');
@@ -46,6 +47,8 @@ class NaiveBot {
   cues() { return this.g.ev(`(${CUES})()`); }
   progress() { return this.g.ev(() => JSON.stringify([G.state.quests, G.state.ch && G.state.ch.step, G.state.finds && Object.keys(G.state.finds).map(k => G.state.finds[k].found), G.state.seek && G.state.seek.list && G.state.seek.list.map(h => h.found), G.field.mapId])); }
   sig() { return this.g.ev(() => JSON.stringify([G.state.quests, G.state.ch && G.state.ch.step, Object.keys(G.state.words).length, G.field.mapId, G.state.stars, G.state.seek && G.state.seek.list && G.state.seek.list.map(h => h.found), G.state.finds && Object.keys(G.state.finds).map(k => G.state.finds[k].found)])); }
+  // what's in your hands and lying about (src/carry.js: picking something up is something happening, though no scene)
+  hands() { return this.g.ev(() => JSON.stringify([G.state.bag && G.state.bag.items, G.state.bag && G.state.bag.ground && G.state.bag.ground.length])); }
   async gameSec() { return (await this.g.ev(() => G.frame)) / 60; }
   // wait for a walk (or what it started) to end
   async settleWalk() { await this.g.until(() => G.top() !== G.field || G.field.locked || (!G.field.route && !G.field.player.moving), null, 'the walk', 40000); }
@@ -77,11 +80,12 @@ class NaiveBot {
         const c = cs[0];
         if (this.o.onCue) await this.o.onCue(c, now - t0);
         this.total.taps++;
+        const h0 = await this.hands();
         await g.tap(Math.round(c.x), Math.round(c.y));
         await this.settleWalk();
         await g.frames(6);
         if (!c.edge) this.tried.set(c.kind + c.what, n(c) + 1);
-        if (!(await this.isFree())) { const sec = (await this.gameSec()) - t0; this.total.cueSec += sec; this.total.idleSec += idleSec; this.total.wanderSec += wanderSec; return { cue: c.kind, what: c.what, sec, idleSec, wanderSec, wanders }; }
+        if (!(await this.isFree()) || (await this.hands()) !== h0) { const sec = (await this.gameSec()) - t0; this.total.cueSec += sec; this.total.idleSec += idleSec; this.total.wanderSec += wanderSec; return { cue: c.kind, what: c.what, sec, idleSec, wanderSec, wanders, picked: await this.isFree() }; }
         continue;
       }
       // nothing calling: wander twice (a few tiles, a short look around), then stand about for a while

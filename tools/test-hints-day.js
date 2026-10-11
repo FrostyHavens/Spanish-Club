@@ -75,11 +75,12 @@ async function firstMinutes(browser) {
     // ...but not when it opens tomorrow (her sun bubble)
     await g.ev(() => { G.state.ch.lastDoneSess = G.words.sess(); });
     await g.frames(400);
-    check('ipad: a "tomorrow" bubble gets no hand', await g.ev(() => !G.hint.at && G.field.npc('mama').alert().wait));
+    check('ipad: a chapter after the night: Mamá is asleep (the moon and "z z"), no hand on her; the guide shows the day\'s play instead', await g.ev(m => { const a = G.field.npc('mama').alert(), h = G.hint.at; return a.wait && a.sleep && (!h || Math.abs(h.x - m[0]) > 8 || Math.abs(h.y - m[1]) > 8) && /^play:/.test((G.guide.goal(G.field) || {}).why || ''); }, m));
     await g.shot('hand_none_tomorrow');
 
     // the notebook: the hand on its close button
     await g.ev(() => { G.field.introBusy = false; G.notebook(); });
+    await g.frames(3); // (the hand on the map's play goal goes away first)
     await waitHint(g, 'on the notebook\'s close button');
     const cl = await g.ev(() => G.top().closeXY());
     check('ipad: a notebook left open gets the hand on its close button', near(await hintAt(g), cl[0] + 10, cl[1] + 12, 4));

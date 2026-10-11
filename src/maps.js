@@ -111,6 +111,7 @@
   function* caneloTalk(f, n) {
     if (yield* CT('canelo', f)) return;
     if (G.chapters && G.chapters.tapHook && G.chapters.tapHook('canelo', f)) { yield 20; return; }
+    if (G.carry && (yield* G.carry.giveDog(f, n))) return; // something in your hands: thrown for him to fetch, eaten, sniffed (carry.js)
     if (G.pet && G.pet.mine()) { yield* G.pet.menu(f, n); return; }
     // not yours yet: a hop, a heart, a bark (and his word bubble, world.js: "?" while el perro isn't met)
     if (G.ambient) G.ambient.happy(n);
@@ -135,6 +136,8 @@
   G.maps.casa = {
     name: 'Mi casa', icon: 'casa', rows: MD.casa.rows, music: 'headquarters',
     things: { at: { '7,5': 'cama' } }, // world.js: the beds say "la cama" (yours, and Canelo's cushion)
+    // after sunset your bed is where the day ends (the guide's arrow is on it, guide.js): a tap and it's good night
+    poke: (f, x, y) => { if (f.map.get(x, y) !== 'j' || !(G.day && G.day.over()) || f.evening) return false; f.tasks.add(G.day.evening(f)); return true; },
     pages: PAGES('casa'),
     onEnter: function* (f) { if (G.day) yield* G.day.evening(f); }, // home after sunset: good night, Hoy, a new morning
     exits: [Object.assign(exitAt('casa', 'casaDoor'), {

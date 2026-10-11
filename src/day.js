@@ -82,8 +82,9 @@
     c.fillStyle = '#fff8c8'; c.beginPath(); c.arc(r - r * 0.25, r + 1 - r * 0.2, r * 0.45, 0, Math.PI * 2); c.fill();
     c.globalCompositeOperation = 'destination-out'; c.beginPath(); c.arc(r + 1 + r * 0.55, r + 1 - r * 0.4, r * 0.85, 0, Math.PI * 2); c.fill();
   });
-  // a night-blue thought bubble with the moon in it, trailing down to the door's sign: "time to go home"
-  function moonBubble(ctx, x, y, t) {
+  // a night-blue thought bubble with the moon in it, trailing down to the door's sign: "time to go home"; sleepy: "z z"
+  // drifting up out of it too (field.js G.drawAlert: a chapter's giver whose chapter opens after the night)
+  function moonBubble(ctx, x, y, t, sleepy) {
     const b = Math.round(Math.sin(t / 14) * 2); y += b;
     const puffs = [[-8, 2, 7], [0, -3, 9], [8, 2, 7], [0, 5, 7]], blob = (grow, col) => { ctx.fillStyle = col; for (const [dx, dy, r] of puffs) { ctx.beginPath(); ctx.arc(x + dx, y + dy, r + grow, 0, Math.PI * 2); ctx.fill(); } };
     blob(2, '#101030'); blob(1, '#e8ecff'); blob(0, '#283078');
@@ -92,7 +93,12 @@
     const tw = (t >> 4) % 3;
     ctx.fillStyle = '#fff8c0';
     [[6, -5], [9, 3], [3, 6]].forEach(([dx, dy], k) => { if (k !== tw) { ctx.fillRect(x + dx, y + dy, 1, 1); } else { ctx.fillRect(x + dx - 1, y + dy, 3, 1); ctx.fillRect(x + dx, y + dy - 1, 1, 3); } });
+    if (sleepy) for (let k = 0; k < 2; k++) { // z z, floating up and away
+      const a = ((t + k * 45) % 90) / 90;
+      ctx.globalAlpha = Math.min(1, (1 - a) * 2); G.text(ctx, 'z', Math.round(x + 10 + a * 8 + Math.sin(a * 6 + k) * 2), Math.round(y - 8 - a * 14), '#e8ecff', '#283078'); ctx.globalAlpha = 1;
+    }
   }
+  DY.moonBubble = moonBubble;
 
   // ---------- home at sunset: the evening, the night and a new morning ----------
   // maps.js runs this when you come home (and when you talk to Mamá at home after sunset).

@@ -4,7 +4,8 @@
 // Tomás) never start now; an older game that had one going lets it go (G.chapters.migrate), and their badges stay in
 // Misiones for games that earned them. What lives here:
 //
-// The bag (G.state.bag.items): what you carry, drawn top-left on the map. A chapter's things carry `q` (their chapter)
+// The bag (G.state.bag.items): what you carry, held up over your head and shown top-left on the map (src/carry.js:
+// picking things up and putting them down, giving them to Canelo; one kind of free thing at a time). A chapter's things carry `q` (their chapter)
 // and can't be given away; the rest (bought from Marta and Don Pepe, a flower, an egg, water from the fountain, a
 // favour's present) can be given to someone who likes it (G.hearts.LIKES; Lucía only likes pink flowers): they notice
 // it when you talk ("¿Para mí?").
@@ -70,11 +71,12 @@
     MAX: 8,
     list: () => bagS(),
     has: (id, o = {}) => bagS().some(it => match(it, id, o)),
-    add(id, o = {}) { const it = Object.assign({ id }, o); bagS().push(it); popIn = { it, t: 0 }; G.audio.sfx('item'); if (G.vocabLog) G.vlog('shown', id, { via: 'bag' }); S.see(id); S.autosave(); return it; },
+    add(id, o = {}) { if (!o.q && G.carry && G.carry.makeRoom) G.carry.makeRoom(id, o); const it = Object.assign({ id }, o); bagS().push(it); popIn = { it, t: 0 }; G.audio.sfx('item'); if (G.vocabLog) G.vlog('shown', id, { via: 'bag' }); S.see(id); S.autosave(); return it; },
     take(id, o = {}) { const L = bagS(), k = L.findIndex(it => match(it, id, o)); if (k < 0) return null; const it = L.splice(k, 1)[0]; S.autosave(); return it; },
     icon: it => (it.col ? { icon: W(it.id).icon, col: it.gold ? '#f8c820' : W(it.col).col } : W(it.id) || it.id),
     full: () => bagS().length >= 8,
   };
+  E.popT = it => (popIn && popIn.it === it ? Math.round(Math.sin(Math.min(1, popIn.t / 20) * Math.PI) * -6) : 0); // (carry.js: the corner)
   const free = id => B.has(id, { q: null }); // something of yours (not a chapter's)
 
   // ---------- side jobs and their stars ----------
@@ -219,8 +221,10 @@
     const it = giftFor(who); if (!it) return false;
     const egg = it.id === 'huevo' && who === 'rosa';
     yield* say(who, TT('¡Oh! ¿Un regalo? ¿Para mí?', 'Oh! A present? For me?'));
-    const r = yield G.choose({ prompt: '¿Para ' + G.nameOf(who).replace(/ (el|la) .*/, '') + '?', en: 'Give it?', show: B.icon(it), choices: words('si', 'no'), layout: 'cards', mic: true });
-    if (r.result !== 0) { yield* say(who, TT('¡Oh! Bueno...', 'Oh! All right...')); return true; }
+    if (G.words.met('si') && G.words.met('no')) { // (before sí and no are met, tapping them with it in your hands is the yes)
+      const r = yield G.choose({ prompt: '¿Para ' + G.nameOf(who).replace(/ (el|la) .*/, '') + '?', en: 'Give it?', show: B.icon(it), choices: words('si', 'no'), layout: 'cards', mic: true });
+      if (r.result !== 0) { yield* say(who, TT('¡Oh! Bueno...', 'Oh! All right...')); return true; }
+    }
     B.take(it.id, { col: it.col, q: null });
     G.audio.jingle('item');
     yield* say(who, TT('¡[' + it.id + ']! ¡[gracias], {name}!', 'Thank you, {name}!'));

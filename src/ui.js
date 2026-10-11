@@ -157,7 +157,8 @@
       if (this.opts.show) { // something held up to look at (G.intro.show): a framed picture over the box, bobbing
         const bob = Math.round(Math.sin(this.t / 9) * 2), px = this.boxX + this.boxW / 2 - 26, py = (top ? y + h + 8 : y - 66) + bob;
         G.win(ctx, px, py, 52, 52, { fill1: '#fff8e8', fill2: '#f0e4c8', alpha: 1 });
-        G.drawIcon16(ctx, this.opts.show, px + 2, py + 2, 3);
+        if (this.opts.show.face && G.hearts) { ctx.save(); ctx.beginPath(); ctx.rect(px + 2, py + 2, 48, 48); ctx.clip(); G.hearts.face(ctx, this.opts.show.face, px + 2, py + 2, 48, this.t); ctx.restore(); } // a friend's face (carry.js: who'd love it)
+        else G.drawIcon16(ctx, this.opts.show, px + 2, py + 2, 3);
         if (this.t % 40 === 0 && G.fx.twinkle) G.fx.twinkle(px + 46, py + 6);
       }
       G.win(ctx, this.boxX, y, this.boxW, h);

@@ -214,7 +214,7 @@
     st().pal = G.words.day(); G.st.autosave();
     G.state.stars++; G.fx.flyStar(G.W / 2, 90, 0); G.audio.sfx('star');
     if (G.hearts) G.hearts.add('luna', 1, 'care');
-    yield say('luna', TT('¡Muy bien! ¡Hasta mañana!', 'Very good! A new word tomorrow!'));
+    yield sayShow('luna', { icon: 'manana' }, TT('¡Muy bien! ¡Hasta mañana!', 'Very good! A new word tomorrow!')); // (the sun coming up: tomorrow)
   }
 
   // ---------- Inés's library: the notebook's page puzzles ----------

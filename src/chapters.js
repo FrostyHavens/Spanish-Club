@@ -32,8 +32,10 @@
 //               reviewer, Luna or Mamá, has a notebook bubble and asks 5 of them: .needsReview(), .review(who))
 //   'morning'   a morning chapter opens only as the first chapter of a session (a new day, a night at home)
 //   'evening'   an evening chapter opens only in the evening at home (after C8 the sunset comes ~5 minutes later)
-// A started chapter can always be finished. While the next chapter waits, its giver shows a "tomorrow" bubble (a sun
-// coming up: {icon: 'manana', wait: true}; the hint hand passes it by) and says so.
+// A started chapter can always be finished. While the next chapter waits, its giver shows a night-blue moon bubble
+// with "z z" floating up out of it ({icon: 'dormir', wait: true, sleep: true}: after the night; 'evening': the moon alone,
+// {icon: 'noche', night: true}: tonight); the hint hand and the guide pass it by (the guide points to the day's play,
+// src/carry.js), and tapping them shows it too: they yawn, the moon and the "z" over them, the sleeping picture.
 //
 // API: G.chapters.script(id, beats, opts), .ids(), .def(id), .written(id), .done(id), .current() (the active one),
 //   .next() (the next to open), .gate(id), .ready(id), .start(id), .ctx(id), .beat(id) (the current beat),
@@ -214,7 +216,7 @@
     if (CH.needsReview() && who === CH.reviewer()) return 'pagina';
     if (!CH.current()) {
       const nx = CH.next(), c = nx && CH.def(nx), g = nx && CH.gate(nx);
-      if (c && g && c.giver === who && scripts[nx] && g !== 'prev' && g !== 'soon') return g === 'evening' ? { icon: 'noche', wait: true } : { icon: 'manana', wait: true };
+      if (c && g && c.giver === who && scripts[nx] && g !== 'prev' && g !== 'soon') return g === 'evening' ? { icon: 'noche', wait: true, night: true } : { icon: 'dormir', wait: true, sleep: true };
     }
     return null;
   };
@@ -236,11 +238,16 @@
     }
     return false;
   };
+  // the giver of a chapter that opens later, tapped: never the words alone (docs/INTUITIVE_AUDIT.md). Tomorrow: they yawn,
+  // "z z" float up over them and the line holds up the sleeping picture (a moon over a pillow), then the sun coming up;
+  // tonight: the moon, then the house. Then the guide's arrow goes to the day's play (src/carry.js) and, at sunset, home.
   function* tomorrow(who, why) {
-    const say = (...p) => G.say(p, { portrait: G.portraitOf(who), name: G.nameOf(who), who, show: { icon: why === 'evening' ? 'noche' : 'manana' } });
-    if (why === 'evening') yield say(TT('¡Esta noche!', 'Tonight! (when the sun goes down, come home)'));
-    else if (why === 'busy') yield say(TT('¡Mañana! Hoy... ¡a jugar con Canelo!', 'Tomorrow! Today, play with Canelo and say hello to everyone.'));
-    else yield say(TT('¡Mañana!', 'Tomorrow! (a new chapter opens tomorrow)'));
+    const f = G.field, n = f && (f.npc(who) || f.npc(who + '_g'));
+    const say = (show, ...p) => G.say(p, { portrait: G.portraitOf(who), name: G.nameOf(who), who, show });
+    if (n && G.pet && G.pet.puff) for (let k = 0; k < 3; k++) G.pet.puff('txt', n.x * T + 14 + k * 5, n.y * T - 4 - k * 7, { s: 'z', life: 60 + k * 20, vy: -0.3 });
+    if (why === 'evening') { yield say({ icon: 'noche' }, TT('¡Esta noche!', 'Tonight! (when the sun goes down, come home)')); yield say({ icon: 'casa' }, TT('¡En [casa]!', 'At home!')); }
+    else if (why === 'busy') yield say({ icon: 'dormir' }, TT('¡Mañana! Hoy... ¡a jugar con Canelo!', 'Tomorrow! Today, play with Canelo and say hello to everyone.'));
+    else { G.audio.sfx('huh'); yield say({ icon: 'dormir' }, TT('¡Mañana!', 'Tomorrow! (a new chapter opens after the night)')); yield say({ icon: 'manana' }, TT('¡Aaah... mañana!', 'Yaaawn... tomorrow! (play now: follow the arrow)')); }
   }
 
   // ---------- places, taps and doors ----------

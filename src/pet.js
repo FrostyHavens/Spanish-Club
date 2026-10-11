@@ -227,17 +227,24 @@
       ctx.fillStyle = '#f0a0a8'; ctx.fillRect(px - 1, py, 2, 2); ctx.fillRect(px - 3, py - 2, 1, 1); ctx.fillRect(px, py - 3, 1, 1); ctx.fillRect(px + 2, py - 2, 1, 1);
       if (o.paw > 0.9) { ctx.fillStyle = '#fff8b0'; ctx.fillRect(px + side * 6, py - 4, 1, 3); ctx.fillRect(px + side * 7, py, 2, 1); ctx.fillRect(px + side * 5, py + 4, 1, 1); } // a little "ta-da"!
     }
-    if (o.mouth) drawBall(ctx, bx + 12 + (o.dir === 'left' ? -7 : o.dir === 'right' ? 7 : 0), by + 15 - Math.round(o.z), 0);
-    if (o.ball) drawBall(ctx, bx - o.dx + 12 + o.ball[0], by - o.dy + 22 + o.ball[1] - o.ball[2], o.ball[2]);
+    const thing = a && a.k === 'fetch' ? a.item : null; // (carry.js: the ball or the stick you threw)
+    if (o.mouth) drawBall(ctx, bx + 12 + (o.dir === 'left' ? -7 : o.dir === 'right' ? 7 : 0), by + 15 - Math.round(o.z), 0, thing);
+    if (o.ball) drawBall(ctx, bx - o.dx + 12 + o.ball[0], by - o.dy + 22 + o.ball[1] - o.ball[2], o.ball[2], thing);
     if (o.hand) { const hx = bx + 10, hy = by + 1 - Math.round(o.hand * 4); ctx.fillStyle = '#1a1420'; ctx.fillRect(hx - 1, hy - 1, 9, 6); ctx.fillStyle = G.st.playerSpec().map.skin || '#f0c8a0'; ctx.fillRect(hx, hy, 7, 4); ctx.fillRect(hx + 7, hy + 1, 1, 2); }
     if (sl) for (let i = 0; i < 3; i++) { const k = ((G.frame + i * 40) % 120) / 120; ctx.globalAlpha = 1 - k; G.text(ctx, 'z', bx + 16 + Math.round(k * 8 + Math.sin(k * 6) * 2), by + 6 - Math.round(k * 18), '#ffffff', '#303060'); ctx.globalAlpha = 1; }
     return true;
   }
-  function drawBall(ctx, x, y, z) {
+  // the ball in the air or in his mouth (thing: {id, col} of what you threw: a stick, the blue ball)
+  function drawBall(ctx, x, y, z, thing) {
     x = Math.round(x); y = Math.round(y);
     if (z > 1) { ctx.fillStyle = 'rgba(16,28,8,0.3)'; ctx.fillRect(x - 2, y + Math.round(z) + 3, 4, 1); }
+    if (thing && thing.id === 'palo') { // a stick, crosswise
+      ctx.fillStyle = '#1a1420'; ctx.fillRect(x - 6, y - 2, 13, 4); ctx.fillStyle = '#a87038'; ctx.fillRect(x - 5, y - 1, 11, 2); ctx.fillStyle = '#6a4018'; ctx.fillRect(x - 5, y, 11, 1); ctx.fillStyle = '#58b048'; ctx.fillRect(x + 3, y - 3, 2, 1);
+      return;
+    }
+    const col = thing && thing.col && G.data.words[thing.col] ? G.data.words[thing.col].col : '#e03028';
     ctx.fillStyle = '#1a1420'; ctx.fillRect(x - 3, y - 2, 6, 5); ctx.fillRect(x - 2, y - 3, 4, 7);
-    ctx.fillStyle = '#e03028'; ctx.fillRect(x - 2, y - 2, 4, 5); ctx.fillRect(x - 3, y - 1, 6, 3);
+    ctx.fillStyle = col; ctx.fillRect(x - 2, y - 2, 4, 5); ctx.fillRect(x - 3, y - 1, 6, 3);
     ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 1, y - 2, 1, 1); ctx.fillStyle = '#f8e060'; ctx.fillRect(x - 3, y, 6, 1);
   }
   function drawBowl(ctx, x, y, what, left) {

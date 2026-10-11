@@ -127,6 +127,7 @@
       const drawn = up => pick(ppl.filter(n => n.talk && n.spec && !n.hidden && wx >= n.x * T + n.ox && wx < n.x * T + n.ox + T && wy >= (n.y - up) * T + n.oy && wy < (n.y - up + 1) * T + n.oy));
       const c = this.map.get(tx, ty);
       let n = drawn(0) || talker(tx, ty) || drawn(1) || talker(tx, ty + 1);
+      if (n && (n.ghost || n.id === 'canelo') && G.carry && G.carry.at(this, tx, ty)) n = null; // (Canelo standing on a thing to pick up: the thing)
       const story = (G.chapters && G.chapters.spotAt(this, tx, ty)) || G.intro.spotAt(this, tx, ty); // a puzzle's thing on a counter is the thing, not the person behind it
       if (!n && !story && COUNTER.includes(c)) n = DIR4.map(d => talker(tx + G.DIRS[d][0], ty + G.DIRS[d][1])).find(Boolean);
       if (n) return { npc: n, x: n.x, y: n.y };
@@ -135,7 +136,7 @@
       if (door) return { exit: true, x: door.x, y: door.y }; // the wall or sign around a door, the dark just outside one
       const pg = (this.def.pages || {})[key(tx, ty)];
       const name = G.world ? G.world.wordAt(this, tx, ty) : null;
-      const special = !!((pg && G.pages.ready(pg)) || (this.def.searches || {})[key(tx, ty)] || (G.chapters && G.chapters.spotAt(this, tx, ty)) || (G.errands && G.errands.spotAt(this, tx, ty)) || G.intro.spotAt(this, tx, ty)); // these win over an animal on them
+      const special = !!((pg && G.pages.ready(pg)) || (this.def.searches || {})[key(tx, ty)] || (G.chapters && G.chapters.spotAt(this, tx, ty)) || (G.errands && G.errands.spotAt(this, tx, ty)) || G.intro.spotAt(this, tx, ty) || (G.carry && G.carry.at(this, tx, ty))); // these win over an animal on them (a thing to pick up: carry.js)
       if (special || THING.includes(c)) return { search: true, x: tx, y: ty, name, special };
       if (name) return this.blocked(tx, ty, this.player) && !(this.player.x === tx && this.player.y === ty) ? { search: true, x: tx, y: ty, name } : { x: tx, y: ty, name };
       return { x: tx, y: ty };
@@ -181,6 +182,7 @@
       const [fx, fy] = this.facing();
       const here = this.npcs.filter(o => o.x === fx && o.y === fy && !o.hidden); // (someone hidden, like a puppy under the table, isn't there to talk to)
       let n = (want && here.includes(want) ? want : null) || here.find(o => { try { const a = o.alert && o.alert(); return !!a && !a.wait; } catch (e) { return false; } }) || here[0];
+      if (n && n !== want && (n.ghost || n.id === 'canelo') && G.carry && G.carry.at(this, fx, fy)) n = null; // (Canelo on a thing you came to pick up)
       // talk across counters
       const story = (G.chapters && G.chapters.spotAt(this, fx, fy)) || G.intro.spotAt(this, fx, fy); // a puzzle's thing on a counter: search it
       if (!n && !story) { const t = this.map.get(fx, fy); if (t === 'e' || t === 't' || t === 'a' || t === 'Y') { const [dx, dy] = G.DIRS[this.player.dir]; n = this.npcs.find(o => o.x === fx + dx && o.y === fy + dy && !o.hidden); } }
@@ -214,6 +216,7 @@
         if (s.run) yield* s.run(this);
         return;
       }
+      if (G.carry && G.carry.search(this, fx, fy)) return; // a thing lying there: pick it up (carry.js)
       if (G.seek && G.seek.poke(this, fx, fy)) return; // an animal hiding there (hide-and-seek, seek.js)
       if (G.ambient && G.ambient.poke(this, fx, fy)) return; // pet the cat on the fence
       if (this.def.poke && this.def.poke(this, fx, fy)) return; // the map's own (a hay bale in the barn rustles)
@@ -248,10 +251,12 @@
       if (this.route && (this.locked || G.input.dir() || ['up', 'down', 'left', 'right', 'A', 'B'].some(k => G.input.p(k)))) this.route = null;
       if (!this.locked && G.input.tap()) { // the menu button (= B, eats the tap), else tap-to-walk (field tasks still see the tap)
         if (G.btnHit(...HUD)) { G.input.eat(); this.menuReq = true; this.route = null; }
+        else if (G.carry && G.carry.tapHud(this, G.input.tap())) { G.input.eat(); this.route = null; } // the thing in your hands, in the corner: put it down (carry.js)
         else if (G.seek && G.seek.tap(this, G.input.tap())) { G.input.eat(); this.route = null; } // found a hiding animal (seek.js)
         else { // tap-to-walk; a tap on an animal (animals.js, not over a person or a door) names it and walks toward it
-          const tap = G.input.tap(), tt = this.tapTarget(tap), an = !tt.npc && !tt.exit && !tt.special && G.animals && G.animals.hit(this, tap);
-          this.route = an ? G.animals.tapped(this, an) : tt; this.plan(this.route);
+          const tap = G.input.tap(), tt = this.tapTarget(tap);
+          if (!tt.npc && !tt.exit && G.carry && G.carry.tapSelf(this, tap)) { G.input.eat(); this.route = null; } // a tap on yourself: put it down / pick up what you stand on (carry.js)
+          else { const an = !tt.npc && !tt.exit && !tt.special && G.animals && G.animals.hit(this, tap); this.route = an ? G.animals.tapped(this, an) : tt; this.plan(this.route); }
         }
       }
       this.tasks.update();
@@ -301,6 +306,7 @@
       if (G.animals) G.animals.draw(this, ctx, 'ground'); // lily pads, ripples, swimmers, shadows
       if (G.pet) G.pet.drawUnder(this, ctx); // Canelo's cushion and bowl at home
       if (G.errands) G.errands.drawUnder(this, ctx); // Lucía's flowers, the picnic blanket, the party ribbons (errands.js)
+      if (G.carry) G.carry.drawUnder(this, ctx); // things lying about to pick up (carry.js)
       if (G.seek) G.seek.draw(this, ctx); // animals hiding (hide-and-seek: an ear, a tail peeking out; seek.js)
       if (G.chapters) G.chapters.draw(this, ctx, 'under'); // a chapter's own things on the ground (chapters.js)
       if (G.intro && G.intro.drawUnder) G.intro.drawUnder(this, ctx); // a find-it puzzle's picture bubbles (intro.js)
@@ -314,6 +320,7 @@
         const img = G.unitSprite(e.spec, e.dir, fr), bob = Math.abs(e.ox + e.oy) >= 6 && Math.abs(e.ox + e.oy) <= 18 ? 1 : 0; // a hop mid-step
         ctx.drawImage(img, Math.round(e.x * T + e.ox - cx), Math.round(e.y * T + e.oy - cy - 3) - bob);
       }
+      if (G.carry) G.carry.drawHeld(this, ctx); // what you hold, up over your head (carry.js)
       if (G.ambient) G.ambient.draw(this, ctx, 'air'); // birds in flight, butterflies, the cat
       if (G.animals) G.animals.drawTop(this, ctx); // hearts and splashes
       if (G.pet) G.pet.drawTop(this, ctx); // Canelo's hearts, dust, crumbs; the trick he's learning
@@ -326,8 +333,8 @@
         G.drawAlert(ctx, al, Math.round(e.x * T + e.ox - cx), Math.round(e.y * T + e.oy - cy), this.t);
       }
       if (G.chapters) G.chapters.draw(this, ctx, 'top'); // a chapter's bubbles and pointing arrow (chapters.js)
-      if (G.world) G.world.draw(this, ctx); // the word bubble of a thing just named, and its say-it-back mic
       if (G.guide) G.guide.draw(this, ctx); // the arrow over the next thing to do, or at the screen's edge (guide.js)
+      if (G.world) G.world.draw(this, ctx); // the word bubble of a thing just named, and its say-it-back mic (over the arrow: it's short-lived)
       if (this.banner && G.top() !== this) this.banner.t = Math.min(this.banner.t, 0); // a talk or a card opened over the map: the name has done its job
       if (this.banner && this.banner.t > 0) {
         const a = Math.min(1, this.banner.t / 30), ic = this.banner.icon;
@@ -345,6 +352,7 @@
   // a thought bubble over a person or a place (ex, ey: the top-left of its tile on screen): "!" (al === true) or the
   // picture(s) of what they want (a word id, or a goal like [['manzana', 3]])
   G.drawAlert = function (ctx, al, ex, ey, t) {
+    if (al && (al.sleep || al.night) && G.day && G.day.moonBubble) { G.day.moonBubble(ctx, ex + 12, ey - 18, t, !!al.sleep); return; } // a chapter after the night (or tonight): the moon (chapters.js)
     const bob = Math.round(Math.sin(t / 8) * 2);
     if (al === true) {
       G.win(ctx, ex + 7, ey - 16 + bob, 11, 13, { fill1: '#f8f0c0', fill2: '#f8d860', alpha: 1 });

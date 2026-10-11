@@ -33,7 +33,7 @@
 //                                     sparkles; then the say-it-back mic. o: {cry: '¡Miau!' (a second line, also spoken),
 //                                     animal: id (for the album's `said`), tile: [x, y] (wiggles it), delay: frames
 //                                     before speaking, noMic, walkOn (the 20 s rule), noIntro (never meets an unmet
-//                                     word)}. Returns the bubble or null.
+//                                     word), pic (its own picture: the blue ball)}. Returns the bubble or null.
 //      G.world.nameTile(f, x, y)      name tile x, y if it has a word (true if it did)
 //      G.world.bubble                 the word bubble showing now {id, x, y, t, cry} or null
 //      G.world.sayBack                the say-it-back now {id, t, life, mic (a G.MicBtn), done} or null
@@ -80,7 +80,7 @@
     if (!G.st.seen(id) && WD.introOnTap && !o.walkOn && !o.noIntro && G.budget.canIntro(1)) fresh = G.words.meet(id, 'tap'); // asked "what's this?": met
     else G.st.see(id);
     const unk = !G.st.seen(id); // not met yet: its picture and "?", and no voice
-    const b = WD.bubble = { id, x: wx, y: wy, t: 0, cry: o.cry || null, f, unk };
+    const b = WD.bubble = { id, x: wx, y: wy, t: 0, cry: o.cry || null, f, unk, pic: o.pic || null }; // (pic: its own look, e.g. the blue ball: carry.js)
     if (o.tile) f.wig = { x: o.tile[0], y: o.tile[1], t: 18 };
     const text = unk ? '' : w.es.split(' / ')[0] + (o.cry ? '. ' + o.cry : ''); // (an unmet thing says nothing: its cry is only a sound)
     if (!text) speakAt = null; else if (o.delay) speakAt = { f, text, at: G.frame + o.delay }; else { speakAt = null; G.speak(text); }
@@ -224,7 +224,7 @@
     if (r.below) { ctx.fillRect(tx - 1, y - 2, 3, 2); ctx.fillRect(tx, y - 3, 1, 1); }
     else { ctx.fillRect(tx - 1, y + r.h - 1, 3, 2); ctx.fillRect(tx, y + r.h + 1, 1, 1); }
     const hop = b.t < 30 ? Math.round(Math.abs(Math.sin(b.t / 30 * Math.PI * 2)) * -2) : 0;
-    G.drawIcon16(ctx, w, r.x + 5, y + (r.h - 16) / 2 + hop);
+    G.drawIcon16(ctx, b.pic || w, r.x + 5, y + (r.h - 16) / 2 + hop);
     G.text(ctx, ls[0], r.x + 25, y + (ls.length > 1 ? 4 : 7), b.unk ? '#a08060' : G.st.knows(b.id) ? '#a06008' : '#2860a8', null);
     if (ls[1]) G.text(ctx, ls[1], r.x + 25, y + 14, '#e06010', null);
     ctx.globalAlpha = 1;

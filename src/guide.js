@@ -10,8 +10,12 @@
 // The goal, most important first: the story's chapter (its beat: a person, a place, an animal, a door, a find-it
 // puzzle; the next chapter's giver; a review day's teacher) > home at sunset > a favour going on or offered > Nico's
 // hide-and-seek (only the edge arrow: the peeking ears are the game; the arrow over one after a long wait) > Canelo's
-// "?", Luna's palabra del día, Inés's pages, a side job, anyone else with a bubble. Nothing to do (the next chapter
-// opens tomorrow): no arrow. A favour that sends you to a place or an animal named only by its word is the word being
+// "?", Luna's palabra del día, Inés's pages, a side job, anyone else with a bubble > the day's play (src/carry.js: what
+// you hold to whoever would love it, or Canelo; empty-handed, today's next play: fetch, an apple for Luna, a flower for
+// Mamá, the bone, an egg for Rosa, bread for the ducks, a page puzzle... and a game of fetch is always there). So there
+// is never a dead end: between chapters, while today's new words are used up, before the evening chapter, the arrow
+// points at something fun that teaches nothing new (docs/INTUITIVE_AUDIT.md, step 2); at sunset it's home, and at
+// home your bed. A favour that sends you to a place or an animal named only by its word is the word being
 // remembered: its arrow (and Canelo's trot) only come as a hint, after ~10 s of standing about.
 // The hint hand (hint.js) taps on the same goal after a few seconds of doing nothing, when it's on screen.
 // API: G.guide.goal(f) -> {why, map, pts: [{x, y, lift, npc?, icon?}] (world px; several = a choice), soft, via: 'door'}
@@ -82,7 +86,8 @@
     if (G.animals && G.words.met('pato')) { const d = G.animals.find('pato', f); if (d) add(Math.round(d.x), Math.round(d.y - 6)); }
   }
   function sunsetGoal(f) {
-    if (!G.day || !G.day.over() || (f.mapId === 'casa')) return null;
+    if (!G.day || !G.day.over()) return null;
+    if (f.mapId === 'casa') return f.evening ? null : { why: 'bed (sunset)', pts: [tileP(7, 2, 20, { icon: 'noche' })] }; // (home already: your bed ends the day, maps.js)
     const d = G.day.homeDoor(f); if (d) return { why: 'home (sunset)', pts: [tileP(d[0], d[1], 48, { door: true, icon: 'noche' })] }; // (over the moon bubble)
     return { why: 'home (sunset)', map: 'casa', badge: { icon: 'noche' } };
   }
@@ -127,7 +132,17 @@
     if (E && E.waitsIn) for (const m in G.maps) if (m !== f.mapId && E.waitsIn(m)) return { why: 'job in ' + m, map: m, badge: { icon: G.maps[m].icon || 'pregunta' } };
     return null;
   }
-  const TIERS = [chapterGoal, sunsetGoal, favourGoal, seekGoal, reviewGoal];
+  // the day's play (carry.js): never a dead end
+  function playGoal(f) {
+    const C = G.carry; if (!C || !C.plan) return null;
+    const p = C.plan(f); if (!p) return null;
+    const why = 'play: ' + p.why;
+    if (p.dog) { const n = G.pet && G.pet.npc(f); return n ? { why, play: true, pts: [Object.assign(person(n), { icon: p.icon })] } : { why, play: true, map: 'villa', badge: { icon: 'perro' } }; }
+    if (p.who) { const n = here(f, p.who); return n ? { why, play: true, pts: [person(n)] } : { why, play: true, map: mapOfNpc(p.who), badge: { who: p.who } }; }
+    if (p.map === f.mapId) return { why, play: true, pts: [tileP(p.at[0], p.at[1], 20, { icon: p.icon })] };
+    return { why, play: true, map: p.map, badge: { icon: p.icon } };
+  }
+  const TIERS = [chapterGoal, sunsetGoal, favourGoal, seekGoal, reviewGoal, playGoal];
 
   // on another map: the door that leads there (from town, its door; from a building, the way out)
   function viaDoor(f, g) {

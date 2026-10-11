@@ -299,6 +299,16 @@
       p.rect(9, 10, 2, 2, '#6a4020'); p.rect(11, 12, 2, 2, '#6a4020'); p.rect(13, 13, 2, 2, '#8a5a28');
       p.disc(6.5, 6.5, 5.5, '#c8a040'); p.disc(6.5, 6.5, 4.2, '#b8e0f8'); p.disc(5, 5, 1.6, '#ffffff'); p.put(8, 8, '#88c0e8'); p.put(9, 7, '#88c0e8');
     },
+    palo(p) { // a stick to throw for Canelo (no word: a toy, src/carry.js)
+      for (let i = 0; i < 12; i++) { p.put(2 + i, 13 - i, '#8a5a28'); p.put(3 + i, 13 - i, '#a87038'); p.put(2 + i, 12 - i, '#6a4018'); }
+      p.put(9, 6, '#6a4018'); p.put(9, 5, '#6a4018'); p.put(10, 4, '#6a4018'); // a little twig
+      p.ell(11, 3.5, 1.6, 1, '#58b048'); p.put(11, 3, '#88d870');            // and a leaf on it
+    },
+    dormir(p) { // asleep until tomorrow: a pillow, a crescent moon and "z z" (a chapter that opens after the night)
+      p.ell(8, 13, 7, 2.6, '#f4ecd8'); p.shade(8, 13, 7, '#d8ccb0');
+      p.disc(5.5, 6, 4.2, '#f8e070'); p.shade(5.5, 6, 4.2, '#e8c040'); p.disc(7.6, 4.6, 3.6, null);
+      for (const [x, y] of [[10, 2], [13, 6]]) { p.rect(x, y, 3, 1, '#c8d8ff'); p.put(x + 1, y + 1, '#c8d8ff'); p.rect(x, y + 2, 3, 1, '#c8d8ff'); }
+    },
     huella(p) { // a paw print on the ground
       p.ell(8, 11, 3.6, 3, '#6a4020'); [[3.6, 6.8], [6.6, 4.6], [9.6, 4.6], [12.4, 6.8]].forEach(([x, y]) => p.ell(x, y, 1.5, 1.8, '#6a4020'));
     },
