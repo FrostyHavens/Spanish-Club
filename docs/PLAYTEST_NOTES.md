@@ -2,6 +2,20 @@
 
 Real players' reactions, newest first. Kept so design decisions can point back to what children actually said.
 
+## 2026-10-11 — the 7-year-old (the target player), plus the parent's observations
+The child, in their words (asked by a parent): "I want to be able to pick up stuff." Liked: "the doggy follows you
+around all the time", "we can play games with it", "you get to do stuff with the dog: feed him, play fetch, make him
+drink, pet him." Boring parts: "Did you not know what to do next?" "Yeah." Ran out of things to do and didn't know
+where to go.
+
+The parent:
+- The mic works well now. Bonus stars don't mean much to a child who doesn't know what they do; show progress on the
+  word itself (say a word a few times and see that word's card pop up and grow).
+- The notebook comes too soon; it's an organizer for later, when there are many words. Early on, just cards.
+- Any word with a picture in the text should show both, so the word and the picture get associated.
+- Misiones confuses kids: they don't go into menus. They need pointers and arrows, because those are visual.
+- Instructions in Spanish won't be followed right away. The game has to be completely intuitive from the ground up.
+
 ## 2026-10-09 — a 4-year-old (younger than the target age; useful for the age range)
 Played on iPad. In their words: "I like that you get to touch the screen and don't have to press any buttons. I like
 the pet animal. I didn't like how it didn't let me go in the door that was locked, I never got to go in there. I liked
