@@ -27,15 +27,23 @@ Each word has a strength the game keeps per save (`G.state.words[id]`), replacin
 
 | Stage | Name | How you get there | How it looks |
 | --- | --- | --- | --- |
-| 0 | unmet | — | shown only as its picture in speech (Tunic's "unreadable" text) |
-| 1 | met | its introduction puzzle | picture + blue word |
-| 2 | known | picked right without a cue | blue word, 1 star |
-| 3 | remembered | recalled from a picture/sound with word-only choices, or said | gold word, 2 stars |
-| 4 | solid | remembered again on a later day (3 first-try answers over ≥2 days) | gold word, 3 stars |
+| 0 | unmet | — | its picture + a faint blank in speech (Tunic's "unreadable" text); no card yet |
+| 1 | met | its introduction puzzle | picture + blue word; a card with a seed |
+| 2 | known | picked right without a cue | picture + blue word; its plant at least a sprout |
+| 3 | remembered | recalled from a picture/sound with word-only choices, or said | picture + gold word; a gold card, in flower |
+| 4 | solid | remembered again on a later day (3 first-try answers over ≥2 days) | picture + gold word; two flowers (a third, gold, with use) |
 
 Behind the stage sits a small Leitner box (1–5) with a due time measured in sessions/days: a word answered right
 moves up a box and is due later (same session → next day → +2 days → +4 → +8); a miss drops it a box and it comes
-back within 1–3 minutes. Stars: at most one per word per day, from first-try answers.
+back within 1–3 minutes. Stars (at most one per word per day, from first-try answers) are only counted now, never shown.
+
+**Cards that grow** (2026-10-11, `src/cards.js`): a 7-year-old doesn't care about stars, so the visible progress is
+on the word itself. Each word met is a card whose plant grows every time it's used (say 5, pick 2, find 2, page match
+2, carry / give / tap 1, the passive ones at most once per 30 s), popping up where it happened. The plant is capped and
+floored by the stage above, so it never tells the child more than the model knows: no flower before stage 3. The
+picture is now always beside a word in speech (the playtest: words and pictures must be seen together); the Tunic rule
+is kept by the blank: an unmet word still can't be read. A question's own choices in its prompt are heard, not shown,
+so showing pictures everywhere gives no answer away; the recall cards (word-only, picture-only) are unchanged.
 
 ## How words are introduced (the puzzle patterns)
 - **Show and name** — someone holds up or points at a thing and says it; then *¿Qué es?* with the new word and two
@@ -61,8 +69,9 @@ The review engine (`G.review.due(n, filter)`) picks words that are due. The worl
 Target: at least 40% of all prompts review older words. (It was 40–60%; with ≤ 5 new words per chapter and ≥ 5 spaced retrievals per word, review naturally lands around 70–80%, which is what the research asks for.)
 
 ## The notebook
+Early on there is no notebook, just the cards; it opens at 15 met words as their organizer (`src/cards.js`).
 The notebook is no longer handed out in pages. A word is written into it at the moment it's introduced, and its
-topic page appears when the first word of the topic does. Pages show the words' stages (blue/gold, stars). Hidden
+topic page appears when the first word of the topic does. Pages show the words' stages (blue/gold, the card's plant). Hidden
 page sparkles in the world become page puzzles that review the page's words.
 
 ## Measured targets (checked by `tools/vocab-audit.js`, multi-day run)

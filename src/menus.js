@@ -92,7 +92,8 @@
             ctx.save(); ctx.translate(cx, cy); ctx.rotate(a); G.cards.drawCard(ctx, id, -C_W * 0.33, -C_H * 0.33, { s: 0.66 }); ctx.restore();
           });
           G.textC(ctx, String(G.cards.count()), r.x + r.w / 2, r.y + 72 - bob, '#a8d8ff');
-        } else {
+        } else if (k === 'book' && G.cards) G.cards.drawBook(ctx, r.x + r.w / 2, r.y + 40 - bob, 0.85, sel ? this.t : null); // the notebook, open
+        else {
           const big = G.cached('kidbtn_' + k + (sel ? 1 : 0), 24, 20, c => G.drawIcon(c, k, 0, 0, sel));
           ctx.drawImage(big, r.x + (r.w - 60) / 2, r.y + 14 - bob, 60, 50);
         }
@@ -180,10 +181,10 @@
         G.drawIcon16(ctx, wd, cx + 29, cy + 2 + hop, 2);
         G.textC(ctx, wd.es.split(' / ')[0], cx + 45, cy + 38, st >= 3 ? '#a06008' : '#2860a8', null);
         if (G.enVisible()) G.textC(ctx, wd.en, cx + 45, cy + 47, '#a09070', null);
-        else if (G.cards) G.cards.drawPlant(ctx, G.cards.pts(id), cx + 19, cy + 36); // its card's plant (cards.js), beside the picture
+        if (G.cards) G.cards.drawPlant(ctx, G.cards.pts(id), cx + 75, cy + 36, { s: 2, gold: st >= 4 }); // its card's plant (cards.js), beside the picture
         if (S().saidCount(id)) { // said out loud (the mic): a little mic with a sound wave
-          G.mic.glyph(ctx, cx + 68, cy + 2, '#2a8a9a');
-          ctx.fillStyle = '#2a8a9a'; ctx.fillRect(cx + 77, cy + 2, 1, 1); ctx.fillRect(cx + 78, cy + 3, 1, 3); ctx.fillRect(cx + 77, cy + 6, 1, 1);
+          G.mic.glyph(ctx, cx + 14, cy + 2, '#2a8a9a');
+          ctx.fillStyle = '#2a8a9a'; ctx.fillRect(cx + 23, cy + 2, 1, 1); ctx.fillRect(cx + 24, cy + 3, 1, 3); ctx.fillRect(cx + 23, cy + 6, 1, 1);
         }
         if (fresh && (this.t + k * 7) % 40 < 20) { ctx.fillStyle = '#ffffff'; ctx.fillRect(cx + 24, cy + 2, 5, 1); ctx.fillRect(cx + 26, cy, 1, 5); ctx.fillStyle = '#f8c020'; ctx.fillRect(cx + 26, cy + 2, 1, 1); } // just met: it twinkles
       });

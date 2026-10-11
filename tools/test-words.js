@@ -124,9 +124,9 @@ async function questions(browser) {
   const { ctx, g } = await open(browser, 'words-ask', true);
   try {
     await game(g, { st: { manzana: 1, platano: 2, naranja: 3, hola: 3 } });
-    // speech: an unmet word is its picture only (and stays unmet); met: picture + blue; known: blue; remembered: gold
+    // speech: an unmet word is its picture and a blank (and stays unmet); met, known: picture + blue; remembered: picture + gold
     const look = await g.ev(() => { const L = G.richLayout('[galleta] [manzana] [platano] [naranja]', 300); return L[0].items.map(i => i.look); });
-    check('text: unmet -> picture only, met -> picture + word, known -> word, remembered -> gold word', look.join() === 'pic,both,text,gold', look.join());
+    check('text: the picture is always there: unmet -> picture + a blank, met and known -> picture + blue word, remembered -> picture + gold word', look.join() === 'pic,both,both,gold', look.join());
     await g.ev(() => { G.field.tasks.add((function* () { yield G.say('¡[galleta]! ¿[galleta]?'); })()); });
     await g.until(() => G.top().constructor.name === 'TextBox', null, 'a line');
     await g.frames(40); await g.shot('unmet_in_speech');

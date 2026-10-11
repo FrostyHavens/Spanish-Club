@@ -2,6 +2,48 @@
 
 A running record of what changed in Club de Español and why. Newest first.
 
+## 2026-10-11 — Word cards that grow, the book later, picture + word always, a ghost hand (step 3 of the second playtest)
+The parent (`docs/PLAYTEST_NOTES.md`): bonus stars mean nothing to a child; show progress on the word itself (say it a few
+times and see its card pop up and grow); the notebook comes too soon (early on just cards, the book later as an
+organizer); any word with a picture should always show both; Spanish instructions aren't followed: it must be intuitive.
+- **Word cards that grow** (`src/cards.js`). Every met word is a card: its picture, its word (blue; gold once
+  remembered) and a plant in a pot: seed, sprout, leaves, bud, flower, then two flowers and a third, gold one. Using the
+  word grows it: saying it 5 (by far the most, with sound waves and a brighter rising sound), a right pick 2 (1 after a
+  miss), a find 2, a page-puzzle match 2, carrying, giving or tapping it 1 (these at most once per word per 30 s of play,
+  so nothing can be farmed). Each use pops the card up right where it happened (the card picked, the mic, beside the
+  word bubble on the map), the plant grows before the child's eyes (a sparkle and a chime at each new stage), then the
+  card flies into the deck. The plant is floored and capped by the word model: no flower before the word is remembered
+  (stage 3: the card turns gold and blooms right there), a known word is at least a sprout, a solid one has two flowers.
+  Growth points live in the word's record (`gp`), so the save format is unchanged.
+- **No stars for the child.** The corner star counter and the flying stars are gone (`G.fx.flyStar` is a little
+  sparkle now); the mic's "said it" mark, the say-back bubble and Canelo's learned tricks show a little growing card;
+  the *Hoy* card shows today's cards (no star row); the save slots show the deck and the number of cards; the grown-ups'
+  help says "saying a word grows its card the most". `G.state.stars` is still counted (the diploma, grown-ups).
+- **Cards before the book.** The map's corner button is now the deck (a little stack of cards, the count beside it).
+  The kid menu is the cards (a fan of the newest three) and the album; the deck (`G.deck()`) lays every card out on a
+  green table, newest first, tap one to hear it. At 15 met words a small celebration (an open book drops in, the
+  newest cards fly into it, confetti, it flies to the corner) opens the notebook in the kid menu, as their organizer.
+  Before that, someone handing over "the notebook" (Mamá in chapter 1, Canelo's page) pops the cards instead. Page
+  puzzles work before and after.
+- **Picture and word, always together** (`src/ui.js`). Every word in a line has its picture beside it: met, picture +
+  blue word; remembered, picture + gold word (there is no "word alone" look any more). The Tunic rule stays: a word not
+  met yet is its picture and a faint dotted blank, unreadable until its puzzle. So that pictures everywhere give no
+  answer away, a question's own choices that appear in its prompt are a speaker (heard, not shown), automatically; and
+  the right card, once picked, shows its picture and its word. The recall cards themselves (word-only, picture-only)
+  are unchanged: that's the learning. Canelo's care cards now carry their word once met.
+- **A ghost hand shows each new thing once** (`src/demo.js`, saved in `flags.demo`). The first question's picture cards
+  (it glides over them and taps one at random: never the answer), the first mic (it taps it, then a mouth talks over it
+  with sound waves), Canelo (tap him), a thing to pick up, giving it to Canelo (the hand carries it from you to him),
+  putting it down (it taps you), a page puzzle (it drags a word up between the pictures: no answer) and a peeking
+  hide-and-seek animal. It only draws; the child's own tap stops it. Map demos wait for 1.5 s of standing about.
+- **Variety when the day's plays are done** (`G.carry.more`): not endless fetch, but the next of a trick for Canelo (its
+  picture by the arrow), petting him, water or a cookie, another round of hide-and-seek with Nico (new hiding places, up
+  to three a day), the ball for Nico, fetch, the one played least today first.
+- Tests: `tools/test-cards.js` (new: growth on pick, say, carry, find and its limits, the stage cap, the deck, cards before
+  the book and its celebration, picture + word rendering and the masked choice, each demo once and saved, a tap stopping
+  one, the variety). `smoke`, `test-guide`, `test-hints-day`, `test-roundb-pet`, `test-fx`, `test-speaking` follow the
+  cards (the kid menu, no notebook in chapter 1, no flying star); the harness closes the deck like the notebook.
+
 ## 2026-10-11 — Pick things up, and never a dead end (step 2 of the second playtest)
 The 7-year-old: "I want to be able to pick up stuff"; "didn't know what to do / ran out of things to do"; loves doing
 things with the dog (`docs/PLAYTEST_NOTES.md`). Step 1's audit left one thing: the gaps with nothing to do between

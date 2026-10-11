@@ -11,8 +11,8 @@
 // Each use pops the card up near the action (where the child tapped, the mic, the thing on the map: C.at / o.x, o.y), the
 // plant grows before their eyes with a rising sound (speaking: bigger, slower, with sound waves and a brighter sound),
 // then the card flies into the deck in the top-right corner. On the map the deck IS the menu button (a little stack of
-// cards, the count beside it, field.js / ui.js iconBtn 'menu'); over another screen it shows for a moment left of that
-// corner (where screens keep their close buttons).
+// cards, the count beside it, field.js / ui.js iconBtn 'menu'); over another screen the card just flies into that
+// corner and the deck there pops when the map is back.
 // The deck (G.deck(), the first picture in the kid menu, menus.js): all the cards in a grid, newest first; tap one to hear
 // it. The book (the notebook, G.notebook) only comes later: at C.BOOK_AT met words a small celebration (a book drops in,
 // cards fly into it, confetti) opens it in the kid menu as the organizer of the cards (topic pages, page puzzles). Before
@@ -29,12 +29,12 @@
   C.GROW = { say: 5, pick: 2, find: 2, match: 2, carry: 1, tap: 1, give: 1 };
   C.PASSIVE = ['carry', 'tap', 'give'];
   C.GAP = 30;                       // play seconds between two passive growths of one word
-  C.LV = [0, 3, 8, 15, 24, 36, 50]; // seed, sprout, leaves, bud, flower, two flowers, three
+  C.LV = [0, 2, 6, 12, 20, 32, 46]; // seed, sprout, leaves, bud, flower, two flowers, three
   C.BOOK_AT = 15;                   // met words before the book opens
   C.W = 40; C.H = 82;               // a card at scale 1
-  const FLOOR = [0, 0, 3, 24, 36], CAP = st => (st < 3 ? 23 : st < 4 ? 49 : 1e9);
+  const FLOOR = [0, 0, 2, 20, 32], CAP = st => (st < 3 ? 19 : st < 4 ? 45 : 1e9);
   const IN = 10, GROW = 30, GROW_SAY = 44, HOLD = 16, FLY = 22;
-  const HUD = [G.W - 26, 6], ALT = [G.W - 74, 4]; // the deck: the map's menu button; elsewhere left of the corner buttons
+  const HUD = [G.W - 26, 6]; // the deck: the map's menu button (top right)
   const D = () => G.data;
   const rec = id => (G.words ? G.words.rec(id) : null);
   const met = id => !!G.state && !!G.words && G.words.met(id);
@@ -98,7 +98,7 @@
   }
   const easeOut = u => 1 - (1 - u) * (1 - u);
   const deckFree = () => { const f = G.field; return !!f && G.top() === f && !f.locked; };
-  const deckXY = () => (deckFree() ? [HUD[0] + 10, HUD[1] + 10] : [ALT[0] + 10, ALT[1] + 10]);
+  const deckXY = () => [HUD[0] + 10, HUD[1] + 10]; // (over another screen the card just goes into that corner)
   // where a card's middle is and how big it is now
   function place(p) {
     const s0 = p.small ? 0.8 : p.said ? 1.15 : 1, hw = C.W * s0 / 2 + 2, hh = C.H * s0 / 2 + 2;
@@ -130,7 +130,6 @@
         p.cur = p.from + (target - p.from) * easeOut((p.t - IN) / gl);
         const lv = C.levelOf(p.cur);
         if (lv > p.lv) { p.lv = lv; p.lvUpT = p.t; G.audio.sfx('select'); p.spark = 8; }
-        if (p.said && p.t % 9 === 0) G.fx.ring(G.clamp(p.x, 20, G.W - 20), G.clamp(p.y - C.H / 2 - 14, 36, G.H - 36), 30, '#70e0ff', 20);
       }
       if (p.t === p.flyAt) G.audio.sfx('swing');
       if (p.t >= p.flyAt + FLY) { pops.splice(i, 1); deckPop = 10; deckVis = 40; G.audio.sfx('deck'); }
@@ -170,18 +169,18 @@
     R(ctx, -3, -6, 6, 1, '#5a3818');                                                 // soil
     const lv = C.levelOf(pts), top = -7;
     if (lv === 0) { // a seed (cracking open as it gets its first points)
-      R(ctx, -1, top + 1, 2, 1, '#8a5a28');
-      if (pts >= 1.5) R(ctx, 0, top, 1, 1, LEAF);
+      R(ctx, -1, top + 1, 3, 1, '#8a5a28'); R(ctx, -1, top, 2, 1, '#a87038');
+      if (pts >= 1) R(ctx, 0, top - 1, 1, 1, LEAF);
       ctx.restore(); return;
     }
-    const h = Math.round(pts <= 24 ? 1 + (pts - 3) / 21 * 5 : 6); // 1..6 of stem
+    const h = Math.round(pts <= 20 ? 1 + (pts - 2) / 18 * 5 : 6); // 1..6 of stem
     R(ctx, 0, top - h + 1, 1, h, STEM);
     const ty = top - h + 1;
     if (lv === 1) { leaf(ctx, 0, ty, -1); leaf(ctx, 0, ty, 1); ctx.restore(); return; }
     leaf(ctx, 0, top - Math.round(h * 0.3), -1); leaf(ctx, 0, top - Math.round(h * 0.55), 1);
     if (lv === 2) { leaf(ctx, 0, ty, -1); leaf(ctx, 0, ty, 1); ctx.restore(); return; }
     if (lv === 3) { // a bud, its tip turning pink
-      const u = Math.min(1, (pts - 15) / 9);
+      const u = Math.min(1, (pts - 12) / 8);
       R(ctx, -1, ty - 2, 2, 2, '#48a840'); R(ctx, -1, ty - 3, 2, 1, u > 0.5 ? '#f070a0' : '#58c048');
       ctx.restore(); return;
     }
@@ -232,7 +231,6 @@
   };
   C.draw = function (ctx) {
     // the deck shows for a moment where the cards land when the map's own button isn't there
-    if (deckVis > 0 && !deckFree() && G.state) { ctx.save(); ctx.globalAlpha = Math.min(1, deckVis / 10); C.drawDeck(ctx, ALT[0], ALT[1]); ctx.restore(); }
     for (const p of pops) {
       if (p.t <= 0) continue;
       const q = place(p), w = C.W * q.s, h = C.H * q.s;
@@ -246,6 +244,19 @@
     }
     if (party) drawParty(ctx);
   };
+  // an open book (the notebook) centred on x, y; k its size (1: 72 x 48)
+  C.drawBook = (ctx, x, y, k, t) => drawBook(ctx, x, y, k, t);
+  function drawBook(ctx, x, y, k, t) {
+    ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.scale(k, k);
+    R(ctx, -37, -22, 74, 48, '#10102a'); R(ctx, -36, -21, 72, 46, '#a83828');           // the cover
+    R(ctx, -33, -24, 32, 46, '#10102a'); R(ctx, 1, -24, 32, 46, '#10102a');            // the pages
+    R(ctx, -32, -23, 31, 44, '#fffaf0'); R(ctx, 1, -23, 31, 44, '#fffaf0');
+    R(ctx, -1, -23, 2, 46, '#d8c8a8');                                                 // the spine
+    for (let i = 0; i < 4; i++) { R(ctx, -28, -16 + i * 9, 6, 6, '#c8d8f0'); R(ctx, -20, -14 + i * 9, 16, 1, '#a8b8d8'); R(ctx, 5, -14 + i * 9, 22, 1, '#a8b8d8'); } // little pictures and lines
+    R(ctx, 26, 21, 4, 8, '#e04848'); R(ctx, 26, 29, 2, 2, '#e04848');                  // the ribbon
+    if (t != null && (t >> 3) % 3 === 0) { R(ctx, 30, -26, 1, 5, '#ffffff'); R(ctx, 28, -24, 5, 1, '#ffffff'); }
+    ctx.restore();
+  }
   // the book's celebration: a book drops in, the newest cards fly into it, it shines, then it goes to the corner
   function drawParty(ctx) {
     const t = party.t, cx = G.W / 2, cy = 96;
@@ -254,8 +265,7 @@
     ctx.save();
     ctx.globalAlpha = 0.35 * (1 - out) * u; R(ctx, 0, 0, G.W, G.H, '#080c28'); ctx.globalAlpha = 1;
     if (t > 90 && t < 130) { ctx.globalAlpha = 0.25; ctx.fillStyle = '#f8e060'; ctx.beginPath(); ctx.arc(bx, by, 40 + Math.sin(t / 5) * 4, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
-    const img = G.cached('cards_book', 24, 20, c => G.drawIcon(c, 'book', 0, 0, true));
-    ctx.imageSmoothingEnabled = false; ctx.drawImage(img, Math.round(bx - 12 * s), Math.round(by - 10 * s), Math.round(24 * s), Math.round(20 * s));
+    drawBook(ctx, bx, by, s / 3, t);
     party.ids.forEach((id, k) => { // each card flies from the deck into the book
       const t0 = 24 + k * 10, v = (t - t0) / 18; if (v < 0 || v > 1) return;
       const [dx, dy] = [HUD[0] + 10, HUD[1] + 10], ee = v * v * (3 - 2 * v), x = dx + (bx - dx) * ee, y = dy + (by - dy) * ee - Math.sin(v * Math.PI) * 30, sc = 0.5 * (1 - 0.6 * ee);

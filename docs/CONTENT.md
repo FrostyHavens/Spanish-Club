@@ -26,7 +26,7 @@ Write dialogue as `T('Spanish', 'English')`. The English only shows with the par
 - Write `{name}` for the player's name and `{boy form/girl form}` for words that change with the character's gender: `'¡Bienvenid{o/a}, {name}!'`, `'Eres un{/a} gran carter{o/a}.'` These work in dialogue, questions and the English text.
 
 ## The word model (`src/words.js`, `docs/LEARNING_DESIGN.md`)
-Each word has a stage: 0 unmet, 1 met, 2 known (picked right without a cue), 3 remembered (recalled from a picture or a sound with word-only cards, matched on a page puzzle, or said: gold), 4 solid (remembered again on a later day). Behind it a Leitner box decides when it comes back: a just-met word after 1.5 and 6 minutes of play, then the next day, +2, +4, +8 days; a miss brings it back in 1.5 minutes. Stars: one per word per day, for a first try.
+Each word has a stage: 0 unmet, 1 met, 2 known (picked right without a cue), 3 remembered (recalled from a picture or a sound with word-only cards, matched on a page puzzle, or said: gold), 4 solid (remembered again on a later day). Behind it a Leitner box decides when it comes back: a just-met word after 1.5 and 6 minutes of play, then the next day, +2, +4, +8 days; a miss brings it back in 1.5 minutes. (Stars, one per word per day for a first try, are still counted for the diploma but never shown to the child: what the child sees is the word's card growing, below.)
 ```js
 G.words.stage(id)      // 0..4      G.st.seen(id) = met, G.st.knows(id) = gold (remembered+)
 G.words.due(id)        // it should come back now
@@ -34,8 +34,41 @@ G.review.due(3, { topic: 'comida', exclude: ['pan'] })  // the words due now, mo
 G.budget.canIntro(2)   // room for 2 new words now? (≤ 5 per 5 min, ≤ 6 a session; { hard: true }: 8)
 ```
 
+## Word cards that grow (`src/cards.js`)
+Every met word is a card (its picture, its word, a plant in a pot). The child's progress is that plant, never stars
+(`docs/PLAYTEST_NOTES.md`, 2026-10-11). Using a word grows its card, and the card pops up right where it happened:
+```js
+G.cards.grow('manzana', 'carry', { x, y })  // 'say' 5 (the most), 'pick' 2, 'find' 2, 'match' 2, 'carry' / 'give' / 'tap' 1
+                                           // (these three at most once per word per 30 s); x, y: screen px, else the last tap
+G.cards.at(x, y)                           // where the next growth pops up (the mic, the card picked)
+G.cards.show('perro', { fresh: true })     // a card pops up and flies into the deck without growing (G.intro.note does this)
+G.cards.pts(id) / G.cards.level(id)        // the plant: 0 seed, 1 sprout, 2 leaves, 3 bud, 4 flower, 5-6 more flowers
+```
+Most of it is already wired: a right answer (`G.words.answerRight`, not when said), saying a word (`G.st.said`, i.e.
+`G.mic.award`), a page match, picking a thing up (`G.carry`), giving it, `G.world.name` (a tap names a met thing; pass
+`grow: 'find'` for a find, `false` for none), a found-again find-it. New content gets it for free; call `grow` only for a
+new kind of use. The plant agrees with the word model: no flower before the word is remembered (stage 3, gold), a
+known word at least a sprout, a remembered one a flower, a solid one two. The deck is the map's corner button; the
+kid menu shows the cards first; the book (the notebook) opens at `G.cards.BOOK_AT` (15) met words, with a small
+celebration, and `G.findPage` before that pops the page's cards instead of opening the notebook.
+
+## Picture and word together (`src/ui.js`, `src/learn.js`)
+Every `[id]` in a line is drawn with its picture: met, picture + blue word; remembered, picture + gold word; not met,
+picture + a faint blank (it can't be read before its puzzle). In a question, a choice that also appears in the prompt
+is drawn as a speaker (heard, not shown) automatically, so writing `¿Dónde está el [gato]?` with the cat among the
+choices is fine; the right card, once picked, shows its picture and its word. Word-only and picture-only cards stay as
+`G.ask` chooses them (that's the recall), so write questions as before.
+
+## Ghost-hand demos (`src/demo.js`)
+The first time each action comes up, a see-through hand does it once (saved in `G.state.flags.demo`): `answer` (a
+question's cards: it glides over them and taps one at random, never the answer), `mic` (taps it, a mouth talks),
+`canelo`, `pickup`, `give`, `putdown` (taps the player), `puzzle` (drags a word up between the pictures), `seek` (taps a
+peeking animal). A new kind is a detector in `onQuestion` / `onMap` returning steps `{x, y, move, act: 'tap' | 'down' |
+'up' | 'talk', hold}` and a name in `G.demo.KINDS`. It never takes input and the child's own tap stops it; tests that
+don't want it call `G.demo.skip()`.
+
 ## Introducing a word (`src/intro.js`)
-A word is met in a little puzzle with **one unknown**, among words the child already knows, and is confirmed at once: it flies into the notebook (the small celebration) and is said again. Inside a talk script:
+A word is met in a little puzzle with **one unknown**, among words the child already knows, and is confirmed at once: its new card pops up and flies into the deck (the small celebration, `src/cards.js`) and is said again. Inside a talk script:
 ```js
 if (!G.budget.canIntro(1)) { yield* say('pepe', T('¡Mañana!', 'Tomorrow!')); return; } // too many new words just now
 yield* G.intro.show('pelota', { who: 'sofia', prompt: '¡Mira! ¡Mi [pelota]!' });   // held up and named, then
@@ -187,14 +220,14 @@ in the evening), the guide still points at something: favours, hide-and-seek, Ca
 first, then the day's play: what you hold goes to whoever would love it today (or Canelo, or the ducks); empty-handed,
 today's next play from `G.carry.ORDER` (fetch with the ball, an apple for Luna or Gómez, a flower for Mamá, Rosa or
 Lucía, the bone for Canelo, a stick, an egg for Rosa, Tomás's letter, bread from Marta for the ducks, a page puzzle), in
-an order that turns each day; when they're all done, a game of fetch with Canelo is always there. A new play is an entry
+an order that turns each day; when they're all done, the next goal turns (`G.carry.more`: a trick for Canelo, petting him, food or water, another round of hide-and-seek, the ball for Nico, fetch; the one played least today first). A new play is an entry
 in `G.carry.PLAYS` (`id: f => ({ why, map, at, icon } | { why, who } | null)`) and in `ORDER`. Every play must be
 word-safe (no new word, nothing that waits for a word that isn't met) and end in something a child enjoys (a heart, the
 dog's joy). The next chapter's giver meanwhile sleeps under a moon ("z z": after the night) or shows the moon alone
 (tonight); at sunset the arrow goes home, and at home to the bed (a tap on it is good night).
 
 ## A notebook page
-Add it to `C.pages` / `C.pageOrder` in `content/es/words.js` (its topic in `C.topics`), at most 9 words (10 for the numbers, drawn in four columns). A word is written in the notebook the moment it's met, and a topic's page shows once its first word is. To put a **page puzzle** in the world, place the page's sparkle in `C.pagePlaces` (`map: { 'x,y': 'pageId' }`): it shows once 4 of the page's words are known (stage 2) and were met in an earlier session; solving it (matching 4 pictures to their words) gives a star and counts as a review; it comes back on a later day when 2+ of its words are due again (`G.pages.ready(id)`).
+Add it to `C.pages` / `C.pageOrder` in `content/es/words.js` (its topic in `C.topics`), at most 9 words (10 for the numbers, drawn in four columns). A word is written in the notebook the moment it's met, and a topic's page shows once its first word is. To put a **page puzzle** in the world, place the page's sparkle in `C.pagePlaces` (`map: { 'x,y': 'pageId' }`): it shows once 4 of the page's words are known (stage 2) and were met in an earlier session; solving it (matching 4 pictures to their words) grows each word's card and counts as a review; it comes back on a later day when 2+ of its words are due again (`G.pages.ready(id)`).
 
 ## Maps
 Edit `tools/mapgen.py` and run `python3 tools/mapgen.py` to regenerate `src/mapdata.js`. Tile codes are listed in `G.TERRAIN` in `src/tiles.js`. Doors (`D`, `K`) become exits in `src/maps.js`.

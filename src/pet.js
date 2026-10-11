@@ -487,13 +487,18 @@
             const lw = G.textWidth(lab), sq = Math.min(1, (r.w - 4) / Math.max(1, lw)); // (a long word squeezes into its card)
             ctx.save(); ctx.translate(r.x + r.w / 2, 0); ctx.scale(sq, 1); G.textC(ctx, lab, 0, y + 35, c.st === 'known' ? '#f8d860' : '#ffffff'); ctx.restore();
             if (c.st === 'learn') for (let i = 0; i < P.NEED; i++) drawPaw(ctx, r.x + 3 + i * 13, y + 4, i < P.tries(c.id));
-            if (c.st === 'known') G.text(ctx, '\u0005', r.x + r.w - 9, y + 3, '#f8d040');
+            if (c.st === 'known' && G.mic.cardGlyph && G.cards && G.cards.level(c.id) >= 4) G.mic.cardGlyph(ctx, r.x + r.w - 7, y + 8, 4); // its card has flowered
           }
         } else {
           ctx.globalAlpha = c.st === 'away' ? 0.45 : 1;
           if (c.id === 'mimo') { G.drawIcon16(ctx, 'perro', r.x + 4, y + 3, 2); G.text(ctx, '\u0003', r.x + r.w - 12, y + 4, '#f04878', '#401020'); G.text(ctx, '\u0003', r.x + r.w - 16, y + 10, '#f87898', '#401020'); }
           else G.drawIcon16(ctx, c.id, r.x + 4, y + 3, 2);
           ctx.globalAlpha = 1;
+          if (W(c.id) && S.seen(c.id)) { // its word under its picture once met (picture and word together)
+            const lab = G.baseForm(c.id), sq = Math.min(1, (r.w - 4) / Math.max(1, G.textWidth(lab)));
+            ctx.fillStyle = 'rgba(8,24,16,0.75)'; ctx.fillRect(r.x + 2, y + r.h - 11, r.w - 4, 9);
+            ctx.save(); ctx.translate(r.x + r.w / 2, 0); ctx.scale(sq, 1); G.textC(ctx, lab, 0, y + r.h - 10, '#ffffff', null); ctx.restore();
+          }
           if (c.st === 'away') G.drawIcon16(ctx, 'casa', r.x + r.w - 15, y + r.h - 15);
         }
         if (sel && !this.won && (this.t >> 3) % 4 !== 3) G.textC(ctx, '\u0001', r.x + r.w / 2, y - 9, '#f8e060');

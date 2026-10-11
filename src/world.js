@@ -89,10 +89,14 @@
     G.audio.sfx('cursor');
     const [sx, sy] = [wx - Math.round(f.cam.x), wy - Math.round(f.cam.y)];
     for (let i = 0; i < 3; i++) G.fx.twinkle(sx + (Math.random() - 0.5) * 22, sy + (Math.random() - 0.5) * 12);
-    if (!unk && !fresh && G.cards && o.grow !== false) G.cards.grow(id, o.grow || 'tap', { x: sx, y: sy - 18 }); // using it grows its card (cards.js; a tap or a carry at most once in a while)
     WD.lastNamed = { id, frame: G.frame, x: wx, y: wy };
     if (WD.sayBack) { WD.sayBack.off(); WD.sayBack = null; }
     if (!o.noMic && !unk && WD.canSayBack(id)) WD.offerSayBack(id, b, o.animal);
+    if (!unk && !fresh && G.cards && o.grow !== false) { // using it grows its card (cards.js; a tap or a carry at most once in a while): beside the bubble, left of it (the mic is on its right)
+      const r = WD.bubbleRect(f, b), hh = G.cards.H * 0.4 + 16, cy = r.y + r.h / 2 + hh;
+      const x = r.x - 22 >= 20 ? r.x - 22 : r.x + r.w + (WD.sayBack ? 34 : 4) + 22;
+      G.cards.grow(id, o.grow || 'tap', { x, y: cy });
+    }
     return b;
   };
   WD.nameTile = function (f, x, y, o = {}) {
