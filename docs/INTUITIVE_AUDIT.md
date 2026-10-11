@@ -1,0 +1,118 @@
+# Kid's-eye audit: is it obvious what to do next, without reading?
+
+*2026-10-11, after the second playtest (`docs/PLAYTEST_NOTES.md`): the 7-year-old "didn't know what to do next" and
+"ran out of things to do"; the parent: kids don't go into menus like Misiones, they need pointers and arrows, and
+instructions in Spanish won't be followed. This is step 1 of a series; the later steps are listed at the end.*
+
+## How it was measured
+Days 1-3 (chapters 1-6) on an iPad-sized touch screen, played by a **naive bot** (`tools/naivebot.js`, driven by
+`tools/audit-intuitive.js`) standing in for a child who can't read Spanish. On the map it only taps what visibly calls
+for a tap on the screen right now:
+
+| cue | what counts |
+| --- | --- |
+| guide | the new guide's arrow (after the fix) |
+| hand | the hint hand (`src/hint.js`, after ~6 s of doing nothing) |
+| bubble | a picture or "!" bubble over a person or place (not a "tomorrow" sun), the moon over home |
+| peek / spark | an animal peeking out in hide-and-seek, a twinkling page puzzle |
+
+With nothing like that on screen it does what children do: wanders (two taps a few tiles away, looking around), then
+stands about for 8 s (long enough for the hand), and again. A cue it has tapped three times without the story moving on
+is passed over. Dialogue and questions are played by the test harness (right answers: this audit is about the map).
+Every moment free on the map is logged with the game seconds until something started, how many of them were spent
+wandering or standing about, what finally showed the way, and the last line said before it (what a child would have
+had to read). After 45 s with nothing it counts as **stuck** and the bot is walked to the goal like the test bot.
+
+`NODE_PATH=$(npm root -g) node tools/audit-intuitive.js [out dir] --label before|after` reruns it (about 35 minutes).
+
+## The numbers
+| | before | after (the guide) |
+| --- | --- | --- |
+| moments free on the map, days 1-3 | 74 | AFTER_FREE |
+| ... stuck (45 s and nothing to tap) | 22 | AFTER_STUCK |
+| seconds wandering or standing about | 1690 | AFTER_LOST |
+| ... of them while the story had a next step | 993 | AFTER_LOST_GOAL |
+| ... of them between chapters (nothing to do at all) | 697 | AFTER_LOST_GAP |
+| a chapter step found in under 5 s | 6 of 24 | AFTER_FAST |
+
+AFTER_NOTE
+
+## What a child would get stuck on (before), worst first
+1. **Listening games: "who says it?" with nothing that says "tap the cat".** Nico's sound game (chapter 2: *¡Miau!*,
+   *¡Guau, guau!*; chapter 6: *¡Cuac!*) ends with a line and a speech bubble over Nico, then the map is free and the
+   child is meant to tap the animal. Nothing on screen points anywhere (the hand never comes: it would give the answer
+   away). 1 m 30 s lost in chapter 2, **7 minutes** in chapter 6 (the duck is off screen).
+   ![](audit-shots/b1-miau-who.png) ![](audit-shots/b2-cuac-who.png)
+   **Worse:** during *¡Guau, guau!* (tap Canelo) the hand's fallback ("a door that leads to someone with something to
+   do") found Canelo listed in the house and sent the child **in and out of the front door 12 times** (5 minutes).
+   ![](audit-shots/b1-guau-who.png) ![](audit-shots/b2-guau-sent-home.png)
+2. **Gaps between chapters: nothing to do at all.** The first time in town (chapter 2 waits a few minutes so no more
+   than 5 new words fall in 5 minutes), after chapter 3 (the same), at the end of day 1 (chapter 3 is a morning chapter)
+   and day 2 (the day's 6 new words are used up): the town is empty of bubbles. Only Canelo's "?" turns up now and then.
+   About 12 minutes over three days, ~40% of all the time lost. This is "ran out of things to do".
+   ![](audit-shots/b3-first-time-in-town.png) ![](audit-shots/b3-end-of-day-1.png)
+3. **The next person is off screen.** Sofía at the start of day 3 (stuck), Nico at the pond after "¡Los patos... por
+   allá!", Marta in the bakery: the only pointer is the hand at the screen's edge, and only after 6 s of standing
+   still; a child who wanders never sees it, and it's gone as soon as they move. The arrow-less "!" bubble is
+   invisible from where the child stands.
+   ![](audit-shots/b4-sofia-off-screen.png)
+4. **"¿Y mi pelota roja?" (which bush?).** Three balls peek out of three bushes, which a curious child may tap, but
+   nothing says "look in these" and the hand never comes (a puzzle's answer). 2 m 20 s, stuck three times.
+   ![](audit-shots/b5-red-ball-bushes.png)
+5. **Every other next step waited ~10 s for the hand**: the puppy under the table (a 3-pixel tail), the front door,
+   Mamá, the bush with the cat's tail. Fine for a patient child; a wandering one resets the hand's timer with every
+   tap. ![](audit-shots/b6-puppy-hiding.png)
+6. **The only overview of "what next" was in a menu**: Misiones, the middle button of the kid's menu, with words under
+   the pictures ("Cuaderno", "Misiones", "Animales"). Children don't go there.
+   ![](audit-shots/b7-kid-menu-misiones.png) ![](audit-shots/b7-misiones.png)
+
+**Instructions that only work if you read (or understand) the Spanish**, each the last line before a lost moment:
+*¡Mira! ¡El parque!* (go to the park, Nico is there), *¡Muy bien! Ahora... ¡Don Pepe!* (and the next step is actually
+the door and Nico on the way), *Los patos... ¡por allá!* (the ducks are at the pond, east), *¿Y mi pelota roja?* (look
+in the bushes), *¡Miau!* / *¡Guau, guau!* / *¡Cuac!* (tap who says it), *¡Hasta mañana!* (come back tomorrow), *¡Esta
+noche!*. The questions themselves read fine without Spanish: their cards are pictures, and the right picture can be
+worked out.
+
+**Bubbles**: chapter givers mostly showed a bare "!" (Nico, Mamá, Don Pepe, Sofía): it says "someone", not "what".
+
+## What changed (step 1)
+- **The guide** (`src/guide.js`). While the child is free to walk there is always **one** goal: the chapter's step (a
+  person, a place, an animal, a door, a find-it puzzle; the next chapter's giver; a review day's teacher) > home at
+  sunset > a favour > Nico's hide-and-seek > Canelo's "?", Luna's palabra, Inés's pages, a side job, anyone with a
+  bubble. It shows without words:
+  - on screen, a bouncing yellow arrow over it (over its bubble; under it pointing up near the top of the screen);
+  - off screen, an arrow at the screen's edge pointing the way, with a little picture of who or what is there;
+  - on another map, the arrow is over the right door in town, or on the way out of a building, with the picture of
+    who is waiting beside it;
+  - a puzzle's **choices** (the cat and Canelo in the listening game, the three bushes, a find-it's picture bubbles)
+    all get a small white arrow, never only the answer, and the hand stays away;
+  - standing about for ~4 s, **Canelo trots a few tiles toward it**, barks and looks back; he follows again as soon
+    as the child walks;
+  - a favour that names a place or an animal only by its word (the word being remembered) gets its arrow only as a
+    hint, after ~10 s; hide-and-seek animals likewise (the peeking ears are the game).
+  - nothing to do (the next chapter opens tomorrow): no arrow.
+- **The hint hand follows the guide's goal** (on screen only; off screen the edge arrow is there all the time): the
+  in-and-out door loop is gone.
+- **Bubbles**: a chapter's person shows the chapter's picture (Nico a cat, Mamá a sun, Don Pepe an apple, Sofía a ball),
+  never a bare "!".
+- **The kid's menu** is two pictures and no words: the notebook and the animal album (and the grown-ups' gear).
+  **Misiones** moved to the grown-ups menu (*Story progress*).
+- **Spanish-only instructions**: every one listed above now has the arrow (or the choice arrows) on what it means, the
+  moment the line closes.
+
+![](audit-shots/a1-edge-arrow.png) ![](audit-shots/a2-over-nico.png)
+![](audit-shots/a3-choice.png) ![](audit-shots/a4-door.png)
+![](audit-shots/a5-canelo-trots.png) ![](audit-shots/a6-kid-menu.png)
+
+## What remains (the next steps)
+- **Never a dead end** (step 2): the gaps between chapters are now nearly all the time a child spends not knowing what
+  to do (the after column). Something to do must always exist: things to pick up and carry (the child asked for it:
+  "I want to be able to pick up stuff"), Canelo's games, favours from day 1, the next chapter's giver with a reason
+  to wait that a child can see.
+- **Word cards that grow; picture and word always; ghost-hand demos** (step 3): stars mean little to a child; the
+  notebook comes too soon; a first-time action (calling Canelo, the say-it mic) should be shown by a ghost hand doing
+  it once.
+- The puppy's tail under the table and the peeking balls are tiny: with the arrow they're found, but they could be
+  bigger and livelier.
+- The guide shows one goal; a child who wants to wander still can, and the arrow waits. Whether the edge arrow is too
+  insistent for a child who is happily exploring is for the next playtest.

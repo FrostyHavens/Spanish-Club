@@ -248,7 +248,7 @@
   G.questLog = function () { const w = new G.Wait(); G.push(new QuestLog(w)); return w; };
 
   // ---------- Grown-ups menu (behind the held gear; English labels) ----------
-  // Volumes, voice, English help, on-screen buttons, speaking (the kids' mic), microphone test, controls, back to
+  // Volumes, voice, English help, on-screen buttons, speaking (the kids' mic), microphone test, controls, Misiones (story progress), back to
   // title. Nothing to save by hand: volumes, the voice, English help, the D-pad and speaking are kept per device
   // (G.prefs), and the game saves itself.
   // Up/down picks a row, left/right moves a volume, A changes the others; tap a row, tap or drag along a volume bar.
@@ -268,9 +268,9 @@
           : { id: 'speak', label: 'Speaking (mic)', right: 'not available', off: true, help: 'No speech recognition here. iPad: Safari + Dictation on.' },
         { id: 'mic', label: 'Microphone test', right: mic ? '>' : 'not available', off: !mic, help: mic ? 'Does speech recognition hear Spanish words?' : 'The microphone test is not in this version.' },
         { id: 'help', label: 'Controls and tips', right: '>', help: 'The keys, and how the game teaches.' },
-        { id: 'story', label: 'Story progress', right: '>', off: !G.state, help: 'Misiones: the chapter going on, its steps, the bag, the badges.' },
       ];
-      if (!this.o.title) R.push({ id: 'title', label: 'Back to title', right: '>', help: 'Progress is saved automatically.' });
+      if (!this.o.title) R.push({ id: 'story', label: 'Story progress', right: '>', off: !G.state, help: 'Misiones: the chapter going on, its steps, the bag, the badges.' },
+        { id: 'title', label: 'Back to title', right: '>', help: 'Progress is saved automatically.' });
       return R;
     }
     // tap areas (shared with draw): row k, its volume bar (with the speaker = 0 and the number), close

@@ -2,6 +2,39 @@
 
 A running record of what changed in Club de Español and why. Newest first.
 
+## 2026-10-11 — Always a next thing to do, in sight (from the second playtest)
+The 7-year-old "didn't know what to do next" and "ran out of things to do"; the parent: kids don't go into menus like
+Misiones, they need pointers and arrows, Spanish instructions aren't followed (`docs/PLAYTEST_NOTES.md`). Step 1 of a
+series (next: never a dead end and picking things up; word cards that grow, picture-and-word always, ghost-hand demos).
+- **A kid's-eye audit** (`docs/INTUITIVE_AUDIT.md`, `docs/audit-shots/`): days 1-3 on an iPad played by a *naive bot*
+  (`tools/naivebot.js`, `tools/audit-intuitive.js`) that only taps what visibly calls for a tap (bubbles, the hint
+  hand, peeking animals, sparkles) and otherwise wanders and stands about like a child who can't read Spanish. It
+  counts the seconds lost at every moment free on the map, and the line said just before (the instruction a child
+  would have had to read). The worst: Nico's listening game (who says "¡Miau!": nothing on screen says "tap the cat";
+  the hand never came, as it would give the answer away) and Sofía's bushes (same), Sofía off screen on day 3 (only a
+  hand at the screen's edge, after 6 s still), the hand sending the child in and out of the house during "¡Guau,
+  guau!" (Canelo was the answer: the hand's door fallback found "Canelo" in the house), and the gaps between chapters
+  (nothing at all to do).
+- **The guide** (`src/guide.js`): while free to walk there is always one goal, most important first: the chapter's
+  beat (a person, a place, an animal, a door, a find-it puzzle; the next chapter's giver; a review day's teacher) >
+  home at sunset > a favour > Nico's hide-and-seek > Canelo's "?", Luna's palabra, Inés's pages, a side job, anyone
+  with a bubble. On screen a yellow arrow bounces over it (over its bubble; under it, pointing up, near the top of the
+  screen); off screen an arrow waits at the screen's edge pointing the way, with a little picture of who or what is
+  there; on another map it's over the right door (in town) or the way out (in a building), with the picture beside it.
+  A puzzle's choices (the cat and Canelo in the listening game, the bushes, a find-it's picture bubbles) all get a small
+  white arrow, never only the answer. Standing about ~4 s, Canelo trots a few tiles that way, barks and looks back (he
+  follows again as soon as you walk). The hint hand now taps on the guide's goal (and only on screen: off screen the
+  edge arrow does it), which also ends the in-and-out door loop. Nothing to do (the next chapter opens tomorrow): no
+  arrow.
+- **Bubbles**: a chapter's person shows the chapter's picture (Nico a cat, Sofía a ball, Don Pepe an apple), never a bare
+  "!".
+- **The kid's menu** is two pictures, no words: the notebook and the animal album (and the grown-ups' gear).
+  **Misiones** moved to the grown-ups menu (*Story progress*).
+- Tests: `tools/test-guide.js` (new: a goal whenever there's something to do, the arrow on and off screen, doors both
+  ways, choices without the answer, Canelo's trot, the bubble picture, the menus, and the naive bot playing day 1 through
+  chapters 1 and 2 by following only what it sees); smoke, test-saves, test-chapters, test-review follow Misiones to the
+  grown-ups menu and the chapter-picture bubble.
+
 ## 2026-10-09 — The barn opens, hide-and-seek, doors that say why (from the first playtest)
 A 4-year-old's first session (`docs/PLAYTEST_NOTES.md`): finding the cat on the fence post was the best moment; "the
 door that was locked, I never got to go in there" the worst.

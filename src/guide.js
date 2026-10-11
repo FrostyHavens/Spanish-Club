@@ -11,7 +11,8 @@
 // puzzle; the next chapter's giver; a review day's teacher) > home at sunset > a favour going on or offered > Nico's
 // hide-and-seek (only the edge arrow: the peeking ears are the game; the arrow over one after a long wait) > Canelo's
 // "?", Luna's palabra del día, Inés's pages, a side job, anyone else with a bubble. Nothing to do (the next chapter
-// opens tomorrow): no arrow.
+// opens tomorrow): no arrow. A favour that sends you to a place or an animal named only by its word is the word being
+// remembered: its arrow (and Canelo's trot) only come as a hint, after ~10 s of standing about.
 // The hint hand (hint.js) taps on the same goal after a few seconds of doing nothing, when it's on screen.
 // API: G.guide.goal(f) -> {why, map, pts: [{x, y, lift, npc?, icon?}] (world px; several = a choice), soft, via: 'door'}
 //   or null; G.guide.at (what is drawn now, screen px: {x, y, edge, dir, why, marks}: tests and tools/naivebot.js read
@@ -89,9 +90,10 @@
     const FV = G.favores; if (!FV || !G.state || !FV.today) return null;
     const L = FV.today(), on = L.find(v => v.on && !v.done);
     if (on) {
-      const ts = FV.targets(f); if (ts.length) return { why: 'favour ' + on.kind + ' ' + on.word, pts: ts.map(t => ({ x: t.x, y: t.y, lift: t.animal ? 18 : 22 })) };
-      for (const m in G.maps) if (FV.waitsIn(m)) return { why: 'favour go ' + on.word, map: m, badge: { icon: G.maps[m].icon || 'carta' } };
-      if (on.kind === 'find') return { why: 'favour find ' + on.word, map: mapOfAnimal(on.word), badge: { icon: on.word } };
+      // (the place or animal is the word being remembered: the arrow only comes as a hint, after a while)
+      const ts = FV.targets(f); if (ts.length) return { why: 'favour ' + on.kind + ' ' + on.word, quiz: true, pts: ts.map(t => ({ x: t.x, y: t.y, lift: t.animal ? 18 : 22 })) };
+      for (const m in G.maps) if (FV.waitsIn(m)) return { why: 'favour go ' + on.word, quiz: true, map: m, badge: { icon: G.maps[m].icon || 'carta' } };
+      if (on.kind === 'find') return { why: 'favour find ' + on.word, quiz: true, map: mapOfAnimal(on.word), badge: { icon: on.word } };
       return null;
     }
     for (const v of L) {
@@ -160,7 +162,7 @@
     if (!g) { GD.at = null; shownT = 0; return; }
     shownT++;
     GD.at = layout(f, g);
-    if (idle >= GD.IDLE_TROT && !trotCool && !g.soft && !g.choice) trot(f, g);
+    if (idle >= GD.IDLE_TROT && !trotCool && !g.soft && !g.choice && !(g.quiz && idle < GD.IDLE_SOFT)) trot(f, g);
   };
   // where the arrow (or arrows) go on screen now
   function layout(f, g) {
@@ -177,6 +179,7 @@
     // the nearest point (one goal), on screen: over it; off screen: at the edge
     const p0 = f.player, pts = g.pts.slice().sort((a, b) => Math.hypot(a.x - p0.x * T, a.y - p0.y * T) - Math.hypot(b.x - p0.x * T, b.y - p0.y * T)), p = pts[0], s = scr(p);
     const badge = g.badge || badgeOf(p);
+    if (g.quiz && idle < GD.IDLE_SOFT) return { why: g.why, quiz: true, hidden: true, x: s.x, y: s.y, tx: s.tx, ty: s.ty };
     if (on(s)) {
       if (g.soft && idle < GD.IDLE_SOFT) return { why: g.why, soft: true, hidden: true, x: s.x, y: s.y, tx: s.tx, ty: s.ty };
       return { why: g.why, x: s.x, y: s.y, tx: s.tx, ty: s.ty, up: !!s.up, door: !!p.door, badge: g.via === 'door' ? badge : null, choice: !!g.choice };
@@ -190,7 +193,7 @@
   const badgeOf = p => (p.npc ? { npc: p.npc } : p.icon ? { icon: p.icon } : null);
   // the hint hand's spot (hint.js): the goal's own tile on screen, one goal only (never a choice: it'd give the answer)
   GD.handAt = function (f) {
-    const a = GD.at; if (!a || a.edge || a.choice || a.soft || !free(f)) return null;
+    const a = GD.at; if (!a || a.edge || a.choice || a.soft || a.hidden || !free(f)) return null;
     return { x: a.tx, y: a.ty };
   };
 

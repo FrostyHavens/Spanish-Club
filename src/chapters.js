@@ -209,7 +209,7 @@
   CH.alert = function (who) {
     if (!G.state) return null;
     const L = live();
-    if (L && L.b.who === who && when(L)) { const bb = L.b.bubble, v = typeof bb === 'function' ? bb(CH.ctx(L.id)) : bb != null ? bb : true; return v === true ? { icon: CH.def(L.id).icon } : CH.bubbleOf(v); } // (no "!": the chapter's picture)
+    if (L && L.b.who === who && when(L)) { const bb = L.b.bubble, v = typeof bb === 'function' ? bb(CH.ctx(L.id)) : bb != null ? bb : true; return v === true ? CH.emblem(L.id) : CH.bubbleOf(v); } // (no "!": the chapter's picture)
     if (who === 'canelo' && CH.nudge()) return 'pregunta';
     if (CH.needsReview() && who === CH.reviewer()) return 'pagina';
     if (!CH.current()) {
@@ -218,6 +218,8 @@
     }
     return null;
   };
+  // the chapter's own picture, for a bubble (a word's picture keeps its colours: the red ball)
+  CH.emblem = id => { const ic = CH.def(id).icon; return G.data.words[ic] || { icon: ic }; };
   // a request bubble over someone shows the thing's picture while its word is new, and a "?" once the word is known
   // (stage 2+: the child has to remember what they want; CURRICULUM.md 7.3)
   CH.bubbleOf = v => (typeof v === 'string' && G.data.words[v] && G.words.stage(v) >= 2 ? 'pregunta' : v);

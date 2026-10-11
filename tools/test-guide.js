@@ -24,6 +24,7 @@ async function setup(g, o) {
     G.goto(o.map, o.x, o.y, 'down');
   }, o);
   await g.fieldIdle(o.map);
+  await g.ev(() => { if (G.field.banner) G.field.banner.t = 0; }); // (the map's name has had its moment: clearer shots)
   await g.frames(30);
 }
 const at = g => g.ev(() => G.guide.at);
@@ -85,6 +86,11 @@ async function arrows(browser) {
     a = await at(g);
     const out = await g.ev(() => { const e = G.maps.escuela.exits[0], f = G.field; return [e.x * 24 + 12 - Math.round(f.cam.x), e.y * 24 + 12 - Math.round(f.cam.y)]; });
     check('guide: inside another building: the arrow on the way out', !!a && Math.abs(a.tx - out[0]) <= 2 && Math.abs(a.ty - out[1]) <= 2, JSON.stringify([a, out]));
+    // every chapter's picture draws as a bubble (a word's picture keeps its colours: Sofía's red ball)
+    await setup(g, { done: ['c1', 'c2', 'c3', 'c4'], words: W1, ch: 'c5', beat: 3, map: 'villa', x: 18, y: 23 });
+    await g.frames(10);
+    check('guide: Sofía shows her ball (the chapter\'s picture, in colour) and it draws', await g.ev(() => { const b = G.field.npc('sofia').alert(); return !!b && b.icon === 'pelota' && !!b.col; }) && !g.errors.length, g.errors.join('\n'));
+    check('guide: every chapter\'s picture can be drawn as a bubble', await g.ev(() => { const c = document.createElement('canvas').getContext('2d'); try { G.data.chapters.forEach(ch => G.drawAlert(c, G.chapters.emblem(ch.id), 0, 40, 0)); return true; } catch (e) { return String(e); } }) === true);
     // nothing to do (chapter 3 opens tomorrow): no arrow
     await setup(g, { done: ['c1', 'c2'], words: W1.concat(['gato', 'miau']), map: 'villa', x: 6, y: 20 });
     await g.ev(() => { G.state.ch.lastDoneSess = G.words.sess(); });

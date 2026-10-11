@@ -82,7 +82,7 @@ The story is one path of chapters in a fixed order (`G.data.chapters`). A chapte
 and today's new words allow it, and then plays as a list of **beats**:
 ```js
 G.chapters.script('c11', [
-  { who: 'rosa', part: 'gallina', run: function* (f, c) { ... } },              // talk to Rosa (her "!" bubble)
+  { who: 'rosa', part: 'gallina', run: function* (f, c) { ... } },              // talk to Rosa (a bubble with the chapter's picture)
   { spot: { map: 'villa', at: [1, 7], icon: 'huevo' }, run: function* (f, c) { ... } }, // a place with a picture bubble
   { tap: 'gallina', run: function* (f, c) { ... } },                               // tap an animal of that kind
   { auto: 'villa', when: c => G.intro.found('huevo'), run: function* (f, c) { ... } }, // by itself, when free
@@ -115,7 +115,17 @@ and the gating follow by themselves.
 animals called with *¡ven!* in chapter 19), `a.go = [x, y, speed]` (world px: it trots there, then stays), `a.pin =
 [x, y]` (it stays put: a hen to tap for a find-it). `opts.follows(who, c)` makes a townsperson tag along for a while
 (Nico's sound game), `opts.after(f, c)` plays once the chapter's badge is shown (the diploma). A request bubble
-(`bubble: 'huevo'`) shows the thing's picture while its word is new and a "?" once it is known.
+(`bubble: 'huevo'`) shows the thing's picture while its word is new and a "?" once it is known; without one (or with
+`bubble: true`) the person shows the chapter's own picture (its `icon` in the table), never a bare "!".
+
+**The guide finds the way by itself** (`src/guide.js`): while the child is free to walk, a yellow arrow bounces over the
+beat's person, place, animal or door (at the screen's edge, with a little picture, when it's off screen; on the right
+door when it's on another map), and Canelo trots that way when the child stands about. Nothing to write for it: it reads
+the beat's trigger, `G.intro.find` puzzles and `beat.hint`. Mark hint targets `secret: true` when going straight to
+them would give a puzzle's answer away (who says "¡miau!", which bush has the red ball): then every place to choose from
+gets a small white arrow instead (when the hint gives one place, Canelo, the cat and a duck nearby are added as the
+other choices), and the hand stays away. A find-it with `pics` is a choice too. Never send the child somewhere with
+words only ("¡Al parque!"): the next beat's trigger is what the arrow points at, so it must be where the line sends them.
 
 ## Review in the world (`src/favores.js`)
 - **Favores**: from chapter 7, up to three townsfolk a day have a "?" bubble and ask about one known word that is due
@@ -134,7 +144,7 @@ animals called with *¡ven!* in chapter 19), `a.go = [x, y, speed]` (world px: i
 1. A side job is a place in `SPOTS`: `{ id, map, at: [x, y], icon: () => picture or null when inactive, run: function* (f) {...} }`
    (a picture bubble over the tile; a tap walks there and runs it; `quiet: true` draws no bubble, `nohint()` keeps the
    hint hand away). Open it with the chapter that teaches its words (`chDone('c11')`), finish it with `jobStar(f, id, x, y)`
-   (once a day) and add it to `E.JOBS` / `E.JOB_ICON` for Misiones.
+   (once a day) and add it to `E.JOBS` / `E.JOB_ICON` for Misiones (in the grown-ups menu).
 2. Things to carry go in the bag: `G.errands.bag.add('carta', { q: 'c10', to: 'casa' })` / `take(...)`; things without
    `q` can be given as presents (`G.hearts.LIKES`).
 3. The older errands (`D.quests` in `src/data.js`: the market, the picnic, the show...) never open now; they only show
@@ -208,7 +218,8 @@ Most play is on an iPad, so every screen works with taps as well as keys:
 - A screen that waits for A also goes on with a tap; one that waits for B shows a back or close button (`G.iconBtn(ctx, 'back', x, y)` drawn, `G.btnHit(x, y)` tested).
 - Spoken lines get the speaker button (`G.speakerBtn`), same as C.
 - A screen that the test harness should simply close when it pops up mid-drive (like the pet menu) returns its close button from `closeXY()` and is listed in `Game.drive` in `tools/harness.js`.
-- Give the screen `hintXY()` returning `[x, y]` if a stuck child should be shown where to tap (the hand in `src/hint.js`). Never point at a right answer.
+- Give the screen `hintXY()` returning `[x, y]` if a stuck child should be shown where to tap (the hand in `src/hint.js`). Never point at a right answer. On the map the hand follows the guide's goal (`src/guide.js`).
+- Children don't open menus to find out what to do: the kid's menu is only the notebook and the album, as pictures. Anything a child needs to do next belongs on the map (a bubble, the guide's arrow), not in a menu; overviews for grown-ups (Misiones) go in the grown-ups menu.
 - Ripples, bursts and confetti come from `G.fx` (`src/fx.js`); they're drawn above every screen, so a screen doesn't draw its own.
 
 ## Language checklist
