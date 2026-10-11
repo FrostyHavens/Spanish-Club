@@ -139,7 +139,7 @@
       yield* G.pet.play('dance');
       yield* say('mama', T('¡Canelo es tu [perro]!', 'Canelo is your dog!'));
       yield* G.pet.play('pet'); if (G.hearts) G.hearts.add('canelo', 1, 'care');
-      yield* say('mama', T('¡Para ti!', 'For you! (a notebook: every new word goes in it)'));
+      yield* say('mama', T('¡Para ti!', 'For you! (your word cards: every new word is a card, and it grows as you use it)'));
       yield* G.findPage('saludos');
       F().intro = true;
       yield* say('mama', T('¡Canelo y {name}! ¡A jugar!', 'Canelo and {name}! Off you go and play!'));

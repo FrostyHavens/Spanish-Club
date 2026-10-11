@@ -1,4 +1,4 @@
-// ===== Round B: tap anything. Things in town say their Spanish word; say it back for a speaking star =====
+// ===== Round B: tap anything. Things in town say their Spanish word; say it back and its card grows (cards.js) =====
 // A tap on a thing that has a word (a tree, a flower, the fountain, a bench, the barn, the pond...) shows a word bubble
 // over it with its picture and its Spanish word ("el árbol"), says the word and gives the thing a little wiggle and a
 // sparkle. A word not met yet (words.js) is never met this way: its bubble shows the picture and "?" (and an animal's
@@ -33,7 +33,8 @@
 //                                     sparkles; then the say-it-back mic. o: {cry: '¡Miau!' (a second line, also spoken),
 //                                     animal: id (for the album's `said`), tile: [x, y] (wiggles it), delay: frames
 //                                     before speaking, noMic, walkOn (the 20 s rule), noIntro (never meets an unmet
-//                                     word), pic (its own picture: the blue ball)}. Returns the bubble or null.
+//                                     word), pic (its own picture: the blue ball), grow ('tap' by default, 'carry',
+//                                     'find'; false: no growth): a met word's card grows (cards.js)}. Returns the bubble.
 //      G.world.nameTile(f, x, y)      name tile x, y if it has a word (true if it did)
 //      G.world.bubble                 the word bubble showing now {id, x, y, t, cry} or null
 //      G.world.sayBack                the say-it-back now {id, t, life, mic (a G.MicBtn), done} or null
@@ -88,6 +89,7 @@
     G.audio.sfx('cursor');
     const [sx, sy] = [wx - Math.round(f.cam.x), wy - Math.round(f.cam.y)];
     for (let i = 0; i < 3; i++) G.fx.twinkle(sx + (Math.random() - 0.5) * 22, sy + (Math.random() - 0.5) * 12);
+    if (!unk && !fresh && G.cards && o.grow !== false) G.cards.grow(id, o.grow || 'tap', { x: sx, y: sy - 18 }); // using it grows its card (cards.js; a tap or a carry at most once in a while)
     WD.lastNamed = { id, frame: G.frame, x: wx, y: wy };
     if (WD.sayBack) { WD.sayBack.off(); WD.sayBack = null; }
     if (!o.noMic && !unk && WD.canSayBack(id)) WD.offerSayBack(id, b, o.animal);
@@ -127,7 +129,7 @@
       const disc = (rr, c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, cy, rr, 0, Math.PI * 2); ctx.fill(); };
       disc(rad + 2, '#200818'); disc(rad + 1, this.done ? '#d8f8ff' : L ? '#ffffff' : '#ffb0c8'); disc(rad - 1, body);
       ctx.globalAlpha = 0.3; ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x - rad * 0.3, cy - rad * 0.4, rad * 0.4, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
-      if (this.done) { G.text(ctx, '\u0005', x - 2, cy - 4, '#fff070', '#5a2c04'); G.mic.waves(ctx, x, cy, rad + 3, '#70e0ff', 2, this.t >> 1); return; }
+      if (this.done) { G.mic.cardGlyph(ctx, x, cy, rad - 3); G.mic.waves(ctx, x, cy, rad + 3, '#70e0ff', 2, this.t >> 1); return; } // said it: its card grew
       const mx = Math.round(x), my = Math.round(cy); // a little white microphone: the head, its holder, the stand
       ctx.fillStyle = '#ffffff'; ctx.fillRect(mx - 3, my - 8, 6, 9); ctx.fillRect(mx - 2, my - 9, 4, 1); ctx.fillRect(mx - 2, my + 1, 4, 1);
       ctx.fillStyle = '#c8d8ff'; ctx.fillRect(mx - 3, my - 7, 1, 7);

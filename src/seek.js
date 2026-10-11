@@ -16,7 +16,8 @@
 // hides (G.animals and G.ambient ask hides()).
 // Hooks: field.js (update, tap, poke, draw, drawHud), maps.js (alert: Nico's bubble), errands.js (talk), animals.js
 // (hides), ambient.js (the cat: c.hid).
-// API: G.seek.today() (today's game: {day, list: [{kind, spot, found}], on, done}), .active(), .hiding(kind),
+// Another round (up to SK.ROUNDS a day) when the day's plays are done and the guide sends you to Nico (carry.js C.more).
+// API: G.seek.today() (today's game: {day, list: [{kind, spot, found}], on, done, round}), .again(), .active(), .hiding(kind),
 //   .ready(), .SPOTS, .KINDS, .where(h, f) (a hider's tap rectangle on screen, for tests), .hints(f) (Canelo's trail).
 // Saved: G.state.seek.
 'use strict';
@@ -94,9 +95,24 @@
     if (who !== SK.HOST || !SK.ready() || story() || favour(who)) return null;
     const s = SK.today(); return s && !s.on && !s.done ? { icon: 'lupa' } : null;
   };
+  // another round today (the day's plays done, carry.js C.more): new hiding places, up to SK.ROUNDS a day
+  SK.ROUNDS = 3;
+  SK.again = () => { if (!SK.ready() || story()) return false; const s = SK.today(); return !!s && s.done && (s.round | 0) + 1 < SK.ROUNDS; };
+  function rematch(s) {
+    const old = s.list.map(h => h.spot), used = new Set(old), list = [];
+    for (const k of shuffle(kindsMet()).slice(0, 3)) {
+      const p = shuffle(SK.SPOTS.filter(p => p.kinds.includes(k) && !used.has(p.id)))[0] || shuffle(SK.SPOTS.filter(p => p.kinds.includes(k) && !list.some(h => h.spot === p.id)))[0];
+      if (!p) continue; used.add(p.id); list.push({ kind: k, spot: p.id, found: false });
+    }
+    if (list.length < 2) return false;
+    Object.assign(s, { list, on: false, done: false, round: (s.round | 0) + 1 }); G.st.autosave();
+    return true;
+  }
   SK.talk = function* (who, f) {
     if (who !== SK.HOST || !SK.ready() || story() || favour(who)) return false;
-    const s = SK.today(); if (!s || s.done) return false;
+    let s = SK.today(); if (!s) return false;
+    if (s.done && SK.again() && G.carry && G.carry.plan && (G.carry.plan(f) || {}).who === SK.HOST) { if (!rematch(s)) return false; if (G.carry.bump) G.carry.bump('seek'); } // ¡Otra vez! (the day's play asked for it)
+    if (s.done) return false;
     if (!s.on) {
       yield say(who, TT('¡{name}! ¡A jugar a las escondidas!', '{name}! Let\'s play hide-and-seek! The animals are hiding.'));
       yield sayShow(who, { list: s.list.map(h => W(h.kind)) }, TT('¿Dónde están? ¡A buscar!', 'Where are they? Look for an ear or a tail peeking out, and tap it! (in town and in the barn)'));
@@ -168,7 +184,7 @@
     yield 30;
     if (G.words.due(h.kind)) yield* G.review.ask(h.kind, { who: null }); // a quick question when its word is due
     const fx = rt.out[h.spot]; if (fx) fx.f0 = Math.max(fx.f0, G.frame - 30); // (stay out a little longer)
-    G.world.name(h.kind, g.x, (g.cut != null ? g.cut + 2 : g.feet) - g.h, { cry: K && K.cry, animal: h.kind }); // its name, said; the say-it-back mic
+    G.world.name(h.kind, g.x, (g.cut != null ? g.cut + 2 : g.feet) - g.h, { cry: K && K.cry, animal: h.kind, grow: 'find' }); // its name, said; the say-it-back mic; its card grows
     yield 40;
     if (!st().list.every(x => x.found)) return;
     st().done = true; G.st.autosave();

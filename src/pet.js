@@ -400,7 +400,7 @@
     yield tsay('mama', TT('¡Canelo es tu [perro]!', 'Canelo is your dog!'));
     if (G.animals) G.animals.meet('perro');
     yield* P.play('pet');
-    yield tsay('mama', TT('¡Para ti!', 'For you! (a page about Canelo)'));
+    yield tsay('mama', TT('¡Para ti!', 'For you! (Canelo\'s word cards)'));
     if (!S.hasPage('mascota')) yield* G.findPage('mascota');
     yield* P.teach('sientate', 'mama');
   };
@@ -544,7 +544,7 @@
   P.act = function* (v) {
     const f = G.field, id = v.id, spoken = !!v.spoken;
     if (trick(id)) {
-      if (P.knows(id)) { if (spoken) { spokeStar(id); G.words.answerRight(id, { said: true, mode: 'both', noStar: true }); } yield* P.trick(id); careHeart(); G.fx.say('¡Muy bien!', ...dogXY().map((q, i) => q - (i ? 26 : 0)), '#f8e060', true); yield 10; }
+      if (P.knows(id)) { if (spoken) { spokeStar(id); G.words.answerRight(id, { said: true, mode: 'both', noStar: true }); } yield* P.trick(id); careHeart(); if (G.carry) G.carry.bump('truco'); G.fx.say('¡Muy bien!', ...dogXY().map((q, i) => q - (i ? 26 : 0)), '#f8e060', true); yield 10; }
       else if (id === P.learning()) { if (spoken) spokeStar(id); yield* P.practice(id, spoken); }
       if (G.hearts) yield* G.hearts.milestones('canelo');
       return false;
@@ -553,10 +553,11 @@
     let learnIt = false;
     // said from its picture (the care cards have no words): a retrieval that can make it gold (words.js)
     if (spoken) { spokeStar(id); learnIt = !!(W(id) && G.words.answerRight(id, { said: true, mode: 'say', noStar: true }).gold); }
-    if (id === 'hueso' || id === 'galleta') { yield* P.play('eat', { item: id }); if (!(G.hearts && G.hearts.gift('canelo', id))) careHeart(); }
-    else if (id === 'agua') { yield* P.play('drink'); careHeart(); }
-    else if (id === 'pelota') { yield* P.play('fetch'); careHeart(); }
-    else if (id === 'mimo') { yield* P.play('pet'); careHeart(); }
+    const bump = k => { if (G.carry) G.carry.bump(k); };
+    if (id === 'hueso' || id === 'galleta') { yield* P.play('eat', { item: id }); if (!(G.hearts && G.hearts.gift('canelo', id))) careHeart(); bump('comida'); }
+    else if (id === 'agua') { yield* P.play('drink'); careHeart(); bump('comida'); }
+    else if (id === 'pelota') { yield* P.play('fetch'); careHeart(); bump('fetch'); }
+    else if (id === 'mimo') { yield* P.play('pet'); careHeart(); bump('mimo'); }
     else if (id === 'cama') {
       if (f.mapId !== 'casa') { yield* P.play('huh'); const [x, y] = dogXY(); puff('txt', x + f.cam.x, y + f.cam.y - 6, { s: 'la casa', life: 70 }); yield 30; }
       else {

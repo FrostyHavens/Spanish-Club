@@ -25,10 +25,11 @@
   };
 
   // ---------- Rich text: words grow from pictures ----------
-  // In dialogue, [id] or [id:shown form] marks a vocabulary word, drawn by how well the child knows it (words.js):
-  // unmet: only its picture (like Tunic's unreadable text; the voice still says it), met: picture + blue word,
-  // known: the blue word, remembered or solid: the gold word. o.mask (ids) draws those as a little speaker instead:
-  // heard, not read (a listening question, learn.js).
+  // In dialogue, [id] or [id:shown form] marks a vocabulary word. Its picture is ALWAYS beside it, so the picture and the
+  // word are seen together every time (docs/PLAYTEST_NOTES.md, 2026-10-11): met or known, picture + blue word; remembered
+  // or solid, picture + gold word. A word not met yet is its picture and a faint dotted blank (like Tunic's unreadable
+  // text: it can't be read before its puzzle; the voice still says it). o.mask (ids) draws those as a little speaker
+  // instead: heard, not read (a listening question; a question's own answer, learn.js).
   const TOK = /\[([a-z0-9]+)(?::([^\]]+))?\]/g;
   const COL = { text: '#ffffff', seen: '#a8d8ff', known: '#f8d860' };
   G.baseForm = id => { const w = G.data.words[id]; return w ? w.es.split(' / ')[0].replace(/^(el|la|los|las) /, '') : id; };
@@ -42,14 +43,18 @@
     text(s.slice(last));
     return out;
   }
-  // how a word token looks now: 'pic' (unmet), 'both' (met), 'text' (known), 'gold' (remembered+), 'mask' (heard only)
+  // how a word token looks now: 'pic' (unmet: picture + blank), 'both' (met, known: picture + blue word), 'gold'
+  // (remembered+: picture + gold word), 'mask' (heard only). ('text', the word alone, is no longer used in dialogue.)
+  const BLANK = 12;
   G.wordLook = function (id, mask) {
     if (mask && mask.indexOf(id) >= 0) return 'mask';
     const st = G.st && G.data.words[id] ? G.st.stage(id) : 3;
-    return st >= 3 ? 'gold' : st === 2 ? 'text' : st === 1 ? 'both' : 'pic';
+    return st >= 3 ? 'gold' : st >= 1 ? 'both' : 'pic';
   };
-  const itemW = it => (!it.id ? G.textWidth(it.text) : it.look === 'pic' ? 16 : it.look === 'mask' ? 14 : G.textWidth(it.text) + (it.look === 'both' ? 18 : 0));
-  const itemChars = it => (!it.id ? it.text.length : it.look === 'pic' || it.look === 'mask' ? 1 : it.text.length + (it.look === 'both' ? 1 : 0));
+  const hasPic = lk => lk === 'pic' || lk === 'both' || lk === 'gold';
+  G.lookHasPic = hasPic;
+  const itemW = it => (!it.id ? G.textWidth(it.text) : it.look === 'pic' ? 18 + BLANK : it.look === 'mask' ? 14 : G.textWidth(it.text) + (hasPic(it.look) ? 18 : 0));
+  const itemChars = it => (!it.id ? it.text.length : it.look === 'pic' || it.look === 'mask' ? 1 : it.text.length + (hasPic(it.look) ? 1 : 0));
   G.richLayout = function (s, maxW, o = {}) {
     const lines = [{ items: [], w: 0 }];
     for (const p of String(s).split('\n')) {
@@ -86,8 +91,11 @@
         if (it.id) {
           const lk = it.look || 'gold';
           if (lk === 'mask') { earGlyph(ctx, cx + 1, cy + 3); cx += 14; chars--; continue; }
-          if (lk === 'pic' || lk === 'both') { G.drawIcon16(ctx, G.data.words[it.id] || it.id, cx, cy); cx += lk === 'pic' ? 16 : 18; chars--; }
-          if (lk === 'pic') continue;
+          if (hasPic(lk)) { G.drawIcon16(ctx, G.data.words[it.id] || it.id, cx, cy); cx += 18; chars--; }
+          if (lk === 'pic') { // not met yet: a faint dotted blank where its word will be
+            ctx.globalAlpha = 0.55; ctx.fillStyle = '#c8c8e0'; for (let k = 0; k < BLANK; k += 3) ctx.fillRect(cx + k, cy + 12, 2, 1); ctx.globalAlpha = 1;
+            cx += BLANK; continue;
+          }
           const t = it.text.slice(0, Math.max(0, chars)); G.text(ctx, t, cx, cy + 5, lk === 'gold' ? COL.known : COL.seen);
         } else G.text(ctx, it.text.slice(0, Math.max(0, chars)), cx, cy + 5, o.color || COL.text);
         chars -= it.text.length; cx += G.textWidth(it.text);
@@ -441,6 +449,7 @@
   G.btnHit = (x, y) => G.tapIn(x - 4, y - 4, G.BTN + 8, G.BTN + 8);
   G.iconBtn = function (ctx, kind, x, y) {
     x = Math.round(x); y = Math.round(y);
+    if (kind === 'menu' && G.cards) { G.cards.drawDeck(ctx, x, y); return; } // the map's menu button is the deck of word cards (cards.js)
     const on = G.input.holding(x - 4, y - 4, G.BTN + 8, G.BTN + 8) > 0;
     ctx.fillStyle = '#000010'; ctx.fillRect(x + 1, y, 18, 20); ctx.fillRect(x, y + 1, 20, 18);
     ctx.fillStyle = on ? '#f0d060' : '#8898e0'; ctx.fillRect(x + 1, y + 1, 18, 18);

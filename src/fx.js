@@ -3,9 +3,8 @@
 // draws it after all the scenes, unshaken. A fixed pool of particles: nothing is allocated frame to frame.
 //   G.fx.ripple(x, y)                  a small ring where a tap landed (every counted tap gets one, with a soft click)
 //   G.fx.burst(x, y)                   a right answer: a gold ring and little stars shooting out
-//   G.fx.flyStar(x, y, delay, mic)     a first-try star: pops out at x, y, flies up to the top right (left of the
-//                                      corner buttons) and adds itself to the star counter that shows there for a moment.
-//                                      mic: a speaking star (mic.js), with sound waves and its own landing sound
+//   G.fx.flyStar(x, y, delay, mic)     a little ring of sparkles where something went well (no star is shown to the child
+//                                      any more: the word's card grows instead, cards.js; the old corner star counter is gone)
 //   G.fx.ring(x, y, r, color, life)    one dotted ring that grows to r and fades
 //   G.fx.confetti(x, y, dir, n)        a party popper at x, y shooting up and out (dir -1 left, 1 right, 0 both ways)
 //   G.fx.twinkle(x, y)                 one 4-point sparkle
@@ -85,7 +84,14 @@
       p.vx = Math.cos(a) * v; p.vy = Math.sin(a) * v; p.drag = 0.9; p.c = i & 1 ? '#ffffff' : '#fff0a0'; p.s = 1 + (i % 3 === 0);
     }
   };
-  FX.flyStar = function (x, y, delay = 0, mic = false) { const p = spawn(FLY, x, y, FLY_POP + FLY_GO); p.x0 = x; p.y0 = y; p.t = -delay; p.s = mic ? 2 : 1; return p; };
+  // (Stars are no longer shown to the child: what grows is the word's card, cards.js. A well done that has no word of
+  // its own, all the animals found, a side job, keeps a little sparkle where it happened; G.state.stars still counts.)
+  FX.flyStar = function (x, y, delay = 0, mic = false) {
+    ring(x, y, 16, mic ? '#70e0ff' : '#fff0a0', 16);
+    for (let i = 0; i < 4; i++) { const p = FX.twinkle(x + (rnd() - 0.5) * 26, y + (rnd() - 0.5) * 18); p.t = -(delay + i * 3); }
+    return null;
+  };
+  FX.realStar = function (x, y, delay = 0, mic = false) { const p = spawn(FLY, x, y, FLY_POP + FLY_GO); p.x0 = x; p.y0 = y; p.t = -delay; p.s = mic ? 2 : 1; return p; }; // (the old flying star: unused)
   FX.confetti = function (x, y, dir = 0, n = 24) {
     for (let i = 0; i < n; i++) {
       const d = dir || (i & 1 ? 1 : -1), a = -Math.PI / 2 + d * (0.2 + rnd() * 0.75), v = 2.6 + rnd() * 2.4;

@@ -227,6 +227,7 @@
     }
     B.take(it.id, { col: it.col, q: null });
     G.audio.jingle('item');
+    if (G.cards) G.cards.grow(it.id, 'give', { x: G.W / 2, y: G.H / 2 }); // giving it grows its card (cards.js)
     yield* say(who, TT('¡[' + it.id + ']! ¡[gracias], {name}!', 'Thank you, {name}!'));
     if (egg) { G.hearts.add('rosa', 1, 'care'); jobStar(G.field, 'huevo', G.W / 2, 90); }
     else G.hearts.add(who, 1, 'gift');

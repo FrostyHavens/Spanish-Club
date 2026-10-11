@@ -182,7 +182,9 @@ function step() {
   G.frame++;
   const s = G.top();
   if (G.fx.step) G.fx.step(); // the particle layer (fx.js): sees this frame's tap before a scene can eat it
-  if (G.intro && G.intro.step) G.intro.step(); // a word just met flying into the notebook (intro.js)
+  if (G.intro && G.intro.step) G.intro.step(); // a word just met: its new card (intro.js)
+  if (G.cards && G.cards.step) G.cards.step(); // word cards popping up and growing, flying into the deck (cards.js)
+  if (G.demo && G.demo.pre) G.demo.pre(); // a tap stops a ghost-hand demo (demo.js: seen here, before a scene can eat it)
   if (s) s.update();
   // fade
   const f = G.fade;
@@ -192,7 +194,7 @@ function step() {
   if (G.fx.flash > 0) G.fx.flash--;
   for (const k in G.keys) if (G.keys[k]) G.repeatT[k] = (G.repeatT[k] || 0) + 1;
   if (G.toastT > 0) G.toastT--;
-  if (G.day) G.day.step(); if (G.hint) G.hint.step(); // the day's clock (day.js), tap hints (hint.js): before input clears
+  if (G.day) G.day.step(); if (G.hint) G.hint.step(); if (G.demo) G.demo.step(); // the day's clock (day.js), tap hints (hint.js): before input clears
   G.input.endFrame();
   G.audio && G.audio.tick();
 }
@@ -210,7 +212,9 @@ function draw() {
   if (G.fx.flash > 0) { ctx.globalAlpha = Math.min(1, G.fx.flash / 6); ctx.fillStyle = G.fx.flashColor; ctx.fillRect(0, 0, G.W, G.H); ctx.globalAlpha = 1; }
   if (G.toastT > 0 && G.win) { const w = G.textWidth(G.toastMsg) + 20; ctx.globalAlpha = Math.min(1, G.toastT / 15); G.win(ctx, (G.W - w) / 2, 40, w, 20); G.textC(ctx, G.toastMsg, G.W / 2, 46, '#f8e060'); ctx.globalAlpha = 1; }
   if (G.hint) G.hint.draw(ctx); // the tapping hand, the keyboard strip
-  if (G.intro && G.intro.draw) G.intro.draw(ctx); // a word just met, on its way into the notebook (intro.js)
+  if (G.intro && G.intro.draw) G.intro.draw(ctx); // (intro.js: nothing of its own now, its new cards are cards.js's)
+  if (G.cards && G.cards.draw) G.cards.draw(ctx); // word cards growing and flying into the deck (cards.js)
+  if (G.demo && G.demo.draw) G.demo.draw(ctx); // the ghost hand showing a first-time action (demo.js)
   if (G.fx.draw) G.fx.draw(ctx); // ripples, bursts, confetti, flying stars (unshaken)
   if (G.fade.a > 0) { ctx.globalAlpha = G.fade.a; ctx.fillStyle = G.fade.color; ctx.fillRect(0, 0, G.W, G.H); ctx.globalAlpha = 1; }
 }

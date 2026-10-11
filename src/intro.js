@@ -1,7 +1,7 @@
 // ===== Meeting new words (one-unknown puzzles), review questions, and the notebook's page puzzles =====
 // docs/LEARNING_DESIGN.md. A new word arrives as a little puzzle with one unknown, among things the child already knows,
-// and is confirmed right away: it glows, its name is said again and it flies into the notebook (G.intro.note, the small
-// celebration; the big gold card is for remembering, learn.js). Every meeting schedules its first real use (words.js:
+// and is confirmed right away: it glows, its name is said again and its new card flies into the deck (G.intro.note, the
+// small celebration, cards.js; the big gold card is for remembering, learn.js). Every meeting schedules its first real use (words.js:
 // due again at +1.5 min, then +6 min; G.review asks those first).
 //
 // G.intro (generators unless noted; o.who is who's talking: their portrait and name):
@@ -17,8 +17,8 @@
 //        spotAt / runFind; hint.js and the bot see targets(f)). A wrong thing names itself and gets a gentle "¿...?".
 //        found(id) once it was found; seeking(who) the word someone is waiting for (for their thought bubble).
 //   meet(id, how, o)  meet a word from a puzzle of your own (not a generator): the model and the small celebration
-//   note(ids) -> Wait  the small celebration for words just met (a paper card with the picture and the blue word
-//        pops up, says the word and flies into the notebook button); yield it to let the word be heard (~0.6 s)
+//   note(ids, o) -> Wait  the small celebration for words just met: the word's new card pops up (cards.js: its picture,
+//        its blue word, a seed), says the word and flies into the deck; yield it to let the word be heard (~0.6 s)
 //   known(id, n) n met words to go with id in a one-unknown puzzle (another topic, stronger first)
 // Content checks G.budget.canIntro(n) before introducing (words.js) and defers when it's false ("¡Mañana!").
 // G.review.ask(id, {who, prompt, en, pool, layout}) one question for a met word, fit for its stage: met -> hear it
@@ -37,49 +37,23 @@
   const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = G.r(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   const sayAs = (who, pages, o) => G.say(pages, Object.assign({ portrait: G.portraitOf(who), name: G.nameOf(who), who }, o || {}));
 
-  // ---------- the small celebration: into the notebook ----------
-  const notes = [];   // {id, t, delay}
-  const LIFE = 84, FLY = 22;
-  I.note = function (ids) {
+  // ---------- the small celebration: a new card ----------
+  // The word's card pops up where it was met (cards.js: its picture, its word, a seed in its pot), the word is said, and
+  // it flies into the deck in the corner. (It used to be a notebook page; the notebook comes later, docs/PLAYTEST_NOTES.md.)
+  let noteUntil = 0;
+  I.note = function (ids, o = {}) {
     ids = (Array.isArray(ids) ? ids : [ids]).filter(id => D().words[id]);
     const w = new G.Wait();
-    ids.forEach((id, k) => notes.push({ id, t: -k * 36 }));
     if (!ids.length) { w.resolve(); return w; }
+    ids.forEach((id, k) => { if (G.cards) G.cards.show(id, Object.assign({ fresh: true, delay: k * 36 }, o)); });
     const until = G.frame + 36 + (ids.length - 1) * 36;
+    noteUntil = Math.max(noteUntil, until + 50);
     w.done = () => G.frame >= until || w.fin; // yieldable: a short pause so the word is heard
     return w;
   };
-  I.step = function () {
-    for (let i = notes.length - 1; i >= 0; i--) {
-      const nt = notes[i]; nt.t++;
-      if (nt.t === 1) { G.audio.sfx('note'); G.speak(G.baseForm(nt.id)); for (let k = 0; k < 4; k++) G.fx.twinkle(G.W / 2 + (Math.random() - 0.5) * 70, 40 + Math.random() * 30); }
-      if (nt.t === LIFE) G.audio.sfx('select');
-      if (nt.t > LIFE + 4) notes.splice(i, 1);
-    }
-  };
-  I.busy = () => notes.length > 0;
-  I.draw = function (ctx) {
-    for (const nt of notes) {
-      if (nt.t <= 0) continue;
-      const wd = D().words[nt.id], t = nt.t, w = 30 + Math.max(40, G.textWidth(wd.es.split(' / ')[0])), h = 40;
-      const pop = Math.min(1, t / 10), s0 = 0.3 + 0.7 * G.fx.easeBack(pop);
-      const fly = t > LIFE - FLY ? (t - (LIFE - FLY)) / FLY : 0; // 0..1 into the notebook button (top right)
-      const cx0 = G.W / 2, cy0 = 54, cx1 = G.W - 16, cy1 = 16, e = fly * fly;
-      const cx = cx0 + (cx1 - cx0) * e, cy = cy0 + (cy1 - cy0) * e - Math.sin(fly * Math.PI) * 18, sc = s0 * (1 - 0.8 * fly);
-      ctx.save(); ctx.globalAlpha = fly > 0.85 ? (1 - fly) / 0.15 : 1;
-      ctx.translate(cx, cy); ctx.scale(sc, sc); ctx.rotate(Math.sin(t / 7) * 0.03 + fly * 0.5);
-      ctx.fillStyle = '#5a3810'; ctx.fillRect(-w / 2 - 1, -h / 2 - 1, w + 2, h + 2);
-      ctx.fillStyle = '#f8f0dc'; ctx.fillRect(-w / 2, -h / 2, w, h);
-      ctx.fillStyle = '#e0d0b0'; for (let y = -h / 2 + 9; y < h / 2; y += 8) ctx.fillRect(-w / 2 + 3, y, w - 6, 1); // notebook lines
-      ctx.fillStyle = '#e88080'; ctx.fillRect(-w / 2 + 26, -h / 2, 1, h);                                        // the margin
-      const hop = t < 30 ? Math.round(Math.abs(Math.sin(t / 30 * Math.PI * 2)) * -2) : 0;
-      G.drawIcon16(ctx, wd, -w / 2 + 5, -8 + hop);
-      G.text(ctx, wd.es.split(' / ')[0], -w / 2 + 31, -4, '#2860a8', null);
-      G.text(ctx, '+', w / 2 - 9, -h / 2 + 2, '#40a848', null);
-      ctx.restore();
-      if (t > 12 && t < LIFE - FLY && t % 9 === 0) G.fx.twinkle(cx + (Math.random() - 0.5) * w, cy + (Math.random() - 0.5) * h);
-    }
-  };
+  I.step = function () {};
+  I.busy = () => G.frame < noteUntil;
+  I.draw = function () {};
   I.meet = function (id, how, o = {}) { const fresh = Wd().meet(id, how || 'meet', o); if (fresh) I.note([id]); return fresh; };
 
   // ---------- picking the known words for a one-unknown puzzle ----------
@@ -174,7 +148,9 @@
     s.found = true; f.wig = { x, y, t: 18 };
     const [sx, sy] = [x * G.TILE + 12 - Math.round(f.cam.x), y * G.TILE + 8 - Math.round(f.cam.y)];
     G.audio.sfx('chime'); G.fx.burst(sx, sy);
-    if (Wd().meet(m.id, s.how || 'find', { who: s.who })) yield I.note([m.id]); // (a word already met: found again, no new card)
+    if (G.cards) G.cards.at(sx, sy);
+    if (Wd().meet(m.id, s.how || 'find', { who: s.who })) yield I.note([m.id]); // (a word already met: found again, its card grows)
+    else if (G.cards) G.cards.grow(m.id, 'find', { x: sx, y: sy });
     yield 20;
     S().autosave();
   };

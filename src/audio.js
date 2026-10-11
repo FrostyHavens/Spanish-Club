@@ -269,6 +269,9 @@
       case 'micland': sfxNotes([[96, 0, 0.04], [100, 0.05, 0.04], [103, 0.1, 0.24]], 'bell', 0.08); break; // a speaking star lands
       case 'huh': sfxNotes([[72, 0, 0.08], [77, 0.1, 0.16]], 'flute', 0.1); break;                 // the mic didn't catch it: "again?"
       case 'note': noiseHit(0.14, 4200, 0.1, 'bandpass'); sfxNotes([[86, 0.04, 0.06], [91, 0.1, 0.18]], 'bell', 0.07); break; // a word goes in the notebook (paper + a little bell)
+      case 'grow': sfxNotes([[76, 0, 0.05], [81, 0.06, 0.05], [84, 0.12, 0.05], [88, 0.18, 0.16]], 'bell', 0.07); sweep(300, 900, 0.22, 'sine', 0.04); break; // a word card grows (cards.js)
+      case 'growbig': sfxNotes([[72, 0, 0.05], [76, 0.06, 0.05], [79, 0.12, 0.05], [84, 0.18, 0.05], [88, 0.24, 0.05], [91, 0.3, 0.05], [96, 0.36, 0.3]], 'bell', 0.09); sweep(400, 1800, 0.45, 'sine', 0.05); break; // ...said out loud: grows much more
+      case 'deck': noiseHit(0.05, 5000, 0.07, 'bandpass'); sfxNotes([[91, 0.02, 0.07]], 'bell', 0.05); break; // a card lands in the deck
       case 'pop': sweep(260, 820, 0.09, 'sine', 0.12); noiseHit(0.06, 3000, 0.08, 'bandpass'); break; // a card springs open
     }
   };

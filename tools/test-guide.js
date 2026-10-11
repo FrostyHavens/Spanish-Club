@@ -173,7 +173,7 @@ async function menu(browser) {
     await g.tap(310, 16);
     await g.until(() => G.top().constructor.name === 'FieldMenu', null, 'the kid menu');
     await g.frames(8);
-    check('menu: the kid menu has no Misiones: the notebook and the album, pictures only', await g.ev(() => G.top().tiles().join() === 'book,album'));
+    check('menu: the kid menu has no Misiones: the word cards and the album, pictures only (the book comes later)', await g.ev(() => G.top().tiles().join() === 'cards,album'));
     await canvasShot(g, path.join(OUT, 'guide_06_kidmenu.png'));
     await g.ev(() => { G.grownUps(); });
     await g.until(() => G.top().constructor.name === 'GrownUps', null, 'the grown-ups menu');

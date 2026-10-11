@@ -2,7 +2,7 @@
 'use strict';
 (function () {
   const D = () => G.data, S = () => G.st;
-  const STAR = '\u0005';
+  const C_W = 40, C_H = 82; // a word card (cards.js)
 
   // ---------- Press-and-hold buttons for grown-ups (the gear, the slot screen's trash can) ----------
   // A finger held on the button, or A held while it has the keyboard focus, fills a ring; a full ring fires once,
@@ -31,30 +31,32 @@
     }
   };
 
-  // ---------- The kid's menu (B, or the notebook button on the map) ----------
+  // ---------- The kid's menu (B, or the deck button on the map) ----------
   G.fieldMenu = function* (field) {
     while (true) {
       const r = yield G.kidMenu();
-      if (r.result === 'book') yield G.notebook();
+      if (r.result === 'cards') yield G.deck();
+      else if (r.result === 'book') yield G.notebook();
       else if (r.result === 'quest') yield G.questLog();
       else if (r.result === 'album') yield G.album();
       else return;
     }
   };
-  // Two big picture buttons, no words: the notebook and the animal album (a paw), plus a small gear that opens the
+  // Big picture buttons, no words: the word cards (cards.js, a fan of cards), the book once it has opened (C.BOOK_AT
+  // met words: the notebook as the organizer of the cards), the animal album (a paw), plus a small gear that opens the
   // grown-ups menu only after a 2 s press-and-hold (keyboard: move onto it and hold Z). Children don't go into menus to
   // find out what to do next (docs/PLAYTEST_NOTES.md): the guide's arrow on the map shows that (guide.js), so Misiones
-  // moved to the grown-ups menu. Resolves 'book', 'album' or null.
-  const KIDS = ['book', 'album', 'gear'], TILES = ['book', 'album'];
+  // moved to the grown-ups menu. Resolves 'cards', 'book', 'album' or null.
   class FieldMenu {
-    constructor(w) { this.transparent = true; this.w = w; this.t = 0; this.sel = 'book'; this.gear = new G.Hold(120); }
-    // tap areas (shared with draw): the 'book' and 'album' tiles, the 'gear' (and its padded hold area), close
+    constructor(w) { this.transparent = true; this.w = w; this.t = 0; this.sel = 'cards'; this.gear = new G.Hold(120); }
+    // tap areas (shared with draw): the picture tiles, the 'gear' (and its padded hold area), close
     box() { return { x: 22, y: 46, w: 276, h: 132 }; }
-    tiles() { return TILES.slice(); } // (tests)
+    tiles() { return ['cards'].concat(G.cards && !G.cards.bookOpen() ? [] : ['book'], ['album']); }
+    kids() { return this.tiles().concat(['gear']); }
     rect(k) {
-      const b = this.box();
+      const b = this.box(), T = this.tiles(), n = T.length, tw = n > 2 ? 78 : 84, gap = n > 2 ? 10 : 20;
       if (k === 'gear') return { x: b.x + b.w - 32, y: b.y + b.h - 28, w: 24, h: 20 };
-      return { x: b.x + b.w / 2 - 94 + TILES.indexOf(k) * 104, y: b.y + 18, w: 84, h: 84 };
+      return { x: Math.round(b.x + b.w / 2 - (n * tw + (n - 1) * gap) / 2 + T.indexOf(k) * (tw + gap)), y: b.y + 18, w: tw, h: 84 };
     }
     gearHit() { const r = this.rect('gear'); return { x: r.x - 4, y: r.y - 4, w: r.w + 8, h: r.h + 8 }; }
     closeXY() { return [G.W - 26, 6]; } // where the map's menu button was
@@ -62,15 +64,16 @@
     close() { G.audio.sfx('cancel'); G.pop(); this.w.resolve(null); }
     update() {
       this.t++;
+      const T = this.tiles(), K = this.kids();
       if (this.gear.update(this.gearHit(), this.sel === 'gear')) { G.audio.sfx('ok'); G.grownUps(); return; }
       if (G.input.tap()) {
         if (G.closeHit(...this.closeXY())) { this.close(); return; }
-        for (const k of TILES) if (G.tapIn(this.rect(k))) { this.sel = k; this.pick(k); return; }
+        for (const k of T) if (G.tapIn(this.rect(k))) { this.sel = k; this.pick(k); return; }
       }
       const d = G.input.repDir(14, 6);
       if (d) {
-        const i = KIDS.indexOf(this.sel), n = d === 'down' ? 2 : d === 'up' ? (i === 2 ? 1 : i) : (i + (d === 'left' ? 2 : 1)) % 3;
-        if (n !== i) { this.sel = KIDS[n]; G.audio.sfx('cursor'); }
+        const i = K.indexOf(this.sel), g = K.length - 1, n = d === 'down' ? g : d === 'up' ? (i === g ? g - 1 : i) : (i + (d === 'left' ? K.length - 1 : 1)) % K.length;
+        if (n !== i) { this.sel = K[n]; G.audio.sfx('cursor'); }
       }
       if (G.input.p('A') && this.sel !== 'gear') this.pick(this.sel);
       else if (G.input.p('B')) this.close();
@@ -78,11 +81,21 @@
     draw(ctx) {
       const b = this.box();
       G.win(ctx, b.x, b.y, b.w, b.h);
-      TILES.forEach(k => {
+      this.tiles().forEach(k => {
         const r = this.rect(k), sel = this.sel === k, bob = sel ? Math.round(Math.sin(this.t / 6) * 1.5) : 0;
         G.win(ctx, r.x, r.y - bob, r.w, r.h, sel ? { fill1: '#3a56c8', fill2: '#1c2c8c' } : { alpha: 0.55 });
-        const big = G.cached('kidbtn_' + k + (sel ? 1 : 0), 24, 20, c => G.drawIcon(c, k, 0, 0, sel));
-        ctx.drawImage(big, r.x + (r.w - 60) / 2, r.y + 14 - bob, 60, 50);
+        if (k === 'cards') { // a little fan of the newest cards
+          const ids = G.state && G.words ? G.words.list(1).sort((a, c) => (G.words.rec(c).met || 0) - (G.words.rec(a).met || 0)).slice(0, 3).reverse() : [];
+          if (!ids.length) { ctx.globalAlpha = 0.4; ctx.fillStyle = '#fffaf0'; ctx.fillRect(r.x + r.w / 2 - 13, r.y + 12 - bob, 26, 44); ctx.globalAlpha = 1; }
+          ids.forEach((id, i) => {
+            const a = (i - (ids.length - 1) / 2) * 0.22, cx = r.x + r.w / 2 + (i - (ids.length - 1) / 2) * 12, cy = r.y + 38 - bob;
+            ctx.save(); ctx.translate(cx, cy); ctx.rotate(a); G.cards.drawCard(ctx, id, -C_W * 0.33, -C_H * 0.33, { s: 0.66 }); ctx.restore();
+          });
+          G.textC(ctx, String(G.cards.count()), r.x + r.w / 2, r.y + 72 - bob, '#a8d8ff');
+        } else {
+          const big = G.cached('kidbtn_' + k + (sel ? 1 : 0), 24, 20, c => G.drawIcon(c, k, 0, 0, sel));
+          ctx.drawImage(big, r.x + (r.w - 60) / 2, r.y + 14 - bob, 60, 50);
+        }
         if (k === 'album' && G.state && G.animals) { const n = G.animals.list().filter(G.animals.met).length; G.textC(ctx, n + '/' + G.animals.list().length, r.x + r.w / 2, r.y + 70 - bob, '#a8d8ff'); }
         if (sel && (this.t >> 3) % 4 !== 3) G.textC(ctx, '\u0001', r.x + r.w / 2, r.y - 9 - bob, '#f8e060');
       });
@@ -96,7 +109,7 @@
 
   // ---------- Cuaderno: one page per topic; a word is written in the moment it is met ----------
   // Only topics with a met word have a page (G.pages.visible, intro.js). On a page: each met word's picture and word
-  // (blue, or gold once remembered), its stars (known 1, remembered 2, solid 3) and a little mic if it was said; the
+  // (blue, or gold once remembered), its card's plant (cards.js: it grows as the word is used) and a little mic if it was said; the
   // words still to meet are empty dotted frames. Tap a word to hear it; < > (or left / right) turns the page.
   class Notebook {
     constructor(w, start) {
@@ -167,7 +180,7 @@
         G.drawIcon16(ctx, wd, cx + 29, cy + 2 + hop, 2);
         G.textC(ctx, wd.es.split(' / ')[0], cx + 45, cy + 38, st >= 3 ? '#a06008' : '#2860a8', null);
         if (G.enVisible()) G.textC(ctx, wd.en, cx + 45, cy + 47, '#a09070', null);
-        else { const ns = S().wordStars(id); for (let s2 = 0; s2 < 3; s2++) G.text(ctx, STAR, cx + 33 + s2 * 8, cy + 47, s2 < ns ? '#e0a010' : '#d8ccb0', null); }
+        else if (G.cards) G.cards.drawPlant(ctx, G.cards.pts(id), cx + 19, cy + 36); // its card's plant (cards.js), beside the picture
         if (S().saidCount(id)) { // said out loud (the mic): a little mic with a sound wave
           G.mic.glyph(ctx, cx + 68, cy + 2, '#2a8a9a');
           ctx.fillStyle = '#2a8a9a'; ctx.fillRect(cx + 77, cy + 2, 1, 1); ctx.fillRect(cx + 78, cy + 3, 1, 3); ctx.fillRect(cx + 77, cy + 6, 1, 1);
@@ -264,7 +277,7 @@
         { id: 'pick', label: 'Choose voice', right: voices.length ? (voiceIndex(voices, cur) + 1) + ' / ' + voices.length : 'none found', off: !voices.length, help: voiceLine() },
         { id: 'english', label: 'English help', on: G.enVisible(), help: 'Shows English under the Spanish (for grown-ups).' },
         { id: 'dpad', label: 'On-screen buttons', on: !!G.prefs.dpad, help: 'Arrows and A B C on the screen. Taps work without.' },
-        G.speech.supported() ? { id: 'speak', label: 'Speaking (mic)', on: G.prefs.mic !== false, help: (G.mic.errors.length ? 'Last mic problem: ' + G.mic.errors[G.mic.errors.length - 1].error + '. ' : '') + 'Say answers out loud for bonus stars. Taps always work.' }
+        G.speech.supported() ? { id: 'speak', label: 'Speaking (mic)', on: G.prefs.mic !== false, help: (G.mic.errors.length ? 'Last mic problem: ' + G.mic.errors[G.mic.errors.length - 1].error + '. ' : '') + 'Saying a word out loud grows its card the most. Taps always work.' }
           : { id: 'speak', label: 'Speaking (mic)', right: 'not available', off: true, help: 'No speech recognition here. iPad: Safari + Dictation on.' },
         { id: 'mic', label: 'Microphone test', right: mic ? '>' : 'not available', off: !mic, help: mic ? 'Does speech recognition hear Spanish words?' : 'The microphone test is not in this version.' },
         { id: 'help', label: 'Controls and tips', right: '>', help: 'The keys, and how the game teaches.' },

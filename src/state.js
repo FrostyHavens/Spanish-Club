@@ -58,8 +58,8 @@
   // (tests and tools) make a word gold at once; true if it wasn't
   S.learn = function (id) { const r = WM().rec(id, true); if (!r || r.st >= 3) return false; if (r.st < 1) WM().meet(id, 'learn'); r.st = 3; r.learned = true; r.s3 = WM().day(); S.autosave(); if (G.vocabLog) G.vlog('learned', id); return true; };
   S.practiced = (id, firstTry) => (firstTry ? WM().answerRight(id, { firstTry: true }) : WM().answerWrong(id));
-  // said out loud with the mic (mic.js): a bonus star, counted in stars; S.micStars() is the speaking stars so far
-  S.said = function (id) { const w = WM().rec(id, true); if (!w) return; w.said = (w.said | 0) + 1; WM().encounter(id); G.state.stars++; S.autosave(); if (G.vocabLog) G.vlog('said', id, { via: G.top() && G.top().constructor.name }); };
+  // said out loud with the mic (mic.js): its card grows the most (cards.js); still counted in stars (for the diploma); S.micStars() is the speaking stars so far
+  S.said = function (id) { const w = WM().rec(id, true); if (!w) return; w.said = (w.said | 0) + 1; WM().encounter(id); G.state.stars++; if (G.cards) G.cards.grow(id, 'say'); S.autosave(); if (G.vocabLog) G.vlog('said', id, { via: G.top() && G.top().constructor.name }); };
   S.saidCount = id => (G.state.words[id] && G.state.words[id].said) | 0;
   S.micStars = (s = G.state) => Object.keys(s.words).reduce((n, id) => n + ((s.words[id] && s.words[id].said) | 0), 0);
   // 0..3 stars per word: its stage (known 1, remembered 2, solid 3)

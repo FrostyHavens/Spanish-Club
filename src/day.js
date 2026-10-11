@@ -2,7 +2,7 @@
 // G.sessionTime counts the seconds of play since this game was started or opened (it is never saved). After
 // G.day.SUNSET_AT the town warms to a sunset, its windows light up and a moon bubble floats over the home door.
 // Going home then plays the evening: Mamá's "¡Buenas noches!", the "Hoy" card (the words met or grown today, as
-// pictures, and the stars earned today), the night sky, a sunrise and Mamá's "¡Buenos días!"; the game is saved
+// their growing word cards), the night sky, a sunrise and Mamá's "¡Buenos días!"; the game is saved
 // and the clock starts again. Nothing is forced: staying out to play changes nothing.
 // "Today" is what changed since the session began (a snapshot of the words' stages and the stars), so the save
 // format doesn't change. G.debug.sunsetAt (seconds) brings the sunset sooner, for tests and curious grown-ups.
@@ -137,8 +137,8 @@
     if (G.st.autosave) G.st.autosave();
   };
 
-  // ---------- "Hoy": today's words, as pictures, and today's stars ----------
-  // Pictures pop in one by one, each said aloud; then the stars. Tap a picture (or left / right) to hear it
+  // ---------- "Hoy": today's words, as their growing cards (cards.js) ----------
+  // Cards pop in one by one, each said aloud (no stars: the plants on the cards show what grew). Tap a card (or left / right) to hear it
   // again; a tap anywhere else, A or B goes on. A tap while they're still coming shows them all at once.
   function star(ctx, x, y, r) { // a gold star centred on x, y
     ctx.beginPath();
@@ -151,22 +151,23 @@
     constructor(w) {
       G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; this.sel = -1; this.shown = 0; this.wait = 0; this.popT = [];
       const d = DY.today(); this.words = d.words; this.stars = d.stars; this.said = Math.min(d.said, d.stars); this.starsShown = 0; this.starT = [];
-      const n = this.words.length, big = n <= 10;
-      this.L = { big, s: big ? 32 : 16, step: big ? 44 : 24, per: big ? 5 : 10, gap: big ? 12 : 8, rows: Math.ceil(n / (big ? 5 : 10)) };
+      // the words' cards (cards.js), as big as fit: up to 6 in a row, then 8, then 11
+      const n = this.words.length, sc = n <= 6 ? 0.8 : n <= 16 ? 0.6 : 0.42, per = n <= 6 ? 6 : n <= 16 ? 8 : 11;
+      this.L = { sc, w: Math.round(40 * sc), s: Math.round(82 * sc), step: Math.round(40 * sc) + (n <= 6 ? 6 : 4), per, gap: 4, rows: Math.ceil(n / per) };
     }
     onEnter() { G.audio.sfx('buff'); }
-    nStars() { return Math.min(this.stars, 10); }
-    // the card, sized to what it holds: the title, the pictures (or your face), the word said, the stars
+    nStars() { return 0; } // (no stars for the child any more: today's cards show what grew; this.stars is still counted)
+    // the card, sized to what it holds: the title, today's cards (or your face), the word said
     box() {
-      const L = this.L, pics = this.words.length ? L.rows * (L.s + L.gap) : 58, h = 34 + pics + 22 + (this.stars ? 28 : 0) + 6;
-      return { x: 44, y: Math.round((G.H - h) / 2), w: G.W - 88, h, pics };
+      const L = this.L, pics = this.words.length ? L.rows * (L.s + L.gap) : 58, h = 34 + pics + 22 + 6;
+      return { x: 32, y: Math.round((G.H - h) / 2), w: G.W - 64, h, pics };
     }
-    // tap areas (shared with draw): one per picture
+    // tap areas (shared with draw): one per card
     cells() {
       const L = this.L, n = this.words.length, b = this.box();
       return this.words.map((id, k) => {
-        const r = Math.floor(k / L.per), c = k % L.per, inRow = Math.min(L.per, n - r * L.per), x0 = Math.round(G.W / 2 - (inRow * L.step - (L.step - L.s)) / 2);
-        return { x: x0 + c * L.step, y: b.y + 38 + r * (L.s + L.gap), w: L.s, h: L.s, s: L.s / 16 };
+        const r = Math.floor(k / L.per), c = k % L.per, inRow = Math.min(L.per, n - r * L.per), x0 = Math.round(G.W / 2 - (inRow * L.step - (L.step - L.w)) / 2);
+        return { x: x0 + c * L.step, y: b.y + 36 + r * (L.s + L.gap), w: L.w, h: L.s, s: L.sc };
       });
     }
     revealed() { return this.shown >= this.words.length && this.starsShown >= this.nStars(); }
@@ -213,7 +214,7 @@
       this.cells().forEach((r, k) => {
         if (k >= this.shown) return;
         const sel = k === this.sel, a = Math.min(1, (this.t - this.popT[k]) / 8), hop = Math.round((1 - a) * 6) + (sel ? Math.round(Math.abs(Math.sin(this.t / 7)) * -2) : 0);
-        ctx.globalAlpha = a; G.drawIcon16(ctx, this.words[k], r.x, r.y + dy + hop, r.s, sel ? 'sel' : 'card'); ctx.globalAlpha = 1;
+        ctx.save(); ctx.globalAlpha = a; G.cards.drawCard(ctx, this.words[k], r.x, r.y + dy + hop, { s: r.s, hi: sel }); ctx.restore();
       });
       // the word just said (or picked), big and gold
       const ly = y + 34 + b.pics + 4;

@@ -369,9 +369,18 @@
   };
   // someone hands you the notebook (Mamá): open it at a page (when it has a word you've met). Pages are no longer
   // found: a word is written in when it's met, and the sparkles on the map are page puzzles (intro.js)
+  // Before the book has opened (cards.js: early on, just cards), someone handing it over shows your word cards instead: the
+  // page's met words (else the newest) pop up one by one and fly into the deck in the corner.
   G.findPage = function* (id) {
     G.audio.jingle('item');
     G.state.flags.notebook = true; G.st.autosave();
+    if (G.cards && !G.cards.bookOpen()) {
+      const pw = ((D().pages[id] || {}).words || []).filter(w => G.words.met(w));
+      const ids = (pw.length ? pw : G.words.list(1)).slice(0, 4);
+      ids.forEach((w, k) => G.cards.show(w, { delay: k * 16, x: G.W / 2 + (k - (ids.length - 1) / 2) * 46, y: 150 }));
+      yield 40 + ids.length * 16;
+      return;
+    }
     G.toast('\u0005 ¡Tu cuaderno! \u0005', 90);
     yield 30;
     yield G.notebook(id);

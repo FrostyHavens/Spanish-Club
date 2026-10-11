@@ -1,7 +1,7 @@
 // Juice test (src/fx.js and the answer / word-card / dialogue effects in learn.js and ui.js):
 // tap ripples (even on a tap a scene eats), dust when starting to walk, the faster typewriter with tap-to-finish,
-// wrong picks greying out in place with a boop, the right pick popping with a burst and a chime, the first-try star
-// flying to the corner counter, the "¡Palabra nueva!" card, badge confetti, keys still working, and the pool cap.
+// wrong picks greying out in place with a boop, the right pick popping with a burst and a chime, the word's card
+// growing and flying into the deck (cards.js; no star counter), the "¡Palabra nueva!" card, badge confetti, keys still working, and the pool cap.
 //   NODE_PATH=$(npm root -g) node tools/test-fx.js [screenshot dir]
 'use strict';
 const { open, check, run, G_W } = require('./harness');
@@ -93,25 +93,26 @@ async function touchRun(browser) {
     check('fx: a wrong first try earns no star', await g.ev(() => window.__r === false && G.state.stars === 0));
     await g.fieldIdle('villa');
 
-    // the first try: a star flies to the corner and the counter there counts it
+    // the first try: no star for the child any more: the word's card pops up by the card picked, grows and flies into
+    // the deck in the corner (cards.js); the star is still counted inside (the diploma)
     // (adiós already known: its picture, pick its word -> remembered, and the gold card)
     await g.ev(() => { G.words.meet('adios', 'test'); G.words.rec('adios').st = 2; });
+    await g.until(() => !G.cards.busy(), null, 'quiet', 8000);
     await ask(g, { prompt: '¿...?', show: 'adios', layout: 'cards', choices: cards('hola', 'adios', 'gracias'), answer: 1 });
     await choiceUp(g);
     await g.ev(() => { window.__sfx.length = 0; });
     await g.tapRect(await g.ev(() => G.top().rects()[1]));
-    check('fx: a first try sends a star flying', await g.ev(() => G.fx.live('fly') === 1));
-    await g.frames(4); await still(g, 'star_pop');
-    await g.frames(16); await still(g, 'star_flying');
-    await g.until(() => G.fx.counterShown(), null, 'the star to land');
-    check('fx: the star lands in the counter (with a ding) and counts', await heard(g, 'star') && await g.ev(() => G.state.stars === 1 && G.fx.live('fly') === 0));
-    await g.frames(6); await still(g, 'star_counter');
+    await g.until(() => G.cards.live() > 0, null, 'its card to pop', 3000);
+    check('fx: a first try pops the word\'s card (no flying star)', await g.ev(() => G.cards.list()[0].id === 'adios' && G.fx.live('fly') === 0));
+    await g.frames(4); await still(g, 'card_pop');
+    await g.frames(24); await still(g, 'card_grown');
     await g.until(() => G.top().constructor.name === 'WordCard' && G.top().t > 20, null, 'the word card');
     await g.tap(150, 200);
     await g.until(() => window.__r !== null, null, 'the question to finish');
     check('fx: G.ask still reports the first try', await g.ev(() => window.__r === true));
+    await g.until(() => G.cards.live() === 0, null, 'the card to land', 8000);
+    check('fx: the card lands in the deck (a soft flick); the star is still counted, never shown', await heard(g, 'deck') && await g.ev(() => G.state.stars === 1 && !G.fx.counterShown()));
     await g.fieldIdle('villa');
-    check('fx: the counter steps aside when the map is free (its menu button lives there)', await g.until(() => !G.fx.counterShown(), null, 'the counter to fade', 3000).then(() => true));
 
     // a list question, wrong then right (an already-known word: no word card)
     await ask(g, { prompt: '¿[adios]?', layout: 'list', choices: cards('hola', 'gracias', 'adios'), answer: 2, learn: 'adios' });
@@ -182,7 +183,7 @@ async function keyboardRun(browser) {
 
     // the pool is capped, and a flying star survives a flood of bursts
     const r = await g.ev(() => {
-      G.fx.clear(); G.fx.flyStar(160, 150);
+      G.fx.clear(); G.fx.realStar(160, 150);
       for (let i = 0; i < 60; i++) G.fx.burst(40 + i * 4, 100);
       const live = G.fx.live(), fly = G.fx.live('fly'), t0 = performance.now();
       for (let i = 0; i < 100; i++) { G.fx.step(); G.fx.draw(G.ctx); }

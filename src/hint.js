@@ -5,7 +5,7 @@
 //     Someone off screen gets the hand at the screen's edge, pointing the way, with a little "!" bubble;
 //   on a line of dialogue that's waiting (~4 s): the box ("tap to go on"), or the Z key for keyboard players;
 //     the same below a card that a tap closes (a new word, a badge, a new errand, the diploma);
-//   in the notebook (~6 s): its close button; a scene with hintXY() (the "Hoy" card): that spot.
+//   in the notebook or the deck of word cards (~6 s): its close button; a scene with hintXY() (the "Hoy" card): that spot.
 // Never on a question: the hand would give the answer away.
 // Any key or touch hides it at once. It only draws (core.js calls step and draw), so it never takes input.
 // Keyboard players (no touch screen, or a key pressed last) also get a one-time strip of the keys once Mamá's
@@ -52,7 +52,7 @@
     if (s.hintXY) { const p = s.hintXY(); return p && place(p[0], p[1], true); }
     const name = s.constructor && s.constructor.name;
     if (name === 'TextBox' && !(s.opts && s.opts.auto) && s.lines && s.shown >= s.chars(0, s.scroll + 3)) return place(s.boxX + s.boxW - 11, s.boxY() + 51, true);
-    if (name === 'Notebook' && s.closeXY) { const [x, y] = s.closeXY(); return place(x + 10, y + 12); }
+    if ((name === 'Notebook' || name === 'Deck') && s.closeXY) { const [x, y] = s.closeXY(); return place(x + 10, y + 12); }
     if (name === 'PagePuzzle' && s.closeXY) return null; // a page puzzle: never point at an answer
     if (TAP_ON[name]) return place(G.W / 2, G.H - 32, true); // a tap anywhere goes on: below the card
     return null;
@@ -116,6 +116,7 @@
       G.text(ctx, '!', a.x + bx + 4, a.y + by + 3, '#c02020', null);
     }
   }
+  H.hand = hand; // (demo.js draws its ghost hand with it)
   H.draw = function (ctx) {
     if (strip > 0) drawStrip(ctx);
     const a = H.at; if (!a || G.fade.a > 0) return;

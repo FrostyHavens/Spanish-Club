@@ -121,7 +121,18 @@ async function touchRun(browser) {
     check('ipad: the menu button opens the menu and doesn\'t walk', await g.ev(b => !G.field.route && G.field.player.x === b[0] && G.field.player.y === b[1], before));
     await g.frames(4); await g.shot('menu');
     const tapIcon = async k => g.tapRect(await g.ev(k => G.top().rect(k), k));
-    await g.ev(() => G.words.meet('uno', 'test')); // a second topic met: a second page
+    check('ipad: early on the kid menu is pictures, no words: the word cards and the album (no book yet, no Misiones)', await g.ev(() => G.top().tiles().join() === 'cards,album'));
+    await tapIcon('cards');
+    await g.until(() => G.top().constructor.name === 'Deck' && G.top().t > 8, null, 'the deck of word cards');
+    await g.ev(() => { window.__said = window.__speak.length; });
+    await g.tapRect(await g.ev(() => G.top().cardRect(0)));
+    check('ipad: the deck shows the cards met, newest first; tapping one says it', await g.ev(() => G.top().ids.length === G.words.count(1) && G.top().hop[G.top().ids[0]] != null && window.__speak.length > window.__said));
+    await g.shot('deck');
+    await g.tapBtn(await g.ev(() => G.top().closeXY()));
+    await g.until(() => G.top().constructor.name === 'FieldMenu', null, 'back to the menu');
+    await g.ev(() => { G.words.meet('uno', 'test'); G.state.flags.book = true; }); // (the book opens later, cards.js BOOK_AT; a second topic met: a second page)
+    await g.frames(2);
+    check('ipad: once the book has opened it sits between the cards and the album', await g.ev(() => G.top().tiles().join() === 'cards,book,album'));
     await tapIcon('book');
     await g.until(() => G.top().constructor.name === 'Notebook', null, 'the notebook');
     await g.tapBtn(await g.ev(() => G.top().nextXY()));
@@ -132,7 +143,6 @@ async function touchRun(browser) {
     await g.shot('notebook_tapped');
     await g.tapBtn(await g.ev(() => G.top().closeXY()));
     await g.until(() => G.top().constructor.name === 'FieldMenu', null, 'back to the menu');
-    check('ipad: the kid menu is two pictures, no words: notebook and album (Misiones is for grown-ups)', await g.ev(() => G.top().tiles().join() === 'book,album'));
     await g.tap(G_W - 16, 16); // the close button sits where the menu button was
     await g.fieldIdle('villa');
     check('ipad: menu closed by its close button', true); // the grown-ups menu (was Opciones) is tested in tools/test-saves.js

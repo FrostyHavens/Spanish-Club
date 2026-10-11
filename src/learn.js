@@ -4,7 +4,6 @@
 'use strict';
 (function () {
   const D = () => G.data, S = () => G.st;
-  const STAR = '\u0005';
 
   // ---------- "¡Palabra de oro!" card: a word just remembered (stage 3, gold) ----------
   // A big moment: the room dims, rays turn, the card springs open (overshooting a little), confetti pops from its
@@ -58,7 +57,7 @@
       ctx.globalAlpha = Math.min(1, this.t / 4);
       if (s !== 1) { ctx.translate(cx, cy); ctx.scale(s, s); ctx.translate(-cx, -cy); }
       G.win(ctx, x, y, b.w, b.h);
-      G.textC(ctx, '¡' + STAR + ' Palabra de oro ' + STAR + '!', cx, y + 9, '#f8e060');
+      G.textC(ctx, '¡Palabra de oro!', cx, y + 9, '#f8e060');
       // the picture hops, squashing a little as it lands, over a shadow that shrinks as it rises
       const ph = this.t > 16 ? ((this.t - 16) % 34) / 34 : 0, hop = Math.round(Math.sin(ph * Math.PI) * 7), sq = this.t > 16 && hop === 0 ? 1 : 0;
       const pw = 48 + sq * 4, pht = 48 - sq * 3, px = cx - pw / 2, py = y + 26 + (48 - pht) - hop;
@@ -67,6 +66,7 @@
       ctx.fillStyle = '#8898e0'; ctx.fillRect(px - 2, py - 2, pw + 4, pht + 4);
       ctx.fillStyle = '#f4ecd8'; ctx.fillRect(px - 1, py - 1, pw + 2, pht + 2);
       ctx.imageSmoothingEnabled = false; ctx.drawImage(G.icon(wd), px, py, pw, pht);
+      if (G.cards) { const id = this.ids[this.i]; G.cards.drawPlant(ctx, G.cards.pts(id), cx + 50, y + 80, { gold: G.words.stage(id) >= 4, s: 2 }); G.cards.drawPlant(ctx, G.cards.pts(id), cx - 50, y + 80, { gold: G.words.stage(id) >= 4, s: 2 }); } // its card has flowered (cards.js)
       G.bigText(ctx, wd.es, cx, y + 92, 2, '#f8d860');
       if (G.enVisible()) G.textC(ctx, wd.en, cx, y + 112, '#a8b0d8');
       ctx.restore();
@@ -113,8 +113,7 @@
     if (d === 'pic') return { label: null, icon: W, col };
     if (d === 'text') return { label, icon: null, col };
     if (st < 1 && !isAns) return { label: null, icon: W, col }; // an unmet word: its picture only
-    if (d === 'both') return { label, icon: W, col };
-    return { label, icon: st >= 3 ? null : W, col };
+    return { label, icon: W, col }; // ('both', or a free choice: the picture and the word, always together)
   }
   G.choiceView = view;
   class Choice {
@@ -129,6 +128,9 @@
       if (G.vocabLog) this.vlog(); // (the dev-only log, vocablog.js)
       G.richIds(opts.prompt || '').forEach(id => S().see(id)); // (met words met again; unmet ones stay unmet)
       this.ch.forEach(c => c.word && S().see(c.word));
+      // a question never shows its choices in its own prompt: every word in the prompt now has its picture beside it
+      // (ui.js), so a choice that is also in the prompt is heard, not shown (a speaker)
+      if (opts.answer != null) { const inP = G.richIds(opts.prompt || ''), add = this.ch.filter(c => c.word && S().stage(c.word) >= 1 && inP.indexOf(c.word) >= 0).map(c => c.word); if (add.length) this.o.mask = opts.mask = (opts.mask || []).concat(add); }
       this.lines = G.richLayout(opts.prompt || '', G.W - 96, { mask: opts.mask }); // room for the speaker (and back) buttons
       if (!opts.noVoice) G.speak(opts.prompt || ''); // (G.speak reads the [id] words as plain text)
     }
@@ -154,7 +156,7 @@
     cue(k) {
       const c = this.ch[k], v = this.view(k), id = c.word; if (!id) return {};
       const its = []; this.lines.forEach(L => L.items.forEach(it => { if (it.id === id) its.push(it.look); }));
-      const pic = this.showId() === id || its.some(l => l === 'pic' || l === 'both'), txt = its.some(l => l === 'both' || l === 'text' || l === 'gold');
+      const pic = this.showId() === id || its.some(l => G.lookHasPic(l)), txt = its.some(l => l === 'both' || l === 'text' || l === 'gold');
       return { cued: (!!v.icon && pic) || (!!v.label && txt), show: this.showId() === id && !!v.icon, prompt: txt && !!v.label };
     }
     onEnter() { if (this.mic) this.mic.arm(); }
@@ -177,7 +179,7 @@
         const x0 = this.mic ? Math.min((G.W - tw) / 2, G.W - 54 - tw) : (G.W - tw) / 2; // (left of the mic)
         return vs.map((v, k) => ({ x: x0 + k * (cw + gap), y: y0, w: cw, h: v.label ? 78 : 62 }));
       }
-      const wd = Math.max(...vs.map(v => (v.label ? G.textWidth(v.label) : 0) + (v.icon ? 20 : 0))) + 34;
+      const wd = Math.max(...vs.map((v, k) => { const c = this.ch[k], lab = v.label || (c.word && D().words[c.word] ? c.label || G.baseForm(c.word) : ''); return (lab ? G.textWidth(lab) : 0) + (v.icon || (c.word && D().words[c.word]) ? 20 : 0); })) + 34; // (room for the picture and the word the right row shows once picked)
       const h = this.ch.length * 20 + 8, x = this.mic ? Math.min((G.W - wd) / 2, G.W - 50 - wd) : (G.W - wd) / 2, y = G.H - h - 10;
       return vs.map((v, k) => ({ x, y: y + 4 + k * 20, w: wd, h: 20 }));
     }
@@ -194,6 +196,7 @@
       }
       const x = r.x + r.w / 2, y = (this.cards ? r.y : R[0].y - 4) - 12; // just above the card (or the list)
       if (k === o.answer) { // resolved now; the scene stays up for the pop, then closes itself (see update)
+        if (G.cards) G.cards.at(x, y + 10); // its card pops up here and grows (cards.js)
         this.won = { k, t: 0, spoken: !!spoken }; this.w.resolve(k);
         G.audio.sfx('chime'); G.fx.burst(this.cards ? x : r.x + r.w - 14, r.y + r.h / 2);
         if (o.onRight) o.onRight(r, x, y, !!spoken);
@@ -234,7 +237,9 @@
       if (o.show) G.drawIcon16(ctx, o.show, G.W / 2 - 24, top + 8, 3, 'card');
       G.richDraw(ctx, this.lines, G.W / 2, top + 5 + (o.show ? 58 : 0), { center: true });
       if (o.en && G.enVisible()) G.enBox(ctx, o.en, top + ph + 1, true);
-      const vs = this.ch.map((c, k) => this.view(k)), R = this.rects(), won = this.won, wt = won ? won.t : 0;
+      const R = this.rects(), won = this.won, wt = won ? won.t : 0;
+      // the right card, once picked, shows its picture AND its word (they're seen together: docs/PLAYTEST_NOTES.md)
+      const vs = this.ch.map((c, k) => { const v = this.view(k), wd = c.word && D().words[c.word]; return won && won.k === k && wd ? Object.assign({}, v, { label: v.label || c.label || G.baseForm(c.word), icon: v.icon || wd, col: S().stage(c.word) >= 3 ? GOLD : BLUE }) : v; });
       const wob = k => { const m = this.miss; return m && m.k === k && m.t < 16 ? Math.round(Math.sin(m.t * 1.7) * 3 * (1 - m.t / 16)) : 0; }; // a wrong pick wobbles
       const grey = k => { const m = this.miss; return m && m.k === k && m.t < 8 ? m.t / 8 : 1; }; // ...and greys out quickly (0..1)
       const back = k => won && won.k !== k ? Math.min(0.6, wt / 10) : 0; // when the right one pops, the rest step back
@@ -253,7 +258,7 @@
           const ic = v.icon || (!v.label || !c.word ? D().words[c.word] || c.icon : null); // (a word-only card has no picture: read it, or say it)
           if (ic) {
             G.drawIcon16(ctx, ic, x + cw / 2 - 16, y0 + 12 - bob, 2, sel && !c.off ? 'sel' : 'card');
-            if (v.label) G.textC(ctx, v.label, x + cw / 2, y0 + 56 - bob, c.off ? '#a8acb8' : v.col);
+            if (v.label) G.textC(ctx, v.label, x + cw / 2, y0 + Math.min(56, h - 9) - bob, c.off ? '#a8acb8' : v.col);
           } else if (v.label) {
             const big = G.textWidth(v.label) * 2 <= cw - 6, col = c.off ? '#a8acb8' : v.col;
             if (big) G.bigText(ctx, v.label, x + cw / 2, y0 + 30 - bob, 2, col); else G.textC(ctx, v.label, x + cw / 2, y0 + 34 - bob, col);
@@ -322,7 +327,6 @@
       onRight(rect, x, y, sp) {
         spoken = sp;
         G.fx.say(sp ? '¡Bien dicho!' : PRAISE[G.r(PRAISE.length)], x, y, sp ? '#a8f0ff' : '#f8e060', true);
-        if (!tries && aid && !G.words.starToday(aid)) G.fx.flyStar(rect.x + rect.w / 2, rect.y + rect.h / 2, 0); // the word's star (one a day)
       },
     }));
     scene = wq.scene;

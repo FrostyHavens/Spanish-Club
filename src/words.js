@@ -162,6 +162,8 @@
       else { r.box = Math.min(5, Math.max(1, r.box) + 1); schedule(r, null, W.BOX_DAYS[r.box]); }
     }
     log('retrieval', id, { said: !!o.said || null, cued: cued || null, mode, first: first || null, st0, st: r.st, review: o.review || null, star: star || null });
+    // its card grows (cards.js): a pick, a page match (saying it grows it through G.st.said, mic.js)
+    if (G.cards && !o.said && !o.noGrow && st0 >= 1) G.cards.grow(id, mode === 'match' ? 'match' : 'pick', first ? {} : { add: 1 });
     save();
     return { stage: r.st, up: r.st > st0, star, gold: r.st >= 3 && st0 < 3 };
   };

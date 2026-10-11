@@ -1,11 +1,13 @@
-// ===== Speaking for bonus stars: the kids' mic button on questions and on the "¡Palabra nueva!" card =====
-// Speaking out loud is only ever a bonus: tapping always works, a miss costs nothing, and nothing is grammar-checked.
+// ===== Speaking: the kids' mic button on questions, on the gold word card, on the word bubble and Canelo's menu =====
+// Saying a word out loud is the best way to grow its card (cards.js: its plant grows most, with sound waves), but it is
+// never needed: tapping always works, a miss costs nothing, and nothing is grammar-checked.
 //   G.mic.on()                  mic buttons show: speech recognition here, the grown-ups' "Speaking (mic)" switch on
 //                               (G.prefs.mic, per device, on unless turned off) and not blocked this session
 //   G.mic.target(choice)        what a choice sounds like: its label plus every form of its word ('rojo / roja', ...)
 //                               and the word's `alt` forms (data.js, Round B: 'patito' for el pato)
 //   G.mic.best(targets, alts, prefer)  the index of the best PASSING target (G.speech.match), or -1; a tie goes to prefer
-//   G.mic.award(id, x, y)       a speaking star: words[id].said++, the speaking-star total and a star that flies from x, y
+//   G.mic.award(id, x, y)       said it: words[id].said++ (still counted as a speaking star, for the grown-ups and the
+//                               diploma), its card pops up at x, y and grows the most (cards.js)
 //   new G.MicBtn(scene, o)      the button. o: {rect() (its tap area, game px), ready() (may listen now),
 //                               heard(alternatives) (the scene decides: right, wrong or G.MicBtn#miss())}.
 //                               Scene calls: onEnter -> arm(), onExit -> off(), update -> if (mic.update()) return,
@@ -42,11 +44,11 @@
     return k;
   };
   M.award = function (id, x, y) {
+    if (G.cards) G.cards.at(x, y); // its card pops up here and grows the most (cards.js)
     G.st.said(id);
     G.audio.sfx('micstar');
     G.fx.ring(x, y, 26, '#70e0ff', 22);
     for (let i = 0; i < 3; i++) G.fx.twinkle(x + (Math.random() - 0.5) * 30, y + (Math.random() - 0.5) * 20);
-    G.fx.flyStar(x, y, 10, true);
   };
 
   // ---------- pictures: the mic, the ear, sound waves ----------
@@ -57,13 +59,16 @@
     micD: G.tinted(G.sprite('mic_glyph', MIC, { w: '#f8f8ff', g: '#c8d8ff' }), '#401020', 'mic_glyph'),
     ear: G.sprite('mic_ear', EAR, { o: '#5a2810', S: '#f8c8a0', s: '#e09878' }),
   });
-  function star(ctx, x, y, r) { // a gold star centred on x, y (like the Hoy card's)
-    ctx.beginPath();
-    for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, q = i % 2 ? r * 0.45 : r; ctx.lineTo(x + Math.cos(a) * q, y + Math.sin(a) * q); }
-    ctx.closePath(); ctx.lineJoin = 'round'; ctx.lineWidth = 2.5; ctx.strokeStyle = '#5a2c04'; ctx.stroke();
-    ctx.fillStyle = '#fff070'; ctx.fill();
-    ctx.save(); ctx.clip(); ctx.fillStyle = '#f8c020'; ctx.fillRect(x - r, y + r * 0.05, r * 2, r); ctx.restore();
-  }
+  // a small word card with a sprout, centred on x, y (r: about half its height): "said it, its card grew"
+  M.cardGlyph = function (ctx, x, y, r) {
+    const h = Math.max(8, Math.round(r * 2)), w = Math.round(h * 0.7), X = Math.round(x - w / 2), Y = Math.round(y - h / 2);
+    ctx.fillStyle = '#10102a'; ctx.fillRect(X - 1, Y - 1, w + 2, h + 2);
+    ctx.fillStyle = '#f0c030'; ctx.fillRect(X, Y, w, h); ctx.fillStyle = '#fff8e0'; ctx.fillRect(X + 1, Y + 1, w - 2, h - 2);
+    const cx = X + (w >> 1), by = Y + h - 2, sh = Math.max(3, Math.round(h * 0.45));
+    ctx.fillStyle = '#b0582c'; ctx.fillRect(cx - 2, by - 1, 5, 2);
+    ctx.fillStyle = '#3c9a3c'; ctx.fillRect(cx, by - sh, 1, sh);
+    ctx.fillStyle = '#58c048'; ctx.fillRect(cx - 2, by - sh + 1, 2, 1); ctx.fillRect(cx + 1, by - sh, 2, 1); ctx.fillRect(cx - 2, by - sh + 3, 2, 1);
+  };
   const disc = (ctx, x, y, r, c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); };
   // sound waves: n arcs on each side of x, y (a = 0..1 how far out they've gone)
   M.waves = function (ctx, x, y, r, col, n = 2, t = 0) {
@@ -148,8 +153,8 @@
       disc(ctx, x, cy, rad, rim);
       disc(ctx, x, cy, rad - 2, body);
       ctx.globalAlpha = 0.3; disc(ctx, x - rad * 0.3, cy - rad * 0.38, rad * 0.45, '#ffffff'); ctx.globalAlpha = 1;
-      if (this.done) { // said it: a gold star with sound waves
-        star(ctx, x, cy + 1, rad - 4);
+      if (this.done) { // said it: a little growing card with sound waves (cards.js)
+        M.cardGlyph(ctx, x, cy + 1, rad - 4);
         M.waves(ctx, x, cy, rad + 4, '#70e0ff', 2, this.t >> 1);
       } else if (this.sad && !L) { // didn't catch it: a listening ear
         ctx.drawImage(S.ear, x - 9, cy - 13, 18, 26);

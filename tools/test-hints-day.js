@@ -49,7 +49,7 @@ async function firstMinutes(browser) {
     check('ipad: a tap hides the hand at once', !(await hintAt(g)));
     await chapter1(g, false);
     const sc = await g.ev(() => window.__scenes);
-    check('ipad: chapter 1 has no controls card (the notebook comes with Canelo)', !sc.includes('KeyHint') && sc.includes('Notebook'), sc.join(','));
+    check('ipad: chapter 1 has no controls card, and no notebook (early on just word cards: cards.js)', !sc.includes('KeyHint') && !sc.includes('Notebook'), sc.join(','));
     check('ipad: no keyboard strip on a touch screen', !(await g.ev(() => G.hint.stripShowing())));
 
     // home, free to walk: after ~6 s the hand shows the door

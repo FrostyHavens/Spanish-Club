@@ -96,7 +96,7 @@ async function ipad(browser) {
     await g.until(() => window.__c.won, null, 'the spoken answer');
     check('speak: saying the right word picks it (as a first try)', await g.ev(() => window.__c.w.result === 1 && window.__c.won.spoken && window.__c.won.k === 1));
     check('speak: ...with a speaking star: words.hola.said = 1, micStars() = 1', await g.ev(() => G.state.words.hola.said === 1 && G.st.micStars() === 1 && G.st.saidCount('hola') === 1));
-    check('speak: ...its own sound and a star with sound waves flying up', await heard(g, 'micstar') && await heard(g, 'chime') && await g.ev(() => G.fx.live('fly') >= 1));
+    check('speak: ...its own sound, and its word card pops up (no flying star: cards.js)', await heard(g, 'micstar') && await heard(g, 'chime') && await g.until(() => G.cards.live() >= 1, null, 'its card', 3000).then(() => true) && await g.ev(() => G.fx.live('fly') === 0));
     check('speak: the audio comes back after listening', await g.ev(() => G.audio.master.gain.value > 0 && !G.speech.listening()));
     await g.frames(6); await still(g, 'mic_bonus_cards');
     await g.frames(14); await still(g, 'mic_bonus_fly');

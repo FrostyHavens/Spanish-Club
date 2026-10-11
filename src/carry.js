@@ -21,7 +21,8 @@
 // goes to whoever would love it today (or Canelo, or the ducks); empty-handed, today's next play, in an order that
 // changes every day: a game of fetch with the ball, an apple for Luna or Señor Gómez, a flower for Mamá, Rosa or Lucía
 // (a pink one), the bone for Canelo, a stick to throw, an egg for Rosa, Tomás's letter, bread from Marta for the ducks,
-// a notebook page puzzle that's ready. When everything is done, a game of fetch with Canelo is always there.
+// a notebook page puzzle that's ready. When everything is done: not endless fetch but, in turn, a trick for Canelo,
+// petting him, food or water for him, another round of hide-and-seek, the ball for Nico, fetch (C.more).
 // Every play is word-safe: nothing here introduces a word.
 //
 // API: G.carry.held() -> {id, col, n, it} (your free stack) or null; .at(f, x, y) (what lies on that tile: {ground|src,
@@ -154,7 +155,7 @@
     const o = Object.assign({}, a.col ? { col: a.col } : {}, a.ground && a.ground.gold ? { gold: true } : {});
     bag().add(a.id, o);
     addFly(f, it, { x: x * T + 12, y: y * T + 14 }, head(f), true);
-    if (W(a.id) && G.world) G.world.name(a.id, f.player.x * T + 12, f.player.y * T - 14, { noIntro: true, pic: pic(a.id, a.col) }); // its name, with its picture ("?" while unmet)
+    if (W(a.id) && G.world) G.world.name(a.id, f.player.x * T + 12, f.player.y * T - 14, { noIntro: true, pic: pic(a.id, a.col), grow: 'carry' }); // its name, with its picture ("?" while unmet); its card grows
     else for (let i = 0; i < 4; i++) G.fx.twinkle(x * T + 12 - Math.round(f.cam.x) + (Math.random() - 0.5) * 18, y * T + 8 - Math.round(f.cam.y) + (Math.random() - 0.5) * 12);
     G.st.autosave();
     return true;
@@ -190,6 +191,7 @@
     while (n.moving) yield 1;
     G.pet.place(f, n); yield 10;
     const what = C.DOG[h.id] || 'sniff', [sx, sy] = [n.x * T + 12 - Math.round(f.cam.x), n.y * T - Math.round(f.cam.y)];
+    if (what !== 'sniff' && G.cards && W(h.id)) G.cards.grow(h.id, 'give', { x: sx, y: sy }); // giving it to him grows its card (cards.js)
     if (what === 'fetch') { // thrown from your hands: he runs, picks it up and brings it back to you
       thrown = h.it;
       try { yield* G.pet.play('fetch', { item: { id: h.id, col: h.col } }); } finally { thrown = null; }
@@ -292,9 +294,31 @@
       let g = null; try { g = C.PLAYS[id](f); } catch (e) { if (!C.err) { C.err = 1; console.error(e); } }
       if (g) return g;
     }
+    return C.more(f, h);
+  };
+  // When the day's plays are all done: not endless fetch, but the next of these in turn (the one played least today
+  // first, ties in an order that turns each day): a trick for Canelo, petting him, water or a cookie for him, another
+  // round of hide-and-seek with Nico, a present (the ball for Nico), a game of fetch. Each counts in play.n when it's
+  // done (pet.js: truco, mimo, comida; seek.js: seek; giveDog: fetch).
+  C.MORE = ['truco', 'mimo', 'seek', 'comida', 'regalo', 'fetch'];
+  C.bump = k => { if (G.state) bump(k); };
+  C.played = k => (G.state ? st().play.n[k] | 0 : 0);
+  const MORE = {
+    truco: () => { const k = G.pet && G.pet.known ? G.pet.known() : []; return k.length ? { why: 'a trick for Canelo', dog: true, icon: k[(day() + C.played('truco')) % k.length] } : null; },
+    mimo: () => ({ why: 'pet Canelo', dog: true, icon: 'feliz' }),
+    comida: () => { const w = ['agua', 'galleta', 'hueso'].filter(id => G.words.met(id)); return w.length ? { why: 'food for Canelo', dog: true, icon: w[(day() + C.played('comida')) % w.length] } : null; },
+    seek: () => (G.seek && G.seek.again && G.seek.again() ? { why: 'hide-and-seek again', who: 'nico', icon: 'lupa' } : null),
+    regalo: f => { const w = C.likerFor({ id: 'pelota', col: 'azul' }); return w ? go('the ball for ' + w, nearest(f, g => g.id === 'pelota')) : null; },
+    fetch: (f, h) => (h && C.DOG[h.id] === 'fetch' ? { why: 'fetch', dog: true, icon: pic(h.id, h.col) } : go('fetch', nearest(f, g => C.DOG[g.id] === 'fetch'))),
+  };
+  C.more = function (f, h) {
     if (!fetchOk()) return null;
-    if (h && C.DOG[h.id] === 'fetch') return { why: 'fetch', dog: true, icon: pic(h.id, h.col) };
-    return go('fetch', nearest(f, g => C.DOG[g.id] === 'fetch')); // (always there: a game of fetch)
+    if (h) { // something in your hands: it's for Canelo, or put it down first (the hand demo shows how)
+      if (C.DOG[h.id]) return { why: C.DOG[h.id] === 'fetch' ? 'fetch' : 'Canelo: ' + h.id, dog: true, icon: pic(h.id, h.col) };
+    }
+    const k0 = day() % C.MORE.length, order = C.MORE.map((k, i) => ({ k, i: (i - k0 + C.MORE.length) % C.MORE.length })).sort((a, b) => C.played(a.k) - C.played(b.k) || a.i - b.i);
+    for (const { k } of order) { let g = null; try { g = MORE[k](f, h); } catch (e) { /* */ } if (g) return g; }
+    return null;
   };
 
   // ---------- drawing (field.js) ----------

@@ -2,7 +2,6 @@
 'use strict';
 (function () {
   class Blank { constructor() { this.tasks = new G.Tasks(); } update() { this.tasks.update(); } draw(ctx) { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, G.W, G.H); } }
-  const STAR = '\u0005';
 
   // ---------- Starting and continuing a game ----------
   // A new game in a slot: creator -> name -> home (the slot is filled once the name is chosen; backing out of
@@ -173,9 +172,9 @@
       ctx.fillStyle = '#000010'; ctx.fillRect(cx - 27, y + 9, 54, 54);
       G.drawPortrait(ctx, spec.portrait, cx - 26, y + 10, this.t + k * 50);
       G.textC(ctx, c.name, cx, y + 69, sel ? '#f8e060' : '#ffffff');
-      // words learned (the notebook) and stars
-      G.drawIcon(ctx, 'book', x + 10, y + 82); G.bigText(ctx, String(c.words), x + 56, y + 89, 2, '#ffffff');
-      G.bigText(ctx, STAR, x + 22, y + 113, 2, '#f8d030'); G.bigText(ctx, String(c.stars), x + 56, y + 113, 2, '#ffffff');
+      // the word cards (no stars for the child: cards.js)
+      if (G.cards) G.cards.drawDeck(ctx, x + 12, y + 86, { still: true, noCount: true }); else G.drawIcon(ctx, 'book', x + 10, y + 82);
+      G.bigText(ctx, String(c.words), x + 56, y + 93, 2, '#ffffff');
       // the trash can (grown-ups: hold it)
       const T = this.trashRect(k), tx = T.x + 4 + this.holds[k].wiggle(), ty = T.y + 4 - bob, on = this.trash && sel;
       ctx.fillStyle = on ? '#f8e060' : '#000010'; ctx.fillRect(tx - 1, ty - 1, 18, 18);
