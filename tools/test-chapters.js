@@ -111,7 +111,7 @@ async function day1(browser) {
     await g.ev(() => G.goto('casa', 4, 4, 'up')); await g.fieldIdle('casa'); await g.frames(10);
     const why = await g.ev(() => G.chapters.gate('c3'));
     check('day1: chapter 3 waits (a morning chapter, and the budget is spent)', why === 'morning' || why === 'budget', why);
-    check('day1: Mamá shows the sun-coming-up bubble', await g.ev(() => { const a = G.field.npc('mama').alert(); return !!a && a.icon === 'manana' && a.wait; }));
+    check('day1: Mamá is asleep under a moon ("z z": her chapter opens after the night)', await g.ev(() => { const a = G.field.npc('mama').alert(); return !!a && a.icon === 'dormir' && a.sleep && a.wait; }));
     await g.shot('c3_tomorrow_bubble');
     await g.tapTile(3, 2); await g.until(() => G.top().constructor.name === 'TextBox', null, 'Mamá');
     check('day1: talking to her: "¡Mañana!" (and nothing starts)', await g.ev(() => /Mañana/.test(G.top().pages[0].t)));

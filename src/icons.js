@@ -307,7 +307,8 @@
     dormir(p) { // asleep until tomorrow: a pillow, a crescent moon and "z z" (a chapter that opens after the night)
       p.ell(8, 13, 7, 2.6, '#f4ecd8'); p.shade(8, 13, 7, '#d8ccb0');
       p.disc(5.5, 6, 4.2, '#f8e070'); p.shade(5.5, 6, 4.2, '#e8c040'); p.disc(7.6, 4.6, 3.6, null);
-      for (const [x, y] of [[10, 2], [13, 6]]) { p.rect(x, y, 3, 1, '#c8d8ff'); p.put(x + 1, y + 1, '#c8d8ff'); p.rect(x, y + 2, 3, 1, '#c8d8ff'); }
+      p.rect(10, 1, 5, 1, '#ffffff'); p.put(13, 2, '#ffffff'); p.put(12, 3, '#ffffff'); p.put(11, 4, '#ffffff'); p.rect(10, 5, 5, 1, '#ffffff'); // a big "Z"
+      p.rect(13, 8, 3, 1, '#c8d8ff'); p.put(14, 9, '#c8d8ff'); p.rect(13, 10, 3, 1, '#c8d8ff');                                         // and a little one
     },
     huella(p) { // a paw print on the ground
       p.ell(8, 11, 3.6, 3, '#6a4020'); [[3.6, 6.8], [6.6, 4.6], [9.6, 4.6], [12.4, 6.8]].forEach(([x, y]) => p.ell(x, y, 1.5, 1.8, '#6a4020'));

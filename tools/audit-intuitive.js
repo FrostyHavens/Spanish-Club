@@ -33,15 +33,15 @@ const LIMIT = 45; // game seconds of looking before the moment counts as stuck (
     });
     const bot = new NaiveBot(g);
     let day = 1, stuckHere = 0;
-    for (let step = 0; step < 400; step++) {
+    for (let step = 0; step < 2500; step++) {
       await settle(g, 'audit step ' + step);
-      const st = await g.ev(() => ({ day: G.words.day(), map: G.field.mapId, ch: G.chapters.current(), next: G.chapters.next(), gate: G.chapters.next() ? G.chapters.gate(G.chapters.next()) : null, beat: G.chapters.current() ? G.state.ch.step[G.chapters.current()] | 0 : null, done: Object.keys(G.state.quests).filter(k => G.state.quests[k] === 'done'), line: (window.__lines || []).slice(-1)[0] || null, over: G.day.over() }));
+      const st = await g.ev(() => ({ day: G.words.day(), map: G.field.mapId, ch: G.chapters.current(), next: G.chapters.next(), gate: G.chapters.next() ? G.chapters.gate(G.chapters.next()) : null, beat: G.chapters.current() ? G.state.ch.step[G.chapters.current()] | 0 : null, done: Object.keys(G.state.quests).filter(k => G.state.quests[k] === 'done'), line: (window.__lines || []).slice(-1)[0] || null, over: G.day.over(), guide: (G.guide.goal(G.field) || {}).why || null, t: Math.round(G.sessionTime) }));
       if (st.day > DAYS) break;
       const moment = (st.ch ? st.ch + ' beat ' + st.beat : 'between chapters (' + (st.next ? st.next + ': ' + (st.gate || 'open') : 'none') + ')') + ' on ' + st.map;
       const pic = await shot('free');
       const goal = await nextTap(g);
       const r = await bot.free(goal ? LIMIT : 40);
-      const rec = { day: st.day, moment, goal: goal ? goal.why : null, cue: r.cue === 'scene' ? 'by itself' : r.cue, what: r.what || null, sec: +r.sec.toFixed(1), idle: +r.idleSec.toFixed(1), wander: +r.wanderSec.toFixed(1), wanders: r.wanders, line: st.line, stuck: !!r.stuck, done: st.done.join(' ') };
+      const rec = { day: st.day, t: st.t, moment, goal: goal ? goal.why : null, guide: st.guide, sunset: st.over, cue: r.cue === 'scene' ? 'by itself' : r.cue, what: r.what || null, picked: !!r.picked, sec: +r.sec.toFixed(1), idle: +r.idleSec.toFixed(1), wander: +r.wanderSec.toFixed(1), wanders: r.wanders, line: st.line, stuck: !!r.stuck, done: st.done.join(' ') };
       const lost = r.idleSec + r.wanderSec;
       if (lost >= 4 || r.stuck) rec.shot = pic; else fs.unlinkSync(path.join(dir, pic));
       log.push(rec);
@@ -74,7 +74,10 @@ const LIMIT = 45; // game seconds of looking before the moment counts as stuck (
     }
   } catch (e) { console.log('AUDIT ERROR: ' + (e.stack || e.message)); }
   finally {
-    const sum = { free: log.length, stuck: log.filter(r => r.stuck).length, lostSec: +log.reduce((a, r) => a + r.idle + r.wander, 0).toFixed(1), totalSec: +log.reduce((a, r) => a + r.sec, 0).toFixed(1), byCue: {} };
+    const lost = L => +L.reduce((a, r) => a + r.idle + r.wander, 0).toFixed(1);
+    const sum = { free: log.length, stuck: log.filter(r => r.stuck).length, lostSec: lost(log), totalSec: +log.reduce((a, r) => a + r.sec, 0).toFixed(1), byCue: {},
+      lostWithStory: lost(log.filter(r => r.goal)), lostNothingInStory: lost(log.filter(r => !r.goal)), lostNothingInStoryDaytime: lost(log.filter(r => !r.goal && !r.sunset)),
+      playMoments: log.filter(r => /^play:/.test(r.guide || '')).length, playSec: +log.filter(r => /^play:/.test(r.guide || '')).reduce((a, r) => a + r.sec, 0).toFixed(1) };
     for (const r of log) sum.byCue[r.cue || 'none'] = (sum.byCue[r.cue || 'none'] || 0) + 1;
     fs.writeFileSync(path.join(dir, 'audit-' + LABEL + '.json'), JSON.stringify({ sum, log }, null, 1));
     console.log('\nSUMMARY ' + JSON.stringify(sum) + ' (' + Math.round((Date.now() - t0) / 1000) + ' s wall)');

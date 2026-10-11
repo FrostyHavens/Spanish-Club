@@ -145,12 +145,53 @@ words only ("¡Al parque!"): the next beat's trigger is what the arrow points at
    (a picture bubble over the tile; a tap walks there and runs it; `quiet: true` draws no bubble, `nohint()` keeps the
    hint hand away). Open it with the chapter that teaches its words (`chDone('c11')`), finish it with `jobStar(f, id, x, y)`
    (once a day) and add it to `E.JOBS` / `E.JOB_ICON` for Misiones (in the grown-ups menu).
-2. Things to carry go in the bag: `G.errands.bag.add('carta', { q: 'c10', to: 'casa' })` / `take(...)`; things without
-   `q` can be given as presents (`G.hearts.LIKES`).
+2. Things to carry go in the bag, which is the child's hands (`src/carry.js`: held up over their head, shown in the
+   corner): `G.errands.bag.add('carta', { q: 'c10', to: 'casa' })` / `take(...)`. A chapter's things carry `q` (they
+   can't be put down or given away by a tap); things without `q` are the child's own: one kind at a time (a stack of up
+   to three), given as presents (`G.hearts.LIKES`) or to Canelo. Adding a free thing of another kind puts what the child
+   held down beside them (nothing is lost).
 3. The older errands (`D.quests` in `src/data.js`: the market, the picnic, the show...) never open now; they only show
    their badges in older games that earned them.
 
 (No saving code needed: the game saves itself after every conversation. Code that changes `G.state` outside one, say on a timer, calls `G.st.autosave()`, or `G.st.saveNow()` to write at once.) A character's `alert: () => ...` returns `true` for a "!" bubble, a word id to show its picture, or a goal like `[['manzana', 3]]` to show what they want.
+
+## A thing to pick up and carry (`src/carry.js`)
+Children asked for it ("I want to be able to pick up stuff"): things lie about, a tap walks you there and picks it up,
+you hold it up over your head, and you give it to Canelo or to someone by tapping them.
+- **Where things are**: an entry in `G.carry.SOURCES`:
+  ```js
+  { id: 'manzana1', map: 'villa', at: [12, 19], item: 'manzana', every: 150, tree: [12, 18] }, // back 150 s of play after it's picked
+  { id: 'hueso', map: 'casa', at: [6, 5], item: 'hueso', every: 'day' },                       // a new one every morning
+  { id: 'pelota', map: 'villa', at: [7, 19], item: 'pelota', col: 'azul', every: 60, unique: true }, // one ball: back when it's nowhere
+  { id: 'carta', map: 'villa', at: [21, 14], item: 'carta', every: 'day', when: () => G.chapters.done('c10') },
+  ```
+  `col` is a colour word (its picture is drawn in that colour); `hidden: true` when the tile itself shows it (the barn's
+  basket of apples); `tree` draws apples on that tree tile. Keep sources off chapter places, find-its, page sparkles,
+  side-job spots and hide-and-seek spots, on ground you can walk next to.
+- **The word**: picking it up says its name in the word bubble with its picture (`G.world.name`): a met word is
+  picture + word (a light encounter, the say-it-back mic), an unmet one its picture and "?" and is never met this way
+  (the budget is untouched). A thing with no word (the stick, `palo`) is a toy: give it a picture in `src/icons.js`
+  (`DRAW`) and nothing else. Never add a word just to make something carryable: words come with chapters.
+- **What Canelo does with it**: `G.carry.DOG[id]` = `'fetch'` (thrown from your hands, he brings it back), `'eat'`,
+  `'drink'`; anything else he sniffs and gives back. **Who likes it**: `G.hearts.LIKES` (their bubble shows it while you
+  hold it; they take it for a heart); anyone else looks at it and says who would love it, with that friend's face.
+- **Putting down**: a tap on yourself, or on the thing in the corner, puts it down in front of you; it stays there
+  (saved in `G.state.bag.ground`) until picked up again.
+- **A story step that is really "bring it"** is best a carry: put the chapter's thing in the hands
+  (`G.errands.bag.add('manzana', { q: 'c4' })`), give the person a `who:` beat with `bubble: 'manzana'` (their bubble
+  shows it, the guide's arrow goes to them), and keep the question in that beat (chapter 4: Don Pepe's apple for Rosa).
+
+## The day's play: never a dead end (`G.carry.plan`, `src/guide.js`)
+When the story has nothing for now (between chapters, today's new words used up, a chapter that opens in the morning or
+in the evening), the guide still points at something: favours, hide-and-seek, Canelo's "?", side jobs and presents
+first, then the day's play: what you hold goes to whoever would love it today (or Canelo, or the ducks); empty-handed,
+today's next play from `G.carry.ORDER` (fetch with the ball, an apple for Luna or Gómez, a flower for Mamá, Rosa or
+Lucía, the bone for Canelo, a stick, an egg for Rosa, Tomás's letter, bread from Marta for the ducks, a page puzzle), in
+an order that turns each day; when they're all done, a game of fetch with Canelo is always there. A new play is an entry
+in `G.carry.PLAYS` (`id: f => ({ why, map, at, icon } | { why, who } | null)`) and in `ORDER`. Every play must be
+word-safe (no new word, nothing that waits for a word that isn't met) and end in something a child enjoys (a heart, the
+dog's joy). The next chapter's giver meanwhile sleeps under a moon ("z z": after the night) or shows the moon alone
+(tonight); at sunset the arrow goes home, and at home to the bed (a tap on it is good night).
 
 ## A notebook page
 Add it to `C.pages` / `C.pageOrder` in `content/es/words.js` (its topic in `C.topics`), at most 9 words (10 for the numbers, drawn in four columns). A word is written in the notebook the moment it's met, and a topic's page shows once its first word is. To put a **page puzzle** in the world, place the page's sparkle in `C.pagePlaces` (`map: { 'x,y': 'pageId' }`): it shows once 4 of the page's words are known (stage 2) and were met in an earlier session; solving it (matching 4 pictures to their words) gives a star and counts as a review; it comes back on a later day when 2+ of its words are due again (`G.pages.ready(id)`).
@@ -220,6 +261,7 @@ Most play is on an iPad, so every screen works with taps as well as keys:
 - A screen that the test harness should simply close when it pops up mid-drive (like the pet menu) returns its close button from `closeXY()` and is listed in `Game.drive` in `tools/harness.js`.
 - Give the screen `hintXY()` returning `[x, y]` if a stuck child should be shown where to tap (the hand in `src/hint.js`). Never point at a right answer. On the map the hand follows the guide's goal (`src/guide.js`).
 - Children don't open menus to find out what to do: the kid's menu is only the notebook and the album, as pictures. Anything a child needs to do next belongs on the map (a bubble, the guide's arrow), not in a menu; overviews for grown-ups (Misiones) go in the grown-ups menu.
+- Never only words for "not now": a person whose thing comes later shows it (a moon bubble, "z z", the sleeping picture held up), and the guide points at something to do meanwhile.
 - Ripples, bursts and confetti come from `G.fx` (`src/fx.js`); they're drawn above every screen, so a screen doesn't draw its own.
 
 ## Language checklist

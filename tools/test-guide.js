@@ -201,7 +201,7 @@ async function naiveDay1(browser) {
       if (goal) check('naive: whenever there is something to do, the guide shows it (' + goal.why + ')', !!why, JSON.stringify(goal));
       else if (await g.ev(() => !G.chapters.current())) { if (!why || !/^play:/.test(why)) noPlay++; else play++; } // (nothing in the story now: the day's play)
       const r = await bot.free(goal ? 60 : 30);
-      if (r.idleSec + r.wanderSec > 0.5) lost.push((goal ? goal.why : 'nothing') + ': ' + (r.idleSec + r.wanderSec).toFixed(1) + 's');
+      if (r.idleSec + r.wanderSec > 0.5) lost.push((goal ? goal.why : 'nothing') + ' [guide ' + why + ', ' + (await g.ev(() => G.field.mapId + ' ' + G.field.player.x + ',' + G.field.player.y)) + ']: ' + (r.idleSec + r.wanderSec).toFixed(1) + 's');
       if (!goal) lostFree += r.idleSec + r.wanderSec;
       if (r.stuck && goal) check('naive: never stuck while there is a goal (' + goal.why + ')', false);
       if (r.stuck) { // nothing to do: the next chapter opens in a few minutes (the pacing): fast-forward
@@ -210,12 +210,13 @@ async function naiveDay1(browser) {
         await g.ev(() => { G.speedMul = 1; });
       }
     }
+    console.log('    time lost wandering or standing about: ' + (lost.join(', ') || 'none') + '; taps on cues: ' + bot.total.taps);
     check('naive: day 1, chapters 1 and 2 done by following only visible cues', await g.ev(() => G.chapters.done('c1') && G.chapters.done('c2')));
     check('naive: between chapters there was always something to play (' + play + ' play goals followed)', noPlay === 0 && play > 0, play + ' / ' + noPlay);
     check('naive: and next to no time with nothing to do (' + lostFree.toFixed(1) + ' s)', lostFree < 20, String(lostFree));
-    console.log('    time lost wandering or standing about: ' + (lost.join(', ') || 'none') + '; taps on cues: ' + bot.total.taps);
     check('naive: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
 }
 
-run('The guide: always a next thing to do, in sight', [['arrows, doors, choices, Canelo', arrows], ['never a dead end: play, asleep, sunset, bed', noDeadEnd], ['the kid menu', menu], ['a naive child plays day 1', naiveDay1]]);
+const ONLY = (process.env.ONLY || '').split(',').filter(Boolean); // (ONLY=naive,play to run some sections)
+run('The guide: always a next thing to do, in sight', [['arrows, doors, choices, Canelo', arrows], ['never a dead end: play, asleep, sunset, bed', noDeadEnd], ['the kid menu', menu], ['a naive child plays day 1', naiveDay1]].filter(([n]) => !ONLY.length || ONLY.some(o => n.includes(o))));
