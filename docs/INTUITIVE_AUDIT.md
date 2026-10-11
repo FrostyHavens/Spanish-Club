@@ -23,25 +23,31 @@ Every moment free on the map is logged with the game seconds until something sta
 wandering or standing about, what finally showed the way, and the last line said before it (what a child would have
 had to read). After 45 s with nothing it counts as **stuck** and the bot is walked to the goal like the test bot.
 
-`NODE_PATH=$(npm root -g) node tools/audit-intuitive.js [out dir] --label before|after` reruns it (about 35 minutes).
+`NODE_PATH=$(npm root -g) node tools/audit-intuitive.js [out dir] --label before|after` reruns it (20-35 minutes).
 
 ## The numbers
 | | before | after (the guide) |
 | --- | --- | --- |
-| moments free on the map, days 1-3 | 74 | AFTER_FREE |
-| ... stuck (45 s and nothing to tap) | 22 | AFTER_STUCK |
-| seconds wandering or standing about | 1690 | AFTER_LOST |
-| ... of them while the story had a next step | 993 | AFTER_LOST_GOAL |
-| ... of them between chapters (nothing to do at all) | 697 | AFTER_LOST_GAP |
-| a chapter step found in under 5 s | 6 of 24 | AFTER_FAST |
+| moments free on the map, days 1-3 | 74 | 60 |
+| ... stuck (45 s and nothing to tap) | 22 | 7 |
+| ... stuck while there was a next step | **17** | **0** |
+| seconds wandering or standing about | 1690 | 673 |
+| ... of them while there was a next step | **1262** | **14** |
+| ... of them with nothing to do at all (between chapters) | 428 | 659 |
+| next steps found in under 5 s | 3 of 20 | 16 of 23 |
 
-AFTER_NOTE
+With the guide, every next step of the story was found by following only what's on screen: no moment stuck while
+there was something to do, 14 s lost in all (the bot wandering before Canelo's "?" turned up). What's left is the
+time when there is **nothing to do**: the gaps between chapters. It looks larger after only because the bot now got
+through the chapters quickly enough to reach the end of day 3 (hide-and-seek, the ducks, then nothing), where before
+day 3's clock ran out in chapter 6. That is step 2 (below).
+![](audit-shots/a7-still-nothing-to-do.png)
 
 ## What a child would get stuck on (before), worst first
 1. **Listening games: "who says it?" with nothing that says "tap the cat".** Nico's sound game (chapter 2: *¡Miau!*,
    *¡Guau, guau!*; chapter 6: *¡Cuac!*) ends with a line and a speech bubble over Nico, then the map is free and the
    child is meant to tap the animal. Nothing on screen points anywhere (the hand never comes: it would give the answer
-   away). 1 m 30 s lost in chapter 2, **7 minutes** in chapter 6 (the duck is off screen).
+   away). 1 m 30 s lost in chapter 2, **8½ minutes** in chapter 6 (the duck is off screen).
    ![](audit-shots/b1-miau-who.png) ![](audit-shots/b2-cuac-who.png)
    **Worse:** during *¡Guau, guau!* (tap Canelo) the hand's fallback ("a door that leads to someone with something to
    do") found Canelo listed in the house and sent the child **in and out of the front door 12 times** (5 minutes).
@@ -49,7 +55,7 @@ AFTER_NOTE
 2. **Gaps between chapters: nothing to do at all.** The first time in town (chapter 2 waits a few minutes so no more
    than 5 new words fall in 5 minutes), after chapter 3 (the same), at the end of day 1 (chapter 3 is a morning chapter)
    and day 2 (the day's 6 new words are used up): the town is empty of bubbles. Only Canelo's "?" turns up now and then.
-   About 12 minutes over three days, ~40% of all the time lost. This is "ran out of things to do".
+   About 7 minutes over three days. This is "ran out of things to do".
    ![](audit-shots/b3-first-time-in-town.png) ![](audit-shots/b3-end-of-day-1.png)
 3. **The next person is off screen.** Sofía at the start of day 3 (stuck), Nico at the pond after "¡Los patos... por
    allá!", Marta in the bakery: the only pointer is the hand at the screen's edge, and only after 6 s of standing
@@ -97,8 +103,9 @@ worked out.
   never a bare "!".
 - **The kid's menu** is two pictures and no words: the notebook and the animal album (and the grown-ups' gear).
   **Misiones** moved to the grown-ups menu (*Story progress*).
-- **Spanish-only instructions**: every one listed above now has the arrow (or the choice arrows) on what it means, the
-  moment the line closes.
+- **Spanish-only instructions**: every one listed above that sends the child somewhere or asks them to tap something
+  now has the arrow (or the choice arrows) on what it means, the moment the line closes. *¡Hasta mañana!* and *¡Esta
+  noche!* (come back later) are still only words: they belong to step 2.
 
 ![](audit-shots/a1-edge-arrow.png) ![](audit-shots/a2-over-nico.png)
 ![](audit-shots/a3-choice.png) ![](audit-shots/a4-door.png)

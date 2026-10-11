@@ -14,7 +14,8 @@ series (next: never a dead end and picking things up; word cards that grow, pict
   the hand never came, as it would give the answer away) and Sofía's bushes (same), Sofía off screen on day 3 (only a
   hand at the screen's edge, after 6 s still), the hand sending the child in and out of the house during "¡Guau,
   guau!" (Canelo was the answer: the hand's door fallback found "Canelo" in the house), and the gaps between chapters
-  (nothing at all to do).
+  (nothing at all to do). Before: 17 moments stuck while there was a next step, 1262 s lost; with the guide: 0 and 14 s.
+  What's left is the time with nothing to do at all (step 2).
 - **The guide** (`src/guide.js`): while free to walk there is always one goal, most important first: the chapter's
   beat (a person, a place, an animal, a door, a find-it puzzle; the next chapter's giver; a review day's teacher) >
   home at sunset > a favour > Nico's hide-and-seek > Canelo's "?", Luna's palabra, Inés's pages, a side job, anyone
@@ -26,8 +27,9 @@ series (next: never a dead end and picking things up; word cards that grow, pict
   follows again as soon as you walk). The hint hand now taps on the guide's goal (and only on screen: off screen the
   edge arrow does it), which also ends the in-and-out door loop. Nothing to do (the next chapter opens tomorrow): no
   arrow.
-- **Bubbles**: a chapter's person shows the chapter's picture (Nico a cat, Sofía a ball, Don Pepe an apple), never a bare
-  "!".
+- **Bubbles**: a chapter's person shows the chapter's picture (`G.chapters.emblem`: Nico a cat, Sofía her red ball, Don
+  Pepe an apple), never a bare "!". A favour naming a place or an animal by its word only gets the arrow as a hint,
+  after ~10 s (the word is what's being remembered).
 - **The kid's menu** is two pictures, no words: the notebook and the animal album (and the grown-ups' gear).
   **Misiones** moved to the grown-ups menu (*Story progress*).
 - Tests: `tools/test-guide.js` (new: a goal whenever there's something to do, the arrow on and off screen, doors both

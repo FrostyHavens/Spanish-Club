@@ -167,13 +167,13 @@
   // where the arrow (or arrows) go on screen now
   function layout(f, g) {
     const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
-    const scr = p => { // (near the top of the screen: under it, pointing up)
+    const scr = (p, small) => { // (too near the top of the screen for the arrow: under it, pointing up)
       const tx = Math.round(p.x - cx), ty = Math.round(p.y - cy), y = ty - (p.lift || 20);
-      return y < 16 ? { x: tx, y: ty + 14, tx, ty, up: true } : { x: tx, y, tx, ty };
+      return y < (small ? 11 : 16) ? { x: tx, y: ty + 14, tx, ty, up: true } : { x: tx, y, tx, ty };
     };
     const on = s => s.tx >= 6 && s.tx <= G.W - 6 && s.ty >= 14 && s.ty <= G.H - 4;
     if (g.choice) {
-      const marks = g.pts.map(scr).filter(on);
+      const marks = g.pts.map(p => scr(p, true)).filter(on);
       if (marks.length) return { why: g.why, choice: true, marks, x: marks[0].x, y: marks[0].y, tx: marks[0].tx, ty: marks[0].ty };
     }
     // the nearest point (one goal), on screen: over it; off screen: at the edge
