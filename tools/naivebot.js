@@ -45,8 +45,9 @@ class NaiveBot {
   // the page is free to walk (no scene, no walk going on)
   isFree() { return this.g.ev(() => G.top() === G.field && !G.field.locked && G.fade.a === 0 && !G.field.player.moving && !G.field.route); }
   cues() { return this.g.ev(`(${CUES})()`); }
-  // the story moved on, or the day's play did (src/carry.js: a fetch, a present given, something picked up)
-  progress() { return this.g.ev(() => JSON.stringify([G.state.quests, G.state.ch && G.state.ch.step, G.state.finds && Object.keys(G.state.finds).map(k => G.state.finds[k].found), G.state.seek && G.state.seek.list && G.state.seek.list.map(h => h.found), G.field.mapId, G.state.bag && G.state.bag.play, G.state.bag && G.state.bag.items, G.state.hearts])); }
+  // the story moved on, or (between chapters) the day's play did (src/carry.js: a fetch, a present given, something
+  // picked up); during a chapter only the story counts, so a fun loop (throwing the ball at the dog) isn't progress
+  progress() { return this.g.ev(() => JSON.stringify([G.state.quests, G.state.ch && G.state.ch.step, G.state.finds && Object.keys(G.state.finds).map(k => G.state.finds[k].found), G.state.seek && G.state.seek.list && G.state.seek.list.map(h => h.found), G.field.mapId].concat(G.chapters.current() ? [] : [G.state.bag && G.state.bag.play, G.state.bag && G.state.bag.items, G.state.hearts]))); }
   sig() { return this.g.ev(() => JSON.stringify([G.state.quests, G.state.ch && G.state.ch.step, Object.keys(G.state.words).length, G.field.mapId, G.state.stars, G.state.seek && G.state.seek.list && G.state.seek.list.map(h => h.found), G.state.finds && Object.keys(G.state.finds).map(k => G.state.finds[k].found)])); }
   // what's in your hands and lying about (src/carry.js: picking something up is something happening, though no scene)
   hands() { return this.g.ev(() => JSON.stringify([G.state.bag && G.state.bag.items, G.state.bag && G.state.bag.ground && G.state.bag.ground.length])); }

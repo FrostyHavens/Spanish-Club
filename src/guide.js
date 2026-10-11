@@ -63,7 +63,7 @@
       const bubble = t => { const m = /^ch:[^:]+:(\d+)$/.exec(t.spot || ''), sp = m && spots[+m[1]]; return !!(sp && !sp.quiet && sp.icon); }; // (a place with a picture bubble: the arrow goes over it)
       const pts = ts.map(t => Object.assign({ x: t.x, y: t.y, lift: t.door ? 28 : t.npc ? 24 : t.cat || t.animal ? 14 : bubble(t) ? 42 : 14 }, t.npc ? { npc: here(f, t.npc) } : {}, t.door ? { door: true } : {}));
       const secret = ts.every(t => t.secret);
-      if (secret && pts.length === 1) addDecoys(f, pts); // (who says "¡miau!": the cat AND Canelo get an arrow)
+      if (secret && pts.length === 1 && (ts[0].cat || ts[0].animal || ts[0].npc)) addDecoys(f, pts); // (who says "¡miau!": the cat AND Canelo get an arrow; the last bush to look in is just that bush)
       return { why, pts, choice: secret };
     }
     if (b.who) {
