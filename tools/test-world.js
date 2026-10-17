@@ -227,9 +227,11 @@ async function album(browser) {
     await g.ev(() => G.album()); await g.until(() => G.top().constructor.name === 'Album', null, 'the album');
     await g.frames(10); await g.shot('album_villa');
     check('album: a tab per zone (and Amigos)', await g.ev(() => G.top().tabs().join() === 'villa,playa,bosque,juegos,abuelos,montana,amigos'));
+    await g.tapRect(await g.ev(() => G.top().tabRect(2)));
+    check('album: a zone\'s tab opens its page: numbered "?" entries for animals still to come', await g.ev(() => G.top().zone === 'bosque' && G.top().ids().length === 7 && G.top().ids().every(id => id === null)));
+    await g.frames(6); await g.shot('album_bosque');
     await g.tapRect(await g.ev(() => G.top().tabRect(1)));
-    check('album: a zone\'s tab opens its page: numbered "?" entries for animals still to come', await g.ev(() => G.top().zone === 'playa' && G.top().ids().length === 7 && G.top().ids().every(id => id === null)));
-    await g.frames(6); await g.shot('album_playa');
+    check('album: a built zone\'s tab (La playa): its animals as silhouettes with a hint', await g.ev(() => G.top().zone === 'playa' && G.top().ids().length === 7 && G.top().ids().every(Boolean)));
     // a zone complete: "¡Completo!"
     await g.tapRect(await g.ev(() => G.top().tabRect(0)));
     await g.ev(() => { G.animals.list().forEach(id => G.animals.meet(id)); G.top().checkZone(); });

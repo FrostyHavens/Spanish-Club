@@ -219,7 +219,7 @@
   const HERMIT_SHELLS = [{ at: [21, 10], pic: shellPic('azul'), right: false }, { at: [24, 9], pic: 'caracola', right: true }, { at: [20, 12], pic: shellPic('rosa'), right: false }];
   // Tere's castle today: {d, n: pail-fulls poured (0..3), flag, built: castles so far}; the pail in your hands: {full}
   const castle = () => { const c = st().castle; if (c.d !== day()) { c.d = day(); c.n = 0; c.flag = false; c.on = false; } return c; };
-  const pail = () => bag().list().find(it => it.id === 'cubeta' && it.q === 'castillo') || null;
+  const pail = () => bag().list().find(it => it.id === 'cubetaarena' && it.q === 'castillo') || null;
   const hermitOn = () => CH.done('playa1') && !st().hermit;
   const SIDE = [
     { id: 'fill', at: AT.fill, on: () => !!pail() && !pail().full, icon: () => 'cubetaplaya', run: fillPail },
@@ -250,9 +250,9 @@
     if (!met('castillo')) yield* G.intro.show('castillo', { who: 'tere', prompt: '¡Mi [castillo]!', en: 'My sandcastle!', known: othersFor('castillo', ['concha', 'mar', 'ola']) });
     else yield* quiz('tere', '¿Qué es?', 'She points at her old castle: what is it?', 'castillo', ['concha', 'arena', 'helado', 'ola'], { point: tile(15, 12) });
     yield* sayShow('tere', 'castillo', T('¡Otro [castillo]! ¿Me ayudas?', 'Another castle! Will you help me?'));
-    if (!met('cubeta')) yield* G.intro.show('cubeta', { who: 'tere', prompt: '¡Mi [cubeta]!', en: 'My pail!', known: othersFor('cubeta', ['castillo', 'concha', 'mar']) });
-    else yield* sayShow('tere', 'cubeta', T('¡La [cubeta]!', 'The pail!'));
-    const it = bag().add('cubeta', { q: 'castillo' }); it.full = false; c.on = true; G.st.autosave();
+    if (!met('cubetaarena')) yield* G.intro.show('cubetaarena', { who: 'tere', prompt: '¡Mi [cubetaarena]!', en: 'My pail!', known: othersFor('cubetaarena', ['castillo', 'concha', 'mar']) });
+    else yield* sayShow('tere', 'cubetaarena', T('¡La [cubetaarena]!', 'The pail!'));
+    const it = bag().add('cubetaarena', { q: 'castillo' }); it.full = false; c.on = true; G.st.autosave();
     const at = AT.fill; CH.point(at[0] * TL + 12, at[1] * TL);
     try { yield* sayShow('tere', met('mar') ? 'mar' : 'ola', T(met('mar') ? '¡Al [mar]!' : '¡Al agua!', 'To the water! Fill it with wet sand (tap the water\'s edge).')); } finally { CH.point(null); }
     return true;
@@ -262,7 +262,7 @@
     const [x, y] = AT.fill, wx = x * TL + 12, wy = y * TL + 10;
     G.audio.sfx('swing'); for (let i = 0; i < 10; i++) CK.puff('drop', wx + (Math.random() - 0.5) * 16, wy, { vy: -1.4 - Math.random(), vx: (Math.random() - 0.5) * 1.4, g: 0.12, life: 34 });
     yield 20; p.full = true; G.audio.sfx('chime'); G.st.autosave();
-    if (!met('arena')) yield* G.intro.show('arena', { who: 'tere', prompt: '¡[arena]! ¡Mucha [arena]!', en: 'Sand! Lots of wet sand!', known: othersFor('arena', ['cubeta', 'castillo', 'mar']) });
+    if (!met('arena')) yield* G.intro.show('arena', { who: 'tere', prompt: '¡[arena]! ¡Mucha [arena]!', en: 'Sand! Lots of wet sand!', known: othersFor('arena', ['cubetaarena', 'castillo', 'mar']) });
     else G.world.name('arena', f.player.x * TL + 12, f.player.y * TL - 14, { grow: 'carry' });
     yield 20;
   }
@@ -279,7 +279,7 @@
       try { yield* sayShow('tere', 'arena', T('¡Más [arena]!', 'More sand! Fill the pail again.')); } finally { CH.point(null); }
       return;
     }
-    bag().take('cubeta', { q: 'castillo' }); G.st.autosave();
+    bag().take('cubetaarena', { q: 'castillo' }); G.st.autosave();
     yield* sayShow('tere', 'castillo', T('¡Mi [castillo]! ¡Y ahora...!', 'My castle! And now...'));
     yield* flagOn(f);
   }
@@ -289,7 +289,7 @@
     c.flag = true; st().built = (st().built | 0) + 1; G.st.autosave();
     const [x, y] = AT.site; CK.sparkle(f, x, y, 8); G.audio.jingle('promote'); CK.confetti();
     yield 30;
-    yield* quiz('tere', '¿Qué es?', 'What did you build together?', 'castillo', ['concha', 'cubeta', 'helado', 'arena'], { point: tile(x, y) });
+    yield* quiz('tere', '¿Qué es?', 'What did you build together?', 'castillo', ['concha', 'cubetaarena', 'helado', 'arena'], { point: tile(x, y) });
     yield* sayShow('tere', 'castillo', T('¡[gracias:Gracias], {name}!', 'Thank you, {name}! Come build another one tomorrow!'));
   }
 
@@ -332,7 +332,7 @@
   function* nievesSide(f) {
     if (!hotWho() || hotDone()) return false;
     if (iceHeld() || bag().has('helado')) { yield* sayShow('nieves', { face: hotWho() }, T('¡Para ' + G.nameOf(hotWho()).replace(/^(Don|Doña) /, '') + '!', 'For ' + G.nameOf(hotWho()) + '! They are so hot.')); return true; }
-    yield* quiz('nieves', '¿Qué quieres?', 'What would you like? (an ice cream!)', 'helado', ['concha', 'sol', 'arena', 'cubeta'], { show: 'helado' });
+    yield* quiz('nieves', '¿Qué quieres?', 'What would you like? (an ice cream!)', 'helado', ['concha', 'elsol', 'arena', 'cubetaarena'], { show: 'helado' });
     bag().add('helado'); G.st.autosave();
     yield* sayShow('nieves', { face: hotWho() }, T('¡Para ' + G.nameOf(hotWho()).replace(/^(Don|Doña) /, '') + '! ¡Qué [caliente]!', 'Take it to ' + G.nameOf(hotWho()) + ': they are so hot!'));
     return true;
@@ -345,7 +345,7 @@
     const f = G.field, n = f && npcAt(f, who); if (n) for (let k = 0; k < 3; k++) CK.puff('heart', n.x * TL + 8 + k * 5, n.y * TL - 6, { life: 50, vy: -0.4 });
     G.state.stars++; G.audio.sfx('star');
     yield* sayShow(who, 'helado', T('¡Mmm! ¡Un [helado]! ¡[gracias:Gracias]!', 'Mmm! An ice cream! Thank you!'));
-    yield* quiz(who, '¿Y el [sol]?', 'Where is the sun? (pick its picture)', 'sol', ['helado', 'caliente', 'mar'], { pic: true });
+    yield* quiz(who, '¿Y el [elsol]?', 'Where is the sun? (pick its picture)', 'elsol', ['helado', 'caliente', 'mar'], { pic: true });
     return true;
   }
   // the dog loves ice cream too (carry.js: given to him, he eats it)
@@ -484,14 +484,14 @@
   Object.assign(G.seek.PEEK, { cangrejo: [3, 4], gaviota: [3, 5], tortuga: [3, 5], estrellamar: [3, 5] });
   // ---------- favours (favores.js, from Villa Sol's chapter 7 on): the beach's people ask about its words ----------
   const been = () => Z.visited('playa');
-  G.favores.OFFERS.push(['paco', 'thing', ['concha', 'cangrejo', 'estrellamar', 'mar'], been], ['nieves', 'thing', ['helado', 'sol'], been], ['marina', 'thing', ['ola', 'sol', 'tortuga', 'gaviota'], been]);
-  Object.assign(G.favores.THINGS, { paco: ['concha', 'cangrejo', 'estrellamar', 'mar'], nieves: ['helado', 'sol'], marina: ['ola', 'sol', 'tortuga', 'gaviota'] });
+  G.favores.OFFERS.push(['paco', 'thing', ['concha', 'cangrejo', 'estrellamar', 'mar'], been], ['nieves', 'thing', ['helado', 'elsol'], been], ['marina', 'thing', ['ola', 'elsol', 'tortuga', 'gaviota'], been]);
+  Object.assign(G.favores.THINGS, { paco: ['concha', 'cangrejo', 'estrellamar', 'mar'], nieves: ['helado', 'elsol'], marina: ['ola', 'elsol', 'tortuga', 'gaviota'] });
 
   // =====================================================================
   //  The story: the beach's quest line (G.chapters, line 'playa')
   // =====================================================================
   CH.add({ id: 'playa1', line: 'playa', title: 'La red de Don Paco', en: 'Don Paco\'s net: what is tangled in it?', giver: 'paco', words: ['mar', 'cangrejo', 'estrellamar', 'concha'], icon: 'redpesca', col: '#3878d0', goal: [['redpesca', 1]] });
-  CH.add({ id: 'playa2', line: 'playa', title: '¡Qué calor!', en: 'So hot! An ice cream for Marina the lifeguard', giver: 'marina', words: ['sol', 'caliente', 'helado'], icon: 'helado', col: '#e870a8', goal: [['helado', 1]] });
+  CH.add({ id: 'playa2', line: 'playa', title: '¡Qué calor!', en: 'So hot! An ice cream for Marina the lifeguard', giver: 'marina', words: ['elsol', 'caliente', 'helado'], icon: 'helado', col: '#e870a8', goal: [['helado', 1]] });
   CH.add({ id: 'playa3', line: 'playa', title: 'Las tortuguitas', en: 'The baby turtles: chase off the gulls, help them to the sea', giver: 'marina', words: ['arena', 'tortuga', 'gaviota', 'nadar'], icon: 'tortuga', col: '#3a9a50', goal: [['tortuga', 3]] });
 
   // ---------- 1 · La red de Don Paco (the pier): el mar, el cangrejo, la estrella de mar, la concha ----------
@@ -555,23 +555,23 @@
     { who: 'marina', run: function* (f, c) {
       yield* say('marina', T('¡Hola, {name}! Soy Marina.', 'Hi, {name}! I\'m Marina, the lifeguard.'));
       c.data.hot = 1;
-      yield* meetW('sol', { who: 'marina', prompt: '¡Uf! ¡El [sol]!', en: 'Phew! The sun!', known: othersFor('sol', ['mar', 'ola', 'concha']) });
-      yield* G.intro.watch('caliente', { who: 'marina', prompt: '¡Ay, ay! ¡[caliente]!', en: 'Ouch, ouch! The sand is hot!', act: () => hotHop(f), ask: '¡Ay! ¿Cómo está la arena?', askEn: 'Ouch! How is the sand? (say it, or tap it)', known: othersFor('caliente', ['sol', 'mar']) });
+      yield* meetW('elsol', { who: 'marina', prompt: '¡Uf! ¡El [elsol]!', en: 'Phew! The sun!', known: othersFor('elsol', ['mar', 'ola', 'concha']) });
+      yield* G.intro.watch('caliente', { who: 'marina', prompt: '¡Ay, ay! ¡[caliente]!', en: 'Ouch, ouch! The sand is hot!', act: () => hotHop(f), ask: '¡Ay! ¿Cómo está la arena?', askEn: 'Ouch! How is the sand? (say it, or tap it)', known: othersFor('caliente', ['elsol', 'mar']) });
       const n = npcAt(f, 'nieves'); if (n) CH.pointNpc(n);
       try { yield* sayShow('marina', 'helado', T('¿Un [helado]? ¡[porfavor:Por favor]!', 'An ice cream? Please! (Doña Nieves has the ice-cream cart)')); } finally { CH.point(null); }
     } },
     { who: 'nieves', bubble: { icon: 'helado' }, run: function* (f, c) {
       yield* say('nieves', T('¡Hola! ¡Soy Doña Nieves!', 'Hello! I\'m Doña Nieves, the ice-cream lady.'));
-      yield* meetW('helado', { who: 'nieves', prompt: '¡Un [helado]! ¡Para Marina!', en: 'An ice cream! For Marina!', known: othersFor('helado', ['sol', 'caliente', 'concha']) });
+      yield* meetW('helado', { who: 'nieves', prompt: '¡Un [helado]! ¡Para Marina!', en: 'An ice cream! For Marina!', known: othersFor('helado', ['elsol', 'caliente', 'concha']) });
       bag().add('helado', { q: 'playa2' }); c.data.ice = 1;
     } },
     { who: 'marina', bubble: { icon: 'helado' }, run: function* (f, c) {
       bag().take('helado', { q: 'playa2' }); c.data.ice = 2; c.data.hot = 0; G.audio.jingle('item');
       const n = npcAt(f, 'marina'); if (n) for (let k = 0; k < 3; k++) CK.puff('heart', n.x * TL + 8 + k * 5, n.y * TL - 6, { life: 50, vy: -0.4 });
       yield* say('marina', T('¡Mmm! ¡[helado]! ¡[gracias:Gracias]!', 'Mmm! Ice cream! Thank you!'));
-      yield* quiz('marina', '¿Qué es?', 'What is she eating?', 'helado', ['sol', 'caliente', 'concha'], { show: 'helado' });
-      yield* quiz('marina', '¿Y el [sol]? ¿Cómo está?', 'And the sun? How is it?', 'caliente', ['helado', 'mar', 'ola']);
-      yield* sayShow('marina', 'sol', T('¡El [sol]! ¡[caliente]!', 'The sun is hot! (later, when someone is hot, bring them an ice cream)'));
+      yield* quiz('marina', '¿Qué es?', 'What is she eating?', 'helado', ['elsol', 'caliente', 'concha'], { show: 'helado' });
+      yield* quiz('marina', '¿Y el [elsol]? ¿Cómo está?', 'And the sun? How is it?', 'caliente', ['helado', 'mar', 'ola']);
+      yield* sayShow('marina', 'elsol', T('¡El [elsol]! ¡[caliente]!', 'The sun is hot! (later, when someone is hot, bring them an ice cream)'));
     } },
   ], {
     stage(f) { if (f.mapId === 'playa') for (const id of ['marina', 'nieves']) { const n = npcAt(f, id); if (n && !n.busy) CK.place(f, id, ...P('playa', id), 'down'); } },
@@ -614,7 +614,7 @@
       CH.point(NEST[0] * TL + 12, NEST[1] * TL);
       try {
         yield* sayShow('marina', { icon: 'nidoarena' }, T('¡{name}! ¡Mira! ¡Un nido!', '{name}! Look! A nest... turtle eggs!'));
-        yield* meetW('arena', { who: 'marina', prompt: 'En la [arena]...', en: 'In the sand...', known: othersFor('arena', ['mar', 'sol', 'concha', 'helado']) });
+        yield* meetW('arena', { who: 'marina', prompt: 'En la [arena]...', en: 'In the sand...', known: othersFor('arena', ['mar', 'elsol', 'concha', 'helado']) });
       } finally { CH.point(null); }
       c.data.nest = 1;
     } },
@@ -651,7 +651,7 @@
         ask: '¡Las [tortuga:tortuguitas]... ¡...!', askEn: 'The baby turtles... what are they doing?', known: othersFor('nadar', ['caliente', 'arena', 'mar']) });
       const sp = (f.def.dogSpots || []).find(s => s.id === 'playa_olas'), n = CK.dog(f);
       if (sp && n) { yield* CK.walk(f, n, sp.at[0], sp.at[1], 5); n.dir = 'down'; yield* G.pet.play('jump'); for (let i = 0; i < 10; i++) CK.puff('drop', n.x * TL + 12 + (Math.random() - 0.5) * 14, n.y * TL + 10, { vy: -1.5 - Math.random(), vx: (Math.random() - 0.5) * 1.6, g: 0.12, life: 36 }); G.audio.sfx('swing'); }
-      yield* quiz('marina', '¿Y {dog}?', 'And {dog}? What is he doing?', 'nadar', ['caliente', 'arena', 'sol']);
+      yield* quiz('marina', '¿Y {dog}?', 'And {dog}? What is he doing?', 'nadar', ['caliente', 'arena', 'elsol']);
       yield* sayShow('marina', 'mar', T(met('adios') ? '¡[adios:Adiós], [tortuga:tortuguitas]!' : '¡Bye, bye, [tortuga:tortuguitas]!', 'Bye, little turtles! They are safe in the sea.'));
       CK.confetti();
     } },

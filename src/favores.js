@@ -54,7 +54,7 @@
   // Data-driven per map (the open world, docs/WORLD_PLAN.md): a zone file adds its own offers and places, e.g.
   //   G.favores.OFFERS.push(['lola', 'find', ['cangrejo', 'estrella_mar'], () => G.zones.visited('playa')]);
   //   G.favores.PLACES.faro = { at: [12, 3], on: 'playa' };  (a tile on that map: walk up to it) or { map: 'playa_cueva' }
-  //   G.favores.ANIMALS.push('cangrejo'); G.favores.THINGS.lola = ['concha', 'sol']; G.favores.COUNT_OF.lola = 'concha';
+  //   G.favores.ANIMALS.push('cangrejo'); G.favores.THINGS.lola = ['concha', 'elsol']; G.favores.COUNT_OF.lola = 'concha';
   // An offer's 4th entry is an optional condition (the zone was visited). Words must be known (stage 2+) to be asked.
   Object.assign(FV, { OFFERS, PLACES, ANIMALS, THINGS, COUNT_OF });
   const st = () => { const s = G.state; if (!s.fav || typeof s.fav !== 'object') s.fav = { day: -1, list: [], pal: -1 }; if (!Array.isArray(s.fav.list)) s.fav.list = []; return s.fav; };

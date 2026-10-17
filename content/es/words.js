@@ -122,9 +122,9 @@
     mar: { es: 'el mar', en: 'the sea', topic: 'playa', icon: 'mar' },
     arena: { es: 'la arena', en: 'the sand', topic: 'playa', icon: 'arena' }, // (shared with El parque de juegos: met in whichever comes first)
     ola: { es: 'la ola', en: 'the wave', topic: 'playa', icon: 'ola', pl: 'olas', alt: 'olita / las olas' },
-    sol: { es: 'el sol', en: 'the sun', topic: 'playa', icon: 'solgafas', alt: 'sol / solecito' }, // (its own picture: a sun in sunglasses; buenos días is the plain sun)
+    elsol: { es: 'el sol', en: 'the sun', topic: 'playa', icon: 'solgafas', alt: 'sol / solecito' }, // (its own picture: a sun in sunglasses; buenos días is the plain sun)
     concha: { es: 'la concha', en: 'the seashell', topic: 'playa', icon: 'concha', pl: 'conchas', alt: 'conchita / caracola' },
-    cubeta: { es: 'la cubeta', en: 'the pail', topic: 'playa', icon: 'cubetaplaya', alt: 'cubetita / balde / cubo' },
+    cubetaarena: { es: 'la cubeta', en: 'the pail', topic: 'playa', icon: 'cubetaplaya', alt: 'cubetita / balde / cubo' },
     castillo: { es: 'el castillo', en: 'the sandcastle', topic: 'playa', icon: 'castillo', alt: 'castillo de arena / castillito' },
     helado: { es: 'el helado', en: 'the ice cream', topic: 'playa', icon: 'helado', pl: 'helados', alt: 'heladito / nieve' },
     caliente: { es: 'caliente', en: 'hot', topic: 'playa', icon: 'caliente', alt: 'calor / hace calor / tengo calor / qué calor' },
@@ -154,7 +154,7 @@
     cosas: { topic: 'cosas', words: ['banco', 'fuente', 'flor', 'arbol'] },
     sentir: { topic: 'sentir', words: ['bien', 'cansado', 'feliz', 'triste'] },
     numeros: { topic: 'numeros', words: ['uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'] },
-    playa: { topic: 'playa', words: ['mar', 'concha', 'sol', 'caliente', 'helado', 'arena', 'cubeta', 'castillo', 'ola'] },
+    playa: { topic: 'playa', words: ['mar', 'concha', 'elsol', 'caliente', 'helado', 'arena', 'cubetaarena', 'castillo', 'ola'] },
     mar: { topic: 'mar', words: ['cangrejo', 'estrellamar', 'tortuga', 'gaviota', 'nadar', 'medusa', 'delfin', 'pulpo'] },
   };
   C.pageOrder = C.topicOrder.slice();

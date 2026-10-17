@@ -157,7 +157,7 @@ async function story(browser) {
     // 2 · ¡Qué calor!
     await tapNpc(g, 'marina', 1, 0);
     await drv(g, () => free() && G.chapters.state().step.playa2 === 1, 'Marina: el sol, caliente');
-    check('story 2: el sol and caliente met; Doña Nieves has the ice cream in her bubble', await g.ev(() => G.words.met('sol') && G.words.met('caliente') && !!G.field.npc('nieves').alert()));
+    check('story 2: el sol and caliente met; Doña Nieves has the ice cream in her bubble', await g.ev(() => G.words.met('elsol') && G.words.met('caliente') && !!G.field.npc('nieves').alert()));
     await tapNpc(g, 'nieves', 0, 1);
     await drv(g, () => free() && G.chapters.state().step.playa2 === 2, 'Doña Nieves: el helado');
     check('story 2: el helado met, held up over your head for Marina', await g.ev(() => G.words.met('helado') && G.errands.bag.has('helado', { q: 'playa2' })));
@@ -187,7 +187,7 @@ async function story(browser) {
     await g.frames(30); await g.shot('babies_crawl');
     await drv(g, () => free() && G.chapters.done('playa3'), 'they swim away');
     check('story 3 done: nadar met; the turtle is in the album', await g.ev(() => G.chapters.done('playa3') && G.words.met('nadar') && G.animals.met('tortuga')));
-    check('story: every new word was met in its own puzzle (one unknown at a time)', await g.ev(() => ['mar', 'cangrejo', 'estrellamar', 'concha', 'sol', 'caliente', 'helado', 'arena', 'tortuga', 'gaviota', 'nadar'].every(id => G.words.met(id))));
+    check('story: every new word was met in its own puzzle (one unknown at a time)', await g.ev(() => ['mar', 'cangrejo', 'estrellamar', 'concha', 'elsol', 'caliente', 'helado', 'arena', 'tortuga', 'gaviota', 'nadar'].every(id => G.words.met(id))));
     check('story: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
 }
@@ -202,15 +202,15 @@ async function side(browser) {
     // Tere: her castle, la cubeta
     check('side: Tere has the pail in her bubble', await g.ev(() => { const a = G.field.npc('tere').alert(); return a && a.icon === 'cubetaplaya'; }));
     await tapNpc(g, 'tere', 0, -1);
-    await drv(g, () => free() && !!G.errands.bag.list().find(it => it.id === 'cubeta'), 'Tere: el castillo, la cubeta');
-    check('side: el castillo and la cubeta met; the pail is in your hands; the guide points at the water', await g.ev(() => G.words.met('castillo') && G.words.met('cubeta') && /fill the pail/.test((G.guide.goal(G.field) || {}).why || '')), await g.ev(() => (G.guide.goal(G.field) || {}).why));
+    await drv(g, () => free() && !!G.errands.bag.list().find(it => it.id === 'cubetaarena'), 'Tere: el castillo, la cubeta');
+    check('side: el castillo and la cubeta met; the pail is in your hands; the guide points at the water', await g.ev(() => G.words.met('castillo') && G.words.met('cubetaarena') && /fill the pail/.test((G.guide.goal(G.field) || {}).why || '')), await g.ev(() => (G.guide.goal(G.field) || {}).why));
     await g.until(() => G.demo.shown('fillpail'), null, 'the ghost hand at the water', 30000);
     await g.frames(10); await g.shot('demo_fillpail');
     check('side: a ghost hand shows the new action (tap the water with the pail), once', await g.ev(() => G.demo.shown('fillpail')));
     for (let k = 1; k <= 3; k++) {
       const at = await g.ev(() => G.playa.AT.fill);
       await tapAt(g, at[0], at[1], at[0], at[1] - 1);
-      await drv(g, () => free() && G.errands.bag.list().some(it => it.id === 'cubeta' && it.full), 'filling the pail');
+      await drv(g, () => free() && G.errands.bag.list().some(it => it.id === 'cubetaarena' && it.full), 'filling the pail');
       await tapNpc(g, 'tere', 0, -1);
       await g.ev(k => { window.__k = k; }, k);
       await drv(g, () => free() && G.playa.state().castle.n === window.__k, 'pouring the sand');
@@ -218,7 +218,7 @@ async function side(browser) {
     }
     await drv(g, () => free() && G.playa.state().castle.flag, 'the flag on top');
     await g.frames(10); await g.shot('castle_done');
-    check('side: three pails of sand, then the flag: the castle is built (la arena met on the way)', await g.ev(() => G.playa.state().castle.flag && G.playa.state().built === 1 && G.words.met('arena') && !G.errands.bag.has('cubeta')));
+    check('side: three pails of sand, then the flag: the castle is built (la arena met on the way)', await g.ev(() => G.playa.state().castle.flag && G.playa.state().built === 1 && G.words.met('arena') && !G.errands.bag.has('cubetaarena')));
     // Lola's shells: pick one up, bring it to her
     await tapNpc(g, 'lola', 1, 0);
     await drv(g, () => free() && G.zones.lolaTalked('playa'), 'Lola: la ola, her shells');
@@ -253,7 +253,7 @@ async function side(browser) {
     await drv(g, () => free() && !!G.playa.state().hermit, 'the spiral shell');
     check('side: the spiral shell: the little crab moves in', await g.ev(() => !!G.playa.state().hermit));
     // an ice cream for whoever is hot today
-    await g.ev(() => { G.state.quests.playa2 = 'done'; for (const w of ['helado', 'sol', 'caliente']) G.words.meet(w, 't'); });
+    await g.ev(() => { G.state.quests.playa2 = 'done'; for (const w of ['helado', 'elsol', 'caliente']) G.words.meet(w, 't'); });
     const hot = await g.ev(() => G.playa.hotWho());
     check('side: someone is hot today (their bubble), and Doña Nieves has ice cream', await g.ev(w => { const a = G.field.npc(w).alert(); return a && a.icon === 'caliente' && G.field.npc('nieves').alert() === 'helado'; }, hot), hot);
     await tapNpc(g, 'nieves', 0, 1);
