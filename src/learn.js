@@ -116,6 +116,8 @@
     return { label, icon: W, col }; // ('both', or a free choice: the picture and the word, always together)
   }
   G.choiceView = view;
+  // a card's word on one line, or two when it's too wide (la mariposa monarca, el muñeco de nieve): split at the space nearest the middle
+  const fit = (s, w) => { if (G.textWidth(s) <= w || !s.includes(' ')) return [s]; let best = null; for (let i = s.indexOf(' '); i >= 0; i = s.indexOf(' ', i + 1)) { const d = Math.abs(G.textWidth(s.slice(0, i)) - G.textWidth(s.slice(i + 1))); if (!best || d < best.d) best = { d, i }; } return [s.slice(0, best.i), s.slice(best.i + 1)]; };
   class Choice {
     constructor(opts, w) {
       opts = Object.assign({}, opts, { prompt: G.fill(opts.prompt), en: G.fill(opts.en), choices: opts.choices.map(c => c.label ? Object.assign(c, { label: G.fill(c.label) }) : c) });
@@ -258,10 +260,10 @@
           const ic = v.icon || (!v.label || !c.word ? D().words[c.word] || c.icon : null); // (a word-only card has no picture: read it, or say it)
           if (ic) {
             G.drawIcon16(ctx, ic, x + cw / 2 - 16, y0 + 12 - bob, 2, sel && !c.off ? 'sel' : 'card');
-            if (v.label) G.textC(ctx, v.label, x + cw / 2, y0 + Math.min(56, h - 9) - bob, c.off ? '#a8acb8' : v.col);
+            if (v.label) { const L = fit(v.label, cw - 4); L.forEach((l, j) => G.textC(ctx, l, x + cw / 2, y0 + Math.min(56, h - 9) - (L.length - 1 - j) * 9 + (L.length > 1 ? 2 : 0) - bob, c.off ? '#a8acb8' : v.col)); }
           } else if (v.label) {
             const big = G.textWidth(v.label) * 2 <= cw - 6, col = c.off ? '#a8acb8' : v.col;
-            if (big) G.bigText(ctx, v.label, x + cw / 2, y0 + 30 - bob, 2, col); else G.textC(ctx, v.label, x + cw / 2, y0 + 34 - bob, col);
+            if (big) G.bigText(ctx, v.label, x + cw / 2, y0 + 30 - bob, 2, col); else { const L = fit(v.label, cw - 4); L.forEach((l, j) => G.textC(ctx, l, x + cw / 2, y0 + 34 - (L.length - 1) * 5 + j * 10 - bob, col)); }
           }
           const d = back(k); if (d) { ctx.globalAlpha = d; ctx.fillStyle = '#080c28'; ctx.fillRect(x + 1, y0 - bob + 1, cw - 2, h - 2); }
           ctx.restore();

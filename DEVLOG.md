@@ -2,6 +2,49 @@
 
 A running record of what changed in Club de Español and why. Newest first.
 
+## 2026-10-17 — La montaña, the fifth and last zone (step 6 of the open world): the weather, snow and the cold
+The mountain east of Villa Sol, following "How to build a zone" (docs/WORLD_PLAN.md); it only uses universal words and
+its own (the beach's *el sol* and *caliente* are met here when they aren't yet), so it can be the first place visited.
+The child loves exploring, animals, variety and her dog: here the weather CHANGES when she says it, it's cold up in the
+snow unless she wraps up, and there's a sled, a frozen pond, a snowman, a lookout over the clouds and eight new animals.
+- **The maps** (`tools/mapgen.py`): a 40x32 mountain (a meadow with the bus stop, Mateo's weather station, Don Lucho's
+  refuge under a snowy roof, the llamas' corral, a grove of firs full of monarchs; the snow above along a soft wave:
+  snowy pines, the sledding slope, the snowfield, the marmots' rocks, the frozen pond, the lookout on its crag; snowy
+  peaks round the top) and the refuge inside. Seven new tiles (`ü` snow, `ö` ice, `ç` snowy pine, `ï` snowy peaks, `ò`
+  the weather station, `ù` the binoculars, `â` a snowy roof). Night: deep blue, glowing windows, a wolf on the crag.
+- **The weather** (`G.montana`): snow, sun, clouds, wind, rain drawn over the map (with a cross-fade), saved per day;
+  after rain the sun brings a rainbow. Mateo's station: *¿Qué tiempo quieres?* (say it: it comes).
+- **The cold:** in the snow without a gorro, a bufanda or guantes you shiver (*¡Brrr!*). They join the grandparents'
+  clothes you wear on every map; the sprite engine gained a knitted cap (`head: 'beanie'`), a scarf and mittens, on the
+  map sprite and the portrait (`src/sprites.js`).
+- **22 words, three pages** (`content/es/words.js`, pictures in `src/icons.js`): la nieve, frío, la nube, el viento,
+  la lluvia, el arcoíris; la montaña, el gorro, la bufanda, los guantes, el muñeco de nieve, el chocolate, el trineo,
+  el hielo; la llama, la marmota, el zorrillo, el pájaro carpintero, la mariposa monarca, el puma, el águila, el lobo.
+  *nieve* left *helado*'s alternatives and *gorro* left *sombrero*'s (they'd be heard as the other word).
+- **Eight album animals**, new generic moves (`src/animals.js`): `peek` (marmots duck into their burrows when the dog
+  comes), `cling` (a woodpecker pecking on the firs' trunks, *toc, toc*), `soar` (the eagle circles high, its shadow on
+  the snow); the skunk's tail goes up (a little green cloud), the puma yawns. Rare: the eagle (only in the sunshine), the
+  wolf (at night, howling).
+- **People** (`src/data.js`): Don Lucho, Mateo. **Story** (line `montana`): ¡Qué frío! (the snow, shivering, the basket of
+  warm clothes, the mirror), El muñeco de nieve (three snowballs, a carrot nose from Don Lucho (callback to Abuelo's
+  carrots: the llamas love them), a cap and a scarf, the dog steals the nose; hot chocolate in the refuge, four cups, a
+  bone for the dog), ¡El arcoíris! (wind, clouds, rain at the station; the child asks for the sun: a rainbow).
+- **Side quests:** the station, Mateo's *¿Qué tiempo hace?*, Don Lucho's hot chocolate, a sled race with the dog (he
+  pulls you back up on a rope), skating on the frozen pond, animal tracks in the snow (the dog follows them), the lookout
+  (a full-screen view over the clouds: the sun or the moon and stars, the eagle, the rainbow, the places you've been far
+  below), dressing the snowman. The dog rolls in the snow (a snow angel), digs a snow tunnel (`tunel`, the zone's own
+  act) and chases the marmots. Six hiding places, three page puzzles, favours, a ghost-hand demo (`snowball`).
+- **Engine:** Choice cards wrap a long word onto two lines (*mariposa monarca*, *estrella de mar*; `src/learn.js`); a
+  review day's teacher no longer takes over the guide's chapter tier inside a zone (`src/guide.js`: the zone's story
+  beat leads there); puffs `flake` and `steam` (`src/pet.js`).
+- Tests: `tools/test-zone-montana.js` (new: walking in, every place reachable, the bus, Lola, the refuge; the animals,
+  the marmots, the woodpecker, the rare eagle and wolf, the album page, a sheet of every new picture; the story by taps;
+  the cold, the clothes in town and in the save, the station and Mateo's question; the sled, skating, the tracks, the
+  lookout, the snowman, hot chocolate; the dog's three things; hide-and-seek, a page puzzle, save and load).
+  `test-world`: with every zone built, its "zone still to be built" checks became a test chapter after La montaña's
+  own, a planned album page pretended for a moment, and every tab (Villa Sol and the five zones) checked complete.
+  `test-zone-juegos`: the random cricket-hop check waits longer (it failed now and then).
+
 ## 2026-10-17 — La casa de los abuelos, the fourth zone (step 5 of the open world): family, the body, clothes
 The grandparents' countryside home south-west of Villa Sol, following "How to build a zone" (docs/WORLD_PLAN.md); it
 only uses universal words and its own, so it can be the first place visited. The child loves her own house, her dog,

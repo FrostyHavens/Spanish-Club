@@ -1,7 +1,7 @@
 # The open world: plan and how to build a zone
 
-*2026-10-17. Step 1 (the framework) is built: this file is the plan for the five zone steps that follow, and the
-pattern every zone agent follows. The engine is `src/zones.js`; each zone is one content file, `content/es/zone-<id>.js`.*
+*2026-10-17. All six steps are built (the framework and the five zones): this file is the plan, what each zone became,
+and the pattern a new zone follows. The engine is `src/zones.js`; each zone is one content file, `content/es/zone-<id>.js`.*
 
 ## Why
 The 7-year-old (the target player) loved variety and choice, wants to explore, and wants to interact with the people
@@ -244,15 +244,76 @@ the ASCII ones are used up): `ñ` garden bed (lettuce, carrots, tomatoes, corn a
   pond), four page puzzles (the body page by the pump, the animals by the paddock, the family under the photos, the
   clothes in the bedroom), favours for Abuela and Abuelo, a ghost-hand demo (`pickegg`), apples in the orchard.
 
-### La montaña (east) — weather
-- **Words:** la montaña, el sol, la lluvia, la nieve, el viento, la nube, el arcoíris, hace frío, hace calor, el río,
-  la piedra, el gorro, los guantes, la bota.
-- **People:** Don Lucho the shepherd, with his llamas.
-- **Dog:** rolls in the snow (in the placeholder); chases snowflakes.
-- **Side quests:** what's the weather? (dress for it: *gorro, guantes*), bring the llamas home (*¡ven!*), a snowman.
-- **Story:** the storm: help Don Lucho bring the animals in, then the rainbow.
-- **Album (6):** llama, águila, marmota, borrego cimarrón, **puma** (rare: far off at dusk), **pika** (rare: only in one
-  rock pile).
+### La montaña (east) — the weather, snow and the cold — **BUILT** (2026-10-17, `content/es/zone-montana.js`)
+The last zone. One big map (40x32) and the refuge inside (12x8). The path comes in on the west edge (0, 24)
+(`camino_montana`'s east exit now lands at (1, 24)) into a green meadow: the bus stop and the signpost, Mateo's weather
+station (a white louvred box; its vane and windsock are drawn by the zone: they spin in the wind), Don Lucho's refuge (a
+log cabin under a snowy roof; its door at (25, 17) opens: `montana_refugio`, the fire and the pot of hot chocolate, a long
+table, bunk beds), the llamas' corral, a grove of tall firs (monarch butterflies, a woodpecker). Up the hill the snow
+begins along a soft wave: snowy pines, the sledding slope (a straight run between two rows of pines and little flags, the
+sled waiting at its top (18, 3)), the snowfield (the snowman at (10, 7), three snow piles), the marmots' rocks, the puma's
+sunny ledge, the frozen pond (walkable ice: tap it to skate), the lookout on its crag top left (coin binoculars: the view
+over the clouds); snowy peaks all along the top and down the sides. New tiles (`src/tiles.js`, Unicode): `ü` snow (the
+meadow's grass creeps in at its edges), `ö` ice (walkable; snowy rims), `ç` a snowy pine, `ï` snowy peaks (like `M`,
+snow-capped), `ò` the weather station, `ù` the lookout's binoculars, `â` a snowy roof (over the forest's `[` / `]`
+cabin wall and door). Night: a deep blue, the refuge's windows and the station's lamp glow, a wolf howls on the crag.
+- **The weather** (`G.montana.weather()` / `.setWeather(k)`, saved per day in `G.state.montana.wx`): `nieve`, `elsol`,
+  `nube`, `viento`, `lluvia`, drawn over the map by the zone (snowflakes drifting, rain streaks and splashes, soft clouds
+  floating over with their shadows, gusts and leaves blowing, warm sunshine and sparkles on the snow) with a cross-fade
+  when it changes; after rain, the sun brings a rainbow (`MT.rainbowOn()`). It snows until the first chapter is done
+  (wonder on arrival), then each day has its own weather. **The weather station** (after chapter 3): *¿Qué tiempo
+  quieres?* (picture cards of the weather words met, not the weather you have: four fit; mic on): say it and it comes.
+  The eagle only comes out in the sunshine.
+- **The cold**: up in the snow without a *gorro*, a *bufanda*, *guantes* (or the grandparents' *chamarra*) you shiver
+  now and then (*¡Brrr!*, your breath steams); hot chocolate keeps you warm a while. **Clothes for the cold** join the
+  grandparents' clothes you wear (`G.abuelos.CLOTHES`, `AB.FIRST`; worn on every map, in the portrait, the mirror and
+  the grandparents' trunk): the sprite engine (`src/sprites.js`) gained `head: 'beanie'` (a knitted cap with a band and
+  a pom-pom), `scarf: col` (a band round the neck, one end hanging; it flaps when you walk sideways) and `gloves: col`
+  (the hands' colour), on the map sprite and the portrait. A cap and a sombrero: one at a time (`AB.putOn` wrapped).
+- **Words (22, three notebook pages):** *¿Qué tiempo hace?* (`tiempo`): la nieve, frío (`frio`: *frío / fría*), la
+  nube, el viento, la lluvia, el arcoíris (`arcoiris`); *La montaña* (`montana`): la montaña (`lamontana`: the zone's
+  picture is `montana`), el gorro, la bufanda, los guantes, el muñeco de nieve (`muneco`), el chocolate, el trineo, el
+  hielo; *Animales de la montaña* (`faunamontana`): la llama, la marmota, el zorrillo, el pájaro carpintero
+  (`carpintero`), la mariposa monarca (`monarca`), el puma, el águila (`aguila`), el lobo. *el sol* (`elsol`) and
+  *caliente* are the beach's: the mountain meets them if they aren't met. Sound-alikes never share a question (`CLASH`:
+  monarca / mariposa, carpintero / pájaro, muñeco de nieve / nieve); *nieve* left *helado*'s alts and *gorro*
+  *sombrero*'s. Long words on a card wrap onto two lines now (`src/learn.js`). The plan's *hace calor, el río, la
+  piedra, la bota* were left out (*caliente* covers the heat; the boots are the grandparents' *zapatos*).
+- **People:** Don Lucho (the refuge's keeper and the llamas' shepherd: a red knitted cap, a grey beard, an orange
+  poncho, a blue scarf: chapter 1, the carrot, hot chocolate; inside the refuge at night and while chocolate is on, by
+  the corral by day), Mateo (the weather kid: a yellow raincoat with its hood up, red boots, green mittens: his weather
+  station, chapters 2 and 3, *¿Qué tiempo hace?*). Lola meets *la mariposa monarca* (the firs are full of them) and points
+  at Don Lucho; Nico's hide-and-seek. No hearts yet.
+- **Album (8):** llama (`walk`, a `react` frame: ears back, a hum; in the corral and the meadow), marmota (new move
+  `peek`: up by its burrow, whistling; ducks into its hole when the dog comes near or you run up, pops out again),
+  zorrillo (`walk`; tapped, its tail goes up and a little green cloud drifts off), carpintero (new move `cling`: on a
+  fir's trunk, pecking *toc, toc*; flies to another trunk), monarca (`flit`, nine in the grove), puma (`still`, asleep on
+  a sunny ledge, a big yawn), **águila** (rare: only when the sun shines; new move `soar`: high circles over the lookout,
+  its shadow sliding over the snow, now and then a swoop), **lobo** (rare: at night on the lookout's crag; its other frame
+  howls at the moon). Lola names an unmet one when it's tapped.
+- **Story (line `montana`):** 1 *¡Qué frío!* (Don Lucho: la montaña, la nieve (it snows); up in the snow you shiver:
+  frío; the basket of warm clothes by the refuge's door: el gorro, la bufanda, los guantes put on one by one, the mirror;
+  back in the snow, warm, the dog plays), 2 *El muñeco de nieve* (Mateo: el muñeco de nieve; roll three snowballs from
+  the piles (*¿Cómo es?* big / small when the forest's words are met); a carrot nose from Don Lucho (his llamas love
+  carrots); *¿Qué le pones?* a cap and a scarf; the dog steals the nose: *¡ven!* (or tap him); then hot chocolate in
+  the refuge: el chocolate, caliente, pour four cups, *¿Cuántas?*; no chocolate for dogs: a bone), 3 *¡El arcoíris!*
+  (Mateo's station: el viento (the vane spins), las nubes, la lluvia (the dog shakes); the child taps the station and
+  asks for the sun (el sol): a rainbow, el arcoíris, *¿Qué colores ves?*).
+- **Side quests (`G.state.montana`):** the weather station (any time after chapter 3), Mateo's *¿Qué tiempo hace?*
+  (look around and say it; *¿frío o calor?*; daily), Don Lucho's hot chocolate (daily after chapter 2: pour four cups,
+  count, drink; warm a while), the sled race with the dog (after chapter 1: *el trineo*; *¡tres, dos, uno!*, whoosh down
+  the slope, the dog races alongside (you win the first race, then mostly); *¿Otra vez?* and he pulls you back up on a
+  rope), skating on the frozen pond (*el hielo*; round and round, a spin: *¡gira!*), animal tracks in the snow (after
+  chapter 1, one trail a day: the dog sniffs along them to a pine or a rock; who made them? a marmot, a skunk, a rabbit),
+  the lookout (the view over the clouds: the sun or the moon and stars, an eagle, the rainbow, the places you've been far
+  below; then *¿Qué hay abajo?*), dressing the snowman (after chapter 2: *¿Qué le pones?*, another colour). Snowballs to
+  pick up after the snowman (the dog chomps them).
+- **Dog:** rolls in the snow (`roll`, here a snow angel he leaves behind), digs a snow tunnel (a dog-spot act of the
+  zone's own, `tunel`: he dives in, a mound moves under the snow, he pops out over there with a bone), chases the marmots
+  (`chase`: they duck in).
+- **Also:** six hiding places (a snowy pine, the marmots' rock, the refuge's woodpile, the weather station, the llamas'
+  hay, a rock by the pond), three page puzzles (the weather by the station, the mountain on the snowfield, the animals by
+  the corral), favours for Don Lucho and Mateo, a ghost-hand demo (`snowball`: a snow pile), a stick in the meadow.
 
 ## Words: universal and the zone's own (order-independent)
 Any zone can be the first one visited, so:
@@ -385,6 +446,26 @@ Files a zone step touches (and nothing else unless the engine truly needs it):
 - **Pitfalls met here:** a side quest's bubble waits behind the next chapter's (CH.alert comes first: mark the chapters
   done in a side-quest test); `g.until(...).catch(() => {})` in a test waits its whole timeout when the thing happens
   inside a dialogue (drive instead).
+- **From La montaña (the last zone):** weather drawn over a map by the zone (`drawWx` in `Z.drawTop`, screen space, a
+  cross-fade between two kinds) and a per-day saved state the child changes by saying a word; a zone-wide status effect
+  from what you wear (`MT.cold(f)`: shivering on snow tiles without warm clothes, a per-frame check in the zone's
+  `AN.update` wrapper); a second `G.st.playerSpec` wrapper on top of the grandparents' (memoized by look + clothes) and
+  new sprite parts (`head: 'beanie'`, `scarf`, `gloves`, `src/sprites.js`); people drawn by the zone through
+  `e.drawSelf` (`drawMT`: shiver, drink, wave, a sled ride, skating) — the grandparents' `G.abuelos.act` only draws in
+  its own zone, so a zone that wants poses draws its own; generic animal moves `peek`, `cling`, `soar`
+  (`src/animals.js`); a `when` function on a map's animal (the eagle: `() => G.montana.weather() === 'elsol'`), and
+  `f.zoo = null` to respawn when it changes; a SIDE place whose tile moves (`at: () => ...`, the day's tracks); a
+  free choice that waits for one answer (*¡pide el sol!*: `MT.weatherGame({ must: true })` in a loop); Choice cards
+  wrap a long word onto two lines (`src/learn.js` `fit`). A review day's teacher no longer takes the guide's chapter
+  tier in a zone (`src/guide.js`: the review is Villa Sol's; out in a zone, the zone's story beat still leads).
+- **Pitfalls met here:** at most four cards fit a `layout: 'cards'` choice (a fifth is pushed off screen: drop one); a
+  daily object (`daily(k)` clears all its keys on a new day) must not hold lifetime counters (keep them beside it); the
+  guide's tiers put the dog's spots (`Z.goal`) and Nico's game before a zone's own suggestions, so test a zone's
+  suggestions by calling `G.zones.goal` / `.task`, or its side places' bubbles; 10+ words met in a test's setup make a
+  review day (see above).
+- **Every zone is built:** `tools/test-world.js` no longer has a "zone still to be built": a zone's own line is tested
+  with a test chapter added after La montaña's (its chapters marked done), the album's numbered "?" entries with a
+  planned page pretended for a moment, and every tab (Villa Sol and the five zones) is checked complete.
 - `G.chapters.allWrittenDone()` and the badge rows (Misiones, the diploma) are Villa Sol's line only; a zone's chapters
   get their badge card when done but aren't listed there yet (a later step could add a row per zone).
 - A zone's people talk: story, then their side quest, then `G.errands.talk` (presents, favours, "who'd love it"), then

@@ -9694,6 +9694,8 @@ G.store = {
     return { label, icon: W, col }; // ('both', or a free choice: the picture and the word, always together)
   }
   G.choiceView = view;
+  // a card's word on one line, or two when it's too wide (la mariposa monarca, el muñeco de nieve): split at the space nearest the middle
+  const fit = (s, w) => { if (G.textWidth(s) <= w || !s.includes(' ')) return [s]; let best = null; for (let i = s.indexOf(' '); i >= 0; i = s.indexOf(' ', i + 1)) { const d = Math.abs(G.textWidth(s.slice(0, i)) - G.textWidth(s.slice(i + 1))); if (!best || d < best.d) best = { d, i }; } return [s.slice(0, best.i), s.slice(best.i + 1)]; };
   class Choice {
     constructor(opts, w) {
       opts = Object.assign({}, opts, { prompt: G.fill(opts.prompt), en: G.fill(opts.en), choices: opts.choices.map(c => c.label ? Object.assign(c, { label: G.fill(c.label) }) : c) });
@@ -9836,10 +9838,10 @@ G.store = {
           const ic = v.icon || (!v.label || !c.word ? D().words[c.word] || c.icon : null); // (a word-only card has no picture: read it, or say it)
           if (ic) {
             G.drawIcon16(ctx, ic, x + cw / 2 - 16, y0 + 12 - bob, 2, sel && !c.off ? 'sel' : 'card');
-            if (v.label) G.textC(ctx, v.label, x + cw / 2, y0 + Math.min(56, h - 9) - bob, c.off ? '#a8acb8' : v.col);
+            if (v.label) { const L = fit(v.label, cw - 4); L.forEach((l, j) => G.textC(ctx, l, x + cw / 2, y0 + Math.min(56, h - 9) - (L.length - 1 - j) * 9 + (L.length > 1 ? 2 : 0) - bob, c.off ? '#a8acb8' : v.col)); }
           } else if (v.label) {
             const big = G.textWidth(v.label) * 2 <= cw - 6, col = c.off ? '#a8acb8' : v.col;
-            if (big) G.bigText(ctx, v.label, x + cw / 2, y0 + 30 - bob, 2, col); else G.textC(ctx, v.label, x + cw / 2, y0 + 34 - bob, col);
+            if (big) G.bigText(ctx, v.label, x + cw / 2, y0 + 30 - bob, 2, col); else { const L = fit(v.label, cw - 4); L.forEach((l, j) => G.textC(ctx, l, x + cw / 2, y0 + 34 - (L.length - 1) * 5 + j * 10 - bob, col)); }
           }
           const d = back(k); if (d) { ctx.globalAlpha = d; ctx.fillStyle = '#080c28'; ctx.fillRect(x + 1, y0 - bob + 1, cw - 2, h - 2); }
           ctx.restore();
@@ -23126,7 +23128,6 @@ G.MAPDATA = {
       ctx.globalCompositeOperation = 'lighter';
       ctx.fillStyle = 'rgba(60,44,10,0.10)'; ctx.fillRect(0, 0, W, H);
       const g = ctx.createRadialGradient(W - 20, 10, 0, W - 20, 10, 120); g.addColorStop(0, 'rgba(255,240,180,0.45)'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-      for (let i = 0; i < 6; i++) { const a = t / 300 + i * Math.PI / 3; ctx.strokeStyle = 'rgba(255,240,190,0.18)'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(W - 20, 10); ctx.lineTo(W - 20 + Math.cos(a) * 160, 10 + Math.sin(a) * 160); ctx.stroke(); }
       ctx.globalCompositeOperation = 'source-over';
       if (f) for (let i = 0; i < 8; i++) { const ph = (t + i * 17) % 50, x = (hsh(i, t / 50 | 0) * W) | 0, y = (hsh(i + 3, t / 50 | 0) * H) | 0, tx = Math.floor((x + cx) / TL), ty = Math.floor((y + cy) / TL); if (ph < 20 && f.map.get(tx, ty) === 'ü') { ctx.fillStyle = '#ffffff'; const s = ph < 10 ? ph / 4 : (20 - ph) / 4; ctx.fillRect(x - Math.round(s), y, Math.round(s) * 2 + 1, 1); ctx.fillRect(x, y - Math.round(s), 1, Math.round(s) * 2 + 1); } } // (the snow sparkles)
     }
@@ -23136,7 +23137,7 @@ G.MAPDATA = {
   function drawRainbow(ctx, k, x0, y0, R, wb) {
     if (k <= 0) return;
     const C = ['#e83a30', '#f89020', '#f8d830', '#48b848', '#3a7ae0', '#8a50c8'];
-    ctx.save(); ctx.globalAlpha = 0.42 * k; ctx.lineWidth = wb;
+    ctx.save(); ctx.globalAlpha = 0.62 * k; ctx.lineWidth = wb;
     C.forEach((c, i) => { ctx.strokeStyle = c; ctx.beginPath(); ctx.arc(x0, y0, R - i * wb, Math.PI * 1.02, Math.PI * 1.98); ctx.stroke(); });
     ctx.restore();
   }
@@ -23166,7 +23167,7 @@ G.MAPDATA = {
     if (act && act.k === 'throw') { arms = t < 12 ? [[3, -12, 8, -20]] : [[3, -12, 10, -12]]; }
     if (act && act.k === 'wave') { arms = [[3, -12, 8, (t >> 3) & 1 ? -21 : -18]]; }
     const x = Math.round(wx - cx + dx), y = Math.round(wy - cy);
-    if (sled) { G.drawIcon16(ctx, 'trineo', x - 10, y - 10, 1.25); }
+    if (sled) { G.drawIcon16(ctx, 'trineo', x - 10, y - 10, 1.25); if (sled.up && sled.dog) { const d = sled.dog; ctx.strokeStyle = '#e8d8a0'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y - 8); ctx.lineTo(d.x * TL + 12 + (d.ox || 0) - cx, d.y * TL + 16 + (d.oy || 0) - cy); ctx.stroke(); } }
     else { ctx.fillStyle = 'rgba(16,28,8,0.3)'; ctx.fillRect(x - 7, y, 14, 2); }
     const img = G.unitSprite(e.spec, dir, fr);
     ctx.save(); ctx.translate(x, y - (sled ? 4 : 0)); if (rot) ctx.rotate(rot); ctx.scale(sx, sy);
@@ -23353,7 +23354,7 @@ G.MAPDATA = {
       const again = yield G.choose({ prompt: '¿Otra vez?', en: 'Again? ({dog} pulls you back up)', choices: [{ icon: 'trineo', label: '¡Sí!' }, { icon: 'no', label: '¡Ya!' }], layout: 'cards', who: null });
       if (again.result !== 0) break;
       if (dog) {
-        dog.busy = true; p.sled = { x: x0, y: y1, up: true };
+        dog.busy = true; p.sled = { x: x0, y: y1, up: true, dog };
         for (let k = 0; k <= 100; k++) {
           const y = y1 + (y0 - y1) * (k / 100); p.sled.y = y; p.y = Math.min(END[1], Math.max(TOP[1], Math.round((y - 20) / TL))); p.oy = (y - 20) - p.y * TL;
           const dyw = y - 30, ty = Math.round((dyw - 20) / TL); dog.x = SLED[0]; dog.y = Math.max(TOP[1] - 1, ty); dog.oy = (dyw - 20) - dog.y * TL; dog.dir = 'up'; dog.moving = true;
@@ -23428,17 +23429,18 @@ G.MAPDATA = {
       ctx.save(); ctx.beginPath(); ctx.arc(cx - 54, cy, r, 0, Math.PI * 2); ctx.moveTo(cx + 54 + r, cy); ctx.arc(cx + 54, cy, r, 0, Math.PI * 2); ctx.clip();
       const sky = this.night ? ['#0a1030', '#1c2858'] : this.k === 'lluvia' ? ['#5a6880', '#8a98a8'] : this.k === 'nube' ? ['#7a98c0', '#b8c8dc'] : ['#2a70d8', '#9ad0f8'];
       const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, sky[0]); g.addColorStop(1, sky[1]); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-      if (this.night) { for (let i = 0; i < 40; i++) { ctx.fillStyle = (t + i * 7) % 60 < 30 ? '#ffffff' : '#a8b8e8'; ctx.fillRect((hsh(i, 1) * W) | 0, (hsh(i, 2) * H * 0.6) | 0, 1, 1); } ctx.fillStyle = '#f8f0c8'; ctx.beginPath(); ctx.arc(W - 70, 44, 12, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = sky[0]; ctx.beginPath(); ctx.arc(W - 64, 40, 11, 0, Math.PI * 2); ctx.fill(); }
-      else if (this.k === 'elsol' || this.k === 'viento' || this.k === 'nieve') { ctx.fillStyle = '#fff4b0'; ctx.beginPath(); ctx.arc(W - 70, 40, 14, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'rgba(255,240,180,0.25)'; ctx.beginPath(); ctx.arc(W - 70, 40, 24, 0, Math.PI * 2); ctx.fill(); }
+      if (this.night) { for (let i = 0; i < 40; i++) { ctx.fillStyle = (t + i * 7) % 60 < 30 ? '#ffffff' : '#a8b8e8'; ctx.fillRect((hsh(i, 1) * W) | 0, (hsh(i, 2) * H * 0.6) | 0, 1, 1); } ctx.fillStyle = '#f8f0c8'; ctx.beginPath(); ctx.arc(W - 96, 58, 12, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = sky[0]; ctx.beginPath(); ctx.arc(W - 90, 54, 11, 0, Math.PI * 2); ctx.fill(); }
+      else if (this.k === 'elsol' || this.k === 'viento' || this.k === 'nieve') { ctx.fillStyle = 'rgba(255,240,180,0.3)'; ctx.beginPath(); ctx.arc(W - 96, 58, 22, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#fff4b0'; ctx.beginPath(); ctx.arc(W - 96, 58, 13, 0, Math.PI * 2); ctx.fill(); }
       if (this.rb) drawRainbow(ctx, 1, W / 2, H * 0.78, 140, 6);
       // the valley far below, through a gap in the clouds: the places you've been, tiny
       const Y = cy + 34;
       ctx.fillStyle = '#5a9a40'; ctx.fillRect(0, Y, W, H - Y);
-      const places = Z.ids().filter(id => id !== 'montana' && Z.visited(id)).slice(0, 5);
-      places.forEach((id, i) => { const x = 40 + i * ((W - 80) / Math.max(1, places.length - 1 || 1)), bob = Math.round(Math.sin(t / 30 + i) * 1); G.drawIcon16(ctx, Z.def(id).icon, Math.round(x - 8), Y + 10 + bob); });
       // distant peaks poking through the sea of clouds
       for (const [x, h, w] of [[30, 70, 60], [110, 96, 80], [200, 80, 70], [280, 104, 76]]) { ctx.fillStyle = '#8a98b8'; ctx.beginPath(); ctx.moveTo(x - w, Y + 4); ctx.lineTo(x, Y - h + 30); ctx.lineTo(x + w, Y + 4); ctx.fill(); ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(x - w * 0.32, Y - h + 30 + h * 0.32); ctx.lineTo(x, Y - h + 30); ctx.lineTo(x + w * 0.32, Y - h + 30 + h * 0.32); ctx.fill(); }
       for (let i = 0; i < 14; i++) { const x = ((i * 37 + t * 0.35) % (W + 60)) - 30, y = Y + 2 + (i % 3) * 6; ctx.fillStyle = i % 2 ? '#ffffff' : '#eef4fc'; ctx.beginPath(); ctx.arc(x, y, 14 + (i % 4) * 3, 0, Math.PI * 2); ctx.fill(); }
+      const places = Z.ids().filter(id => id !== 'montana' && Z.visited(id)).slice(0, 5); // (far below, through a gap in the clouds: the places you've been)
+      if (places.length) { ctx.fillStyle = '#6cb83c'; ctx.beginPath(); ctx.ellipse(W / 2, Y + 4, 30 + places.length * 18, 14, 0, 0, Math.PI * 2); ctx.fill(); }
+      places.forEach((id, i) => { const x = W / 2 + (i - (places.length - 1) / 2) * 30, bob = Math.round(Math.sin(t / 30 + i) * 1); G.drawIcon16(ctx, Z.def(id).icon, Math.round(x - 8), Y - 10 + bob); });
       if (this.eagle && !this.night) { const a = t / 50, ex = cx + Math.cos(a) * 80, ey = cy - 30 + Math.sin(a * 2) * 10; ctx.imageSmoothingEnabled = false; ctx.drawImage(G.icon('aguila'), Math.round(ex - 16), Math.round(ey - 16), 32, 32); }
       ctx.restore();
     }
@@ -23601,7 +23603,7 @@ G.MAPDATA = {
       const [hx, hy] = POT; G.drawIcon16(ctx, 'chocolate', hx * TL - 6 - cx, hy * TL - 26 - cy);
       if (G.frame % 40 === 0) puff('steam', hx * TL + 2, hy * TL - 22, { life: 40, vy: -0.4 });
       const n = choco().on || choco().done ? (choco().n | 0) : CH.active('montana2') ? (CH.ctx('montana2').data.n | 0) : 0;
-      const [tx, ty] = P('montana_refugio', 'table'); for (let i = 0; i < n; i++) G.drawIcon16(ctx, 'chocolate', (tx + i) * TL + 4 - cx, ty * TL + 2 - cy, 0.75);
+      const [tx, ty] = P('montana_refugio', 'table'); for (let i = 0; i < n; i++) G.drawIcon16(ctx, 'chocolate', (tx + i) * TL + 4 - cx, ty * TL - 2 - cy);
     }
   };
   Z.drawTop = function (f, ctx) {
@@ -23615,7 +23617,7 @@ G.MAPDATA = {
       const tr = MT.trans, u = tr ? Math.min(1, (G.frame - tr.f0) / 70) : 1;
       if (tr && u < 1) drawWx(ctx, tr.from, 1 - u, f); else MT.trans = null;
       drawWx(ctx, MT.weather(), u, f);
-      if (MT.rainbowOn()) drawRainbow(ctx, Math.min(1, (G.frame - MT.rainbow) / 90), G.W / 2, G.H + 30, 210, 7);
+      if (MT.rainbowOn()) drawRainbow(ctx, Math.min(1, (G.frame - MT.rainbow) / 90), G.W / 2, G.H + 30, 214, 8);
       // night: a deep blue, the refuge's windows glow, the station's lamp
       const dark = (G.day ? G.day.glow() : 0) * 0.65;
       if (dark > 0) {

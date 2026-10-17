@@ -18,12 +18,12 @@ favours (`G.favores.OFFERS`), its zone (`G.zones.add({ id, name, icon, music, po
 habitat, rare })`) and its story as its own quest line (`G.chapters.add({ id, line: '<zone>', ... })` and
 `G.chapters.script(...)`: never waiting for Villa Sol's chapters). The full pattern, step by step, with the rules (any
 zone can be visited first: only universal words or the zone's own, introduced there), is "How to build a zone" in
-`docs/WORLD_PLAN.md`. The zone files are placeholders until their step (La playa, El bosque, El parque de juegos and La casa de los abuelos are built:
+`docs/WORLD_PLAN.md`. Every zone is built (La playa, El bosque, El parque de juegos, La casa de los abuelos, La montaña:
 `content/es/zone-playa.js` is the worked example, `content/es/zone-bosque.js` adds climbing / shy / glowing animals,
 night, a cave and a cabin inside, dog trails and swimming, with generic animal moves, side quests on map places, a zone task for the guide and a zone
 demo; `content/es/zone-juegos.js` adds action words the child says and someone DOES (`G.juegos.act / .all / .tpr /
 .choose`: the player, the kids and the dog animated from `G.frame`), rides on the playground, marching ants and a hopping
-cricket, a dog's jumping course and a little mini-game (bubbles to tap); `content/es/zone-abuelos.js` adds a house you go into (two maps, people inside or out by a chapter's `cond`), clothes the child wears on every map (`G.abuelos.wear`, a cosmetic over `G.st.playerSpec`), body actions (`G.abuelos.act`: touch, wash, clap) and full-screen moments (the mirror, the family photo); see "Framework additions" in
+cricket, a dog's jumping course and a little mini-game (bubbles to tap); `content/es/zone-abuelos.js` adds a house you go into (two maps, people inside or out by a chapter's `cond`), clothes the child wears on every map (`G.abuelos.wear`, a cosmetic over `G.st.playerSpec`), body actions (`G.abuelos.act`: touch, wash, clap) and full-screen moments (the mirror, the family photo); `content/es/zone-montana.js` adds weather that changes (`G.montana.weather / setWeather`, drawn over the map; the child says the weather she wants), the cold (shivering without warm clothes; `gorro`, `bufanda`, `guantes` join the clothes you wear: the sprite engine's `head: 'beanie'`, `scarf`, `gloves`), rides drawn by the zone (a sled, skating), a dog's spot act of its own (`tunel`) and new animal moves (`peek`, `cling`, `soar`); see "Framework additions" in
 `docs/WORLD_PLAN.md`): keep their ids, path maps and bus stops.
 
 The dog's name: write `{dog}` (like `{name}`) wherever the dog is named in a line, a prompt or an English help line; the

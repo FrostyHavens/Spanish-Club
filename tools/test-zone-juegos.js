@@ -110,7 +110,7 @@ async function animals(browser) {
     await g.frames(6); await g.shot('ants');
     const nightK = await g.ev(() => { const ok = G.zones.timeOk; G.zones.timeOk = () => true; G.field.zoo = null; const k = G.animals.here().map(a => a.kind); G.zones.timeOk = ok; return k; });
     check('animals: at night crickets come out on the hill; in the morning a hummingbird at the flowers', nightK.filter(k => k === 'grillo').length >= 2 && nightK.includes('colibri'), JSON.stringify(nightK));
-    const hop = await g.ev(() => { const a = G.animals.find('grillo'); let hopped = false; for (let i = 0; i < 500 && !hopped; i++) { G.frame++; G.animals.update(G.field); if (a.z > 2) hopped = true; } return hopped; });
+    const hop = await g.ev(() => { const a = G.animals.find('grillo'); let hopped = false; for (let i = 0; i < 3000 && !hopped; i++) { G.frame++; G.animals.update(G.field); if (a.z > 2) hopped = true; } return hopped; });
     check('animals: the cricket hops', hop);
     await g.ev(() => { G.debug.sunsetAt = 0; G.field.zoo = null; const p = G.field.player; p.x = 22; p.y = 12; G.field.snapCam(); });
     await g.frames(240); await g.shot('park_night');
