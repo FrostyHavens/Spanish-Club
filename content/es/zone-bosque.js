@@ -84,7 +84,7 @@
       walk: ['...ddd.....', '.ddsdsd....', 'dsdsdsdsf..', 'dsssssssffe', 'sssssssfff.', '.f..f..f...'],
       walk2: ['...ddd.....', '.ddsdsd....', 'dsdsdsdsf..', 'dsssssssffe', 'sssssssfff.', '..f..f...f.'],
       hide: ['...........', '..ddd......', '.dsdsd.....', 'dsdsdsd....', 'dsssssd....', '.ddddd.....'] }) });
-  AN.addKind('oso', { word: 'oso', cry: '¡Grrr... zzz!', move: 'still', shadow: 22,
+  AN.addKind('oso', { word: 'oso', cry: '¡Grrr... zzz!', move: 'still', shadow: 40, scale: 2,
     sfx: () => { tone('sawtooth', 110, 80, 0.5, 0.12, 0, { filter: 'lowpass', ff: 500 }); },
     spr: pad({ pal: { b: '#8a5428', d: '#5a3418', l: '#b07840', m: '#e8c8a0', k: '#101010' },
       stand: ['...dd.dd...............', '..dbbbbbd..............', '.dbbbbbbbd.bbbbbbb.....', 'dbkbbbbbbbbbbbbbbbbbb..', 'bmmbbbbbbbbbbbbbbbbbbb.', 'bmkmbbbbbbblbbbbbbbbbbb', '.mmbbbbbbblllbbbbbbbbbb', '..bbbbbbbbllbbbbbbbbbbd', '...dbbd...bbbbbbbbbbbd.', '..........dd.....dd....'],
@@ -348,7 +348,7 @@
 
   // ---------- the map's side places: taps, the guide, pictures (zones.js hooks, only in the forest) ----------
   const zSearch = Z.search, zSpecial = Z.special, zBlocks = Z.blocks, zGoal = Z.goal, zUnder = Z.drawUnder, zTop = Z.drawTop, zTask = Z.task;
-  Z.search = (f, x, y) => { const s = sideAt(f, x, y); return s ? s.run(f) : zSearch(f, x, y); };
+  Z.search = (f, x, y) => { const s = sideAt(f, x, y); if (s) return s.run(f); if (f && f.mapId === 'bosque' && CH.spotAt(f, x, y)) return null; return zSearch(f, x, y); }; // (a story place wins over the dog's spot on the same tile: the hollow log)
   Z.special = (f, x, y) => !!sideAt(f, x, y) || zSpecial(f, x, y);
   Z.blocks = (f, x, y) => zBlocks(f, x, y) || (f.mapId === 'bosque' && G.state && sortOpen() && sort().on && SHROOMS.some((m, i) => m.at[0] === x && m.at[1] === y && !sort().gone[i]));
   const pt = (at, lift, icon) => ({ x: at[0] * TL + 12, y: at[1] * TL + 12, lift, icon });
@@ -422,10 +422,10 @@
     if (dark > 0) {
       ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = dark; ctx.fillStyle = f.mapId === 'bosque_cueva' ? '#302848' : '#283868'; ctx.fillRect(0, 0, G.W, G.H); ctx.restore();
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
-      const lights = (f.zoo ? f.zoo.list : []).filter(a => (AN.KINDS[a.kind] || {}).glow).map(a => [a.x - cx, a.y - a.z - 3 - cy, 16]);
+      const lights = (f.zoo ? f.zoo.list : []).filter(a => (AN.KINDS[a.kind] || {}).glow).map(a => [a.x - cx, a.y - a.z - 3 - cy, 24]);
       lights.push([f.player.x * TL + 12 + (f.player.ox || 0) - cx, f.player.y * TL + 12 + (f.player.oy || 0) - cy, 34]);
       if (f.mapId === 'bosque_cueva') for (let y = 0; y < f.map.h; y++) for (let x = 0; x < f.map.w; x++) if (f.map.get(x, y) === '%') lights.push([x * TL + 12 - cx, y * TL + 14 - cy, 22]);
-      for (const [x, y, r] of lights) { const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(255,240,170,' + (0.3 * dark) + ')'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(x - r, y - r, 2 * r, 2 * r); }
+      for (const [x, y, r] of lights) { const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(255,240,170,' + (0.45 * dark) + ')'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(x - r, y - r, 2 * r, 2 * r); }
       ctx.restore();
     }
     if (f.mapId === 'bosque') {
@@ -581,7 +581,7 @@
       // mama bear at the cave's mouth: she comes out, stands up tall, hugs the cub, then they go in
       if (c.data.mama) {
         const k = Math.min(1, (t - c.data.mama) / 40), out = c.data.home ? Math.max(0, 1 - (t - c.data.home) / 50) : k;
-        const tall = c.data.tall ? Math.min(1, (t - c.data.tall) / 12) : 0, sc = 1 + tall * 0.35;
+        const tall = c.data.tall ? Math.min(1, (t - c.data.tall) / 12) : 0, sc = 2 + tall * 0.6;
         const img = AN.frame({ kind: 'oso', st: 'idle', react: 0, flip: false, age: t, t: 0 }), w = img.width * sc, h = img.height * sc;
         ctx.globalAlpha = out; ctx.drawImage(img, Math.round(CAVE[0] * TL + 12 - w / 2 - cx), Math.round(CAVE[1] * TL + 4 + out * 22 - h - cy), w, h); ctx.globalAlpha = 1;
       }

@@ -711,6 +711,7 @@
     if (gc === 's') return [P.S2, P.S3, P.S0, P.S1];
     if (gc === ',') return [P.D3, P.D4, P.D1, P.D0];
     if (gc === '=' || gc === 'p' || gc === 'x' || gc === 'X' || gc === 'S' || gc === 'G' || gc === 'c') return [P.K3, P.K4, P.K1, P.K0];
+    if (gc === '{' || gc === '}' || gc === '%') return [U('#3a3240'), U('#4a4250'), U('#1e1822'), U('#0c0a10')]; // (the cave's pool: a rock edge)
     return [P.G3, P.G4, P.D1, P.D0];
   }
   function waterTile(b, I, shallow) {

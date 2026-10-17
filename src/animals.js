@@ -74,7 +74,7 @@
   //   o.on: the tile codes it lives on (default the land: '.o,=pyz'; e.g. 's' sand, '-~w' water), o.water: drawn flat
   //   on the water / ground with the ducks (not sorted in with the people), o.shadow: its shadow's width in px.
   AN.addKind = function (id, o) {
-    AN.KINDS[id] = { word: o.word || id, sound: o.sound || null, cry: o.cry || null, speed: o.speed, order: ORDER.length, move: o.move || 'walk', on: o.on || null, water: !!o.water, shadow: o.shadow || 7, glow: o.glow || null, trees: o.trees || null, high: o.high || 0 };
+    AN.KINDS[id] = { word: o.word || id, sound: o.sound || null, cry: o.cry || null, speed: o.speed, order: ORDER.length, move: o.move || 'walk', on: o.on || null, water: !!o.water, shadow: o.shadow || 7, glow: o.glow || null, trees: o.trees || null, high: o.high || 0, scale: o.scale || 1 };
     if (o.spr) SPR[id] = o.spr;
     CRY[id] = o.sfx || (() => tone('triangle', 900, 1200, 0.08, 0.06, 0));
     if (!ORDER.includes(id)) ORDER = ORDER.concat([id]);
@@ -499,7 +499,7 @@
     let best = null, bd = 1e9;
     for (const a of f.zoo.list) {
       if ((a.kind === 'pez' && a.st !== 'jump') || hid(f, a)) continue; // the fish only while it jumps (the fountain names itself)
-      const img = frameOf(a), w = Math.max(20, img.width + 6), h = Math.max(20, img.height + 6), cy = a.y - a.z - img.height / 2;
+      const img = frameOf(a), sc = (AN.KINDS[a.kind] || {}).scale || 1, w = Math.max(20, img.width * sc + 6), h = Math.max(20, img.height * sc + 6), cy = a.y - a.z - img.height * sc / 2;
       const dx = Math.abs(wx - a.x), dy = Math.abs(wy - cy);
       if (dx <= w / 2 && dy <= h / 2 && dx + dy < bd) { best = a; bd = dx + dy; }
     }
@@ -546,6 +546,8 @@
     return pix((a.baby ? 'patito' : a.kind) + fr + (tint ? 'w' : ''), S[fr], pal, a.flip);
   }
   function drawOne(ctx, a, cx, cy) {
+    const sc = (AN.KINDS[a.kind] || {}).scale || 1;
+    if (sc !== 1) { const img = frameOf(a), w = img.width * sc, h = img.height * sc; ctx.drawImage(img, Math.round(a.x - w / 2 - cx), Math.round(a.y - h - a.z - cy), w, h); return; } // (a big animal: mama bear)
     const img = frameOf(a), x = Math.round(a.x - img.width / 2 - cx), y = Math.round(a.y - img.height - a.z - cy);
     const gl = (AN.KINDS[a.kind] || {}).glow;
     if (gl) { // a soft light around it, pulsing (fireflies)
