@@ -2,6 +2,41 @@
 
 A running record of what changed in Club de Español and why. Newest first.
 
+## 2026-10-17 — El parque de juegos, the third zone (step 4 of the open world): action words
+The park west of Villa Sol, following "How to build a zone" (docs/WORLD_PLAN.md); it only uses universal words and its
+own (Villa Sol's *salta*, *gira* and *pelota* are met here when they aren't yet), so it can be the first place visited.
+The theme is action words for ages 4-7, taught by Total Physical Response: the child says (or taps) the word and her
+character, the kids and the dog DO it.
+- **The map** (`tools/mapgen.py`, 40x28): the fenced playground (swings, slide, climbing frame by a tall tree, seesaw,
+  merry-go-round, sandbox), the kite hill, a little soccer field, a pond with rocks, the dog's jumping course, a garden
+  with a fountain, Don Chuy's bubble cart by the path in. Eight new tiles (`src/tiles.js`: `! < > / ? ^ ; $`); the
+  moving parts (swing seats, the seesaw's plank, the turning wheel, the hurdles, the field's lines, the hill's rise) are
+  drawn by the zone. Blue night with glowing lamps and crickets.
+- **Actions** (`G.juegos`): `act` / `all` / `tpr` / `choose` animate anyone with a verb (corre out and back, fast or
+  slow; salta; gira; baila; sube; baja; empuja; lanza and atrapa with a flying ball), with extra arms drawn over the
+  sprite; the dog does his matching trick. Tap yourself in the park: "¿Qué hago?" (say one!) and you do it (a ghost-hand
+  demo shows it once). Every ride is tappable: you swing, climb the ladder and whoosh down the slide, climb the frame,
+  seesaw with Ana, ride the merry-go-round; its word is met the first time and said after (say-it-back).
+- **23 words, three pages** (`content/es/words.js`, pictures in `src/icons.js`: verbs show a kid doing it): corre, baila,
+  sube, baja, rápido (a race car), despacio (a snail), empuja, lanza, atrapa; el columpio, el papalote, la resbaladilla,
+  el subibaja, las burbujas, la cuerda; la paloma, la catarina, la hormiga, la abeja, la lagartija, la lombriz, el
+  grillo, el colibrí.
+- **Eight album animals**; new generic moves (`src/animals.js`): `march` (a line of ants following each other; tapped,
+  they scatter) and `hop` (the cricket: chirps, hops off). The cricket (night, the hill) and the hummingbird (morning,
+  the flowers) are rare.
+- **People** (`src/data.js`): Ana, Pablo, Don Chuy. **Story** (line `juegos`): ¡Simón dice! (each kid shows two actions,
+  everyone does them; then you are Simón), El papalote de Pablo (climb up for the kite stuck in the tree; on the hill run
+  fast and it flies, slowly and it sinks; Pablo flies it there ever after), ¡A los juegos! (the slide, push Pablo on the
+  swing, the seesaw with Ana).
+- **Side quests:** Ana's jump rope (five ¡salta!, counted) and Simón dice, Pablo's ball (lanza, atrapa; the dog leaps for
+  it), Don Chuy's bubbles (tap six; then a bubble wand: bubbles trail behind you on any map). The dog digs a ball out of
+  the sandbox, runs his jumping course (new dog-spot act `course`) and chases the pigeons. Six hiding places, three page
+  puzzles, favours, a ball on the soccer field.
+- Tests: `tools/test-zone-juegos.js` (new: walking in, everything reachable, the bus, Lola; the animals, the ants' line,
+  the cricket, the album; tapping yourself and every ride; the story by taps; the side quests; the dog's three things;
+  hide-and-seek, a page puzzle, save and load). `test-world`: its "zone still to be built" checks (a zone's own chapter
+  line, the album's "?" tab) moved to La casa de los abuelos; the park's dig gives a ball.
+
 ## 2026-10-17 — El bosque, the second zone (step 3 of the open world)
 The forest north of Villa Sol, following "How to build a zone" (docs/WORLD_PLAN.md); it only uses universal words and
 its own, so it can be the first place a child explores. The parent asked for wonder, adventure and many animals.

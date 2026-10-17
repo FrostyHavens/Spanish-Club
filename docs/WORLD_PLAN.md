@@ -134,15 +134,59 @@ bush, `_` hollow log, `#` rock cliff, `|` waterfall, `@` the cave's mouth (an ex
 - **Also:** six hiding places (the squirrel's oak, the log, two blackberry bushes, a boulder by the cave, a tall tree), two
   page puzzles (the clearing, the meadow), favours for Elena and Lupe, a ghost-hand demo (`pickberry`).
 
-### El parque de juegos (west) — action verbs
-- **Words:** corre, salta (met as the dog's trick: reuse it), sube, baja, empuja, arriba, abajo, rápido, despacio, el
-  columpio, la resbaladilla, el subibaja, la cuerda, la arena (shared with the beach: met once, wherever first).
-- **People:** Pablo and Ana (kids who play); Nico comes here a lot.
-- **Dog:** digs in the sandbox (a stick, a ball) — in the placeholder; races you down the path.
-- **Side quests:** Simon says (*¡salta! ¡corre!*: the child taps / says the action, the kids do it), push Pablo on the
-  swing (*¡más!*), a race.
-- **Story:** the playground's opening day: fix the swing, find the lost jump rope, the big race.
-- **Album (7):** paloma, caracol, hormiga, abeja, catarina, lombriz, **colibrí** (rare: at the flowers in the morning).
+### El parque de juegos (west) — action words (TPR) — **BUILT** (2026-10-17, `content/es/zone-juegos.js`)
+One big map (40x28). The path comes in on the east edge (39, 13) past the bus stop and Don Chuy's bubble cart; north of
+the main path the fenced playground (three swings, a slide, a climbing frame beside a tall tree, a seesaw, a
+merry-go-round, a sandbox with a little sandcastle), the kite hill to the north-west (a soft rise drawn by the zone),
+the little soccer field to the south (lines drawn by the zone, two goals), a pond with ducks and rocks (lizards) and the
+dog's jumping course to the south-west, a garden with a fountain, benches and flower beds to the south-east. At night
+the park goes blue, the lamps glow and crickets sing on the hill. New tiles (`src/tiles.js`): `!` swing set (A-frame
+legs at the row's ends), `<` / `>` slide ladder and chute, `/` climbing frame, `?` seesaw (stand in the middle tile),
+`^` merry-go-round pad (2x2), `;` goal, `$` bubble cart. The moving parts (the seats and chains, the seesaw's plank, the
+turning wheel) are drawn by the zone in `drawUnder`, the riders by their own `drawSelf`.
+- **The core: say an action, someone DOES it** (Total Physical Response). `G.juegos.act(f, e, verb)` animates anyone
+  (the player, a kid, Lola, Nico) as offsets / squash / tilt / extra arms / a ball from `G.frame` (`drawPerson`, set as
+  `e.drawSelf`): *corre* (out and back, `speed: 'rapido' | 'despacio'`), *salta*, *gira*, *baila*, *sube* (stretch up),
+  *baja* (crouch), *empuja*, *lanza*, *atrapa*; `G.juegos.all(f, verb)` makes everyone near do it (the dog too: his
+  matching trick, `G.pet.anim`); `G.juegos.tpr(id, {who, prompt, demo, act, ask, show})` is the TPR step: new, a
+  one-unknown "watch, then you" puzzle (`G.intro.watch`: someone shows it, then the child picks/says it and it happens);
+  met, "¿Qué hago?" picture cards with the situation's picture (mic on) and then it happens; `G.juegos.choose` a free
+  choice of met verbs (mic on: say one!) that everyone does. **Tap yourself in the park:** "¿Qué hago?" and you do it
+  (a ghost-hand demo `meact` shows it once).
+- **Rides** (tap the thing; `e.ride` poses): the swings (higher with each swing), the slide (up the ladder: *¡sube!*,
+  whoosh down: *¡baja!*, you land at its end), the climbing frame (up, a wave, down), the seesaw (with Ana:
+  *¡sube! ¡baja!*), the merry-go-round (*¡gira!*). A ride's word (columpio, resbaladilla, subibaja) is met the first time
+  (Pablo or Ana names it) and said after with the say-it-back mic. Pablo idles on a swing, Ana skips her rope.
+- **Words (23, three notebook pages):** *¡A jugar!* (`acciones`): corre, baila, sube, baja, rápido, despacio, empuja,
+  lanza (alt *avienta, tira*), atrapa (alt *cáchala, agarra*); *El parque de juegos* (`juegosparque`): el columpio, el
+  papalote (Mexican; alt *cometa*), la resbaladilla (alt *tobogán*), el subibaja, las burbujas, la cuerda; *Bichos del
+  parque* (`bichos`): la paloma, la catarina, la hormiga, la abeja, la lagartija, la lombriz, el grillo, el colibrí.
+  *salta*, *gira* (the dog's tricks) and *la pelota* are Villa Sol words: the park meets them if they aren't met yet.
+  *baja* and *baila* sound alike: never on the same question (`CLASH`). Verb pictures show a kid doing it; *rápido* is
+  a race car, *despacio* a snail.
+- **People:** Ana (a girl in orange with a ponytail: Simón dice, her jump rope), Pablo (a boy with a green bandana: the
+  swings, his kite, the ball), Don Chuy (the bubble man: a straw hat, a moustache, a blue shirt, his cart). Lola meets
+  *el columpio* and points at the playground; Nico's hide-and-seek. None have hearts yet.
+- **Album (8):** paloma (`fly`, by the fountain and the benches), catarina (`crawl`, on the flowers; its wings open when
+  tapped), hormiga (new move `march`: a line of ants, each following the one before; tapped, they scatter), abeja
+  (`flit`), lagartija (`scuttle`, on the rocks by the pond), lombriz (`still`, popping out of the sandbox), **grillo**
+  (rare: at night on the kite hill; new move `hop`, it chirps), **colibrí** (rare: in the morning at the flowers).
+- **Story (line `juegos`):** 1 *¡Simón dice!* (Ana: corre, salta; Pablo: gira, baila; each shown by the kid, then
+  everyone does it; then the child is Simón: three free choices, then a listening round), 2 *El papalote de Pablo*
+  (papalote; the kite is stuck in the tall tree: climb the frame (*sube*), come down (*baja*); on the hill run
+  (*corre*), faster (*rápido*: it flies high), slowly (*despacio*: it sinks); after it Pablo flies it on the hill every
+  day), 3 *¡A los juegos!* (Ana: la resbaladilla (sube, baja), push Pablo on el columpio (*empuja*, "¡Más!" twice), el
+  subibaja with Ana ("¿Y tú?" sube or baja)).
+- **Side quests (`G.state.juegos`):** Ana's jump rope (after chapter 1; *la cuerda*, five *¡salta!*, counted; daily),
+  then Simón dice again; Pablo's ball (after chapter 1; *lanza* / *atrapa*: the ball flies to Pablo and back, then the
+  dog leaps for it; daily); Don Chuy's bubbles (any day: *las burbujas*, *atrapa*; tap six as they float, the dog pops
+  some too; then a bubble wand of your own: bubbles trail from it on any map). The kids' bubbles wait while their story
+  goes on. The guide suggests a ride not tried today.
+- **Dog:** digs in the sandbox (a green ball), runs his jumping course (new dog-spot act `course`: hurdles drawn by the
+  zone, he leaps each), chases the pigeons (`chase`).
+- **Also:** six hiding places (the cart, the slide, the sandcastle, a garden bench, a bush, a tall tree), three page
+  puzzles (the playground, under the kite tree, the garden), favours for Ana, Pablo and Don Chuy, the yellow ball to pick
+  up on the soccer field.
 
 ### La casa de los abuelos (south-west) — family, the body, clothes
 - **Words:** el abuelo, la abuela, la familia, la mano, la cabeza, los ojos, la boca, la nariz, el pie, el sombrero,
@@ -273,6 +317,17 @@ Files a zone step touches (and nothing else unless the engine truly needs it):
   re-render the map (`G.drawTile` into a canvas) after every mapgen change; tiles whose look depends on their column
   need `uniq: true` in `reg` (the tile cache key doesn't include x); `perch: 0` is falsy (use 1); "¡Nuevo animal!" now
   waits (hidden, silent) while a menu or a talk is on top.
+- **From El parque de juegos:** animal moves `march` (a line per map entry, followers walk the leader's trail) and
+  `hop`; dog-spot act `course` (`path: [[x, y, jump], ...]`, `G.zones.hurdle` while he leaps); anyone can be animated
+  through `e.drawSelf` (the park's `drawPerson`: actions and rides as poses from `G.frame`, extra arms drawn over the
+  sprite) — reuse `G.juegos.act / .all / .tpr / .choose` for any zone's action words (the mountain's *¡ven!*, the
+  grandparents' *dress up*); a free `G.choose({ mic: true })` is the way to let the child say whatever she wants;
+  `G.seek.tap` and `G.carry.tapSelf` can be wrapped for a zone's own tappable things (bubbles) and "tap yourself";
+  `G.animals.update` is a per-frame hook for a zone's mini-game; a story spot on a multi-tile thing should win on all
+  its tiles (the park's `main` tile per ride); a chapter's `stage` runs for the line's next chapter too, so guard it with
+  `CH.active(id)` when it moves people.
+- **Pitfalls met here:** a picture's `col` is a colour (`'#f8c830'`), not a colour word (the black ball); test waits on
+  a dialogue need `g.drive`, not `g.until` (a TextBox waits for taps).
 - `G.chapters.allWrittenDone()` and the badge rows (Misiones, the diploma) are Villa Sol's line only; a zone's chapters
   get their badge card when done but aren't listed there yet (a later step could add a row per zone).
 - A zone's people talk: story, then their side quest, then `G.errands.talk` (presents, favours, "who'd love it"), then
