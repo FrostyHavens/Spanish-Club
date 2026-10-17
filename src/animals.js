@@ -64,10 +64,17 @@
   //   on the water, pulsing (frame pulse)), 'leap' (a dolphin: only its fin shows as it swims (frame fin), now and then it
   //   leaps out in a big arc (frames rise / dive)), 'still' (a starfish, an octopus: stays put, its frame alt now and
   //   then), 'crawl' (a turtle: plods slowly (frames walk / walk2), pulls its head in when tapped (frame hide)).
+  //   More from El bosque (2026-10-17): 'climb' (a squirrel: scurries about in dashes, and when you or the dog come near
+  //   (or now and then) it races to the nearest tree trunk (o.trees: tile codes, default ')') and runs up it (frame
+  //   climb), sits up there a while (o.high: px, default 26), then comes back down), 'shy' (a deer: grazes (frame graze)
+  //   and walks slowly; when you or the dog come close it bounds away in big leaps (frame jump)), 'flit' (a firefly:
+  //   hovers and wanders, bobbing up and down; tapped, it darts off). o.glow: a colour: a soft pulsing light around it
+  //   (fireflies). The default 'walk' shows frame react (if it has one) for a moment when tapped (a fox sits, a
+  //   raccoon stands up).
   //   o.on: the tile codes it lives on (default the land: '.o,=pyz'; e.g. 's' sand, '-~w' water), o.water: drawn flat
   //   on the water / ground with the ducks (not sorted in with the people), o.shadow: its shadow's width in px.
   AN.addKind = function (id, o) {
-    AN.KINDS[id] = { word: o.word || id, sound: o.sound || null, cry: o.cry || null, speed: o.speed, order: ORDER.length, move: o.move || 'walk', on: o.on || null, water: !!o.water, shadow: o.shadow || 7 };
+    AN.KINDS[id] = { word: o.word || id, sound: o.sound || null, cry: o.cry || null, speed: o.speed, order: ORDER.length, move: o.move || 'walk', on: o.on || null, water: !!o.water, shadow: o.shadow || 7, glow: o.glow || null, trees: o.trees || null, high: o.high || 0 };
     if (o.spr) SPR[id] = o.spr;
     CRY[id] = o.sfx || (() => tone('triangle', 900, 1200, 0.08, 0.06, 0));
     if (!ORDER.includes(id)) ORDER = ORDER.concat([id]);
@@ -403,6 +410,44 @@
     still(f, a) { // stays put; its other frame now and then
       if (--a.t <= 0) { a.st = a.st === 'alt' ? 'idle' : 'alt'; a.t = a.st === 'alt' ? 30 + ri(30) : 60 + ri(140); }
     },
+    climb(f, a, K) { // a squirrel: dashes about; near you (or now and then) up the nearest tree, a while up there, then down
+      if (!a.trees) { // the trunks near where it lives
+        const xs = a.ground.map(g => g[0]), ys = a.ground.map(g => g[1]), codes = K.trees || ')', out = [];
+        for (let y = Math.min(...ys) - 3; y <= Math.max(...ys) + 3; y++) for (let x = Math.min(...xs) - 3; x <= Math.max(...xs) + 3; x++) if (codes.includes(f.map.get(x, y))) out.push([x, y]);
+        a.trees = out;
+      }
+      const near = (youNear(f, a, 40) || dogNear(f, a, 46)) && !a.react;
+      if (a.st === 'up') { a.z = K.high || 26; if (--a.t <= 0 && !youNear(f, a, 40)) { a.st = 'down'; } return; }
+      if (a.st === 'climb') { a.z = Math.min(K.high || 26, a.z + 0.9); if (a.z >= (K.high || 26)) { a.st = 'up'; a.t = 150 + ri(240); } return; }
+      if (a.st === 'down') { a.z = Math.max(0, a.z - 0.7); if (a.z <= 0) { a.z = 0; const [x, y] = pickGround(a); a.tx = x; a.ty = y; a.st = 'walk'; a.fast = 1; } return; }
+      if (a.st === 'totree') { if (goToward(a, 1.5)) { a.st = 'climb'; a.flip = false; } return; }
+      if ((near || a.wantTree) && a.trees.length) {
+        a.wantTree = 0;
+        let best = null, bd = 1e9; for (const [x, y] of a.trees) { const d = Math.hypot(x * T + 12 - a.x, y * T + 20 - a.y); if (d < bd) { bd = d; best = [x, y]; } }
+        if (best && bd < 6 * T) { a.tx = best[0] * T + 12; a.ty = best[1] * T + 21; a.st = 'totree'; a.flip = a.tx < a.x; if (near && visible(f, a)) AN.cry(a.kind); return; }
+      }
+      if (a.st === 'walk') { if (goToward(a, a.fast ? 1.4 : K.speed || 0.9)) { a.st = 'idle'; a.fast = 0; a.t = 20 + ri(70); } return; }
+      if (--a.t <= 0) { const r = Math.random(); if (r < 0.2) { a.wantTree = 1; a.t = 1; } else if (r < 0.75) { [a.tx, a.ty] = pickGround(a); a.st = 'walk'; } else { a.flip = !a.flip; a.t = 30 + ri(40); } }
+    },
+    shy(f, a, K) { // a deer: grazes, walks slowly; you or the dog close: it bounds away in big leaps
+      if (a.st === 'run') {
+        const s = ++a.h / 22; a.z = Math.abs(Math.sin(s * Math.PI)) * 7;
+        if (goToward(a, 1.6)) { a.z = 0; a.st = 'idle'; a.t = 90 + ri(90); }
+        return;
+      }
+      if ((youNear(f, a, 46) || dogNear(f, a, 54)) && a.react <= 0) {
+        const px = f.player.x * T + 12, py = f.player.y * T + 18; let best = null, bd = -1;
+        for (let k = 0; k < 8; k++) { const g = pickGround(a), d = Math.hypot(g[0] - px, g[1] - py); if (d > bd) { bd = d; best = g; } }
+        a.tx = best[0]; a.ty = best[1]; a.st = 'run'; a.h = 0; a.flip = a.tx < a.x; return;
+      }
+      if (a.st === 'walk') { if (goToward(a, K.speed || 0.3)) { a.st = 'graze'; a.t = 120 + ri(200); } return; }
+      if (--a.t <= 0) { if (a.st === 'graze' && ri(2)) { a.st = 'idle'; a.t = 60 + ri(90); } else if (ri(2)) { [a.tx, a.ty] = pickGround(a); a.st = 'walk'; } else { a.st = 'graze'; a.t = 140 + ri(200); } }
+    },
+    flit(f, a, K) { // a firefly: hovers, bobbing, and wanders slowly; tapped, it darts away
+      a.z = 10 + Math.sin(a.age / 17 + a.tint * 1.7) * 5;
+      if (a.st === 'walk') { if (goToward(a, a.fast ? 1.2 : K.speed || 0.25)) { a.st = 'idle'; a.fast = 0; a.t = 20 + ri(60); } return; }
+      if (--a.t <= 0) { [a.tx, a.ty] = pickGround(a); a.st = 'walk'; }
+    },
     crawl(f, a, K) { // plods slowly; its head in for a while when tapped
       if (a.st === 'hide') { if (--a.t <= 0) { a.st = 'idle'; a.t = 40; } return; }
       if (a.st === 'walk') { if (goToward(a, K.speed || 0.14)) { a.st = 'idle'; a.t = 80 + ri(160); } return; }
@@ -439,7 +484,10 @@
       else if (mv === 'leap') AN.leap(a, f);
       else if (mv === 'crawl') { a.st = 'hide'; a.t = 90; }
       else if (mv === 'still') { a.st = 'alt'; a.t = 40; }
-      else if (mv === 'drift') { const [x, y] = pickGround(a); a.tx = x; a.ty = y; a.st = 'walk'; a.fast = 1; }
+      else if (mv === 'drift' || mv === 'flit') { const [x, y] = pickGround(a); a.tx = x; a.ty = y; a.st = 'walk'; a.fast = 1; }
+      else if (mv === 'climb') { if (a.st !== 'up' && a.st !== 'climb') a.wantTree = 1; } // (up the nearest tree)
+      else if (mv === 'shy') { a.st = 'idle'; a.t = 50; }
+      else if (mv === 'walk' || !mv) { a.st = 'idle'; a.t = Math.max(a.t, 50); }
     }
     f.zoo.fx.push({ k: 'heart', x: a.x + (a.flip ? -8 : 8), y: a.y - frameOf(a).height + 4, t: 0, life: 50 });
   }
@@ -486,6 +534,10 @@
         else if (mv === 'crawl') fr = a.st === 'hide' ? 'hide' : a.st === 'walk' && (a.age >> 4) & 1 ? 'walk2' : 'walk';
         else if (mv === 'still') fr = a.st === 'alt' || (R && (a.react >> 3) & 1) ? 'alt' : 'stand';
         else if (mv === 'scuttle') fr = a.st === 'snap' || R ? ((a.t >> 3) & 1 ? 'snap' : 'stand') : a.st === 'walk' && (a.age >> 2) & 1 ? 'walk' : 'stand';
+        else if (mv === 'climb') fr = a.st === 'climb' || a.st === 'down' ? ((a.age >> 2) & 1 ? 'climb' : 'climb2') : a.st === 'up' ? 'climb' : (a.st === 'walk' || a.st === 'totree') && (a.age >> 2) & 1 ? 'walk' : 'stand';
+        else if (mv === 'shy') fr = a.st === 'run' ? (a.z > 3 ? 'jump' : 'walk') : R ? 'stand' : a.st === 'graze' ? 'graze' : a.st === 'walk' && (a.age >> 3) & 1 ? 'walk' : 'stand';
+        else if (mv === 'flit') fr = (a.age >> 2) & 1 ? 'alt' : 'stand';
+        else if (R && S.react) fr = 'react';
         else fr = a.st === 'walk' && S.walk && (a.age >> 3) & 1 ? 'walk' : S.stand ? 'stand' : Object.keys(S).find(k => k !== 'pal');
         if (!S[fr]) fr = S.stand ? 'stand' : Object.keys(S).find(k => k !== 'pal');
       }
@@ -495,6 +547,12 @@
   }
   function drawOne(ctx, a, cx, cy) {
     const img = frameOf(a), x = Math.round(a.x - img.width / 2 - cx), y = Math.round(a.y - img.height - a.z - cy);
+    const gl = (AN.KINDS[a.kind] || {}).glow;
+    if (gl) { // a soft light around it, pulsing (fireflies)
+      const k = 0.55 + 0.45 * Math.sin(a.age / 9 + (a.tint | 0)), gx = x + img.width / 2, gy = y + img.height - 2, r = 7 + k * 4;
+      const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, r); g.addColorStop(0, gl); g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.save(); ctx.globalAlpha = 0.5 + 0.4 * k; ctx.fillStyle = g; ctx.fillRect(gx - r, gy - r, 2 * r, 2 * r); ctx.restore();
+    }
     if (a.kind === 'caballo' || a.kind === 'cabra') { // a swishing tail: one pixel that moves
       const sw = (a.age >> 4) & 1;
       ctx.drawImage(img, x, y);

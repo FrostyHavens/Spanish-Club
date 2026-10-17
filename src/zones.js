@@ -156,6 +156,27 @@
       if (G.carry && G.carry.bump) G.carry.bump('dog');
       G.st.autosave(); yield 20; return;
     }
+    if (sp.act === 'trail') { // he follows a trail of paw prints (sp.path: tiles), nose down, and finds something at its end
+      G.pet.sound('bark'); K.puff('ex', n.x * T + 12, n.y * T - 4, { life: 30 });
+      yield* K.walk(f, n, sx, sy, 4);
+      for (const [x, y] of sp.path || []) { yield* G.pet.play('sniff'); K.puff('q', n.x * T + 12, n.y * T - 6, { life: 20 }); yield* f.walkNpc(n, K.path(f, n, x, y), 3); }
+      const [ex, ey] = (sp.path && sp.path.length) ? sp.path[sp.path.length - 1] : sp.at;
+      K.puff('ex', ex * T + 12, ey * T - 8, { life: 30 }); yield* G.pet.play('jump');
+      return yield* found(f, sp, n, ex, ey);
+    }
+    if (sp.act === 'swim') { // a stick thrown across the water (sp.at: the bank, sp.to: the far side): he swims over and brings it back
+      const [tx, ty] = sp.to, dx = Math.sign(tx - sx), dy = Math.sign(ty - sy);
+      yield* K.walk(f, n, sx, sy, 4); n.dir = dy < 0 ? 'up' : dy > 0 ? 'down' : dx < 0 ? 'left' : 'right';
+      Z.stick = { from: [f.player.x, f.player.y], to: [tx, ty], t: 0 }; G.audio.sfx('swing');
+      for (let k = 0; k <= 30; k++) { Z.stick.t = k / 30; yield 1; }
+      G.pet.sound('bark'); yield* G.pet.play('jump');
+      const steps = Math.abs(tx - sx) + Math.abs(ty - sy), dir = dy < 0 ? 'u' : dy > 0 ? 'd' : dx < 0 ? 'l' : 'r', back = { u: 'd', d: 'u', l: 'r', r: 'l' }[dir];
+      const splash = () => { for (let i = 0; i < 6; i++) K.puff('drop', n.x * T + 12 + (Math.random() - 0.5) * 14, n.y * T + 12, { vy: -1.2 - Math.random(), vx: (Math.random() - 0.5) * 1.4, g: 0.12, life: 30 }); G.audio.sfx('swing'); };
+      for (let i = 0; i < steps; i++) { splash(); yield* f.walkNpc(n, dir, 2); }
+      Z.stick = null; G.pet.sound('bark'); K.puff('ex', n.x * T + 12, n.y * T - 6, { life: 30 });
+      for (let i = 0; i < steps; i++) { splash(); yield* f.walkNpc(n, back, 2); }
+      return yield* found(f, sp, n, sx, sy);
+    }
     const side = [[sx - 1, sy], [sx + 1, sy], [sx, sy + 1], [sx, sy - 1]].find(([x, y]) => !f.blocked(x, y, n) && !f.exitAt(x, y)) || [sx, sy + 1];
     G.pet.sound('bark'); K.puff('ex', n.x * T + 12, n.y * T - 4, { life: 30 });
     yield* K.walk(f, n, side[0], side[1], 4);
@@ -168,9 +189,14 @@
       yield* G.pet.play('sniff');
       for (let k = 0; k < 3; k++) { for (let i = 0; i < 5; i++) K.puff('crumb', wx + (Math.random() - 0.5) * 8, wy - 2, { vy: -1.4 - Math.random(), vx: (Math.random() - 0.5) * 2, g: 0.15, life: 30 }); G.pet.sound('crunch'); yield 14; }
     }
+    yield* found(f, sp, n, sx, sy);
+  }
+  // the end of a dog's spot: saved as done; what he found lies at (x, y) to pick up; a bark and a heart
+  function* found(f, sp, n, x, y) {
+    const K = G.chapters.K, wx = x * T + 12, wy = y * T + 14;
     st().dog[sp.id] = { d: day(), t: clock() };
     if (sp.gives && G.carry && G.carry.state) { // he found something: it lies there to pick up
-      const g = G.carry.state().ground; g.push({ id: sp.gives, col: sp.col || null, map: f.mapId, x: sx, y: sy });
+      const g = G.carry.state().ground; g.push({ id: sp.gives, col: sp.col || null, map: f.mapId, x, y });
       G.audio.sfx('chime'); G.fx.burst(wx - Math.round(f.cam.x), wy - 8 - Math.round(f.cam.y));
     }
     G.pet.sound('bark'); K.heart(f, n); if (G.hearts) G.hearts.add('canelo', 1, 'care');
@@ -178,6 +204,17 @@
     G.st.autosave();
     yield 20;
   }
+
+  // ---------- a zone's word: met here, or brought back if it was met elsewhere (any zone may be the first) ----------
+  // not met: its one-unknown puzzle (G.intro.show: held up, then "which word is this?"); met: a question about it.
+  // (La playa has its own copy, G.playa.meetW; El bosque and later zones use this one.)
+  Z.meetW = function* (id, o = {}) {
+    const K = G.chapters.K;
+    if (!met(id)) { yield* G.intro.show(id, Object.assign({ how: 'show' }, o)); return true; }
+    yield* K.sayShow(o.who, o.showPic || o.show || id, K.T(o.prompt || '¡[' + id + ']!', o.en || ''));
+    yield* G.review.ask(id, { who: o.who });
+    return false;
+  };
 
   // ---------- exits at a map's edge ----------
   Z.edge = (x, y, to, tx, ty, dir) => ({ x, y, to, tx, ty, dir, sfx: 'step', edge: true });
@@ -286,6 +323,7 @@
       else if (sp.act === 'sniff') { ctx.fillStyle = '#5a3818'; ctx.fillRect(x + 3, y + 12, 18, 6); ctx.fillStyle = '#8a5a2c'; ctx.fillRect(x + 4, y + 13, 16, 3); ctx.fillStyle = '#c89a60'; ctx.fillRect(x + 18, y + 13, 3, 4); }
     }
   };
+  Z.stick = null; // a stick flying across the water for the dog (dog-spot act 'swim'): {from, to (tiles), t: 0..1}
   Z.drawTop = function (f, ctx) {
     if (!G.state) return;
     const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
@@ -294,6 +332,7 @@
     if (z && z.bus && z.bus.map === f.mapId) busSign(ctx, z.bus.at[0] * T - cx, z.bus.at[1] * T - cy, f.t);
     if (dogHere(f) && !f.locked && G.top() === f) for (const sp of f.def.dogSpots || []) if (Z.dogReady(sp)) G.drawAlert(ctx, 'huella', sp.at[0] * T - cx, sp.at[1] * T - cy + 6, f.t);
     drawBus(ctx, f);
+    const sk = Z.stick; if (sk && G.drawIcon16) { const u = sk.t, x = sk.from[0] + (sk.to[0] - sk.from[0]) * u, y = sk.from[1] + (sk.to[1] - sk.from[1]) * u; G.drawIcon16(ctx, 'palo', Math.round(x * T + 4 - cx), Math.round(y * T + 2 - cy - Math.sin(u * Math.PI) * 30)); }
   };
 
   // ---------- the guide's suggestion in this zone (guide.js) ----------

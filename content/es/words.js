@@ -29,9 +29,11 @@
     // the open world's zones (docs/WORLD_PLAN.md): each zone's own pages
     playa: { name: 'La playa', en: 'The beach' },
     mar: { name: 'En el mar', en: 'In the sea' },
+    bosque: { name: 'El bosque', en: 'The forest' },
+    fauna: { name: 'Animales del bosque', en: 'Forest animals' },
   };
   // the notebook's page order: roughly the order the pages appear in the story
-  C.topicOrder = ['saludos', 'mascota', 'animales', 'sonidos', 'comida', 'colores', 'granja', 'pueblo', 'cosas', 'sentir', 'numeros', 'playa', 'mar'];
+  C.topicOrder = ['saludos', 'mascota', 'animales', 'sonidos', 'comida', 'colores', 'granja', 'pueblo', 'cosas', 'sentir', 'numeros', 'playa', 'mar', 'bosque', 'fauna'];
 
   C.words = {
     // ---- Saludos ----
@@ -137,6 +139,25 @@
     medusa: { es: 'la medusa', en: 'the jellyfish', topic: 'mar', icon: 'medusa', pl: 'medusas', alt: 'aguamala' },
     delfin: { es: 'el delfín', en: 'the dolphin', topic: 'mar', icon: 'delfin', pl: 'delfines' },
     pulpo: { es: 'el pulpo', en: 'the octopus', topic: 'mar', icon: 'pulpo', pl: 'pulpos', alt: 'pulpito' },
+    // ---- El bosque (content/es/zone-bosque.js): the woods, big and small; Mexican Spanish ----
+    elbosque: { es: 'el bosque', en: 'the forest', topic: 'bosque', icon: 'bosque', alt: 'bosque / bosquecito' }, // (id: the zone's picture is called bosque)
+    hoja: { es: 'la hoja', en: 'the leaf', topic: 'bosque', icon: 'hoja', pl: 'hojas', alt: 'hojita / hojitas' },
+    hongo: { es: 'el hongo', en: 'the mushroom', topic: 'bosque', icon: 'hongo', pl: 'hongos', alt: 'honguito / champiñón' },
+    tronco: { es: 'el tronco', en: 'the log', topic: 'bosque', icon: 'tronco', pl: 'troncos', alt: 'tronquito' },
+    bellota: { es: 'la bellota', en: 'the acorn', topic: 'bosque', icon: 'bellota', pl: 'bellotas', alt: 'bellotita' },
+    mora: { es: 'la mora', en: 'the blackberry', topic: 'bosque', icon: 'mora', pl: 'moras', alt: 'zarzamora / moritas / zarzamoras' },
+    cueva: { es: 'la cueva', en: 'the cave', topic: 'bosque', icon: 'cueva', pl: 'cuevas' },
+    grande: { es: 'grande', en: 'big', topic: 'bosque', icon: 'grande', alt: 'grandote / grandota / muy grande' },
+    pequeno: { es: 'pequeño / pequeña', en: 'small', topic: 'bosque', icon: 'pequeno', alt: 'chiquito / chiquita / chico / chica / pequeñito' },
+    // ---- Animales del bosque: the forest's animals (the album) ----
+    oso: { es: 'el oso', en: 'the bear', topic: 'fauna', icon: 'oso', pl: 'osos', alt: 'osito / osa / osita' },
+    ardilla: { es: 'la ardilla', en: 'the squirrel', topic: 'fauna', icon: 'ardilla', pl: 'ardillas', alt: 'ardillita' },
+    mapache: { es: 'el mapache', en: 'the raccoon', topic: 'fauna', icon: 'mapache', pl: 'mapaches', alt: 'mapachito' },
+    venado: { es: 'el venado', en: 'the deer', topic: 'fauna', icon: 'venado', pl: 'venados', alt: 'venadito / ciervo' },
+    zorro: { es: 'el zorro', en: 'the fox', topic: 'fauna', icon: 'zorro', pl: 'zorros', alt: 'zorrito / zorra' },
+    erizo: { es: 'el erizo', en: 'the hedgehog', topic: 'fauna', icon: 'erizo', pl: 'erizos', alt: 'erizito' },
+    buho: { es: 'el búho', en: 'the owl', topic: 'fauna', icon: 'buho', pl: 'búhos', alt: 'tecolote / buhito' },
+    luciernaga: { es: 'la luciérnaga', en: 'the firefly', topic: 'fauna', icon: 'luciernaga', pl: 'luciérnagas', alt: 'luciernaguita' },
   };
   C.numberWords = ['uno', 'dos', 'tres', 'cuatro', 'cinco'];
   C.numberWords10 = ['uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'];
@@ -156,6 +177,8 @@
     numeros: { topic: 'numeros', words: ['uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'] },
     playa: { topic: 'playa', words: ['mar', 'concha', 'elsol', 'caliente', 'helado', 'arena', 'cubetaarena', 'castillo', 'ola'] },
     mar: { topic: 'mar', words: ['cangrejo', 'estrellamar', 'tortuga', 'gaviota', 'nadar', 'medusa', 'delfin', 'pulpo'] },
+    bosque: { topic: 'bosque', words: ['elbosque', 'pequeno', 'grande', 'cueva', 'bellota', 'hoja', 'tronco', 'mora', 'hongo'] },
+    fauna: { topic: 'fauna', words: ['oso', 'ardilla', 'mapache', 'venado', 'zorro', 'erizo', 'buho', 'luciernaga'] },
   };
   C.pageOrder = C.topicOrder.slice();
   // where each page's puzzle sparkle sits (maps.js reads this): map -> 'x,y' -> page
@@ -167,6 +190,7 @@
     escuela: { '3,1': 'sentir' },
     granja: { '6,2': 'sonidos' }, // (inside the barn: what do the animals say?)
     playa: { '21,7': 'playa', '12,10': 'mar' }, // (La playa: by the lifeguard's tower, and in the middle of the beach)
+    bosque: { '16,15': 'bosque', '22,6': 'fauna' }, // (El bosque: in the clearing, and in the meadow by the cave path)
   };
 
   // ---------- the 21 chapters, in order (docs/CURRICULUM.md section 4) ----------

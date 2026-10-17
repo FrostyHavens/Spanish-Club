@@ -114,6 +114,14 @@
     tere: { name: 'Tere',
       portrait: { body: 'halfling', skin: '#a87050', hair: '#201010', hairStyle: 'braid', eyes: '#201008', head: 'hat', headColor: '#68c8e8', outfit: '#f8c830', trim: '#ffffff', age: 'young', face: 'round', lashes: true, bg: '#3a9ab8' },
       map: { body: 'halfling', skin: '#a87050', hair: '#201010', hairStyle: 'braid', head: 'hat', headColor: '#68c8e8', outfit: '#f8c830', trim: '#ffffff', eyes: '#201008' } },
+    // El bosque (content/es/zone-bosque.js): Elena the forest ranger (a green ranger's hat, khaki, binoculars), Doña
+    // Lupe in her log cabin (a grandma: grey braid, a purple shawl, an apron; she picks blackberries and bakes pies)
+    elena: { name: 'Elena',
+      portrait: { body: 'human', skin: '#c89070', hair: '#3a2010', hairStyle: 'braid', eyes: '#302010', head: 'hat', headColor: '#4a7a38', outfit: '#b89a60', trim: '#4a7a38', age: 'adult', face: 'soft', lashes: true, bg: '#3a6a30' },
+      map: { body: 'human', skin: '#c89070', hair: '#3a2010', hairStyle: 'braid', head: 'hat', headColor: '#4a7a38', outfit: '#b89a60', trim: '#4a7a38', eyes: '#302010' } },
+    lupe: { name: 'Doña Lupe',
+      portrait: { body: 'human', skin: '#d8a880', hair: '#d8d8e0', hairStyle: 'braid', eyes: '#402818', head: 'bandana', headColor: '#8a4ab0', outfit: '#6a3a90', trim: '#f8f0e0', age: 'old', face: 'round', lashes: true, bg: '#6a3a7a' },
+      map: { body: 'human', skin: '#d8a880', hair: '#d8d8e0', hairStyle: 'braid', head: 'bandana', headColor: '#8a4ab0', outfit: '#6a3a90', trim: '#f8f0e0', robe: true, eyes: '#402818' } },
     canelo: { name: 'Canelo',
       map: { body: 'wolf', outfit: '#b87038', trim: '#f0d8b0', eyes: '#201008' } },
   };

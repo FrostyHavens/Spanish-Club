@@ -160,6 +160,14 @@
     '1': OBSTACLE('Palm', 'desert'), '2': OBSTACLE('Umbrella', 'desert'), '3': OBSTACLE('Sandcastle', 'desert'),
     '4': OBSTACLE('Boat', 'river'), '5': OBSTACLE('Boat', 'river'), '6': OBSTACLE('Lifeguard Tower', 'desert'),
     '7': OBSTACLE('Lifeguard Tower', 'desert'), '8': OBSTACLE('Ice Cream Cart', 'desert'), '0': OBSTACLE('Rocks', 'desert'),
+    // El bosque (content/es/zone-bosque.js): a tall tree (its crown '(' over its trunk ')'), mushrooms, berry bushes, a
+    // hollow log, the rock cliff, the waterfall, the bears' cave, stepping stones, Doña Lupe's log cabin (wall, door);
+    // inside the cave: its floor and rock walls
+    '(': OBSTACLE('Tall Tree', 'forest'), ')': OBSTACLE('Tall Tree', 'forest'), '%': tt('Mushrooms', 15, 1, 1, 1, 1, 'grass'),
+    '*': OBSTACLE('Berry Bush', 'grass'), '_': OBSTACLE('Hollow Log', 'grass'), '#': WALL('Cliff', 'hills'),
+    '|': OBSTACLE('Waterfall', 'river'), '@': tt('Cave', 0, INF, INF, INF, INF, 'hills', { block: true }),
+    ':': tt('Stepping Stones', 0, 1, 1, 1, 1, 'river'), '[': WALL('Log Cabin', 'town'), ']': tt('Door', 0, INF, INF, INF, INF, 'town', { block: true }),
+    '{': tt('Cave Floor', 0, 1, 1, 1, 1, 'indoor'), '}': WALL('Cave Wall', 'indoor'),
     ' ': WALL('Void', 'grass'),
   };
 
@@ -168,15 +176,15 @@
   // =====================================================================
   // n[] order: N NE E SE S SW W NW
   const DX = [0, 1, 1, 1, 0, -1, -1, -1], DY = [-1, -1, 0, 1, 1, 1, 0, -1];
-  const BASEMAP = { '.': '.', 'o': '.', 'y': '.', 'f': '.', 'h': '.', ',': ',', '=': '=', 'p': 'p', 's': 's', 'x': 'x', 'i': 'i', 'c': 'c', 'z': 'z', '&': 's' };
-  const OBJ = new Set('rFlkgPLYZteaujJOHEUmA1236780'.split('')); // (1236780: the beach's palms, umbrellas, castle, tower, cart, rocks)
+  const BASEMAP = { '.': '.', 'o': '.', 'y': '.', 'f': '.', 'h': '.', ',': ',', '=': '=', 'p': 'p', 's': 's', 'x': 'x', 'i': 'i', 'c': 'c', 'z': 'z', '&': 's', '{': '{' };
+  const OBJ = new Set('rFlkgPLYZteaujJOHEUmA1236780()%*_'.split('')); // (()%*_: the forest's trees, mushrooms, bushes, log) // (1236780: the beach's palms, umbrellas, castle, tower, cart, rocks)
   const INDOOR_OBJ = new Set('teaujHEUmA'.split(''));
-  const BASE_PREF = ['=', 'p', 'x', 'c', 'z', 'i', ',', 's', '.'];
-  const WATERISH = c => c === 'w' || c === '~' || c === 'b' || c === 'B' || c === '9' || c === 'd' || c === '4' || c === '5' || c === '-'; // (the beach's surf, pier, boat and clear shallows)
+  const BASE_PREF = ['=', 'p', 'x', 'c', 'z', 'i', '{', ',', 's', '.'];
+  const WATERISH = c => c === 'w' || c === '~' || c === 'b' || c === 'B' || c === '9' || c === 'd' || c === '4' || c === '5' || c === '-' || c === ':' || c === '|'; // (the beach's surf, pier, boat and clear shallows; the forest's stepping stones, waterfall)
   const ROOF = c => c === 'R' || c === 'Q' || c === '+';
   const BWALL = c => c === 'W' || c === 'N' || c === 'D' || c === 'S' || c === 'G' || c === 'K';
   const IWALL = c => c === 'I' || c === 'n' || c === 'v' || c === 'V' || c === 'C';
-  const TALL = new Set('WNDSGKRQ+XIvnTVC'.split(''));
+  const TALL = new Set('WNDSGKRQ+XIvnTVC#[]}'.split(''));
   const GRASSY = c => c === '.' || c === 'T' || c === 'M';
 
   function inferBase(map, x, y, code) {
@@ -437,6 +445,7 @@
       case 'i': plankTex(b, I.v); break;
       case 'c': stoneFloorTex(b, I.v); break;
       case 'z': strawFloorTex(b, I.v); break;
+      case '{': caveFloor(b, I.v); break;
       case 'q': carpetTex(b, I.n); break;
       default: grassTex(b, I.v);
     }
@@ -1724,6 +1733,187 @@
   }
 
   // =====================================================================
+  //  El bosque: tall trees (two tiles), mushrooms, berry bushes, a hollow log, the cliff, a waterfall, the bears'
+  //  cave, stepping stones, Doña Lupe's log cabin; inside the cave: its floor and rock walls
+  // =====================================================================
+  const FC = { cap: U('#e03a30'), cap2: U('#a82418'), dot: U('#fff8f0'), stem: U('#f4ead8'), stem2: U('#c8b8a0'),
+    glow: U('#6af0e0'), glow2: U('#2ab0b0'), glow3: U('#d0fff8'), berry: U('#4a2a70'), berry2: U('#8a5ac0'), berry3: U('#2a1440'),
+    log: U('#8a5a30'), log2: U('#6a4020'), log3: U('#b07a48'), ring: U('#d8b07a'), moss: U('#5a9a38'), moss2: U('#86c050'),
+    rock0: U('#2c2620'), rock1: U('#4c443a'), rock2: U('#6c6252'), rock3: U('#8e836e'), rock4: U('#b0a68e'),
+    fall: U('#e8f6ff'), fall2: U('#a8d8f8'), fall3: U('#6aa8e0'), cave0: U('#0c0a10'), cave1: U('#1e1822'),
+    floor0: U('#2a2430'), floor1: U('#3a3240'), floor2: U('#4a4250'), floor3: U('#5e5462'),
+    clog: U('#9a6634'), clog2: U('#764a22'), clog3: U('#c08a50'), clog4: U('#4a2c12'), win: U('#f8e090'), win2: U('#c89a40') };
+  const OAK = [P.J1, P.J2, P.J3, P.J4, P.J5, P.J6];
+  // the big tree's canopy, drawn across its two tiles (dy: 0 for the crown tile, -24 for the trunk tile below it);
+  // seeded by its column so both halves match
+  function tallCanopy(b, dy, sd, pine) {
+    if (pine) {
+      const top = 1 + dy, h = 30;
+      for (let y = 0; y < TS; y++) {
+        const gy = y - top; if (gy < 0 || gy > h) continue;
+        const t = gy / h, tier = (t * 3.2) % 1, w = 1.5 + t * 12 * (0.5 + tier * 0.6);
+        for (let x = Math.floor(12 - w); x <= 12 + w; x++) {
+          const dx = x + 0.5 - 12;
+          let c = dx < -w * 0.35 ? P.E4 : dx < w * 0.3 ? P.E3 : P.E2;
+          if (tier > 0.82 || Math.abs(dx) > w - 1) c = dx < 0 ? P.E2 : P.E1;
+          if (Math.abs(dx) > w - 0.8 && dx > 0) c = P.E0;
+          if (hsh(x, gy, sd) < 0.05) c = P.E4;
+          b.set(x, y, c);
+        }
+      }
+      return;
+    }
+    const blobs = [[12, 14, 11.5], [4.5, 19, 7], [19.5, 19, 7], [12, 5.5, 8], [5.5, 9.5, 6], [18.5, 9.5, 6], [12, 21, 7]];
+    for (const [cx, cy0, r] of blobs) {
+      const cy = cy0 + dy;
+      for (let y = Math.max(0, Math.floor(cy - r - 1)); y <= Math.min(TS - 1, cy + r); y++) for (let x = Math.floor(cx - r - 1); x <= cx + r; x++) {
+        const gx = x + 0.5 - cx, gy = y + 0.5 - cy, d = Math.hypot(gx, gy);
+        const wob = (hsh(x >> 1, (y - dy) >> 1, sd) - 0.5) * 1.6;
+        if (d > r + wob * 0.6) continue;
+        let l = -(gx * 0.55 + gy * 0.8) / r + (hsh((x + 1) >> 1, (y - dy) >> 1, sd + 3) - 0.5) * 0.5;
+        let i = l > 0.55 ? 5 : l > 0.2 ? 4 : l > -0.15 ? 3 : l > -0.5 ? 2 : 1;
+        if (d > r - 1.1 && gx + gy > 0) i = 0;
+        b.set(x, y, OAK[i]);
+      }
+    }
+    if (dy === 0) for (const [x, y] of [[8, 9], [15, 6], [11, 13], [17, 15]]) if (hsh(x, y, sd) < 0.6) { b.set(x, y, P.F2); }
+  }
+  const pineAt = I => (I.tx * 7 + 3) % 5 < 2;
+  function treeTop(b, I) { drawGround(b, I.base, I); tallCanopy(b, 0, I.tx * 13 + 1, pineAt(I)); }
+  function treeTrunk(b, I) {
+    drawGround(b, I.base, I);
+    const pine = pineAt(I);
+    dropShadow(b, 14, 21, 9, 2.6, 0.58);
+    // roots and the trunk, its bark, a knot hole (where a squirrel or an owl might live)
+    const w = pine ? 2 : 3;
+    for (let y = 2; y < 22; y++) { const sp = y > 18 ? (y - 18) : 0; for (let x = 12 - w - sp; x <= 11 + w + sp; x++) { const dx = x - 12; b.set(x, y, dx < -w + 1 ? P.T4 : dx < 0 ? P.T3 : dx < w - 1 ? P.T2 : P.T1); } }
+    for (let y = 4; y < 20; y += 3) b.set(12 + ((y * 7) % 3) - 1, y, P.T1);
+    if (!pine) { b.rect(11, 9, 3, 4, P.T0); b.hl(11, 13, 8, P.T4); }
+    b.set(8, 21, P.T1); b.set(16, 21, P.T1);
+    tallCanopy(b, -24, I.tx * 13 + 1, pine);
+  }
+  // mushrooms: red caps with white spots in the woods; in the cave they glow teal
+  function mushroomTile(b, I) {
+    const cave = I.base === '{';
+    drawGround(b, I.base, I);
+    const sets = [[[7, 14, 4.2], [16, 18, 3], [12, 20, 2.2]], [[15, 12, 4], [7, 18, 3.2]], [[10, 13, 3.6], [16, 17, 2.6], [6, 19, 2.4]]][I.v % 3];
+    for (const [cx, cy, r] of sets) {
+      if (cave) for (let y = -6; y <= 6; y++) for (let x = -7; x <= 7; x++) if (x * x + y * y < 40 && hsh(x, y, I.v) < 0.5) b.tint(cx + x, cy - 2 + y, FC.glow2, 0.25);
+      b.rect(Math.round(cx - r * 0.35), cy - 1, Math.max(2, Math.round(r * 0.7)), Math.round(r + 1), cave ? FC.glow3 : FC.stem);
+      b.vl(Math.round(cx + r * 0.35) - 1, cy - 1, cy + Math.round(r), FC.stem2);
+      for (let y = Math.floor(cy - r - 1); y <= cy; y++) for (let x = Math.floor(cx - r - 1); x <= cx + r; x++) {
+        const dx = x + 0.5 - cx, dy = (y + 0.5 - cy) * 1.4; if (dy > 0 || dx * dx + dy * dy > r * r) continue;
+        b.set(x, y, dx > r * 0.4 ? (cave ? FC.glow2 : FC.cap2) : (cave ? FC.glow : FC.cap));
+      }
+      b.set(Math.round(cx - r * 0.4), Math.round(cy - r * 0.55), FC.dot); b.set(Math.round(cx + r * 0.15), Math.round(cy - r * 0.8), FC.dot); if (r > 3) b.set(Math.round(cx - r * 0.1), Math.round(cy - r * 0.3), FC.dot);
+    }
+  }
+  // a berry bush (las moras): a round bush heavy with dark purple berries
+  function berryTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 14, 19, 9, 3, 0.6);
+    const blobs = [[7, 13, 5.5], [17, 12, 5.5], [12, 8, 6], [12, 15, 6.5]];
+    for (const [cx, cy, r] of blobs) for (let y = Math.floor(cy - r); y <= cy + r; y++) for (let x = Math.floor(cx - r); x <= cx + r; x++) {
+      const dx = x + 0.5 - cx, dy = y + 0.5 - cy, d = Math.hypot(dx, dy); if (d > r) continue;
+      const l = -(dx * 0.6 + dy * 0.8) / r + (hsh(x >> 1, y >> 1, I.v + cx) - 0.5) * 0.45;
+      let i = l > 0.5 ? 4 : l > 0.15 ? 3 : l > -0.2 ? 2 : l > -0.55 ? 1 : 0;
+      if (d > r - 1 && dx + dy > 0) i = 0;
+      b.set(x, y, [P.G1, P.G2, P.G3, P.G4, P.G5][i]);
+    }
+    for (const [x, y] of [[6, 10], [10, 6], [15, 9], [18, 13], [9, 15], [13, 12], [16, 17], [6, 16], [12, 18]]) {
+      b.rect(x, y, 2, 2, FC.berry); b.set(x, y, FC.berry2); b.set(x + 1, y + 1, FC.berry3);
+    }
+  }
+  // a hollow log lying on its side: bark, moss on top, the dark hole at its end, a little mushroom
+  function logTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 13, 19, 11, 2.5, 0.6);
+    for (let y = 9; y < 19; y++) for (let x = 2; x < 21; x++) {
+      const k = (y - 9) / 10; let c = k < 0.2 ? FC.log3 : k < 0.7 ? FC.log : FC.log2;
+      if (hsh(x >> 1, y, I.v) < 0.12) c = FC.log2;
+      b.set(x, y, c);
+    }
+    for (let x = 4; x < 19; x += 4) b.vl(x, 11, 17, FC.log2);
+    for (let x = 3; x < 18; x++) if (hsh(x, 1, I.v) < 0.7) { b.set(x, 9, FC.moss); if (hsh(x, 2, I.v) < 0.5) b.set(x, 8, FC.moss2); }
+    // the hollow end (right): rings, a dark inside
+    for (let y = 8; y < 20; y++) for (let x = 15; x < 24; x++) { const dx = (x + 0.5 - 20) / 3.6, dy = (y + 0.5 - 14) / 5.6, d = dx * dx + dy * dy; if (d > 1) continue; b.set(x, y, d > 0.55 ? FC.ring : d > 0.4 ? FC.log2 : FC.cave0); }
+    b.rect(5, 6, 2, 3, FC.stem); b.rect(4, 5, 4, 2, FC.cap); b.set(5, 5, FC.dot);
+  }
+  // the rock cliff: blocks of warm grey stone, cracks, moss and grass along its top, a dark foot
+  function cliffTile(b, I) {
+    const n = I.n, rockN = c => c === '#' || c === '|' || c === '@' || c === 'T';
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) {
+      const bx = ((y / 6) | 0) & 1 ? x + 6 : x, blk = hsh((bx / 12) | 0, (y / 6) | 0, I.v + 4);
+      let c = blk < 0.33 ? FC.rock2 : blk < 0.66 ? FC.rock3 : FC.rock2;
+      if (y % 6 === 0 || bx % 12 === 0) c = FC.rock1;
+      else if (y % 6 === 1) c = blk < 0.5 ? FC.rock4 : FC.rock3;
+      if (hsh(x, y, I.v) < 0.04) c = FC.rock1;
+      b.set(x, y, c);
+    }
+    if (!rockN(n[0])) { for (let x = 0; x < TS; x++) { const h = 2 + Math.floor(hsh(x >> 1, 3, I.v) * 3); for (let y = 0; y < h; y++) b.set(x, y, y === h - 1 ? FC.moss : (x + y) & 1 ? P.G4 : P.G3); } }
+    if (!rockN(n[4])) { for (let x = 0; x < TS; x++) { b.set(x, TS - 1, FC.rock0); b.set(x, TS - 2, FC.rock1); if ((x + I.v) % 5 === 0) b.set(x, TS - 3, FC.moss); } }
+    if (I.v % 3 === 0) { b.vl(9, 8, 14, FC.rock0); b.set(10, 15, FC.rock0); b.set(8, 7, FC.rock0); }
+  }
+  // the waterfall: white water pouring down the rock, foam where it meets the pond
+  function fallTile(b, I) {
+    const n = I.n, af = I.af;
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) {
+      const s = (y * 2 - af * 6 + Math.floor(hsh(x, 0, 3) * 24) + 96) % 24;
+      b.set(x, y, s < 3 ? FC.fall : s < 9 ? FC.fall2 : s < 16 ? FC.fall3 : FC.fall2);
+    }
+    if (n[2] !== '|') for (let y = 0; y < TS; y++) { b.set(TS - 1, y, FC.rock1); b.set(TS - 2, y, (y + af) % 3 ? FC.fall : FC.fall2); }
+    if (n[6] !== '|') for (let y = 0; y < TS; y++) { b.set(0, y, FC.rock1); b.set(1, y, (y + af) % 3 ? FC.fall : FC.fall2); }
+    if (n[4] !== '|') for (let x = 0; x < TS; x++) for (let y = TS - 5; y < TS; y++) if (hsh(x, y, af) < 0.75) b.set(x, y, hsh(x, y, af + 9) < 0.5 ? P.W6 : FC.fall);
+  }
+  // the cave's mouth: the cliff with a dark rounded opening at its foot
+  function caveTile(b, I) {
+    cliffTile(b, Object.assign({}, I, { v: 1 }));
+    for (let y = 2; y < TS; y++) for (let x = 1; x < 23; x++) {
+      const dx = (x + 0.5 - 12) / 10.5, dy = (y + 0.5 - 25) / 22, d = dx * dx + dy * dy;
+      if (d > 1) continue;
+      b.set(x, y, d > 0.82 ? FC.rock0 : d > 0.6 ? FC.cave1 : FC.cave0);
+    }
+    for (const [x, y] of [[4, 21], [19, 20], [6, 22]]) { b.rect(x, y, 3, 2, FC.rock3); b.set(x, y, FC.rock4); }
+  }
+  // stepping stones over the river: water rushing past three flat stones
+  function stonesTile(b, I) {
+    waterTile(b, I, false);
+    for (const [cx, cy, r] of [[7, 7, 4.5], [16, 13, 5], [8, 19, 4.2]]) {
+      for (let y = Math.floor(cy - r); y <= cy + r; y++) for (let x = Math.floor(cx - r); x <= cx + r; x++) {
+        const dx = (x + 0.5 - cx) / r, dy = (y + 0.5 - cy) / (r * 0.75), d = dx * dx + dy * dy; if (d > 1) continue;
+        b.set(x, y, d > 0.75 && dx + dy > 0 ? P.K1 : dy < -0.3 ? P.K4 : P.K3);
+      }
+      b.hl(Math.round(cx - r), Math.round(cx + r), Math.round(cy + r * 0.75) + 1, (I.af & 1) ? P.W6 : P.W5);
+    }
+  }
+  // Doña Lupe's log cabin: round logs stacked, a window with a flower box; its door
+  function cabinTile(b, I, door) {
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) {
+      const ly = y % 6; let c = ly === 0 ? FC.clog4 : ly === 1 ? FC.clog3 : ly < 4 ? FC.clog : FC.clog2;
+      if (hsh(x >> 2, (y / 6) | 0, I.v) < 0.1 && ly > 1) c = FC.clog2;
+      b.set(x, y, c);
+    }
+    const n = I.n;
+    for (const [side, x0] of [[6, 0], [2, TS - 4]]) if (n[side] !== '[' && n[side] !== ']') for (let y = 0; y < TS; y += 6) { b.rect(x0, y + 1, 4, 4, FC.ring); b.set(x0 + 1, y + 2, FC.clog2); b.set(x0 + 2, y + 3, FC.clog2); }
+    if (door) {
+      b.rect(6, 3, 12, 21, FC.clog4); b.rect(7, 4, 10, 20, U('#8a4a1a')); for (let x = 9; x < 17; x += 3) b.vl(x, 4, 23, U('#6a3410'));
+      b.rect(14, 13, 2, 2, P.Y3); b.hl(7, 16, 4, U('#a86030'));
+    } else if (I.v % 2 === 0) {
+      b.rect(6, 4, 12, 10, FC.clog4); b.rect(7, 5, 10, 8, FC.win); b.vl(12, 5, 12, FC.win2); b.hl(7, 16, 9, FC.win2);
+      b.rect(6, 14, 12, 3, U('#8a4a1a')); for (const x of [8, 11, 14]) { b.set(x, 13, P.F3); b.set(x + 1, 13, P.F4); b.set(x, 12, P.G4); }
+    }
+  }
+  // inside the cave: a dark stone floor with pebbles; rock walls, lit along their foot
+  function caveFloor(b, v) {
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) { const r = hsh(x >> 1, y >> 1, v + 21); b.set(x, y, r < 0.3 ? FC.floor0 : r < 0.75 ? FC.floor1 : FC.floor2); }
+    for (let i = 0; i < 4; i++) { const x = 2 + Math.floor(hsh(i, v, 5) * 19), y = 2 + Math.floor(hsh(v, i, 7) * 19); b.rect(x, y, 2, 1, FC.floor3); b.set(x, y + 1, FC.floor0); }
+  }
+  function caveWall(b, I) {
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) { const r = hsh(x >> 2, y >> 2, I.v + 31); b.set(x, y, r < 0.4 ? FC.cave1 : r < 0.8 ? FC.rock0 : FC.rock1); }
+    if (I.n[4] === '{' || I.n[4] === '%' || I.n[4] === 'w') for (let x = 0; x < TS; x++) { b.set(x, TS - 1, FC.rock2); b.set(x, TS - 2, FC.rock1); if (hsh(x, 1, I.v) < 0.4) b.set(x, TS - 3, FC.rock1); }
+  }
+
+  // =====================================================================
   //  Renderer registry + cache
   // =====================================================================
   // need: 's' (shadow only), 'n' (neighbour codes), 'g' (neighbour codes + ground classes), base: infers ground under object
@@ -1790,6 +1980,19 @@
   reg('7', { need: 'g', base: true, fn: towerLegs });
   reg('8', { need: 'g', base: true, fn: cartTile });
   reg('0', { need: 'g', base: true, fn: rockTile });
+  reg('(', { need: 'g', base: true, uniq: true, fn: treeTop });
+  reg(')', { need: 'g', base: true, uniq: true, fn: treeTrunk });
+  reg('%', { need: 'g', base: true, fn: mushroomTile });
+  reg('*', { need: 'g', base: true, fn: berryTile });
+  reg('_', { need: 'g', base: true, fn: logTile });
+  reg('#', { need: 'n', fn: cliffTile });
+  reg('|', { need: 'n', anim: 4, spd: 8, fn: fallTile });
+  reg('@', { need: 'n', fn: caveTile });
+  reg(':', { need: 'g', anim: 4, spd: 24, fn: stonesTile });
+  reg('[', { need: 'n', fn: (b, I) => cabinTile(b, I, false) });
+  reg(']', { need: 'n', fn: (b, I) => cabinTile(b, I, true) });
+  reg('{', { need: 'g', fn: (b, I) => drawGround(b, '{', I) });
+  reg('}', { need: 'n', fn: caveWall });
   reg(' ', { need: '', fn: (b) => b.fill(P.X0) });
 
   const tileCache = new Map();
@@ -1839,6 +2042,7 @@
     'L': '#e8c850', 'Y': '#c8343c', 'Z': '#b4b2b4', 'J': '#c0823a', 'O': '#e2be46', 'i': '#a0602c', 'I': '#4c4032', 'q': '#9c1c2c', 't': '#c0823a', 'e': '#74421e',
     'a': '#e6e2d8', 'u': '#74421e', 'j': '#d8d8e8', 'v': '#e05818', 'n': '#5c3418', 'c': '#a08c6c', ' ': '#000000',
     '9': '#e8f4ff', 'd': '#9c5e2a', '-': '#5cc8dc', '&': '#c8c070', '1': '#2e9a3a', '2': '#e83a30', '3': '#d8bc7c', '4': '#e83a30', '5': '#e83a30', '6': '#e83a30', '7': '#fafaf4', '8': '#3a7ae0', '0': '#5a5a6a',
+    '(': '#2b6a26', ')': '#2b6a26', '%': '#e03a30', '*': '#4a2a70', '_': '#8a5a30', '#': '#6c6252', '|': '#e8f6ff', '@': '#0c0a10', ':': '#8e8e9a', '[': '#9a6634', ']': '#764a22', '{': '#3a3240', '}': '#1e1822',
     'z': '#b08a50', 'V': '#5c3418', 'C': '#5c3418', 'H': '#e2be46', 'E': '#9c5e2a', 'U': '#3a72d2', 'm': '#b4b2b4', 'A': '#c8343c',
   };
   G.MINI_COLORS = MINI;

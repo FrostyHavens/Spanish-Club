@@ -56,6 +56,16 @@
   function waves(p, cx, cy, col, radii = [3.5, 6]) {
     for (const r of radii) for (let a = -1.35; a <= 0.15; a += 0.08) p.put(cx + Math.cos(a) * r, cy + Math.sin(a) * r, col);
   }
+  // a bear's head (el oso; grande / pequeño show a big one and a little one): round ears, a pale muzzle, a black nose
+  function bearHead(p, cx, cy, r, col, dk, sleepy) {
+    p.disc(cx - r * 0.7, cy - r * 0.72, r * 0.36, col); p.disc(cx + r * 0.7, cy - r * 0.72, r * 0.36, col);
+    if (r > 3) { p.disc(cx - r * 0.7, cy - r * 0.72, r * 0.18, dk); p.disc(cx + r * 0.7, cy - r * 0.72, r * 0.18, dk); }
+    p.disc(cx, cy, r, col); p.shade(cx, cy, r, dk);
+    p.ell(cx, cy + r * 0.38, r * 0.45, r * 0.34, '#f0d8b0'); p.disc(cx, cy + r * 0.22, Math.max(0.6, r * 0.16), '#101010');
+    const e = Math.max(1, Math.round(r * 0.14));
+    if (sleepy) { p.rect(Math.round(cx - r * 0.45), Math.round(cy - r * 0.15), e + 1, 1, '#302018'); p.rect(Math.round(cx + r * 0.25), Math.round(cy - r * 0.15), e + 1, 1, '#302018'); }
+    else { p.rect(Math.round(cx - r * 0.42), Math.round(cy - r * 0.2), e, e, '#101010'); p.rect(Math.round(cx + r * 0.3), Math.round(cy - r * 0.2), e, e, '#101010'); }
+  }
   // little faces for the sound words (about 9x9, bottom left)
   const MINI = {
     perro(p) { p.ell(5, 11, 3.8, 3.4, '#c07838'); p.ell(1.6, 11, 1.3, 2.6, '#7a4420'); p.ell(8.4, 11, 1.3, 2.6, '#7a4420'); p.ell(5, 13, 2, 1.5, '#f0d8b0'); p.rect(3, 10, 1, 1, '#201010'); p.rect(6, 10, 1, 1, '#201010'); p.rect(4, 12, 2, 1, '#201010'); p.rect(4, 14, 2, 1, '#f07080'); },
@@ -384,6 +394,130 @@
     explorar(p) { // going exploring: a winding path to green hills, the sun
       p.rect(0, 0, 16, 9, '#a8e0f8'); p.disc(12, 3, 2, '#f8d030'); p.ell(4, 10, 6, 4, '#58b040'); p.ell(13, 10, 5, 3, '#48a038'); p.rect(0, 10, 16, 6, '#78c058');
       for (const [x, y] of [[7, 15], [8, 14], [8, 13], [9, 12], [9, 11], [10, 10]]) { p.put(x, y, '#e8c888'); p.put(x + 1, y, '#e8c888'); }
+    },
+    // ---- El bosque (content/es/zone-bosque.js): the woods, big and small, its animals ----
+    hoja(p, w) { // a leaf: pointed, a midrib and veins, a little stem (its colour from w.col: Lola's leaves)
+      const c = (w && w.col) || '#58b040', d = G.shade(c, 0.75), l = G.shade(c, 1.2);
+      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+        const u = (x + 0.5 + (y + 0.5)) / 2 - 1, v = ((x + 0.5) - (y + 0.5)) / 1.414; // along the leaf (bottom-left to top-right), across it
+        const t = (u - 1) / 12; if (t < 0 || t > 1) continue;
+        const half = Math.sin(Math.PI * Math.pow(t, 0.8)) * 4.2;
+        if (Math.abs(v) <= half) p.put(x, y, v > 0 ? d : c);
+      }
+      for (let i = 2; i < 13; i++) p.put(i, 15 - i, l);                         // the midrib
+      for (const [x, y] of [[5, 8], [8, 5], [7, 10], [10, 7]]) p.put(x, y, l);
+      p.put(1, 15, '#7a5028'); p.put(2, 14, '#7a5028');
+    },
+    hongo(p, w) { // a mushroom: a red cap with white spots on a pale stem (w.n 's': a little one, 'b': a big one)
+      const k = w && w.n === 's' ? 0.55 : 1, cx = 8, by = 15.5, cy = by - 9.5 * k;
+      p.rect(Math.round(cx - 2 * k), Math.round(by - 7 * k), Math.max(2, Math.round(4 * k)), Math.round(7 * k), '#ffffff'); p.rect(Math.round(cx + 1.2 * k), Math.round(by - 7 * k), 1, Math.round(7 * k), '#c0ae90');
+      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const dx = (x + 0.5 - cx) / (7 * k), dy = (y + 0.5 - cy) / (5 * k); if (dy <= 0.45 && dx * dx + dy * dy <= 1) p.put(x, y, dx > 0.45 ? '#a82418' : '#e03a30'); }
+      for (const [dx, dy, r] of [[-3.5, -2, 1.3], [1, -3.4, 1.2], [3.6, -0.6, 1.1], [-1, 0, 0.9]]) p.disc(cx + dx * k, cy + dy * k, Math.max(0.6, r * k), '#fff8f0');
+    },
+    tronco(p) { // a log lying on its side: bark, rings on its end, moss on top
+      p.rect(1, 6, 11, 8, '#8a5a30'); p.rect(1, 6, 11, 2, '#b07a48'); p.rect(1, 12, 11, 2, '#6a4020');
+      for (const x of [3, 6, 9]) p.rect(x, 8, 1, 4, '#6a4020');
+      p.ell(12.5, 10, 3.2, 4.2, '#d8b07a'); p.ell(12.5, 10, 2.1, 2.9, '#b8905a'); p.ell(12.5, 10, 0.9, 1.4, '#8a6034');
+      for (const x of [2, 4, 5, 8, 10]) p.put(x, 5, '#5a9a38'); p.rect(3, 6, 3, 1, '#86c050');
+    },
+    bellota(p) { // an acorn: a shiny brown nut under a bumpy cap with a little stalk
+      p.ell(8, 10.5, 4.6, 5, '#b8742a'); p.shade(8, 10.5, 4.6, '#8a5018'); p.put(6, 9, '#f0b060'); p.put(6, 10, '#e0a050');
+      p.ell(8, 6, 6, 3, '#7a5028'); for (const [x, y] of [[4, 5], [6, 4], [8, 5], [10, 4], [12, 5], [5, 7], [9, 7], [11, 7]]) p.put(x, y, '#a07040');
+      p.rect(8, 1, 1, 3, '#5a3818'); p.put(9, 1, '#5a3818'); p.put(8, 15, '#6a3a10');
+    },
+    mora(p) { // a blackberry: a cluster of shiny dark purple beads, two leaves
+      p.ell(5, 3, 3.2, 1.8, '#58b040'); p.ell(11, 3, 3.2, 1.8, '#3a9030'); p.rect(7, 2, 2, 3, '#3a7a28');
+      for (const [x, y] of [[6, 6], [10, 6], [4.5, 9], [8, 8.5], [11.5, 9], [6, 12], [10, 12], [8, 14.5], [8, 11]]) { p.disc(x, y, 2.1, '#4a2a70'); }
+      for (const [x, y] of [[6, 6], [10, 6], [4.5, 9], [8, 8.5], [11.5, 9], [6, 12], [10, 12], [8, 14.5], [8, 11]]) { p.put(x - 1, y - 1, '#9a6ad0'); }
+    },
+    cueva(p) { // a cave: a dark round mouth in grey rock, grass on top, pebbles at its foot
+      p.ell(8, 10, 8, 8, '#8e836e'); p.rect(0, 10, 16, 6, '#8e836e'); p.shade(8, 10, 8, '#6c6252');
+      p.rect(0, 2, 16, 2, '#58b040'); p.put(3, 1, '#58b040'); p.put(11, 1, '#58b040'); p.put(14, 2, '#3a9030');
+      p.ell(8, 14, 5, 8, '#0c0a10'); p.rect(3, 14, 10, 2, '#0c0a10'); p.ell(8, 14, 3.4, 6.5, '#1e1822');
+      p.put(2, 15, '#b0a68e'); p.put(13, 15, '#b0a68e'); p.put(14, 14, '#b0a68e'); p.put(5, 8, '#b0a68e'); p.put(11, 7, '#b0a68e');
+    },
+    grande(p) { // big: a big bear in colour beside a little grey one (the big one is the answer)
+      bearHead(p, 6.5, 8, 6, '#9a6030', '#6a3e18');
+      bearHead(p, 13.5, 13, 2.2, '#c8c0b8', '#a8a098');
+    },
+    pequeno(p) { // small: a little bear cub in colour beside a big grey one (the little one is the answer)
+      bearHead(p, 6, 8, 6, '#d8d0c8', '#b8b0a8', true);
+      bearHead(p, 13, 12.5, 2.8, '#b87838', '#7a4a20');
+    },
+    oso(p, w) { // a brown bear's head: round ears, a pale muzzle, a black nose (w.n 's': a cub, smaller and lighter)
+      if (w && w.n === 's') { bearHead(p, 8, 9, 4.6, '#b87838', '#8a5420'); return; }
+      bearHead(p, 8, 8.5, 6.6, '#9a6030', '#6a3e18');
+    },
+    ardilla(p) { // a squirrel sitting up: a big curly bushy tail behind, holding an acorn
+      p.ell(4.5, 6, 4, 5.5, '#c0662a'); p.ell(4, 4, 2.6, 3.4, '#e08a40'); p.ell(5, 11, 3, 3, '#c0662a');
+      p.ell(10, 11, 3.4, 4, '#d0782e'); p.ell(10.5, 12, 2, 2.6, '#f8e0b8');
+      p.disc(11, 5.5, 3, '#d0782e'); p.put(9, 2, '#d0782e'); p.put(9, 1, '#a04a18'); p.put(12, 2, '#d0782e'); p.put(12, 1, '#a04a18');
+      p.put(12, 5, '#101010'); p.put(14, 6, '#402018'); p.ell(12.5, 6.8, 1.4, 0.9, '#f8e0b8');
+      p.disc(12.5, 9.5, 1.3, '#8a5018'); p.rect(12, 8, 2, 1, '#5a3818');
+      p.rect(8, 15, 2, 1, '#a04a18'); p.rect(11, 15, 2, 1, '#a04a18');
+    },
+    mapache(p) { // a raccoon's face: grey, a black bandit mask, white brows and muzzle, round ears
+      p.disc(3.5, 3.5, 2.2, '#5a5a62'); p.disc(12.5, 3.5, 2.2, '#5a5a62'); p.put(3, 3, '#e8e0d8'); p.put(12, 3, '#e8e0d8');
+      p.ell(8, 9, 7, 6, '#8a8a92'); p.shade(8, 9, 7, '#6a6a72');
+      p.ell(8, 6.5, 5, 1.2, '#f4f0ea'); p.ell(5, 9, 2.6, 1.8, '#202028'); p.ell(11, 9, 2.6, 1.8, '#202028'); p.rect(5, 8.5, 6, 1, '#202028');
+      p.put(5, 9, '#ffffff'); p.put(11, 9, '#ffffff'); p.ell(8, 12.5, 3, 2.2, '#f4f0ea'); p.rect(7, 11, 2, 1, '#101010');
+    },
+    venado(p) { // a deer's head: big ears, little antlers, a white-spotted brown face
+      for (const [x, y] of [[4, 4], [3, 3], [2, 1], [4, 2], [5, 1], [12, 4], [13, 3], [14, 1], [12, 2], [11, 1]]) p.put(x, y, '#7a5028');
+      p.ell(3.5, 7, 2.6, 1.4, '#b87838'); p.ell(12.5, 7, 2.6, 1.4, '#b87838'); p.put(3, 7, '#f0c8a0'); p.put(12, 7, '#f0c8a0');
+      p.ell(8, 8.5, 3.8, 4.2, '#c08040'); p.ell(8, 12.5, 2.6, 2.6, '#c08040'); p.shade(8, 8.5, 3.8, '#9a6028');
+      p.put(6, 8, '#101010'); p.put(10, 8, '#101010'); p.put(6, 7, '#ffffff'); p.ell(8, 13.5, 1.6, 1, '#302018'); p.put(8, 5, '#f8e8c8'); p.put(7, 11, '#f0d8b0'); p.put(9, 11, '#f0d8b0');
+    },
+    zorro(p) { // a fox's face: orange, pointed ears, a white cheek ruff, a little black nose
+      p.tri(1, 1, 6, 4, 2, 8, '#e06a20'); p.tri(15, 1, 10, 4, 14, 8, '#e06a20'); p.tri(2, 2.5, 4.5, 4.5, 2.6, 6.5, '#401810'); p.tri(14, 2.5, 11.5, 4.5, 13.4, 6.5, '#401810');
+      p.ell(8, 8, 6, 4.4, '#e87a28'); p.tri(2, 8, 14, 8, 8, 15, '#e87a28');
+      p.tri(2, 9, 7.5, 10, 8, 15, '#fff4e8'); p.tri(14, 9, 8.5, 10, 8, 15, '#fff4e8');
+      p.put(5, 7, '#101010'); p.put(11, 7, '#101010'); p.put(5, 6, '#f8c060'); p.disc(8, 14, 1, '#101010');
+    },
+    erizo(p) { // a hedgehog: a round spiky brown back, a little pointed face, a black nose
+      for (let a = Math.PI * 0.95; a <= Math.PI * 2.05; a += 0.22) for (let r = 4; r <= 7.4; r += 0.6) p.put(7 + Math.cos(a) * r, 11 + Math.sin(a) * r * 0.95, r > 6.6 ? '#4a3018' : '#7a5530');
+      p.ell(7, 11.5, 5.8, 3.8, '#6a4826');
+      for (const [x, y] of [[4, 7], [7, 6], [10, 7], [5, 9], [9, 9]]) p.put(x, y, '#c8a070');
+      p.ell(12, 12.5, 3, 2.4, '#e8c8a0'); p.tri(13, 11, 13, 14, 16, 13, '#e8c8a0'); p.put(15, 13, '#101010'); p.put(12, 11, '#101010');
+      p.rect(4, 15, 2, 1, '#8a6040'); p.rect(9, 15, 2, 1, '#8a6040');
+    },
+    buho(p) { // an owl: big round eyes, ear tufts, brown feathers with a pale chest, on a branch
+      p.tri(2.5, 1, 5.5, 4, 2.5, 5, '#7a5028'); p.tri(13.5, 1, 10.5, 4, 13.5, 5, '#7a5028');
+      p.ell(8, 8.5, 6, 6.5, '#9a6a38'); p.shade(8, 8.5, 6, '#7a4e24'); p.ell(8, 11, 3.6, 3.4, '#e8d0a0');
+      for (const [x, y] of [[7, 10], [9, 11], [7, 12], [9, 13]]) p.put(x, y, '#b08858');
+      p.disc(5.3, 6.5, 2.5, '#fff4d0'); p.disc(10.7, 6.5, 2.5, '#fff4d0'); p.disc(5.3, 6.5, 1.4, '#f8b020'); p.disc(10.7, 6.5, 1.4, '#f8b020');
+      p.put(5, 6, '#101010'); p.put(10, 6, '#101010'); p.tri(7, 8, 9, 8, 8, 10, '#e89020');
+      p.rect(0, 15, 16, 1, '#6a4020'); p.put(5, 14, '#e89020'); p.put(10, 14, '#e89020');
+    },
+    luciernaga(p) { // a firefly: a little black-and-red beetle with see-through wings and a glowing yellow tail
+      p.disc(8, 11, 4.6, '#f8f080'); p.disc(8, 11.5, 3.4, '#fff8b0');
+      p.ell(4.5, 6, 3, 2, '#d8f0ff'); p.ell(11.5, 6, 3, 2, '#d8f0ff');
+      p.ell(8, 7, 2.2, 3.6, '#302830'); p.disc(8, 3, 1.8, '#e04030'); p.put(7, 3, '#101010'); p.put(9, 3, '#101010');
+      p.put(6, 0, '#302830'); p.put(7, 1, '#302830'); p.put(10, 0, '#302830'); p.put(9, 1, '#302830');
+      p.disc(8, 11.5, 2, '#f8e020'); p.put(8, 11, '#ffffff');
+    },
+    // things in the forest with no word of their own (a picture only)
+    binoculares(p) { // Elena's binoculars: two black barrels, blue lenses, a strap
+      for (let a = Math.PI * 1.1; a < Math.PI * 1.9; a += 0.1) p.put(8 + Math.cos(a) * 7, 8 + Math.sin(a) * 6, '#8a5a28');
+      p.rect(2, 6, 5, 8, '#303038'); p.rect(9, 6, 5, 8, '#303038'); p.rect(6, 8, 4, 3, '#404048');
+      p.disc(4.5, 13, 2.3, '#68a8e8'); p.disc(11.5, 13, 2.3, '#68a8e8'); p.put(4, 12, '#ffffff'); p.put(11, 12, '#ffffff'); p.rect(2, 6, 5, 1, '#505060'); p.rect(9, 6, 5, 1, '#505060');
+    },
+    canastamoras(p) { // Doña Lupe's basket, heaped with blackberries
+      for (let a = Math.PI; a <= Math.PI * 2; a += 0.05) p.put(8 + Math.cos(a) * 5.5 - 0.5, 7 + Math.sin(a) * 5 - 0.5, '#8a5022');
+      for (const [x, y] of [[5, 7], [8, 6], [11, 7], [6.5, 8], [9.5, 8]]) p.disc(x, y, 1.6, '#4a2a70');
+      p.put(5, 6, '#9a6ad0'); p.put(8, 5, '#9a6ad0'); p.put(11, 6, '#9a6ad0');
+      p.rect(2, 8, 12, 6, '#c88a40'); p.rect(3, 14, 10, 1, '#8a5022'); for (let y = 9; y < 14; y += 2) p.rect(2, y, 12, 1, '#a86a28');
+    },
+    pay(p) { // Doña Lupe's blackberry pie: a golden crust with a lattice, purple filling peeking through
+      p.ell(8, 10, 7.5, 4.5, '#e0a050'); p.ell(8, 9.5, 6.2, 3.4, '#5a2a70');
+      for (const x of [4, 7, 10, 13]) for (let y = 7; y < 13; y++) p.put(x - (y - 7) * 0.3, y, '#f0c070');
+      for (const y of [8, 10, 12]) for (let x = 3; x < 14; x++) if (Math.abs(x - 8) < 6.5 - Math.abs(y - 10)) p.put(x, y, '#f0c070');
+      p.rect(1, 13, 14, 2, '#c08038'); p.put(4, 5, '#ffffff'); p.put(8, 4, '#ffffff'); p.put(12, 5, '#ffffff');
+    },
+    frasco(p) { // a glass jar with a lid, fireflies glowing inside
+      p.rect(3, 4, 10, 11, '#c8e8f8'); p.rect(4, 3, 8, 1, '#c8e8f8'); p.rect(4, 1, 8, 2, '#a07040'); p.rect(4, 1, 8, 1, '#c09050');
+      p.rect(4, 5, 8, 9, '#203048'); for (const [x, y] of [[6, 7], [10, 9], [7, 11], [9, 6], [5, 12]]) { p.put(x, y, '#f8f080'); p.put(x + 1, y, '#fff8c0'); }
+      p.rect(3, 5, 1, 8, '#ffffff');
     },
     // ---- La playa (content/es/zone-playa.js): the sea, the sand, its animals ----
     mar(p) { // the sea: deep blue bands, white wave crests rolling

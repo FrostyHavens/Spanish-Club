@@ -329,16 +329,76 @@ m.pos['charco'] = [26, 12, 4, 2]; m.pos['rocas'] = [22, 8, 11, 7]; m.pos['arena'
 m.pos['mar'] = [12, 19, 20, 4]; m.pos['agua'] = [1, 16, 32, 7]; m.pos['bajo'] = [10, 16, 20, 2]
 m.mark('hide1', 13, 8); m.mark('hide2', 15, 12); m.mark('hide3', 26, 10); m.mark('hide4', 30, 4); m.mark('hide5', 8, 21); m.mark('hide6', 23, 6)
 out['playa'] = m
-# El bosque: tall trees all around, a clearing, a hollow log (sniff), mushrooms, a stream
-m = entrance(22, 14, '.', 'T')
-for x, y in [(2, 2), (3, 2), (2, 3), (18, 2), (19, 2), (19, 3), (2, 10), (3, 11), (18, 11), (19, 10), (6, 3), (15, 3), (5, 10), (16, 10)]: m.put(x, y, 'T')
-for x, y in [(4, 4), (17, 5), (6, 11), (14, 11), (9, 2), (12, 2)]: m.put(x, y, 'f')
-m.vline(10, 7, 13, ','); m.hline(5, 15, 7, ','); m.rect(17, 7, 3, 2, 'w')
-for x, y in [(7, 5), (13, 9), (4, 8), (16, 4)]: m.put(x, y, 'o')
-m.mark('in', 10, 12); m.mark('south', 10, 13); m.mark('post', 11, 11); m.mark('bus', 12, 8); m.mark('busIn', 12, 7)
-m.mark('dog', 6, 6); m.mark('lola', 8, 9); m.mark('nico', 14, 6); m.pos['conejos'] = [7, 3, 8, 3]; m.pos['rana'] = [17, 7, 3, 2]
-m.mark('hide1', 15, 3); m.mark('hide2', 4, 4); m.mark('hide3', 17, 5)
+# El bosque (the zone, docs/WORLD_PLAN.md): a rocky cliff along the top with a waterfall into a pond (a frog), a meadow
+# (deer, rabbits), the bears' cave in a rock outcrop (top right), a river across the middle with a little bridge on
+# the main path and stepping stones further east, then the south woods: a clearing ringed by tall trees (the lost bear
+# cub, the squirrel's oak), Doña Lupe's log cabin with her berry bushes (left), a hollow log (right), the path in from
+# Villa Sol at the bottom with the bus stop and the signpost. Two more maps: the cave inside (dark, fireflies, mama bear
+# asleep) and Lupe's cabin inside.
+# Codes (src/tiles.js): ( tall tree crown over ) its trunk, % mushrooms, * berry bush, _ hollow log, # rock cliff,
+# | waterfall, @ the cave's mouth, : stepping stones, [ log cabin wall, ] its door; inside the cave { floor, } rock wall.
+m = M(40, 30, '.')
+m.border('T', 1)
+for x, y in [(1, 1), (38, 1), (1, 28), (38, 28), (2, 28), (37, 28), (1, 27), (38, 27)]: m.put(x, y, 'T')
+m.rect(1, 1, 38, 2, '#')                                  # the cliff along the top
+m.put(6, 1, '|'); m.put(7, 1, '|'); m.put(6, 2, '|'); m.put(7, 2, '|')   # the waterfall
+for y, (x0, x1) in {3: (4, 9), 4: (3, 10), 5: (3, 10), 6: (3, 10), 7: (3, 10), 8: (2, 10), 9: (1, 11)}.items(): m.hline(x0, x1, y, 'w')  # the pond
+m.rect(1, 10, 38, 2, 'w')                                 # the river
+m.put(18, 10, 'B'); m.put(18, 11, 'B')                    # the little bridge
+m.put(31, 10, ':'); m.put(31, 11, ':')                    # stepping stones
+# the bears' cave: a rock outcrop below the cliff, its dark mouth, boulders
+m.rect(28, 3, 9, 2, '#'); m.put(27, 3, '#'); m.put(37, 3, '#'); m.put(32, 4, '@')
+for x, y in [(27, 4), (36, 5), (26, 3)]: m.put(x, y, 'r')
+# the main path: in from the south, over the bridge, up to the meadow, east to the cave
+m.vline(18, 5, 29, ','); m.hline(18, 32, 5, ',')
+m.hline(6, 18, 17, ',')                                   # to Lupe's cabin
+m.hline(18, 29, 19, ',')                                  # to the hollow log
+m.put(18, 10, 'B'); m.put(18, 11, 'B')                    # (the bridge over the river, on the path)
+# Doña Lupe's log cabin (left): roof, log wall, its door
+m.rect(3, 13, 6, 2, 'R'); m.hline(3, 8, 15, '['); m.put(6, 15, ']'); m.vline(6, 16, 17, ',')
+for x, y in [(2, 19), (4, 20), (7, 21), (10, 20), (3, 23)]: m.put(x, y, '*')   # berry bushes
+m.put(30, 19, '_')                                        # the hollow log
+# tall trees (crown over trunk) ringing the clearing and about the woods
+for x, y in [(13, 13), (23, 13), (12, 18), (24, 17), (15, 22), (22, 22), (27, 13), (10, 14), (34, 15), (35, 21), (8, 25), (28, 24), (14, 6), (24, 7), (38 - 1, 7), (2, 12)]:
+    m.put(x, y, '('); m.put(x, y + 1, ')')
+# woods: groves of small trees you can walk among, more tall trees in them (kept off the paths and the places)
+import random
+rnd = random.Random(7)
+keep = set()
+for (x, y) in [(18, 28), (19, 27), (16, 26), (16, 27), (20, 25), (25, 23), (20, 13), (8, 17), (30, 19), (25, 12), (25, 8), (27, 22), (29, 21), (31, 20), (18, 16), (32, 5), (13, 14), (21, 20), (24, 18), (10, 20), (7, 21), (29, 19), (31, 19), (31, 20), (30, 20), (30, 18), (31, 12), (31, 9), (26, 12), (24, 12), (8, 18), (9, 17), (7, 22)]:
+    for dx in (-1, 0, 1):
+        for dy in (-1, 0, 1): keep.add((x + dx, y + dy))
+def free(x, y): return m.g[y][x] == '.' and (x, y) not in keep and all(m.g[y + dy][x + dx] != ',' for dx, dy in [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)])
+for (x0, y0, w, h, dens) in [(1, 19, 11, 9, 0.5), (26, 13, 13, 15, 0.42), (1, 12, 2, 7, 0.6), (19, 6, 9, 3, 0.25), (33, 6, 6, 3, 0.4), (10, 12, 4, 3, 0.3), (11, 22, 7, 6, 0.35), (19, 21, 6, 7, 0.3)]:
+    for y in range(y0, y0 + h):
+        for x in range(x0, x0 + w):
+            if 0 < x < 39 and 0 < y < 29 and free(x, y) and rnd.random() < dens:
+                if rnd.random() < 0.3 and y + 1 < 29 and free(x, y + 1) and (x, y + 1) not in keep: m.put(x, y, '('); m.put(x, y + 1, ')')
+                else: m.put(x, y, 'f')
+m.put(36, 11, 'w')
+m.mark('in', 18, 28); m.mark('south', 18, 29); m.mark('post', 19, 27); m.mark('bus', 16, 26); m.mark('busIn', 16, 27)
+m.mark('lola', 20, 25); m.mark('nico', 25, 23); m.mark('elena', 20, 13); m.mark('lupe', 8, 17)
+m.mark('dog', 30, 19); m.mark('rio', 25, 12); m.mark('rioFar', 25, 8); m.mark('rastro', 27, 22)
+m.mark('cub', 18, 16); m.mark('cave', 32, 4); m.mark('caveFront', 32, 5); m.mark('cabinDoor', 6, 15); m.mark('log', 30, 19)
+m.mark('oak', 13, 14); m.mark('sorter', 21, 20)
+m.pos['prados'] = [11, 3, 13, 6]; m.pos['conejos'] = [19, 6, 7, 3]; m.pos['rana'] = [4, 4, 6, 4]
+m.pos['claro'] = [13, 14, 11, 7]; m.pos['zorros'] = [25, 18, 9, 7]; m.pos['orilla'] = [19, 12, 17, 2]
+m.pos['moras'] = [2, 18, 9, 6]; m.pos['arboles'] = [10, 12, 26, 14]; m.pos['norte'] = [19, 3, 8, 5]; m.pos['owl'] = [24, 8, 1, 1]
+m.mark('hide1', 13, 14); m.mark('hide2', 30, 19); m.mark('hide3', 7, 21); m.mark('hide4', 27, 4); m.mark('hide5', 24, 18); m.mark('hide6', 10, 20)
 out['bosque'] = m
+# the bears' cave, inside: dark rock, glowing mushrooms, a little pool, mama bear asleep at the back, fireflies
+m = M(16, 10, '{'); m.border('}', 1); m.rect(0, 0, 16, 2, '}')
+for x, y in [(1, 2), (14, 2), (1, 8), (14, 8), (2, 2), (13, 2)]: m.put(x, y, '}')
+m.rect(11, 4, 3, 2, 'w')
+for x, y in [(3, 7), (12, 7), (8, 2), (5, 3)]: m.put(x, y, '%')
+m.put(8, 9, '{'); m.mark('door', 8, 9)
+m.pos['osa'] = [3, 3, 3, 2]; m.pos['luces'] = [2, 2, 12, 6]
+m.mark('hide1', 13, 3)
+out['bosque_cueva'] = m
+# Doña Lupe's cabin, inside: her oven, a table, a bed, shelves of jars
+c = room(9, 7); c.put(1, 1, 'n'); c.put(2, 1, 'n'); c.put(6, 1, 'v'); c.rect(3, 3, 2, 1, 't'); c.put(7, 4, 'j'); c.put(7, 5, 'j'); c.put(1, 5, 'k')
+c.mark('table', 3, 3); c.mark('lupe', 5, 2)
+out['bosque_cabana'] = c
 # El parque de juegos: a sandbox (dig), benches, flower beds, a fence (the swings and the slide come later)
 m = entrance(22, 14, '.', 'T')
 m.hline(10, 21, 7, ','); m.vline(10, 3, 11, ','); m.hline(4, 10, 3, ',')
