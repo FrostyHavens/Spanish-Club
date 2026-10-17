@@ -115,8 +115,8 @@ class Game {
           }
           break;
         }
-        case 'WordCard': case 'BadgeCard': case 'QuestCard': case 'KeyHint': case 'Diploma': case 'QuestLog': case 'FriendCard': case 'Photo': case 'Mirror': case 'FamilyPhoto': {
-          const ready = { WordCard: 20, BadgeCard: 40, QuestCard: 30, KeyHint: 30, Diploma: 60, QuestLog: 0, FriendCard: 30, Photo: 40, Mirror: 34, FamilyPhoto: 74 }[s.name];
+        case 'WordCard': case 'BadgeCard': case 'QuestCard': case 'KeyHint': case 'Diploma': case 'QuestLog': case 'FriendCard': case 'Photo': case 'Mirror': case 'FamilyPhoto': case 'ZoneDone': case 'WorldPage': {
+          const ready = { WordCard: 20, BadgeCard: 40, QuestCard: 30, KeyHint: 30, Diploma: 60, QuestLog: 0, FriendCard: 30, Photo: 40, Mirror: 34, FamilyPhoto: 74, ZoneDone: 52, WorldPage: 22 }[s.name];
           if (s.t <= ready) { await this.frames(ready + 2 - s.t); break; }
           if (first) { await this.shot(s.name); this.seen.add(s.name); }
           if (this.touch) await this.tap(150, 200); else await this.press('z');

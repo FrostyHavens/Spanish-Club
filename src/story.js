@@ -18,10 +18,18 @@
   // ---------- Diploma ----------
   // The end of the game (errands.js: after the animal party): everything the child did, on one page. Words learned,
   // stars, speaking stars, animals met (the album), and a badge for every errand (a faint ring for one not done yet).
+  // A tap turns to its second page, "¡Mi mundo!" (src/connect.js: every place, its stars, the friends), then closes.
   class Diploma {
-    constructor(w) { G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; }
-    update() { this.t++; if (this.t > 60 && (G.input.p('A') || G.input.p('B') || G.input.tap())) { G.pop(); this.w.resolve(); } }
+    constructor(w) { G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; this.page = 0; }
+    update() {
+      this.t++;
+      if (this.t > 60 && (G.input.p('A') || G.input.p('B') || G.input.tap())) {
+        if (this.page === 0 && ST.drawWorld) { this.page = 1; this.t = 0; G.audio.jingle('item'); return; }
+        G.pop(); this.w.resolve();
+      }
+    }
     draw(ctx) {
+      if (this.page === 1) { ST.drawWorld(ctx, this.t); return; }
       const x = 24, y = 10, w = G.W - 48, h = G.H - 20, cx = G.W / 2;
       ctx.fillStyle = '#5a3810'; ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
       ctx.fillStyle = '#f8f0d0'; ctx.fillRect(x, y, w, h);

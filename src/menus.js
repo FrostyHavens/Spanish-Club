@@ -206,9 +206,43 @@
   // giver with a "!", or a sun coming up when it opens tomorrow), then the older errands going on (errands.js parts())
   // and new ones waiting; then what's in the bag, today's side jobs (ticked when done) and a badge for every chapter
   // and errand.
+  // A tap turns to the second page, the whole world (G.zones): a row per place (Villa Sol, then each zone): its picture,
+  // whether it's been visited, a badge for each of its chapters (won, the one going on with an arrow, or a ring), its
+  // album page (met/of) and its friends' hearts; a tap there closes.
   class QuestLog {
-    constructor(w) { G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; }
-    update() { this.t++; if (G.input.p('A') || G.input.p('B') || G.input.tap()) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); } } // a tap anywhere closes
+    constructor(w) { G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; this.page = 0; }
+    update() {
+      this.t++;
+      if (this.page === 0 && G.zones && (G.input.p('A') || G.input.tap())) { G.audio.sfx('ok'); this.page = 1; this.t = 0; return; }
+      if (G.input.p('A') || G.input.p('B') || G.input.tap()) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); } // a tap anywhere closes
+    }
+    drawWorld(ctx) {
+      const Z = G.zones, CH = G.chapters, H = G.hearts, PR = G.progress;
+      G.win(ctx, 6, 6, G.W - 12, G.H - 12);
+      G.closeBtn(ctx, G.W - 30, 8);
+      G.drawIcon16(ctx, 'mapa', G.W / 2 - 40, 9); G.text(ctx, 'Story progress: the world', G.W / 2 - 20, 13, '#f8e8b0');
+      Z.ids().forEach((id, k) => {
+        const z = Z.def(id), y = 30 + k * 31, been = id === 'villa' || Z.visited(id);
+        ctx.fillStyle = been ? '#0a1040' : '#1a1430'; ctx.fillRect(12, y - 2, G.W - 24, 29);
+        ctx.globalAlpha = been ? 1 : 0.4; G.drawIcon16(ctx, z.icon, 16, y + 4); ctx.globalAlpha = 1;
+        G.text(ctx, z.name.replace(/^(El|La) /, ''), 36, y, been ? '#f8e8b0' : '#7078a0');
+        const ids = CH ? CH.writtenIds().filter(c => CH.lineOf(c) === id) : [], per = Math.min(18, Math.floor((G.W - 140) / Math.max(1, ids.length)));
+        ids.forEach((c, i) => {
+          const x = 36 + i * per, yy = y + 11;
+          if (per < 14) { ctx.fillStyle = CH.done(c) ? '#f8c830' : CH.active(c) ? '#f8e060' : '#303868'; ctx.fillRect(x + 1, yy + 4, Math.max(3, per - 2), 6); return; } // (a long line: a dot per chapter)
+          if (CH.done(c)) G.drawBadge(ctx, c, x, yy, this.t + i * 12);
+          else { ctx.strokeStyle = CH.active(c) ? '#f8e060' : '#404878'; ctx.beginPath(); ctx.arc(x + 7, yy + 7, 6, 0, Math.PI * 2); ctx.stroke(); if (CH.active(c)) G.textC(ctx, '\u0001', x + 7, yy + 3, '#f8e060'); }
+        });
+        if (PR) {
+          const a = PR.album(id), f = PR.friends(id), s = PR.story(id);
+          G.textR(ctx, s.done + '/' + s.of, G.W - 96, y + 2, '#f8e8b0');
+          G.drawIcon16(ctx, 'pata', G.W - 90, y + 8); G.text(ctx, a.met + '/' + a.of, G.W - 72, y + 12, '#a8d8ff');
+          if (H) H.heart(ctx, G.W - 44, y + 2, f.m3 === f.of && f.of > 0, 1); G.text(ctx, String(f.hearts), G.W - 34, y + 2, '#f8a0c0');
+          if (PR.complete(id)) G.text(ctx, '\u0005', G.W - 30, y + 14, '#f8d040', '#5a2c04');
+        }
+      });
+      if (G.enVisible()) G.textC(ctx, 'Chapters (badges), album, hearts. Tap to close.', G.W / 2, G.H - 18, '#f8e8b0');
+    }
     rows() {
       const E = G.errands, CH = G.chapters, out = [];
       const cur = CH && CH.current();
@@ -219,9 +253,11 @@
       return out.concat(act.map(id => ({ id, st: 'on' })), fresh.map(id => ({ id, st: 'new' }))).slice(0, 4);
     }
     draw(ctx) {
+      if (this.page === 1) { this.drawWorld(ctx); return; }
       G.win(ctx, 6, 6, G.W - 12, G.H - 12);
       G.closeBtn(ctx, G.W - 30, 8);
       G.drawIcon(ctx, 'quest', G.W / 2 - 12, 8);
+      if (G.zones) { G.drawIcon16(ctx, 'mapa', G.W - 54, 8); G.text(ctx, '\u0001', G.W - 62, 12, '#f8e060'); } // (a tap: the whole world)
       const rows = this.rows(), E = G.errands;
       if (!rows.length) G.bigText(ctx, '?', G.W / 2, 70, 3, '#404878');
       rows.forEach((r, k) => {

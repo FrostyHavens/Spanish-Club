@@ -8,7 +8,8 @@
 //                  white arrow, so it shows WHERE to look without giving the answer away
 //   idle ~4 s      Canelo trots a few tiles toward the goal, barks and looks back at you
 // The goal, most important first: the story's chapter (its beat: a person, a place, an animal, a door, a find-it
-// puzzle; the next chapter's giver; a review day's teacher) > home at sunset > a favour going on or offered > Nico's
+// puzzle; the next chapter's giver; a review day's teacher) > home at sunset > a favour going on or offered > Tomás's
+// letter in your hands (to whoever it's for; another place: the bus stop, src/connect.js) > a zone's task > Nico's
 // hide-and-seek (only the edge arrow: the peeking ears are the game; the arrow over one after a long wait) > Canelo's
 // "?", Luna's palabra del día, Inés's pages, a side job, anyone else with a bubble > the day's play (src/carry.js: what
 // you hold to whoever would love it, or Canelo; empty-handed, today's next play: fetch, an apple for Luna, a flower for
@@ -163,7 +164,9 @@
   const zoneTask = f => (G.zones && G.zones.task ? G.zones.task(f) : null);
   const wantGoal = f => (G.zones && G.zones.want() ? G.zones.exploreGoal(f) : null);
   const exploreGoal = f => (G.zones ? G.zones.exploreGoal(f) : null);
-  const TIERS = [chapterGoal, sunsetGoal, favourGoal, zoneTask, seekGoal, wantGoal, reviewGoal, zoneGoal, chapterLater, exploreGoal, playGoal, puppyGoal];
+  // Tomás's letter in your hands (connect.js): to whoever it's for; in another place, by the bus (or the way there)
+  const postGoal = f => (G.post && G.post.goal ? G.post.goal(f) : null);
+  const TIERS = [chapterGoal, sunsetGoal, favourGoal, postGoal, zoneTask, seekGoal, wantGoal, reviewGoal, zoneGoal, chapterLater, exploreGoal, playGoal, puppyGoal];
 
   // on another map: the door that leads there (from town, its door; from a building, the way out)
   function viaDoor(f, g) {

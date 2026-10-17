@@ -1,6 +1,8 @@
 // ===== The animal album: a Pokédex of the whole world, one page per zone, and the Amigos page (everyone's hearts) =====
 // (docs/WORLD_PLAN.md: wonder, adventure, lots of different animals, always something left to find)
 // Tabs along the top: one per zone (its picture and "met/of"; a gold ribbon once the zone is complete) and Amigos.
+// Amigos (everyone's hearts) has a tab per place too: Villa Sol's friends and the dog, then each zone's people, with
+// Lola (the friend who travels) on a wide card on every zone's tab, showing the places where you've met her.
 // A zone's page: its animals as numbered entries (Nº 1, 2, ... in world order: Villa Sol first, then each zone, so
 // every animal has its own number). Not met yet: a dark silhouette, "? ? ?" and a little picture of where it lives (the
 // hint: water, a tree, the farm...); a rare one (only at night, only in the morning, only in one spot) has a sparkle
@@ -41,6 +43,7 @@
       const here = G.field && G.zones ? G.zones.of(G.field.mapId) : null;
       this.page = start === 'amigos' ? 'amigos' : 'animales';
       this.zone = start && start !== 'amigos' && G.zones && G.zones.def(start) ? start : here && ZS().some(z => z.id === here) ? here : 'villa';
+      this.ftab = this.zone; // (the Amigos page opens on the friends of the place you're in)
     }
     onEnter() {
       if (G.album.full() && !G.state.flags.albumFull) { // the last animal: a party, once
@@ -58,13 +61,21 @@
     tabs() { return ZS().map(z => z.id).concat(['amigos']); }
     tabRect(k) { const n = this.tabs().length, w = Math.min(44, Math.floor((G.W - 60) / n)); return { x: 12 + k * w, y: 6, w: w - 2, h: 24 }; }
     cell(k) { return { x: 14 + (k % 4) * 74, y: 46 + Math.floor(k / 4) * 56, w: 70, h: 52 }; }
-    friendRect(k) { return { x: 12 + (k % 2) * 150, y: 32 + Math.floor(k / 2) * 31, w: 146, h: 29 }; }
+    // Amigos: a tab per place (Villa Sol's friends and Canelo, then each zone's people), Lola's own card on every zone's tab
+    ftabs() { return G.zones ? G.zones.ids() : ['villa']; }
+    ftabRect(k) { const n = this.ftabs().length, w = Math.min(42, Math.floor((G.W - 68) / n)); return { x: 34 + k * w, y: 4, w: w - 2, h: 24 }; }
+    friends() { const H = G.hearts; if (!H) return []; const L = H.inZone ? H.inZone(this.ftab || 'villa') : H.WHO; return this.ftab && this.ftab !== 'villa' ? L.filter(n => n !== 'lola').concat(['lola']) : L; }
+    friendRect(k) {
+      const who = this.friends()[k];
+      if (who === 'lola' && this.ftab !== 'villa') return { x: 12, y: 160, w: G.W - 24, h: 52 }; // (Lola, who travels: a wide card at the bottom)
+      return { x: 12 + (k % 2) * 150, y: 32 + Math.floor(k / 2) * 30, w: 146, h: 28 };
+    }
     closeXY() { return [G.W - 28, 6]; }
     backXY() { return [8, 6]; }
     hintXY() { return null; }
     tapCard(k) {
       this.sel = k;
-      if (k === 11) { G.audio.sfx('ok'); this.page = 'amigos'; this.fi = 0; return; }
+      if (k === 11) { G.audio.sfx('ok'); this.page = 'amigos'; this.fi = 0; this.ftab = this.zone; return; }
       const id = this.ids()[k]; if (id === undefined) return;
       if (!id || !rec(id)) { G.audio.sfx('boop'); this.hop[k] = { t: 0, no: true }; return; }
       const w = G.data.words[AN().KINDS[id].word];
@@ -72,7 +83,7 @@
       if (G.st.seen(AN().KINDS[id].word)) G.speak(w.es.split(' / ')[0] + (cry(id) ? '. ' + cry(id) : '')); // (unnamed yet: only its cry)
       const r = this.cell(k); for (let i = 0; i < 3; i++) G.fx.twinkle(r.x + 10 + Math.random() * 50, r.y + 6 + Math.random() * 30);
     }
-    tapTab(k) { const id = this.tabs()[k]; G.audio.sfx('cursor'); if (id === 'amigos') { this.page = 'amigos'; this.fi = 0; return; } this.page = 'animales'; this.zone = id; this.sel = 0; this.hop = {}; this.done = 0; this.checkZone(); }
+    tapTab(k) { const id = this.tabs()[k]; G.audio.sfx('cursor'); if (id === 'amigos') { this.page = 'amigos'; this.fi = 0; this.ftab = this.zone; return; } this.page = 'animales'; this.zone = id; this.sel = 0; this.hop = {}; this.done = 0; this.checkZone(); }
     update() {
       this.t++;
       for (const k in this.hop) if (++this.hop[k].t > 24) delete this.hop[k];
@@ -84,12 +95,15 @@
       if (this.done && this.done < 120) { this.done++; if (this.done % 40 === 2) { G.fx.confetti(40, 200, -1, 14); G.fx.confetti(G.W - 40, 200, 1, 14); } if (this.done === 2) G.speak('¡Completo!'); }
       const tap = G.input.tap(), d = G.input.repDir(14, 6);
       if (this.page === 'amigos') {
-        const n = G.hearts ? G.hearts.WHO.length : 0;
+        if (!this.ftab) this.ftab = 'villa';
+        const L = this.friends(), n = L.length;
         if ((tap && (G.btnHit(...this.backXY()) || G.closeHit(...this.closeXY()))) || G.input.p('B')) { G.audio.sfx('cancel'); this.page = 'animales'; return; }
+        if (tap) { const tk = this.ftabs().findIndex((_, k) => G.tapIn(this.ftabRect(k))); if (tk >= 0) { this.ftab = this.ftabs()[tk]; this.fi = 0; G.audio.sfx('cursor'); return; } }
+        if (d === 'left' && this.fi === 0 || d === 'right' && this.fi === n - 1) { const T = this.ftabs(), i = T.indexOf(this.ftab); this.ftab = T[(i + (d === 'left' ? T.length - 1 : 1)) % T.length]; this.fi = 0; G.audio.sfx('cursor'); return; } // (past the end: the next place's friends)
         if (d) { this.fi = G.clamp(this.fi + (d === 'left' ? -1 : d === 'right' ? 1 : d === 'up' ? -2 : 2), 0, n - 1); G.audio.sfx('cursor'); }
         const k = tap ? Array.from({ length: n }, (_, i) => i).find(i => G.tapIn(this.friendRect(i))) : -1;
         if (k != null && k >= 0) this.fi = k;
-        if ((k != null && k >= 0) || G.input.p('A') || G.input.p('C')) { const who = G.hearts.WHO[this.fi]; G.speak(who === 'canelo' ? G.dogName() : (G.nameOf(who) || '')); G.audio.sfx('cursor'); }
+        if ((k != null && k >= 0) || G.input.p('A') || G.input.p('C')) { const who = L[this.fi]; if (who) { G.speak(who === 'canelo' ? G.dogName() : (G.nameOf(who) || '')); G.audio.sfx('cursor'); } }
         return;
       }
       if ((tap && G.closeHit(...this.closeXY())) || G.input.p('B')) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); return; }
@@ -167,21 +181,36 @@
       }
     }
     drawFriends(ctx) {
+      const H = G.hearts, Z = G.zones;
       G.iconBtn(ctx, 'back', ...this.backXY());
-      G.hearts.heart(ctx, G.W / 2 - 40, 10, true, 1);
-      G.textC(ctx, 'Amigos', G.W / 2, 10, '#a03060', null);
-      G.hearts.heart(ctx, G.W / 2 + 33, 10, true, 1);
       G.closeBtn(ctx, ...this.closeXY());
-      G.hearts.WHO.forEach((who, k) => {
-        const r = this.friendRect(k), sel = k === this.fi, best = G.hearts.photo(who);
-        ctx.fillStyle = best ? '#f8d050' : sel ? '#f8e0a0' : '#fffaf0'; ctx.fillRect(r.x, r.y, r.w, r.h);
-        ctx.strokeStyle = best ? '#b07000' : sel ? '#c06000' : '#d0b898'; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
-        ctx.fillStyle = '#5a3810'; ctx.fillRect(r.x + 2, r.y + 2, 25, 25);
-        G.hearts.face(ctx, who, r.x + 3, r.y + 3, 23, this.t);
-        const nm = who === 'canelo' ? G.dogName() : (G.nameOf(who) || who).replace('Profesora ', 'Prof. ').replace(' el cartero', '').replace(' la panadera', '').replace('Señor ', 'Sr. ').replace('Abuela ', '');
-        G.text(ctx, nm, r.x + 31, r.y + 5, '#604020', null);
-        G.hearts.row(ctx, who, r.x + 31, r.y + 17);
-        if (G.hearts.sticker(who)) { ctx.fillStyle = '#f8c820'; ctx.beginPath(); ctx.arc(r.x + r.w - 10, r.y + 10, 6, 0, Math.PI * 2); ctx.fill(); G.text(ctx, '\u0005', r.x + r.w - 13, r.y + 7, '#ffffff', '#a06000'); }
+      // the places' tabs: each with its picture and its friends' hearts
+      this.ftabs().forEach((id, k) => {
+        const r = this.ftabRect(k), on = id === this.ftab, z = Z && Z.def(id), been = id === 'villa' || (Z && Z.visited(id));
+        ctx.fillStyle = on ? '#fffaf0' : '#d8c8a8'; ctx.fillRect(r.x, r.y, r.w, r.h + (on ? 4 : 0));
+        ctx.strokeStyle = on ? '#c06000' : '#a08868'; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1 + (on ? 4 : 0));
+        if (z && been) G.drawIcon16(ctx, z.icon, r.x + 2, r.y + 4); else if (z) { ctx.globalAlpha = 0.8; ctx.drawImage(G.tinted(G.icon(z.icon), '#3a3048', 'ftsil' + id), r.x + 2, r.y + 4); ctx.globalAlpha = 1; }
+        const L = H.inZone ? H.inZone(id) : [], m3 = L.filter(n => H.get(n) >= 3).length;
+        if (r.w >= 36) { H.heart(ctx, r.x + 21, r.y + 5, m3 === L.length && L.length > 0, 1); G.text(ctx, String(L.reduce((s, n) => s + H.get(n), 0)), r.x + 20, r.y + 14, '#c04870', null); }
+      });
+      const zone = this.ftab || 'villa', been = zone === 'villa' || (Z && Z.visited(zone));
+      this.friends().forEach((who, k) => {
+        const r = this.friendRect(k), sel = k === this.fi, best = H.photo(who), lola = who === 'lola' && zone !== 'villa';
+        ctx.fillStyle = best ? '#f8d050' : lola ? '#e8f8e0' : sel ? '#f8e0a0' : '#fffaf0'; ctx.fillRect(r.x, r.y, r.w, r.h);
+        ctx.strokeStyle = best ? '#b07000' : lola ? '#3a9a58' : sel ? '#c06000' : '#d0b898'; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
+        if (lola && sel) { ctx.strokeStyle = '#c06000'; ctx.strokeRect(r.x + 1.5, r.y + 1.5, r.w - 3, r.h - 3); }
+        const fw = lola ? 46 : 23;
+        ctx.fillStyle = '#5a3810'; ctx.fillRect(r.x + 2, r.y + 2, fw + 2, fw + 2);
+        if (been || lola) H.face(ctx, who, r.x + 3, r.y + 3, fw, this.t); else { ctx.fillStyle = '#3a3048'; ctx.fillRect(r.x + 3, r.y + 3, fw, fw); G.textC(ctx, '?', r.x + 3 + fw / 2, r.y + 10, '#f8e060'); }
+        const nm = !been && !lola ? '? ? ?' : who === 'canelo' ? G.dogName() : (G.nameOf(who) || who).replace('Profesora ', 'Prof. ').replace(' el cartero', '').replace(' la panadera', '').replace('Señor ', 'Sr. ').replace('Abuela ', '');
+        G.text(ctx, nm, r.x + fw + 8, r.y + 5, '#604020', null);
+        H.row(ctx, who, r.x + fw + 8, r.y + 16);
+        if (H.sticker(who)) { ctx.fillStyle = '#f8c820'; ctx.beginPath(); ctx.arc(r.x + r.w - 10, r.y + 10, 6, 0, Math.PI * 2); ctx.fill(); G.text(ctx, '\u0005', r.x + r.w - 13, r.y + 7, '#ffffff', '#a06000'); }
+        if (lola && Z) { // where you've met her: each place's picture, bright where she said hello
+          const met = (G.state.world && G.state.world.lolaZ) || {};
+          Z.ids().filter(z => z !== 'villa').forEach((z, i) => { const x = r.x + fw + 8 + i * 22, y = r.y + 28; ctx.globalAlpha = met[z] ? 1 : 0.3; G.drawIcon16(ctx, Z.def(z).icon, x, y); ctx.globalAlpha = 1; if (met[z]) G.text(ctx, '\u0003', x + 13, y + 9, '#f04878', null); });
+          G.drawIcon16(ctx, 'explorar', r.x + r.w - 40, r.y + 26);
+        }
       });
     }
   }

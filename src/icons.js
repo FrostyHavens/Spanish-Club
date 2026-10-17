@@ -365,6 +365,11 @@
       p.rect(1, 9, 9, 1, '#e05030'); p.disc(4.5, 12.5, 2, '#303040'); p.disc(11.5, 12.5, 2, '#303040'); p.put(4, 12, '#a0a0b0'); p.put(11, 12, '#a0a0b0');
       p.put(15, 9, '#fff8c0');
     },
+    trofeo(p) { // a gold cup with two handles on a little stand (the world's trophy: "¡Mi mundo!")
+      p.ell(8, 4.5, 5.5, 1.6, '#f8d838'); p.rect(3, 4, 10, 4, '#f0b020'); p.ell(8, 8, 5, 3.6, '#f0b020'); p.rect(4, 4, 2, 5, '#f8e070');
+      p.rect(1, 4, 2, 4, '#e0a018'); p.rect(13, 4, 2, 4, '#e0a018'); p.put(2, 8, '#e0a018'); p.put(13, 8, '#e0a018');
+      p.rect(7, 11, 2, 2, '#d09010'); p.rect(4, 13, 8, 2, '#8a5a2c'); p.rect(5, 13, 6, 1, '#b07838'); p.put(8, 7, '#fff8c0');
+    },
     mapa(p) { // a folded paper map: green land, a blue lake, a red dotted path and an X
       p.rect(1, 2, 14, 12, '#f4e8c0'); p.rect(5, 2, 1, 12, '#d8c890'); p.rect(10, 2, 1, 12, '#d8c890');
       p.ell(4, 6, 3, 2.4, '#78c058'); p.ell(12, 11, 3, 2.2, '#78c058'); p.ell(11.5, 5, 2.4, 1.8, '#68a8e8');
@@ -1235,6 +1240,16 @@
       R(0.5, 0.5, 15, 11.5, '#3a2410'); R(1, 1, 14, 10.5, '#a06a34'); R(1.6, 1.6, 12.8, 9.3, '#f4e8c8'); // the board
       R(1, 1, 14, 0.6, '#c88a48');
       ctx.drawImage(G.icon({ icon: w.icon, col: w.col }), Math.round(x + 3.5 * u), Math.round(y + 1.8 * u), Math.round(9 * u), Math.round(9 * u));
+      return;
+    }
+    if (w && typeof w === 'object' && w.letter) { // a letter for someone: the envelope and their face in a little circle (connect.js)
+      ctx.drawImage(G.icon('carta'), Math.round(x), Math.round(y), s, s);
+      const spec = G.data.npcs[w.letter] && G.data.npcs[w.letter].map, r = Math.max(4, Math.round(s * 0.3)), cx = Math.round(x + s - r + 1), cy = Math.round(y + s - r + 1);
+      if (!spec) return;
+      ctx.fillStyle = '#10102a'; ctx.beginPath(); ctx.arc(cx, cy, r + 1, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#f8e8a0'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+      const img = G.unitSprite(spec, 'down', 0), k = (2 * r) / 14; // (the head: the sprite's top 14 px, 24 wide)
+      ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r - 0.5, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(img, Math.round(cx - 12 * k), Math.round(cy - r - 1 * k), Math.round(24 * k), Math.round(24 * k)); ctx.restore();
       return;
     }
     ctx.drawImage(G.icon(w), Math.round(x), Math.round(y), s, s);

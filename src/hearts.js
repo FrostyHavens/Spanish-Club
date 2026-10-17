@@ -14,7 +14,9 @@
 // above the portrait whenever they talk (G.say with opts.who). The album's Amigos page lists everyone's hearts.
 //
 // API (for errands, the album and tests):
-//   G.hearts.WHO               the 12 friends: mama luna rosa pepe sofia tomas marta ines gomez lucia nico canelo
+//   G.hearts.WHO               every friend: the 12 in town (H.TOWN: mama luna rosa pepe sofia tomas marta ines gomez lucia
+//                              nico canelo), then the zones' people and Lola (H.ZONE: npc -> zone, '*' for Lola; H.inZone(z))
+//   G.hearts.greetsWith(npc)   their greeting has begun (town: after chapter 3; a zone's people: after its chapter 1; Lola: met)
 //   G.hearts.get(npc)          0..5
 //   G.hearts.add(npc, n, why)  -> hearts actually added (0 when capped / full / a once-a-day reason already used today).
 //                              why: 'greet' | 'gift' (once a day each) | 'care' | 'errand' | 'trick' (these two skip the cap)
@@ -33,9 +35,18 @@
 (function () {
   const H = G.hearts = {}, T = G.TILE;
   H.MAX = 5; H.DAY_CAP = 2;
-  H.WHO = ['mama', 'luna', 'rosa', 'pepe', 'sofia', 'tomas', 'marta', 'ines', 'gomez', 'lucia', 'nico', 'canelo'];
-  // what each friend likes as a gift (word ids; Lucía: a pink flower)
-  H.LIKES = { mama: 'flor', luna: 'manzana', rosa: 'flor', pepe: 'queso', sofia: 'galleta', tomas: 'agua', marta: 'leche', ines: 'pan', gomez: 'manzana', lucia: 'flor', nico: 'pelota', canelo: 'hueso' };
+  H.TOWN = ['mama', 'luna', 'rosa', 'pepe', 'sofia', 'tomas', 'marta', 'ines', 'gomez', 'lucia', 'nico', 'canelo'];
+  // the open world's people (docs/WORLD_PLAN.md): each zone's own, and Lola, the friend who travels (in every zone: '*')
+  H.ZONE = { paco: 'playa', marina: 'playa', nieves: 'playa', tere: 'playa', elena: 'bosque', lupe: 'bosque', ana: 'juegos', pablo: 'juegos', chuy: 'juegos',
+    abuela: 'abuelos', abuelo: 'abuelos', bebe: 'abuelos', lucho: 'montana', mateo: 'montana', lola: '*' };
+  H.WHO = H.TOWN.concat(Object.keys(H.ZONE));
+  H.zoneOf = npc => H.ZONE[npc] || (H.TOWN.includes(npc) ? 'villa' : null);
+  H.inZone = z => (z === 'villa' ? H.TOWN.slice() : Object.keys(H.ZONE).filter(n => H.ZONE[n] === z));
+  // what each friend likes as a gift (word ids; Lucía: a pink flower). The zones' people like things to carry from
+  // their own zone or from town (a shell, a leaf, an acorn, the ball, an apple, a cookie, bread, an ice cream, a flower)
+  H.LIKES = { mama: 'flor', luna: 'manzana', rosa: 'flor', pepe: 'queso', sofia: 'galleta', tomas: 'agua', marta: 'leche', ines: 'pan', gomez: 'manzana', lucia: 'flor', nico: 'pelota', canelo: 'hueso',
+    paco: 'pan', marina: 'helado', nieves: 'flor', tere: 'concha', elena: 'hoja', lupe: 'bellota', ana: 'galleta', pablo: 'pelota', chuy: 'pan',
+    abuela: 'flor', abuelo: 'manzana', bebe: 'pelota', lucho: 'galleta', mateo: 'hoja', lola: 'manzana' };
   const ONCE = ['greet', 'gift'], FREE = ['errand', 'trick'];
   H.secrets = {};
   const today = () => (G.world ? G.world.today() : new Date().toDateString());
@@ -131,7 +142,15 @@
   H.pulse = npc => { const p = pops[npc]; return !!p && G.frame - p.f0 < 120; };
   // ui.js TextBox: a row of hearts above the portrait of someone who has hearts
   const greets = () => !!G.chapters && G.chapters.done('c3'); // greetings begin after chapter 3 (CURRICULUM.md 2.2)
-  H.shows = npc => H.WHO.includes(npc) && !!G.state && (H.get(npc) > 0 || greets());
+  // a zone's people greet you once you know them: after their zone's first chapter (or once they have a heart);
+  // Lola once you've met her (any zone may come first: never Villa Sol's chapter 3)
+  H.greetsWith = function (npc) {
+    const z = H.ZONE[npc]; if (!z) return greets();
+    if (H.get(npc) > 0) return true;
+    if (z === '*') return !!(G.state && G.state.world && G.state.world.lola && G.state.world.lola.met);
+    return !!G.chapters && G.chapters.done(z + '1');
+  };
+  H.shows = npc => H.WHO.includes(npc) && !!G.state && (H.get(npc) > 0 || H.greetsWith(npc));
 
   // ---------- 1 heart: they call you by name as you pass ----------
   const waved = {};
@@ -170,6 +189,22 @@
     gomez: ['hola', 'buenosdias', 'parque', 'banco', 'arbol', 'conejo', 'pajaro', 'busca', 'perro'],
     luna: ['hola', 'buenosdias', 'escuela', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'comoestas', 'bien'],
     ines: ['hola', 'biblioteca', 'adios', 'gracias'],
+    // the zones' people: their zone's words (what their life there shows)
+    paco: ['mar', 'concha', 'cangrejo', 'estrellamar', 'pulpo', 'ola', 'nadar', 'gaviota', 'pez'],
+    marina: ['ola', 'nadar', 'elsol', 'caliente', 'mar', 'arena', 'medusa', 'delfin'],
+    nieves: ['helado', 'caliente', 'elsol', 'concha', 'arena', 'rojo', 'rosa', 'amarillo'],
+    tere: ['castillo', 'arena', 'cubetaarena', 'concha', 'cangrejo', 'tortuga', 'ola'],
+    elena: ['elbosque', 'oso', 'venado', 'zorro', 'mapache', 'buho', 'tronco', 'grande', 'pequeno', 'cueva'],
+    lupe: ['mora', 'hongo', 'hoja', 'bellota', 'ardilla', 'erizo', 'grande', 'pequeno', 'luciernaga'],
+    ana: ['corre', 'salta', 'baila', 'gira', 'cuerda', 'resbaladilla', 'subibaja', 'rapido', 'despacio'],
+    pablo: ['papalote', 'columpio', 'lanza', 'atrapa', 'empuja', 'pelota', 'sube', 'baja'],
+    chuy: ['burbujas', 'paloma', 'catarina', 'hormiga', 'abeja', 'colibri', 'grillo', 'lagartija', 'lombriz'],
+    abuela: ['abuela', 'familia', 'bebe', 'mano', 'camisa', 'vestido', 'calcetines', 'raton', 'gallo'],
+    abuelo: ['abuelo', 'vaca', 'cerdo', 'oveja', 'burro', 'pavo', 'chamarra', 'sombrero', 'pie', 'tlacuache'],
+    bebe: ['ojos', 'boca', 'cabeza', 'nariz', 'mano', 'pie', 'zapatos', 'bebe'],
+    lucho: ['lamontana', 'llama', 'chocolate', 'gorro', 'bufanda', 'guantes', 'frio', 'nieve', 'puma', 'aguila'],
+    mateo: ['nieve', 'nube', 'viento', 'lluvia', 'arcoiris', 'trineo', 'hielo', 'muneco', 'marmota', 'lobo'],
+    lola: ['cangrejo', 'gaviota', 'tortuga', 'oso', 'ardilla', 'venado', 'paloma', 'catarina', 'vaca', 'oveja', 'llama', 'marmota', 'monarca', 'mar', 'elbosque', 'lamontana'],
   };
   const GREET = ['hola', 'buenosdias', 'buenasnoches', 'adios', 'comoestas'];
   H.greetKind = function () {
@@ -179,7 +214,7 @@
     return 'hola';
   };
   H.greet = function* (npc) {
-    if (!G.state || !greets() || npc === 'canelo' || !H.WHO.includes(npc) || H.did(npc, 'greet')) return false;
+    if (!G.state || !H.greetsWith(npc) || npc === 'canelo' || !H.WHO.includes(npc) || H.did(npc, 'greet')) return false;
     const nm = G.nameOf(npc) || '', kind = H.best(npc) ? 'best' : H.greetKind(), met = id => G.st.seen(id);
     const ans = kind === 'noches' ? 'buenasnoches' : kind === 'dias' ? 'buenosdias' : 'hola';
     const both = met('buenosdias') && met('buenasnoches') && met('hola');

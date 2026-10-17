@@ -7331,6 +7331,11 @@ G.store = {
       p.rect(1, 9, 9, 1, '#e05030'); p.disc(4.5, 12.5, 2, '#303040'); p.disc(11.5, 12.5, 2, '#303040'); p.put(4, 12, '#a0a0b0'); p.put(11, 12, '#a0a0b0');
       p.put(15, 9, '#fff8c0');
     },
+    trofeo(p) { // a gold cup with two handles on a little stand (the world's trophy: "¡Mi mundo!")
+      p.ell(8, 4.5, 5.5, 1.6, '#f8d838'); p.rect(3, 4, 10, 4, '#f0b020'); p.ell(8, 8, 5, 3.6, '#f0b020'); p.rect(4, 4, 2, 5, '#f8e070');
+      p.rect(1, 4, 2, 4, '#e0a018'); p.rect(13, 4, 2, 4, '#e0a018'); p.put(2, 8, '#e0a018'); p.put(13, 8, '#e0a018');
+      p.rect(7, 11, 2, 2, '#d09010'); p.rect(4, 13, 8, 2, '#8a5a2c'); p.rect(5, 13, 6, 1, '#b07838'); p.put(8, 7, '#fff8c0');
+    },
     mapa(p) { // a folded paper map: green land, a blue lake, a red dotted path and an X
       p.rect(1, 2, 14, 12, '#f4e8c0'); p.rect(5, 2, 1, 12, '#d8c890'); p.rect(10, 2, 1, 12, '#d8c890');
       p.ell(4, 6, 3, 2.4, '#78c058'); p.ell(12, 11, 3, 2.2, '#78c058'); p.ell(11.5, 5, 2.4, 1.8, '#68a8e8');
@@ -8201,6 +8206,16 @@ G.store = {
       R(0.5, 0.5, 15, 11.5, '#3a2410'); R(1, 1, 14, 10.5, '#a06a34'); R(1.6, 1.6, 12.8, 9.3, '#f4e8c8'); // the board
       R(1, 1, 14, 0.6, '#c88a48');
       ctx.drawImage(G.icon({ icon: w.icon, col: w.col }), Math.round(x + 3.5 * u), Math.round(y + 1.8 * u), Math.round(9 * u), Math.round(9 * u));
+      return;
+    }
+    if (w && typeof w === 'object' && w.letter) { // a letter for someone: the envelope and their face in a little circle (connect.js)
+      ctx.drawImage(G.icon('carta'), Math.round(x), Math.round(y), s, s);
+      const spec = G.data.npcs[w.letter] && G.data.npcs[w.letter].map, r = Math.max(4, Math.round(s * 0.3)), cx = Math.round(x + s - r + 1), cy = Math.round(y + s - r + 1);
+      if (!spec) return;
+      ctx.fillStyle = '#10102a'; ctx.beginPath(); ctx.arc(cx, cy, r + 1, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#f8e8a0'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+      const img = G.unitSprite(spec, 'down', 0), k = (2 * r) / 14; // (the head: the sprite's top 14 px, 24 wide)
+      ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r - 0.5, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(img, Math.round(cx - 12 * k), Math.round(cy - r - 1 * k), Math.round(24 * k), Math.round(24 * k)); ctx.restore();
       return;
     }
     ctx.drawImage(G.icon(w), Math.round(x), Math.round(y), s, s);
@@ -10966,9 +10981,43 @@ G.store = {
   // giver with a "!", or a sun coming up when it opens tomorrow), then the older errands going on (errands.js parts())
   // and new ones waiting; then what's in the bag, today's side jobs (ticked when done) and a badge for every chapter
   // and errand.
+  // A tap turns to the second page, the whole world (G.zones): a row per place (Villa Sol, then each zone): its picture,
+  // whether it's been visited, a badge for each of its chapters (won, the one going on with an arrow, or a ring), its
+  // album page (met/of) and its friends' hearts; a tap there closes.
   class QuestLog {
-    constructor(w) { G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; }
-    update() { this.t++; if (G.input.p('A') || G.input.p('B') || G.input.tap()) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); } } // a tap anywhere closes
+    constructor(w) { G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; this.page = 0; }
+    update() {
+      this.t++;
+      if (this.page === 0 && G.zones && (G.input.p('A') || G.input.tap())) { G.audio.sfx('ok'); this.page = 1; this.t = 0; return; }
+      if (G.input.p('A') || G.input.p('B') || G.input.tap()) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); } // a tap anywhere closes
+    }
+    drawWorld(ctx) {
+      const Z = G.zones, CH = G.chapters, H = G.hearts, PR = G.progress;
+      G.win(ctx, 6, 6, G.W - 12, G.H - 12);
+      G.closeBtn(ctx, G.W - 30, 8);
+      G.drawIcon16(ctx, 'mapa', G.W / 2 - 40, 9); G.text(ctx, 'Story progress: the world', G.W / 2 - 20, 13, '#f8e8b0');
+      Z.ids().forEach((id, k) => {
+        const z = Z.def(id), y = 30 + k * 31, been = id === 'villa' || Z.visited(id);
+        ctx.fillStyle = been ? '#0a1040' : '#1a1430'; ctx.fillRect(12, y - 2, G.W - 24, 29);
+        ctx.globalAlpha = been ? 1 : 0.4; G.drawIcon16(ctx, z.icon, 16, y + 4); ctx.globalAlpha = 1;
+        G.text(ctx, z.name.replace(/^(El|La) /, ''), 36, y, been ? '#f8e8b0' : '#7078a0');
+        const ids = CH ? CH.writtenIds().filter(c => CH.lineOf(c) === id) : [], per = Math.min(18, Math.floor((G.W - 140) / Math.max(1, ids.length)));
+        ids.forEach((c, i) => {
+          const x = 36 + i * per, yy = y + 11;
+          if (per < 14) { ctx.fillStyle = CH.done(c) ? '#f8c830' : CH.active(c) ? '#f8e060' : '#303868'; ctx.fillRect(x + 1, yy + 4, Math.max(3, per - 2), 6); return; } // (a long line: a dot per chapter)
+          if (CH.done(c)) G.drawBadge(ctx, c, x, yy, this.t + i * 12);
+          else { ctx.strokeStyle = CH.active(c) ? '#f8e060' : '#404878'; ctx.beginPath(); ctx.arc(x + 7, yy + 7, 6, 0, Math.PI * 2); ctx.stroke(); if (CH.active(c)) G.textC(ctx, '\u0001', x + 7, yy + 3, '#f8e060'); }
+        });
+        if (PR) {
+          const a = PR.album(id), f = PR.friends(id), s = PR.story(id);
+          G.textR(ctx, s.done + '/' + s.of, G.W - 96, y + 2, '#f8e8b0');
+          G.drawIcon16(ctx, 'pata', G.W - 90, y + 8); G.text(ctx, a.met + '/' + a.of, G.W - 72, y + 12, '#a8d8ff');
+          if (H) H.heart(ctx, G.W - 44, y + 2, f.m3 === f.of && f.of > 0, 1); G.text(ctx, String(f.hearts), G.W - 34, y + 2, '#f8a0c0');
+          if (PR.complete(id)) G.text(ctx, '\u0005', G.W - 30, y + 14, '#f8d040', '#5a2c04');
+        }
+      });
+      if (G.enVisible()) G.textC(ctx, 'Chapters (badges), album, hearts. Tap to close.', G.W / 2, G.H - 18, '#f8e8b0');
+    }
     rows() {
       const E = G.errands, CH = G.chapters, out = [];
       const cur = CH && CH.current();
@@ -10979,9 +11028,11 @@ G.store = {
       return out.concat(act.map(id => ({ id, st: 'on' })), fresh.map(id => ({ id, st: 'new' }))).slice(0, 4);
     }
     draw(ctx) {
+      if (this.page === 1) { this.drawWorld(ctx); return; }
       G.win(ctx, 6, 6, G.W - 12, G.H - 12);
       G.closeBtn(ctx, G.W - 30, 8);
       G.drawIcon(ctx, 'quest', G.W / 2 - 12, 8);
+      if (G.zones) { G.drawIcon16(ctx, 'mapa', G.W - 54, 8); G.text(ctx, '\u0001', G.W - 62, 12, '#f8e060'); } // (a tap: the whole world)
       const rows = this.rows(), E = G.errands;
       if (!rows.length) G.bigText(ctx, '?', G.W / 2, 70, 3, '#404878');
       rows.forEach((r, k) => {
@@ -13281,7 +13332,9 @@ G.store = {
 // above the portrait whenever they talk (G.say with opts.who). The album's Amigos page lists everyone's hearts.
 //
 // API (for errands, the album and tests):
-//   G.hearts.WHO               the 12 friends: mama luna rosa pepe sofia tomas marta ines gomez lucia nico canelo
+//   G.hearts.WHO               every friend: the 12 in town (H.TOWN: mama luna rosa pepe sofia tomas marta ines gomez lucia
+//                              nico canelo), then the zones' people and Lola (H.ZONE: npc -> zone, '*' for Lola; H.inZone(z))
+//   G.hearts.greetsWith(npc)   their greeting has begun (town: after chapter 3; a zone's people: after its chapter 1; Lola: met)
 //   G.hearts.get(npc)          0..5
 //   G.hearts.add(npc, n, why)  -> hearts actually added (0 when capped / full / a once-a-day reason already used today).
 //                              why: 'greet' | 'gift' (once a day each) | 'care' | 'errand' | 'trick' (these two skip the cap)
@@ -13300,9 +13353,18 @@ G.store = {
 (function () {
   const H = G.hearts = {}, T = G.TILE;
   H.MAX = 5; H.DAY_CAP = 2;
-  H.WHO = ['mama', 'luna', 'rosa', 'pepe', 'sofia', 'tomas', 'marta', 'ines', 'gomez', 'lucia', 'nico', 'canelo'];
-  // what each friend likes as a gift (word ids; Lucía: a pink flower)
-  H.LIKES = { mama: 'flor', luna: 'manzana', rosa: 'flor', pepe: 'queso', sofia: 'galleta', tomas: 'agua', marta: 'leche', ines: 'pan', gomez: 'manzana', lucia: 'flor', nico: 'pelota', canelo: 'hueso' };
+  H.TOWN = ['mama', 'luna', 'rosa', 'pepe', 'sofia', 'tomas', 'marta', 'ines', 'gomez', 'lucia', 'nico', 'canelo'];
+  // the open world's people (docs/WORLD_PLAN.md): each zone's own, and Lola, the friend who travels (in every zone: '*')
+  H.ZONE = { paco: 'playa', marina: 'playa', nieves: 'playa', tere: 'playa', elena: 'bosque', lupe: 'bosque', ana: 'juegos', pablo: 'juegos', chuy: 'juegos',
+    abuela: 'abuelos', abuelo: 'abuelos', bebe: 'abuelos', lucho: 'montana', mateo: 'montana', lola: '*' };
+  H.WHO = H.TOWN.concat(Object.keys(H.ZONE));
+  H.zoneOf = npc => H.ZONE[npc] || (H.TOWN.includes(npc) ? 'villa' : null);
+  H.inZone = z => (z === 'villa' ? H.TOWN.slice() : Object.keys(H.ZONE).filter(n => H.ZONE[n] === z));
+  // what each friend likes as a gift (word ids; Lucía: a pink flower). The zones' people like things to carry from
+  // their own zone or from town (a shell, a leaf, an acorn, the ball, an apple, a cookie, bread, an ice cream, a flower)
+  H.LIKES = { mama: 'flor', luna: 'manzana', rosa: 'flor', pepe: 'queso', sofia: 'galleta', tomas: 'agua', marta: 'leche', ines: 'pan', gomez: 'manzana', lucia: 'flor', nico: 'pelota', canelo: 'hueso',
+    paco: 'pan', marina: 'helado', nieves: 'flor', tere: 'concha', elena: 'hoja', lupe: 'bellota', ana: 'galleta', pablo: 'pelota', chuy: 'pan',
+    abuela: 'flor', abuelo: 'manzana', bebe: 'pelota', lucho: 'galleta', mateo: 'hoja', lola: 'manzana' };
   const ONCE = ['greet', 'gift'], FREE = ['errand', 'trick'];
   H.secrets = {};
   const today = () => (G.world ? G.world.today() : new Date().toDateString());
@@ -13398,7 +13460,15 @@ G.store = {
   H.pulse = npc => { const p = pops[npc]; return !!p && G.frame - p.f0 < 120; };
   // ui.js TextBox: a row of hearts above the portrait of someone who has hearts
   const greets = () => !!G.chapters && G.chapters.done('c3'); // greetings begin after chapter 3 (CURRICULUM.md 2.2)
-  H.shows = npc => H.WHO.includes(npc) && !!G.state && (H.get(npc) > 0 || greets());
+  // a zone's people greet you once you know them: after their zone's first chapter (or once they have a heart);
+  // Lola once you've met her (any zone may come first: never Villa Sol's chapter 3)
+  H.greetsWith = function (npc) {
+    const z = H.ZONE[npc]; if (!z) return greets();
+    if (H.get(npc) > 0) return true;
+    if (z === '*') return !!(G.state && G.state.world && G.state.world.lola && G.state.world.lola.met);
+    return !!G.chapters && G.chapters.done(z + '1');
+  };
+  H.shows = npc => H.WHO.includes(npc) && !!G.state && (H.get(npc) > 0 || H.greetsWith(npc));
 
   // ---------- 1 heart: they call you by name as you pass ----------
   const waved = {};
@@ -13437,6 +13507,22 @@ G.store = {
     gomez: ['hola', 'buenosdias', 'parque', 'banco', 'arbol', 'conejo', 'pajaro', 'busca', 'perro'],
     luna: ['hola', 'buenosdias', 'escuela', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'comoestas', 'bien'],
     ines: ['hola', 'biblioteca', 'adios', 'gracias'],
+    // the zones' people: their zone's words (what their life there shows)
+    paco: ['mar', 'concha', 'cangrejo', 'estrellamar', 'pulpo', 'ola', 'nadar', 'gaviota', 'pez'],
+    marina: ['ola', 'nadar', 'elsol', 'caliente', 'mar', 'arena', 'medusa', 'delfin'],
+    nieves: ['helado', 'caliente', 'elsol', 'concha', 'arena', 'rojo', 'rosa', 'amarillo'],
+    tere: ['castillo', 'arena', 'cubetaarena', 'concha', 'cangrejo', 'tortuga', 'ola'],
+    elena: ['elbosque', 'oso', 'venado', 'zorro', 'mapache', 'buho', 'tronco', 'grande', 'pequeno', 'cueva'],
+    lupe: ['mora', 'hongo', 'hoja', 'bellota', 'ardilla', 'erizo', 'grande', 'pequeno', 'luciernaga'],
+    ana: ['corre', 'salta', 'baila', 'gira', 'cuerda', 'resbaladilla', 'subibaja', 'rapido', 'despacio'],
+    pablo: ['papalote', 'columpio', 'lanza', 'atrapa', 'empuja', 'pelota', 'sube', 'baja'],
+    chuy: ['burbujas', 'paloma', 'catarina', 'hormiga', 'abeja', 'colibri', 'grillo', 'lagartija', 'lombriz'],
+    abuela: ['abuela', 'familia', 'bebe', 'mano', 'camisa', 'vestido', 'calcetines', 'raton', 'gallo'],
+    abuelo: ['abuelo', 'vaca', 'cerdo', 'oveja', 'burro', 'pavo', 'chamarra', 'sombrero', 'pie', 'tlacuache'],
+    bebe: ['ojos', 'boca', 'cabeza', 'nariz', 'mano', 'pie', 'zapatos', 'bebe'],
+    lucho: ['lamontana', 'llama', 'chocolate', 'gorro', 'bufanda', 'guantes', 'frio', 'nieve', 'puma', 'aguila'],
+    mateo: ['nieve', 'nube', 'viento', 'lluvia', 'arcoiris', 'trineo', 'hielo', 'muneco', 'marmota', 'lobo'],
+    lola: ['cangrejo', 'gaviota', 'tortuga', 'oso', 'ardilla', 'venado', 'paloma', 'catarina', 'vaca', 'oveja', 'llama', 'marmota', 'monarca', 'mar', 'elbosque', 'lamontana'],
   };
   const GREET = ['hola', 'buenosdias', 'buenasnoches', 'adios', 'comoestas'];
   H.greetKind = function () {
@@ -13446,7 +13532,7 @@ G.store = {
     return 'hola';
   };
   H.greet = function* (npc) {
-    if (!G.state || !greets() || npc === 'canelo' || !H.WHO.includes(npc) || H.did(npc, 'greet')) return false;
+    if (!G.state || !H.greetsWith(npc) || npc === 'canelo' || !H.WHO.includes(npc) || H.did(npc, 'greet')) return false;
     const nm = G.nameOf(npc) || '', kind = H.best(npc) ? 'best' : H.greetKind(), met = id => G.st.seen(id);
     const ans = kind === 'noches' ? 'buenasnoches' : kind === 'dias' ? 'buenosdias' : 'hola';
     const both = met('buenosdias') && met('buenasnoches') && met('hola');
@@ -14146,6 +14232,8 @@ G.store = {
 // ===== The animal album: a Pokédex of the whole world, one page per zone, and the Amigos page (everyone's hearts) =====
 // (docs/WORLD_PLAN.md: wonder, adventure, lots of different animals, always something left to find)
 // Tabs along the top: one per zone (its picture and "met/of"; a gold ribbon once the zone is complete) and Amigos.
+// Amigos (everyone's hearts) has a tab per place too: Villa Sol's friends and the dog, then each zone's people, with
+// Lola (the friend who travels) on a wide card on every zone's tab, showing the places where you've met her.
 // A zone's page: its animals as numbered entries (Nº 1, 2, ... in world order: Villa Sol first, then each zone, so
 // every animal has its own number). Not met yet: a dark silhouette, "? ? ?" and a little picture of where it lives (the
 // hint: water, a tree, the farm...); a rare one (only at night, only in the morning, only in one spot) has a sparkle
@@ -14186,6 +14274,7 @@ G.store = {
       const here = G.field && G.zones ? G.zones.of(G.field.mapId) : null;
       this.page = start === 'amigos' ? 'amigos' : 'animales';
       this.zone = start && start !== 'amigos' && G.zones && G.zones.def(start) ? start : here && ZS().some(z => z.id === here) ? here : 'villa';
+      this.ftab = this.zone; // (the Amigos page opens on the friends of the place you're in)
     }
     onEnter() {
       if (G.album.full() && !G.state.flags.albumFull) { // the last animal: a party, once
@@ -14203,13 +14292,21 @@ G.store = {
     tabs() { return ZS().map(z => z.id).concat(['amigos']); }
     tabRect(k) { const n = this.tabs().length, w = Math.min(44, Math.floor((G.W - 60) / n)); return { x: 12 + k * w, y: 6, w: w - 2, h: 24 }; }
     cell(k) { return { x: 14 + (k % 4) * 74, y: 46 + Math.floor(k / 4) * 56, w: 70, h: 52 }; }
-    friendRect(k) { return { x: 12 + (k % 2) * 150, y: 32 + Math.floor(k / 2) * 31, w: 146, h: 29 }; }
+    // Amigos: a tab per place (Villa Sol's friends and Canelo, then each zone's people), Lola's own card on every zone's tab
+    ftabs() { return G.zones ? G.zones.ids() : ['villa']; }
+    ftabRect(k) { const n = this.ftabs().length, w = Math.min(42, Math.floor((G.W - 68) / n)); return { x: 34 + k * w, y: 4, w: w - 2, h: 24 }; }
+    friends() { const H = G.hearts; if (!H) return []; const L = H.inZone ? H.inZone(this.ftab || 'villa') : H.WHO; return this.ftab && this.ftab !== 'villa' ? L.filter(n => n !== 'lola').concat(['lola']) : L; }
+    friendRect(k) {
+      const who = this.friends()[k];
+      if (who === 'lola' && this.ftab !== 'villa') return { x: 12, y: 160, w: G.W - 24, h: 52 }; // (Lola, who travels: a wide card at the bottom)
+      return { x: 12 + (k % 2) * 150, y: 32 + Math.floor(k / 2) * 30, w: 146, h: 28 };
+    }
     closeXY() { return [G.W - 28, 6]; }
     backXY() { return [8, 6]; }
     hintXY() { return null; }
     tapCard(k) {
       this.sel = k;
-      if (k === 11) { G.audio.sfx('ok'); this.page = 'amigos'; this.fi = 0; return; }
+      if (k === 11) { G.audio.sfx('ok'); this.page = 'amigos'; this.fi = 0; this.ftab = this.zone; return; }
       const id = this.ids()[k]; if (id === undefined) return;
       if (!id || !rec(id)) { G.audio.sfx('boop'); this.hop[k] = { t: 0, no: true }; return; }
       const w = G.data.words[AN().KINDS[id].word];
@@ -14217,7 +14314,7 @@ G.store = {
       if (G.st.seen(AN().KINDS[id].word)) G.speak(w.es.split(' / ')[0] + (cry(id) ? '. ' + cry(id) : '')); // (unnamed yet: only its cry)
       const r = this.cell(k); for (let i = 0; i < 3; i++) G.fx.twinkle(r.x + 10 + Math.random() * 50, r.y + 6 + Math.random() * 30);
     }
-    tapTab(k) { const id = this.tabs()[k]; G.audio.sfx('cursor'); if (id === 'amigos') { this.page = 'amigos'; this.fi = 0; return; } this.page = 'animales'; this.zone = id; this.sel = 0; this.hop = {}; this.done = 0; this.checkZone(); }
+    tapTab(k) { const id = this.tabs()[k]; G.audio.sfx('cursor'); if (id === 'amigos') { this.page = 'amigos'; this.fi = 0; this.ftab = this.zone; return; } this.page = 'animales'; this.zone = id; this.sel = 0; this.hop = {}; this.done = 0; this.checkZone(); }
     update() {
       this.t++;
       for (const k in this.hop) if (++this.hop[k].t > 24) delete this.hop[k];
@@ -14229,12 +14326,15 @@ G.store = {
       if (this.done && this.done < 120) { this.done++; if (this.done % 40 === 2) { G.fx.confetti(40, 200, -1, 14); G.fx.confetti(G.W - 40, 200, 1, 14); } if (this.done === 2) G.speak('¡Completo!'); }
       const tap = G.input.tap(), d = G.input.repDir(14, 6);
       if (this.page === 'amigos') {
-        const n = G.hearts ? G.hearts.WHO.length : 0;
+        if (!this.ftab) this.ftab = 'villa';
+        const L = this.friends(), n = L.length;
         if ((tap && (G.btnHit(...this.backXY()) || G.closeHit(...this.closeXY()))) || G.input.p('B')) { G.audio.sfx('cancel'); this.page = 'animales'; return; }
+        if (tap) { const tk = this.ftabs().findIndex((_, k) => G.tapIn(this.ftabRect(k))); if (tk >= 0) { this.ftab = this.ftabs()[tk]; this.fi = 0; G.audio.sfx('cursor'); return; } }
+        if (d === 'left' && this.fi === 0 || d === 'right' && this.fi === n - 1) { const T = this.ftabs(), i = T.indexOf(this.ftab); this.ftab = T[(i + (d === 'left' ? T.length - 1 : 1)) % T.length]; this.fi = 0; G.audio.sfx('cursor'); return; } // (past the end: the next place's friends)
         if (d) { this.fi = G.clamp(this.fi + (d === 'left' ? -1 : d === 'right' ? 1 : d === 'up' ? -2 : 2), 0, n - 1); G.audio.sfx('cursor'); }
         const k = tap ? Array.from({ length: n }, (_, i) => i).find(i => G.tapIn(this.friendRect(i))) : -1;
         if (k != null && k >= 0) this.fi = k;
-        if ((k != null && k >= 0) || G.input.p('A') || G.input.p('C')) { const who = G.hearts.WHO[this.fi]; G.speak(who === 'canelo' ? G.dogName() : (G.nameOf(who) || '')); G.audio.sfx('cursor'); }
+        if ((k != null && k >= 0) || G.input.p('A') || G.input.p('C')) { const who = L[this.fi]; if (who) { G.speak(who === 'canelo' ? G.dogName() : (G.nameOf(who) || '')); G.audio.sfx('cursor'); } }
         return;
       }
       if ((tap && G.closeHit(...this.closeXY())) || G.input.p('B')) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); return; }
@@ -14312,21 +14412,36 @@ G.store = {
       }
     }
     drawFriends(ctx) {
+      const H = G.hearts, Z = G.zones;
       G.iconBtn(ctx, 'back', ...this.backXY());
-      G.hearts.heart(ctx, G.W / 2 - 40, 10, true, 1);
-      G.textC(ctx, 'Amigos', G.W / 2, 10, '#a03060', null);
-      G.hearts.heart(ctx, G.W / 2 + 33, 10, true, 1);
       G.closeBtn(ctx, ...this.closeXY());
-      G.hearts.WHO.forEach((who, k) => {
-        const r = this.friendRect(k), sel = k === this.fi, best = G.hearts.photo(who);
-        ctx.fillStyle = best ? '#f8d050' : sel ? '#f8e0a0' : '#fffaf0'; ctx.fillRect(r.x, r.y, r.w, r.h);
-        ctx.strokeStyle = best ? '#b07000' : sel ? '#c06000' : '#d0b898'; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
-        ctx.fillStyle = '#5a3810'; ctx.fillRect(r.x + 2, r.y + 2, 25, 25);
-        G.hearts.face(ctx, who, r.x + 3, r.y + 3, 23, this.t);
-        const nm = who === 'canelo' ? G.dogName() : (G.nameOf(who) || who).replace('Profesora ', 'Prof. ').replace(' el cartero', '').replace(' la panadera', '').replace('Señor ', 'Sr. ').replace('Abuela ', '');
-        G.text(ctx, nm, r.x + 31, r.y + 5, '#604020', null);
-        G.hearts.row(ctx, who, r.x + 31, r.y + 17);
-        if (G.hearts.sticker(who)) { ctx.fillStyle = '#f8c820'; ctx.beginPath(); ctx.arc(r.x + r.w - 10, r.y + 10, 6, 0, Math.PI * 2); ctx.fill(); G.text(ctx, '\u0005', r.x + r.w - 13, r.y + 7, '#ffffff', '#a06000'); }
+      // the places' tabs: each with its picture and its friends' hearts
+      this.ftabs().forEach((id, k) => {
+        const r = this.ftabRect(k), on = id === this.ftab, z = Z && Z.def(id), been = id === 'villa' || (Z && Z.visited(id));
+        ctx.fillStyle = on ? '#fffaf0' : '#d8c8a8'; ctx.fillRect(r.x, r.y, r.w, r.h + (on ? 4 : 0));
+        ctx.strokeStyle = on ? '#c06000' : '#a08868'; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1 + (on ? 4 : 0));
+        if (z && been) G.drawIcon16(ctx, z.icon, r.x + 2, r.y + 4); else if (z) { ctx.globalAlpha = 0.8; ctx.drawImage(G.tinted(G.icon(z.icon), '#3a3048', 'ftsil' + id), r.x + 2, r.y + 4); ctx.globalAlpha = 1; }
+        const L = H.inZone ? H.inZone(id) : [], m3 = L.filter(n => H.get(n) >= 3).length;
+        if (r.w >= 36) { H.heart(ctx, r.x + 21, r.y + 5, m3 === L.length && L.length > 0, 1); G.text(ctx, String(L.reduce((s, n) => s + H.get(n), 0)), r.x + 20, r.y + 14, '#c04870', null); }
+      });
+      const zone = this.ftab || 'villa', been = zone === 'villa' || (Z && Z.visited(zone));
+      this.friends().forEach((who, k) => {
+        const r = this.friendRect(k), sel = k === this.fi, best = H.photo(who), lola = who === 'lola' && zone !== 'villa';
+        ctx.fillStyle = best ? '#f8d050' : lola ? '#e8f8e0' : sel ? '#f8e0a0' : '#fffaf0'; ctx.fillRect(r.x, r.y, r.w, r.h);
+        ctx.strokeStyle = best ? '#b07000' : lola ? '#3a9a58' : sel ? '#c06000' : '#d0b898'; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
+        if (lola && sel) { ctx.strokeStyle = '#c06000'; ctx.strokeRect(r.x + 1.5, r.y + 1.5, r.w - 3, r.h - 3); }
+        const fw = lola ? 46 : 23;
+        ctx.fillStyle = '#5a3810'; ctx.fillRect(r.x + 2, r.y + 2, fw + 2, fw + 2);
+        if (been || lola) H.face(ctx, who, r.x + 3, r.y + 3, fw, this.t); else { ctx.fillStyle = '#3a3048'; ctx.fillRect(r.x + 3, r.y + 3, fw, fw); G.textC(ctx, '?', r.x + 3 + fw / 2, r.y + 10, '#f8e060'); }
+        const nm = !been && !lola ? '? ? ?' : who === 'canelo' ? G.dogName() : (G.nameOf(who) || who).replace('Profesora ', 'Prof. ').replace(' el cartero', '').replace(' la panadera', '').replace('Señor ', 'Sr. ').replace('Abuela ', '');
+        G.text(ctx, nm, r.x + fw + 8, r.y + 5, '#604020', null);
+        H.row(ctx, who, r.x + fw + 8, r.y + 16);
+        if (H.sticker(who)) { ctx.fillStyle = '#f8c820'; ctx.beginPath(); ctx.arc(r.x + r.w - 10, r.y + 10, 6, 0, Math.PI * 2); ctx.fill(); G.text(ctx, '\u0005', r.x + r.w - 13, r.y + 7, '#ffffff', '#a06000'); }
+        if (lola && Z) { // where you've met her: each place's picture, bright where she said hello
+          const met = (G.state.world && G.state.world.lolaZ) || {};
+          Z.ids().filter(z => z !== 'villa').forEach((z, i) => { const x = r.x + fw + 8 + i * 22, y = r.y + 28; ctx.globalAlpha = met[z] ? 1 : 0.3; G.drawIcon16(ctx, Z.def(z).icon, x, y); ctx.globalAlpha = 1; if (met[z]) G.text(ctx, '\u0003', x + 13, y + 9, '#f04878', null); });
+          G.drawIcon16(ctx, 'explorar', r.x + r.w - 40, r.y + 26);
+        }
       });
     }
   }
@@ -14693,10 +14808,18 @@ G.MAPDATA = {
   // ---------- Diploma ----------
   // The end of the game (errands.js: after the animal party): everything the child did, on one page. Words learned,
   // stars, speaking stars, animals met (the album), and a badge for every errand (a faint ring for one not done yet).
+  // A tap turns to its second page, "¡Mi mundo!" (src/connect.js: every place, its stars, the friends), then closes.
   class Diploma {
-    constructor(w) { G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; }
-    update() { this.t++; if (this.t > 60 && (G.input.p('A') || G.input.p('B') || G.input.tap())) { G.pop(); this.w.resolve(); } }
+    constructor(w) { G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; this.page = 0; }
+    update() {
+      this.t++;
+      if (this.t > 60 && (G.input.p('A') || G.input.p('B') || G.input.tap())) {
+        if (this.page === 0 && ST.drawWorld) { this.page = 1; this.t = 0; G.audio.jingle('item'); return; }
+        G.pop(); this.w.resolve();
+      }
+    }
     draw(ctx) {
+      if (this.page === 1) { ST.drawWorld(ctx, this.t); return; }
       const x = 24, y = 10, w = G.W - 48, h = G.H - 20, cx = G.W / 2;
       ctx.fillStyle = '#5a3810'; ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
       ctx.fillStyle = '#f8f0d0'; ctx.fillRect(x, y, w, h);
@@ -18875,6 +18998,7 @@ G.MAPDATA = {
   const Z = G.zones = {}, T = G.TILE;
   const TT = (t, en) => ({ t, en });
   Z.LIST = [];
+  Z.MAPDRAW = []; // more to draw on the world map: fn(ctx, worldMap) (connect.js: the stars, the letter going somewhere)
   // a zone's own ghost-hand demos (src/demo.js): { kind, find(f) -> [x, y] tile to tap, or null } (once each, saved)
   Z.demos = [];
   Z.add = function (def) {
@@ -19252,6 +19376,7 @@ G.MAPDATA = {
     node(id) { const z = Z.def(id); return z && z.pos ? { x: z.pos[0], y: z.pos[1], r: 21 } : null; }
     closeXY() { return [G.W - 28, 6]; }
     hintXY() { return null; }
+    trophyRect() { return { x: 4, y: 4, w: 22, h: 22 }; }
     rects() { return Z.ids().map(id => { const n = this.node(id); return n ? { id, x: n.x - n.r - 2, y: n.y - n.r - 2, w: 2 * n.r + 4, h: 2 * n.r + 14 } : null; }).filter(Boolean); }
     tapZone(id) {
       const here = this.here();
@@ -19267,6 +19392,7 @@ G.MAPDATA = {
       if (this.walk) return;
       const tap = G.input.tap();
       if ((tap && G.closeHit(...this.closeXY())) || G.input.p('B')) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(null); return; }
+      if (tap && G.story && G.story.world && G.tapIn(this.trophyRect())) { G.audio.sfx('ok'); G.story.world(); return; } // the whole world on one page
       if (tap) for (const r of this.rects()) if (G.tapIn(r)) { this.tapZone(r.id); return; }
       const ids = Z.ids(); if (this.sel == null) this.sel = Math.max(0, ids.indexOf(this.here()));
       const d = G.input.repDir(14, 6); if (d) { this.sel = (this.sel + (d === 'left' || d === 'up' ? -1 : 1) + ids.length) % ids.length; G.audio.sfx('cursor'); }
@@ -19318,7 +19444,8 @@ G.MAPDATA = {
         ctx.save(); ctx.beginPath(); ctx.arc(px, py - 10, 11, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(img, Math.round(px - 12), Math.round(py - 22)); ctx.restore();
         ctx.fillStyle = '#f04878'; ctx.beginPath(); ctx.moveTo(px - 5, py + 1); ctx.lineTo(px + 5, py + 1); ctx.lineTo(px, py + 8); ctx.fill();
       }
-      G.drawIcon16(ctx, 'mapa', 8, 6, 1);
+      for (const fn of Z.MAPDRAW) { try { fn(ctx, this); } catch (e) { if (!Z.err) { Z.err = 1; console.error(e); } } }
+      { const r = this.trophyRect(), b = Math.round(Math.sin(this.t / 12) * 1); G.win(ctx, r.x, r.y + b, r.w, r.h, { fill1: '#fff6d0', fill2: '#f8d870', alpha: 1 }); G.drawIcon16(ctx, 'trofeo', r.x + 3, r.y + 3 + b); } // the trophy: "¡Mi mundo!" (connect.js)
       G.closeBtn(ctx, ...this.closeXY());
       if (G.enVisible()) G.text(ctx, this.o.travel ? 'Tap a place you have been to: the bus takes you. "?": walk there!' : 'The world', 30, 10, '#ffffff', '#10102a');
     }
@@ -23900,6 +24027,340 @@ G.MAPDATA = {
 })();
 
 </script>
+<script>/* src/connect.js */
+// ===== The world, connected (docs/WORLD_PLAN.md, "Recurring characters"): Tomás's letters across the zones, the
+// zones' people as friends (hearts, greetings, gifts, surprises), Lola who travels, and the progress of the whole world =====
+// The 7-year-old explores five places around Villa Sol; what ties them together is people she recognizes everywhere.
+//
+// Tomás's letters (G.post): once a day Tomás the mail carrier (in Villa Sol, and some days at a zone's bus stop: he
+//   goes on his rounds) has a letter: his bubble shows it. He holds it up with the face of who it's for (someone in a
+//   place you've been to: Don Paco, Elena, Ana, Abuela, Don Lucho... or Lola, who is everywhere) and the picture of
+//   their place. The letter goes in your hands (a story thing: it can't be dropped); the corner shows it with their
+//   face; the guide's arrow leads there (to the bus stop when it's another place: the world map shows the letter over
+//   that place, and the bus takes you), and their bubble shows it once you're near. Delivering: "¡Es de Mamá!" (the
+//   sender's face), a thank-you, a heart and a star. Every other letter they write back (to the town friend who wrote,
+//   or later between places), so letters go both ways and the child travels across the world.
+// The zones' people (G.hearts.ZONE): Don Paco, Marina, Doña Nieves, Tere, Elena, Doña Lupe, Ana, Pablo, Don Chuy,
+//   Abuela, Abuelo, the baby, Don Lucho, Mateo and Lola have hearts like the town: a greeting a day (after their zone's
+//   first chapter: answer it, then one due word from their zone's words, G.review), a thing they like as a present
+//   (G.hearts.LIKES), the 3-heart secret (a rare animal of their place, shown in pictures) and sticker, the 5-heart photo.
+//   Lola is special: the first time you meet her in each place she gets a heart, so exploring all five places makes her
+//   your best friend; the Amigos page shows where you've met her.
+// The world's progress (G.progress): per place, its story (its line of chapters), its album page and its friends (all
+//   with a sticker): three stars on the world map, the "¡Mi mundo!" page (the world map's trophy, the diploma's second
+//   page), the grown-ups' Story progress (a page per place). A place whose story and album page are both complete gets
+//   a celebration once ("¡Completo!", ZoneDone).
+// The dog: every zone has its spots (zones.js); he follows you on every map (each map has his entry) and on the bus.
+//
+// API: G.post.state(), .letter() (the letter in your hands: {to, from}), .canOffer(), .pick(zone), .where(npc),
+//   .zoneOf(npc), .goal(f) (guide.js tier), .tomasIn() (the zone Tomás visits today, or null), .deliver / .offer
+//   (generators). G.progress.story(z) / .album(z) / .friends(z) -> {done|met|m3, of}, .stars(z) -> [story, album,
+//   friends], .complete(z), .visitedCount(), .celebrate(z) -> Wait. G.story.world() -> Wait (the "¡Mi mundo!" page).
+// Saved: G.state.post = {day (Tomás's letter given), n (delivered), log: {npc: n}}, G.state.world.lolaZ {zone: day},
+//   G.state.world.done {zone: day} (celebrated).
+'use strict';
+(function () {
+  const Z = G.zones, H = G.hearts, CH = G.chapters, CK = CH.K, TT = CK.T, TL = G.TILE, K = G.mapKit;
+  const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+  const day = () => (G.words ? G.words.day() : 0);
+  const met = id => !!(G.words && G.words.met(id));
+  const bag = () => G.errands.bag;
+  const nm = id => G.nameOf(id) || '';
+  const short = id => nm(id).replace(/^(Profesora|Señor|Señora|Don|Doña|Abuela) /, '').replace(/ (el|la) .*/, '');
+  const opened = () => !!(CH.openerDone && CH.openerDone());
+
+  // =====================================================================
+  //  Tomás's letters
+  // =====================================================================
+  const P = G.post = {};
+  function st() {
+    const s = G.state; if (!isObj(s.post)) s.post = {};
+    const p = s.post; if (!isObj(p.log)) p.log = {}; if (typeof p.n !== 'number') p.n = 0; if (typeof p.day !== 'number') p.day = -1;
+    return p;
+  }
+  P.state = () => (G.state ? st() : null);
+  // who writes to whom: a town friend writes to each of the zones' people (and they write back)
+  P.FROM = { paco: 'pepe', marina: 'sofia', nieves: 'marta', tere: 'sofia', elena: 'gomez', lupe: 'rosa', ana: 'nico', pablo: 'nico', chuy: 'lucia',
+    abuela: 'mama', abuelo: 'mama', lucho: 'luna', mateo: 'luna', lola: 'nico' };
+  P.TO = Object.keys(P.FROM); // (the baby gets no letters: she can't read yet)
+  P.letter = () => (G.state ? bag().list().find(it => it.id === 'carta' && it.q === 'post' && it.to) || null : null);
+  const zonesBeen = () => Z.visitedIds().filter(z => z !== 'villa');
+  // the maps where someone is now (their map entries whose cond is true)
+  P.where = function (who) {
+    const L = [];
+    for (const m in G.maps) for (const n of G.maps[m].npcs || []) if (n.id === who && (!n.cond || (() => { try { return n.cond(); } catch (e) { return false; } })())) { L.push(m); break; }
+    return L;
+  };
+  // the place someone lives in (Lola: wherever you are, or the first place you've been to)
+  P.zoneOf = function (who) {
+    const z = H.zoneOf(who);
+    if (z !== '*') return z;
+    const here = G.field ? Z.of(G.field.mapId) : null;
+    return here && here !== 'villa' && Z.visited(here) ? here : zonesBeen()[0] || null;
+  };
+  // the ones a letter can go to now: in places you've been to (Lola once you've been to two), the place you're in last
+  P.pick = function (here) {
+    const been = zonesBeen(), log = st().log;
+    let L = P.TO.filter(id => (H.ZONE[id] === '*' ? been.length >= 2 : been.includes(H.ZONE[id])) && P.where(id).length);
+    const away = L.filter(id => H.ZONE[id] !== here); if (away.length) L = away;
+    const k = id => (P.TO.indexOf(id) * 7 + day()) % P.TO.length; // (ties: an order that turns each day)
+    L.sort((a, b) => (log[a] | 0) - (log[b] | 0) || k(a) - k(b));
+    return L[0] || null;
+  };
+  // Tomás has today's letter: after the opener, once a place beyond Villa Sol has been visited, one a day
+  P.canOffer = () => !!G.state && opened() && zonesBeen().length > 0 && st().day !== day() && !P.letter() && !!P.pick(G.field ? Z.of(G.field.mapId) : null);
+  // the place Tomás visits on his round today (every other day, a place you've been to, in turn), or null
+  P.tomasIn = function () {
+    if (!G.state || !opened()) return null;
+    const been = zonesBeen(); if (!been.length || day() % 2 !== 1) return null;
+    return been[(day() >> 1) % been.length];
+  };
+  // the sender of today's letter: the town friend who writes to them; later, sometimes someone from another place
+  function sender(to) {
+    const n = st().n, z = H.ZONE[to];
+    if (n >= 3 && day() % 2 === 1) {
+      const L = P.TO.filter(id => id !== to && H.ZONE[id] !== '*' && H.ZONE[id] !== z && Z.visited(H.ZONE[id]));
+      if (L.length) return L[day() % L.length];
+    }
+    return P.FROM[to] || 'tomas';
+  }
+  const zonePic = who => { const z = Z.def(P.zoneOf(who)); return H.ZONE[who] === '*' ? { icon: 'explorar' } : z ? { icon: z.icon } : { icon: 'mapa' }; };
+  // Tomás hands you today's letter
+  P.offer = function* (f) {
+    const here = f ? Z.of(f.mapId) : null, to = P.pick(here); if (!to) return false;
+    const from = sender(to);
+    if (!met('carta')) yield* Z.meetW('carta', { who: 'tomas', prompt: '¡Una [carta]!', en: 'A letter!' });
+    yield* CK.sayShow('tomas', { face: to }, TT('¡Una [carta] para ' + short(to) + '!', 'A letter for ' + nm(to) + '! Can you take it, please?'));
+    const z = Z.def(P.zoneOf(to));
+    if (H.ZONE[to] === '*') yield* CK.sayShow('tomas', { icon: 'explorar' }, TT('¡Lola está en todas partes!', 'Lola is everywhere: find her in any place you\'ve been to!'));
+    else if (z) yield* CK.sayShow('tomas', { icon: z.icon }, TT('¡' + z.name + '!', nm(to) + ' lives at ' + (z.en || z.name) + '. Follow the arrow: the bus is quickest!'));
+    st().day = day(); G.st.autosave();
+    bag().add('carta', { q: 'post', to, from }); G.audio.jingle('item');
+    return true;
+  };
+  // tapping the one it's for: they take it, it's from someone, a heart and a star; every other letter, a reply
+  P.deliver = function* (who, f) {
+    const it = P.letter(); if (!it || it.to !== who) return false;
+    yield* CK.sayShow(who, { icon: 'carta' }, TT(met('carta') ? '¡Una [carta]! ¿Para mí?' : '¡Oh! ¿Para mí?', 'A letter! For me?'));
+    bag().take('carta', { q: 'post', to: who }); G.audio.jingle('item');
+    if (G.cards && met('carta')) G.cards.grow('carta', 'give', { x: G.W / 2, y: G.H / 2 });
+    if (it.from && it.from !== who) yield* CK.sayShow(who, { face: it.from }, TT('¡Es de ' + short(it.from) + '!', 'It\'s from ' + (it.from === 'canelo' ? G.dogName() : nm(it.from)) + '!'));
+    const s = st(); s.n++; s.log[who] = (s.log[who] | 0) + 1;
+    G.state.stars++; G.fx.flyStar(G.W / 2, 90, 0); G.audio.sfx('star'); CK.confetti();
+    yield* CK.say(who, TT(met('gracias') ? '¡[gracias:Gracias], {name}!' : '¡Gracias, {name}!', 'Thank you, {name}!'));
+    if (H.add(who, 1, 'errand')) { yield 30; yield* H.milestones(who); }
+    // the other way: a reply to the one who wrote (a town friend, or someone in another place), every other letter
+    const back = it.from;
+    if (!it.reply && back && back !== 'tomas' && back !== who && s.n % 2 === 1 && P.where(back).length && H.WHO.includes(back)) {
+      yield* CK.sayShow(who, { face: back }, TT('¡Y una [carta] para ' + short(back) + '!', 'And here\'s a letter back for ' + nm(back) + '! Can you take it?'));
+      bag().add('carta', { q: 'post', to: back, from: who, reply: true }); G.audio.jingle('item');
+    }
+    G.st.autosave();
+    return true;
+  };
+  P.alertFor = who => { const it = P.letter(); return it && it.to === who ? [[{ icon: 'carta', letter: who }, 1]] : null; };
+  // the guide (guide.js, right after a favour going on): to whoever the letter is for; another place: the bus stop
+  P.goal = function (f) {
+    const it = P.letter(); if (!it || !f) return null;
+    const why = 'letter to ' + it.to;
+    const n = f.npcs.find(n => n.id === it.to && n.spec && !n.hidden);
+    if (n) return { why, pts: [{ x: n.x * TL + (n.ox || 0) + 12, y: n.y * TL + (n.oy || 0) + 12, lift: 44, npc: n }] };
+    const maps = P.where(it.to); if (!maps.length) return null;
+    const here = Z.area(f.mapId), same = maps.find(m => Z.area(m) === here);
+    if (same) return { why, map: same, far: true, badge: { who: it.to } };
+    const tz = P.zoneOf(it.to), z0 = Z.def(Z.of(f.mapId)), target = maps.find(m => Z.of(m) === tz) || maps[0];
+    if (z0 && z0.bus && z0.bus.map === f.mapId && tz && Z.visited(tz)) return { why: why + ' (bus)', bus: true, pts: [{ x: z0.bus.at[0] * TL + 12, y: z0.bus.at[1] * TL + 12, lift: 30, icon: 'autobus' }], badge: { who: it.to } };
+    return { why, map: target, far: true, badge: { who: it.to } };
+  };
+
+  // ---------- Tomás on his round: some days at a place's bus stop ----------
+  // a free tile next to where the bus leaves you (not the stop, not an exit, not the entry itself)
+  function nearEntry(z) {
+    const e = z.entry, rows = G.MAPDATA[e.map] && G.MAPDATA[e.map].rows; if (!rows) return null;
+    const land = []; for (const m in G.maps) for (const x2 of G.maps[m].exits || []) if (x2.to === e.map) land.push([x2.tx, x2.ty]); // (where you arrive: never in the way)
+    const busy = (x, y) => land.some(([a, b]) => Math.abs(a - x) + Math.abs(b - y) <= 1) || (G.maps[e.map].npcs || []).some(n => Math.abs(n.x - x) + Math.abs(n.y - y) <= 0) || (G.maps[e.map].dogSpots || []).some(d => d.at[0] === x && d.at[1] === y);
+    const ok = (x, y) => { const t = G.TERRAIN[(rows[y] || '')[x]]; return !!t && !t.block && !t.wall && !(z.bus && z.bus.at[0] === x && z.bus.at[1] === y) && !(G.maps[e.map].exits || []).some(x2 => x2.x === x && x2.y === y) && !(x === e.x && y === e.y) && !busy(x, y); };
+    const D = [[2, 0], [-2, 0], [2, 1], [-2, 1], [2, -1], [-2, -1], [3, 0], [-3, 0], [1, 2], [-1, 2], [2, 2], [-2, 2]];
+    for (const road of [false, true]) for (const [dx, dy] of D) if (ok(e.x + dx, e.y + dy) && (road || (rows[e.y + dy] || '')[e.x + dx] !== ',')) return [e.x + dx, e.y + dy]; // (off the road first)
+    return null;
+  }
+  P.tomasAt = {};
+  for (const z of Z.LIST) {
+    if (z.id === 'villa' || !z.entry || !G.maps[z.entry.map]) continue;
+    const at = nearEntry(z); if (!at) continue;
+    P.tomasAt[z.id] = { map: z.entry.map, at };
+    G.maps[z.entry.map].npcs.push({ id: 'tomas', npc: 'tomas', x: at[0], y: at[1], dir: 'down', fixed: true, cond: () => P.tomasIn() === z.id,
+      alert: () => (G.errands && G.errands.alert('tomas')) || (G.favores && G.favores.alert('tomas')) || null,
+      talk: function* (f) {
+        yield* K.hello('tomas');
+        if (G.errands && (yield* G.errands.talk('tomas', f))) return;
+        yield* CK.sayShow('tomas', { icon: 'carta' }, TT(met('carta') ? '¡[hola:Hola], {name}! ¡Mis [carta:cartas]!' : '¡Hola, {name}!', 'Hi, {name}! I bring the letters everywhere, even out here!'));
+      } });
+  }
+
+  // ---------- every person's talk and bubble: a letter for them first; the zones' people greet you ----------
+  const lolaZ = () => { const w = Z.state(); if (!isObj(w.lolaZ)) w.lolaZ = {}; return w.lolaZ; };
+  function wrap(def) {
+    const id = def.id; if (!id || id === 'canelo' || def._post) return;
+    def._post = true;
+    const t0 = def.talk, a0 = def.alert;
+    def.alert = function () {
+      if (!G.state) return a0 ? a0.apply(this, arguments) : null;
+      const a = P.alertFor(id); if (a) return a;
+      const b = a0 ? a0.apply(this, arguments) : null; if (b) return b;
+      if (H.ZONE[id] && G.errands) { const e = G.errands.alert(id); if (e) return e; } // (a present they'd like: the zones' own bubbles don't ask errands.js)
+      return id === 'tomas' && P.canOffer() ? { icon: 'carta' } : null;
+    };
+    def.talk = function* (f, n) {
+      if (G.state && H.WHO.includes(id)) { yield* H.greet(id); yield* H.milestones(id); } // (once a day: the town's own talk, maps.js, greets too, after this it's a no-op)
+      if (G.state && (yield* P.deliver(id, f)) && !CH.alert(id)) return;
+      if (G.state && id === 'tomas' && !CH.alert('tomas') && !(G.favores && G.favores.alert('tomas')) && P.canOffer() && (yield* P.offer(f))) return;
+      const lz = id === 'lola' && G.state && f ? Z.of(f.mapId) : null, first = lz && lz !== 'villa' && !lolaZ()[lz];
+      if (t0) yield* t0.call(this, f, n);
+      if (first && !lolaZ()[lz]) { // Lola: a heart the first time you meet her in each place
+        lolaZ()[lz] = { d: day() }; G.st.autosave();
+        if (H.add('lola', 1, 'errand')) { yield 30; yield* H.milestones('lola'); }
+      }
+    };
+  }
+  for (const m in G.maps) for (const def of G.maps[m].npcs || []) wrap(def);
+  // the letter in your hands: its picture has the face of who it's for (the corner, the bubbles)
+  { const icon0 = bag().icon; bag().icon = it => (it && it.id === 'carta' && it.to ? { icon: 'carta', letter: it.to } : icon0(it)); }
+
+  // ---------- the zones' people: their 3-heart secret (a rare animal of their place, in pictures) ----------
+  const RARE_EN = { noche: 'at night', manana: 'in the morning', sol: 'when the sun shines', elsol: 'when the sun shines', dia: 'by day' };
+  function* zoneSecret(npc) {
+    const z = P.zoneOf(npc), zd = Z.def(z), AN = G.animals;
+    const rare = zd && zd.rare ? Object.keys(zd.rare).find(id => AN.KINDS[id] && !AN.met(id)) : null;
+    if (rare) {
+      const when = zd.rare[rare], pic = AN.KINDS[rare].word;
+      yield* CK.sayShow(npc, { list: [pic, when === true ? 'estrella' : when] }, TT('¡Un secreto! ¡Mira!', 'A secret! An animal for your album hides here' + (RARE_EN[when] ? ', ' + RARE_EN[when] : '') + '. Look for it!'));
+      return;
+    }
+    const pg = Object.values((G.maps[(zd && zd.entry && zd.entry.map) || ''] || {}).pages || {}).find(p => G.pages && G.pages.ready(p));
+    if (pg) { yield* CK.sayShow(npc, { icon: 'pagina' }, TT('¡Un secreto! ¡Una página!', 'A secret! A notebook page puzzle sparkles somewhere here.')); return; }
+    yield* CK.say(npc, TT('¡Eres muy simpátic{o/a}, {name}!', 'You\'re very nice, {name}!'));
+  }
+  for (const npc in H.ZONE) if (!H.secrets[npc]) H.secrets[npc] = zoneSecret;
+
+  // =====================================================================
+  //  The world's progress
+  // =====================================================================
+  const PR = G.progress = {};
+  PR.lineIds = z => CH.writtenIds().filter(id => CH.lineOf(id) === z);
+  PR.story = z => { const L = PR.lineIds(z); return { done: L.filter(CH.done).length, of: L.length }; };
+  PR.album = z => (G.album && G.album.zoneCount ? G.album.zoneCount(z) : { met: 0, of: 0 });
+  PR.albumDone = z => { const c = PR.album(z); return !!c.of && c.met === c.of && G.album.entries(z).every(Boolean); };
+  PR.people = z => H.inZone(z);
+  PR.friends = z => { const L = PR.people(z); return { m3: L.filter(n => H.get(n) >= 3).length, of: L.length, hearts: L.reduce((s, n) => s + H.get(n), 0) }; };
+  PR.stars = z => { const s = PR.story(z), f = PR.friends(z); return [!!s.of && s.done === s.of, PR.albumDone(z), !!f.of && f.m3 === f.of]; };
+  PR.complete = z => { const s = PR.stars(z); return s[0] && s[1]; };
+  PR.visitedCount = () => Z.ids().filter(id => id === 'villa' || Z.visited(id)).length;
+  const doneS = () => { const w = Z.state(); if (!isObj(w.done)) w.done = {}; return w.done; };
+  PR.celebrated = z => !!(G.state && doneS()[z]);
+  // three little stars (story, album, friends): gold when earned (the world map, "¡Mi mundo!")
+  PR.drawStars = function (ctx, z, cx, y) {
+    PR.stars(z).forEach((on, k) => G.text(ctx, '\u0005', cx - 13 + k * 9, y, on ? '#f8d040' : '#8a8098', on ? '#5a2c04' : '#2a2438'));
+  };
+
+  // ---------- a place complete (its story and its album page): a celebration, once ----------
+  class ZoneDone {
+    constructor(w, z) { this.w = w; this.z = Z.def(z); this.t = 0; this.transparent = true; }
+    onEnter() { G.audio.jingle('promote'); CK.confetti(); if (G.speak) G.speak('¡' + this.z.name + '! ¡Completo!'); }
+    closeXY() { return [G.W - 28, 6]; }
+    update() {
+      this.t++;
+      if (this.t % 45 === 20) { G.fx.confetti(40 + Math.random() * 60, 200, -1, 14); G.fx.confetti(G.W - 40 - Math.random() * 60, 200, 1, 14); }
+      if (this.t > 230 || (this.t > 50 && (G.input.tap() || G.input.p('A') || G.input.p('B')))) { G.pop(); this.w.resolve(); }
+    }
+    draw(ctx) {
+      const k = Math.min(1, this.t / 18), s = 0.4 + 0.6 * (1 - Math.pow(1 - k, 3)), cx = G.W / 2, cy = 98, z = this.z;
+      ctx.fillStyle = 'rgba(16,16,42,0.55)'; ctx.fillRect(0, 0, G.W, G.H);
+      const r = Math.round(48 * s);
+      for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2 + this.t / 50; ctx.fillStyle = i & 1 ? '#f8e060' : '#f8a030'; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * (r + 9), cy + Math.sin(a) * (r + 9), 5, 0, Math.PI * 2); ctx.fill(); } // a gold rosette
+      ctx.fillStyle = '#10102a'; ctx.beginPath(); ctx.arc(cx, cy, r + 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff6d0'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+      const sz = Math.round(4 * s) || 1; G.drawIcon16(ctx, z.icon, cx - 8 * sz, cy - 8 * sz, sz);
+      if (this.t > 18) {
+        G.bigText(ctx, z.name, cx, cy + r + 14, 2, '#fff070', '#401010');
+        G.bigText(ctx, '¡Completo!', cx, cy + r + 34, 2, '#f8d040', '#401010');
+        const st3 = PR.stars(z.id); st3.forEach((on, i) => { const b = Math.round(Math.sin(this.t / 8 + i) * 2); ctx.globalAlpha = on ? 1 : 0.3; G.drawIcon16(ctx, 'estrella', cx - 70 + i * 48 + (i === 1 ? 6 : 0), 4 + b + (i === 1 ? 0 : 6), 2); ctx.globalAlpha = 1; });
+      }
+    }
+  }
+  PR.celebrate = z => { const w = new G.Wait(); G.push(new ZoneDone(w, z)); return w; };
+  // checked every frame on the map (errands.js update): the place you're in, once its story and album are complete
+  PR.update = function (f) {
+    if (!G.state || !f || f.locked || G.top() !== f || G.fade.a > 0 || f.player.moving || (G.album.discovering && G.album.discovering())) return;
+    const z = Z.of(f.mapId); if (!z || PR.celebrated(z) || !PR.complete(z)) return;
+    doneS()[z] = { d: day() }; G.st.autosave();
+    f.locked = true;
+    f.tasks.add((function* () { try { yield PR.celebrate(z); } finally { f.locked = false; } })());
+  };
+  { const eu = G.errands.update; G.errands.update = function (f) { eu(f); PR.update(f); }; }
+
+  // ---------- "¡Mi mundo!": the whole world on one page (the world map's trophy; the diploma's second page) ----------
+  G.story.drawWorld = function (ctx, t) {
+    const x = 10, y = 6, w = G.W - 20, h = G.H - 12;
+    ctx.fillStyle = '#5a3810'; ctx.fillRect(x - 2, y - 2, w + 4, h + 4); ctx.fillStyle = '#f8f0d0'; ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = '#c09040'; ctx.strokeRect(x + 3.5, y + 3.5, w - 7, h - 7);
+    G.drawIcon16(ctx, 'trofeo', x + 8, y + 6, 2);
+    G.bigText(ctx, '¡Mi mundo!', G.W / 2, y + 8, 2, '#a05020', null);
+    G.textC(ctx, G.st.playerName(), G.W / 2, y + 26, '#203080', null);
+    // the totals: places, words, animals, friends
+    const AN = G.animals, all = AN ? AN.list().length : 0, seen = AN ? AN.list().filter(AN.met).length : 0;
+    const friends = H.WHO.filter(n => H.get(n) > 0).length;
+    const items = [['mapa', PR.visitedCount() + '/' + Z.ids().length], ['book', String(G.st.learnedCount())], ['pata', seen + '/' + all], ['heart', friends + '/' + H.WHO.length]];
+    items.forEach(([ic, s], k) => {
+      const ix = x + 16 + k * 74, iy = y + 40;
+      if (ic === 'book') G.drawIcon(ctx, 'book', ix, iy - 4); else if (ic === 'heart') H.heart(ctx, ix + 4, iy + 1, true, 2); else G.drawIcon16(ctx, ic, ix + 2, iy - 2);
+      G.text(ctx, s, ix + (ic === 'book' ? 28 : 24), iy + 3, '#604020', null);
+    });
+    // a card per place: its picture, its name, three stars, its story, album and hearts
+    Z.ids().forEach((id, k) => {
+      const z = Z.def(id), been = id === 'villa' || Z.visited(id), cx = x + 7 + (k % 3) * 97, cy = y + 62 + Math.floor(k / 3) * 70, cw = 92, ch = 66;
+      const done = PR.complete(id);
+      ctx.fillStyle = done ? '#f8d870' : been ? '#fffaf0' : '#d8ccb0'; ctx.fillRect(cx, cy, cw, ch);
+      ctx.strokeStyle = done ? '#b07000' : '#b09068'; ctx.strokeRect(cx + 0.5, cy + 0.5, cw - 1, ch - 1);
+      if (been) G.drawIcon16(ctx, z.icon, cx + 4, cy + 4, 2);
+      else { ctx.globalAlpha = 0.8; ctx.imageSmoothingEnabled = false; ctx.drawImage(G.tinted(G.icon(z.icon), '#3a3048', 'wdsil' + id), cx + 4, cy + 4, 32, 32); ctx.globalAlpha = 1; G.bigText(ctx, '?', cx + 20, cy + 12, 2, '#f8e060', '#10102a'); }
+      const short = z.name.replace(/^(El|La) /, '').replace('parque de ', '').replace('casa de los ', '');
+      G.text(ctx, been ? short.charAt(0).toUpperCase() + short.slice(1) : '? ? ?', cx + 40, cy + 6, '#604020', null);
+      if (been) {
+        PR.drawStars(ctx, id, cx + 54, cy + 18);
+        const s = PR.story(id), a = PR.album(id), fr = PR.friends(id);
+        G.drawIcon16(ctx, 'bandera', cx + 40, cy + 30); G.text(ctx, s.done + '/' + s.of, cx + 58, cy + 34, '#604020', null);
+        G.drawIcon16(ctx, 'pata', cx + 4, cy + 46); G.text(ctx, a.met + '/' + a.of, cx + 22, cy + 50, '#2860a8', null);
+        H.heart(ctx, cx + 56, cy + 50, true, 1); G.text(ctx, String(fr.hearts), cx + 66, cy + 50, '#c04870', null);
+      }
+    });
+    if (G.enVisible()) G.textC(ctx, 'Places, words, animals, friends; a star per place for its story, album, friends', G.W / 2, y + h - 12, '#a07030', null);
+    void t;
+  };
+  class WorldPage {
+    constructor(w) { G.toastT = 0; this.w = w; this.t = 0; this.transparent = true; }
+    onEnter() { G.audio.jingle('item'); if (G.speak) G.speak('¡Mi mundo!'); }
+    closeXY() { return [G.W - 28, 6]; }
+    update() { this.t++; if (this.t > 20 && (G.input.tap() || G.input.p('A') || G.input.p('B'))) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); } }
+    draw(ctx) { ctx.fillStyle = 'rgba(16,16,42,0.5)'; ctx.fillRect(0, 0, G.W, G.H); G.story.drawWorld(ctx, this.t); }
+  }
+  G.story.world = function () { const w = new G.Wait(); G.push(new WorldPage(w)); return w; };
+
+  // ---------- the world map: three stars over each place, the letter over the place it's going to ----------
+  Z.MAPDRAW.push(function (ctx, m) {
+    for (const id of Z.ids()) {
+      const n = m.node(id); if (!n || !(id === 'villa' || Z.visited(id))) continue;
+      PR.drawStars(ctx, id, n.x, n.y - n.r - 11);
+    }
+    const it = P.letter(); if (!it) return;
+    const tz = P.zoneOf(it.to), n = tz && m.node(tz); if (!n) return;
+    const b = Math.round(Math.sin(m.t / 7) * 2);
+    G.win(ctx, n.x - n.r - 16, n.y - 2 + b, 22, 22, { fill1: '#fffaf0', fill2: '#f0e4c8', alpha: 1 });
+    G.drawIcon16(ctx, { icon: 'carta', letter: it.to }, n.x - n.r - 13, n.y + 1 + b);
+  });
+})();
+
+</script>
 <script>/* src/guide.js */
 // ===== The guide: the next thing to do is always in sight while you're free to walk (docs/INTUITIVE_AUDIT.md) =====
 // Children don't read the Spanish instructions and don't open menus (docs/PLAYTEST_NOTES.md, 2026-10-11): so there is
@@ -23911,7 +24372,8 @@ G.MAPDATA = {
 //                  white arrow, so it shows WHERE to look without giving the answer away
 //   idle ~4 s      Canelo trots a few tiles toward the goal, barks and looks back at you
 // The goal, most important first: the story's chapter (its beat: a person, a place, an animal, a door, a find-it
-// puzzle; the next chapter's giver; a review day's teacher) > home at sunset > a favour going on or offered > Nico's
+// puzzle; the next chapter's giver; a review day's teacher) > home at sunset > a favour going on or offered > Tomás's
+// letter in your hands (to whoever it's for; another place: the bus stop, src/connect.js) > a zone's task > Nico's
 // hide-and-seek (only the edge arrow: the peeking ears are the game; the arrow over one after a long wait) > Canelo's
 // "?", Luna's palabra del día, Inés's pages, a side job, anyone else with a bubble > the day's play (src/carry.js: what
 // you hold to whoever would love it, or Canelo; empty-handed, today's next play: fetch, an apple for Luna, a flower for
@@ -24066,7 +24528,9 @@ G.MAPDATA = {
   const zoneTask = f => (G.zones && G.zones.task ? G.zones.task(f) : null);
   const wantGoal = f => (G.zones && G.zones.want() ? G.zones.exploreGoal(f) : null);
   const exploreGoal = f => (G.zones ? G.zones.exploreGoal(f) : null);
-  const TIERS = [chapterGoal, sunsetGoal, favourGoal, zoneTask, seekGoal, wantGoal, reviewGoal, zoneGoal, chapterLater, exploreGoal, playGoal, puppyGoal];
+  // Tomás's letter in your hands (connect.js): to whoever it's for; in another place, by the bus (or the way there)
+  const postGoal = f => (G.post && G.post.goal ? G.post.goal(f) : null);
+  const TIERS = [chapterGoal, sunsetGoal, favourGoal, postGoal, zoneTask, seekGoal, wantGoal, reviewGoal, zoneGoal, chapterLater, exploreGoal, playGoal, puppyGoal];
 
   // on another map: the door that leads there (from town, its door; from a building, the way out)
   function viaDoor(f, g) {
@@ -24270,7 +24734,7 @@ G.MAPDATA = {
     if (TAP_ON[name]) return place(G.W / 2, G.H - 32, true); // a tap anywhere goes on: below the card
     return null;
   }
-  const TAP_ON = { WordCard: 1, BadgeCard: 1, QuestCard: 1, Diploma: 1, FriendCard: 1, Photo: 1 };
+  const TAP_ON = { WordCard: 1, BadgeCard: 1, QuestCard: 1, Diploma: 1, FriendCard: 1, Photo: 1, ZoneDone: 1, WorldPage: 1 };
   const busy = () => G.input.ptr.down || !!G.input.tap() || Object.keys(G.pressed).length > 0 || Object.keys(G.keys).some(k => G.keys[k]);
 
   // ---------- every frame (core.js step, before input is cleared) ----------

@@ -37,6 +37,7 @@
   const Z = G.zones = {}, T = G.TILE;
   const TT = (t, en) => ({ t, en });
   Z.LIST = [];
+  Z.MAPDRAW = []; // more to draw on the world map: fn(ctx, worldMap) (connect.js: the stars, the letter going somewhere)
   // a zone's own ghost-hand demos (src/demo.js): { kind, find(f) -> [x, y] tile to tap, or null } (once each, saved)
   Z.demos = [];
   Z.add = function (def) {
@@ -414,6 +415,7 @@
     node(id) { const z = Z.def(id); return z && z.pos ? { x: z.pos[0], y: z.pos[1], r: 21 } : null; }
     closeXY() { return [G.W - 28, 6]; }
     hintXY() { return null; }
+    trophyRect() { return { x: 4, y: 4, w: 22, h: 22 }; }
     rects() { return Z.ids().map(id => { const n = this.node(id); return n ? { id, x: n.x - n.r - 2, y: n.y - n.r - 2, w: 2 * n.r + 4, h: 2 * n.r + 14 } : null; }).filter(Boolean); }
     tapZone(id) {
       const here = this.here();
@@ -429,6 +431,7 @@
       if (this.walk) return;
       const tap = G.input.tap();
       if ((tap && G.closeHit(...this.closeXY())) || G.input.p('B')) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(null); return; }
+      if (tap && G.story && G.story.world && G.tapIn(this.trophyRect())) { G.audio.sfx('ok'); G.story.world(); return; } // the whole world on one page
       if (tap) for (const r of this.rects()) if (G.tapIn(r)) { this.tapZone(r.id); return; }
       const ids = Z.ids(); if (this.sel == null) this.sel = Math.max(0, ids.indexOf(this.here()));
       const d = G.input.repDir(14, 6); if (d) { this.sel = (this.sel + (d === 'left' || d === 'up' ? -1 : 1) + ids.length) % ids.length; G.audio.sfx('cursor'); }
@@ -480,7 +483,8 @@
         ctx.save(); ctx.beginPath(); ctx.arc(px, py - 10, 11, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(img, Math.round(px - 12), Math.round(py - 22)); ctx.restore();
         ctx.fillStyle = '#f04878'; ctx.beginPath(); ctx.moveTo(px - 5, py + 1); ctx.lineTo(px + 5, py + 1); ctx.lineTo(px, py + 8); ctx.fill();
       }
-      G.drawIcon16(ctx, 'mapa', 8, 6, 1);
+      for (const fn of Z.MAPDRAW) { try { fn(ctx, this); } catch (e) { if (!Z.err) { Z.err = 1; console.error(e); } } }
+      { const r = this.trophyRect(), b = Math.round(Math.sin(this.t / 12) * 1); G.win(ctx, r.x, r.y + b, r.w, r.h, { fill1: '#fff6d0', fill2: '#f8d870', alpha: 1 }); G.drawIcon16(ctx, 'trofeo', r.x + 3, r.y + 3 + b); } // the trophy: "¡Mi mundo!" (connect.js)
       G.closeBtn(ctx, ...this.closeXY());
       if (G.enVisible()) G.text(ctx, this.o.travel ? 'Tap a place you have been to: the bus takes you. "?": walk there!' : 'The world', 30, 10, '#ffffff', '#10102a');
     }
