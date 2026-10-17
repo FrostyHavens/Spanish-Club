@@ -42,8 +42,8 @@ Pokédex. The plan for the five zones and the pattern each zone step follows: `d
   the world map comes early. In a zone: Lola's bubble, the dog's spot, Nico, things to pick up.
 - **The album is a Pokédex** (`src/album.js`): a tab per zone (its picture and count; gold when complete) and Amigos;
   numbered entries in world order; silhouettes with a little picture of where they live; rare ones marked; numbered "?"
-  for animals a zone will have; "¡Completo!" with confetti per zone; and "¡Nuevo animal!" over the game (never blocking
-  it) the first time an animal is met: its number, picture, cry and name, then it flips into the corner.
+  for animals a zone will have; "¡Completo!" with confetti per zone; and "¡Nuevo animal!" over the map (never blocking
+  it; it waits until a talk or a menu is over) the first time an animal is met: its number, picture, cry and name, then it flips into the corner.
 - **Generalized for zones**: hide-and-seek is one game per zone (`src/seek.js`: Villa Sol's unchanged), favours are
   data-driven per map (`G.favores.OFFERS`, `PLACES` with `on`, an offer's condition), `G.animals.addKind` for a zone's
   animals (a default walk, frames, a cry) and rare spawns (`when`, `chance`), `G.mapKit` (talker, Canelo on any map).
@@ -55,6 +55,11 @@ Pokédex. The plan for the five zones and the pattern each zone step follows: `d
   load). Existing tests follow: the kid menu has the map; the guide test expects exploring before the day's play and
   chapter 5 opening on a 12-word day; the harness plays the dog's name, the choice ("play" unless `g.explore`), the new
   place card and the world map.
+- Left for the zone steps (docs/WORLD_PLAN.md): each zone's own maps, words, people, animals (pixel art, cries,
+  habitats, rare ones), story line and favours; Tomás's letters between zones; Lola in the Amigos page (hearts). Note:
+  with no word limit, a child who plays the town's chapters back to back can meet 30+ new words in a day (test-chapters2
+  logs the counts); the cards and the review engine adapt, but a soft "rest" suggestion may be worth adding if the parent
+  sees overload.
 
 ## 2026-10-11 — Word cards that grow, the book later, picture + word always, a ghost hand (step 3 of the second playtest)
 The parent (`docs/PLAYTEST_NOTES.md`): bonus stars mean nothing to a child; show progress on the word itself (say it a few
