@@ -198,10 +198,12 @@ async function zone(browser) {
     check('zone: they hide in this zone\'s places, not in town', await g.ev(() => G.seek.list().length >= 2 && G.seek.list().every(h => G.zones.of(G.seek.SPOTS.find(s => s.id === h.spot).map) === 'juegos')));
     check('zone: Villa Sol\'s game is untouched', await g.ev(() => !G.state.seek.on));
     await g.frames(30); await g.shot('seek');
-    // a zone's own quest line never waits for Villa Sol's chapter going on (in a zone still to be built: La montaña)
-    await g.ev(() => { G.seek.stop && G.seek.stop(); G.zones.visit('montana'); G.goto('montana', 6, 8, 'right'); });
+    // a zone's own quest line never waits for Villa Sol's chapter going on (La montaña's line, its own chapters done:
+    // a test chapter added after them; every zone is built now, so no zone is left without a story)
+    await g.ev(() => { G.seek.stop && G.seek.stop(); G.zones.visit('montana'); G.goto('montana', 5, 25, 'right'); });
     await g.fieldIdle('montana');
     await g.ev(() => {
+      for (const id of G.chapters.ids()) if (G.chapters.lineOf(id) === 'montana') G.state.quests[id] = 'done';
       G.state.quests.c1 = 'done'; G.chapters.start('c2'); // (a Villa Sol chapter going on)
       G.chapters.add({ id: 'tmontana1', line: 'montana', title: 'Prueba', en: 'test', giver: 'lola', words: [], icon: 'montana', col: '#e04040' });
       G.chapters.script('tmontana1', [{ who: 'lola', run: function* () { yield 10; } }, { who: 'lola', run: function* () { yield 10; } }]);
@@ -230,8 +232,10 @@ async function album(browser) {
     await g.frames(10); await g.shot('album_villa');
     check('album: a tab per zone (and Amigos)', await g.ev(() => G.top().tabs().join() === 'villa,playa,bosque,juegos,abuelos,montana,amigos'));
     await g.tapRect(await g.ev(() => G.top().tabRect(5)));
-    check('album: a zone\'s tab opens its page: numbered "?" entries for animals still to come', await g.ev(() => G.top().zone === 'montana' && G.top().ids().length === 7 && G.top().ids().every(id => id === null)));
+    check('album: La montaña\'s tab (the last zone built): its 8 animals as silhouettes', await g.ev(() => G.top().zone === 'montana' && G.top().ids().length === 8 && G.top().ids().every(Boolean)));
     await g.frames(6); await g.shot('album_montana');
+    // a zone with animals still to come shows numbered "?" entries (every zone is built now: a planned page, pretended)
+    check('album: a zone\'s planned animals are numbered "?" entries', await g.ev(() => { const z = G.zones.def('montana'), a = z.animals, p = z.planned; z.animals = a.slice(0, 2); z.planned = 5; const ids = G.album.entries('montana'), c = G.album.zoneCount('montana'); z.animals = a; z.planned = p; return ids.length === 7 && ids.slice(2).every(id => id === null) && ids.slice(0, 2).every(Boolean) && c.of === 7; }));
     await g.tapRect(await g.ev(() => G.top().tabRect(1)));
     check('album: a built zone\'s tab (La playa): its animals as silhouettes with a hint', await g.ev(() => G.top().zone === 'playa' && G.top().ids().length === 7 && G.top().ids().every(Boolean)));
     // a zone complete: "¡Completo!"
@@ -239,6 +243,12 @@ async function album(browser) {
     await g.ev(() => { G.animals.list().forEach(id => G.animals.meet(id)); G.top().checkZone(); });
     check('album: Villa Sol complete: "¡Completo!" and a celebration, once', await g.ev(() => G.top().done > 0 && G.state.flags.dexDone.villa === 1));
     await g.frames(30); await g.shot('album_complete');
+    // every zone built: no "?" left anywhere; meet them all and every tab is complete (Villa Sol and the five zones)
+    check('album: all five zones are built (no planned "?" entries left)', await g.ev(() => G.zones.ids().filter(id => id !== 'villa').length === 5 && G.zones.ids().every(id => !G.zones.def(id).planned && G.album.entries(id).length > 0 && G.album.entries(id).every(Boolean))));
+    for (let k = 1; k <= 5; k++) { await g.tapRect(await g.ev(k => G.top().tabRect(k), k)); await g.ev(() => G.top().checkZone()); await g.frames(4); }
+    const done = await g.ev(() => G.zones.ids().map(id => [id, G.album.zoneCount(id), (G.state.flags.dexDone || {})[id]]));
+    check('album: every tab complete: Villa Sol and the five zones, each with "¡Completo!"', done.length === 6 && done.every(([id, c, d]) => c.of > 0 && c.met === c.of && d === 1), JSON.stringify(done));
+    await g.frames(20); await g.shot('album_all_complete');
     check('album: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
 }

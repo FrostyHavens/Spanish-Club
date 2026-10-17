@@ -394,7 +394,7 @@
   }
   // the weather station: say the weather you want and it comes (after chapter 3: any time)
   MT.weatherGame = function* (f, o = {}) {
-    const vs = WX.filter(met); if (!vs.length) return null;
+    const now = MT.weather(), vs = WX.filter(w => met(w) && w !== now).slice(0, 4); if (!vs.length) return null; // (not the weather you have: four cards fit)
     const STN = P('montana', 'station'); f.wig = { x: STN[0], y: STN[1], t: 18 }; G.audio.sfx('select');
     const r = yield G.choose({ prompt: o.prompt || '¿Qué tiempo quieres?', en: o.en || 'What weather do you want? (say it, or tap it)', choices: vs.map(w => ({ word: w })), layout: 'cards', mic: true, cancel: !o.must, who: 'mateo' });
     const k = r.result; if (k == null || k < 0 || k >= vs.length) return null;
@@ -434,7 +434,7 @@
       for (let i = 0; i < 3; i++) { const w = nums[i], txt = met(w) ? '¡' + G.baseForm(w) + '!' : String(3 - i); G.fx.say(txt, x0 - Math.round(f.cam.x), y0 - 34 - Math.round(f.cam.y), '#f8e060', true); if (met(w)) G.speak(G.baseForm(w)); G.audio.sfx('cursor'); yield* wait(36); }
       G.audio.sfx('swing'); if (dog) G.pet.sound('bark');
       // who wins: the child the first time; then mostly, never always
-      const youWin = !(st().sled.races) || G.rand() < 0.7, dur = 120;
+      const youWin = !(st().races) || G.rand() < 0.7, dur = 120;
       for (let k = 0; k <= dur; k++) {
         const u = k / dur, e = u * u * (3 - 2 * u), y = y0 + (y1 - y0) * (0.15 * u + 0.85 * e);
         p.sled.y = y; p.y = Math.min(END[1], Math.max(TOP[1], Math.round((y - 20) / TL))); p.oy = (y - 20) - p.y * TL;
@@ -444,7 +444,7 @@
         yield 1;
       }
       p.sled = null; MT.sledRide = null; p.y = END[1]; p.oy = 0; if (dog) { dog.moving = false; dog.oy = 0; dog.y = END[1]; dog.busy = false; }
-      s.n = (s.n | 0) + 1; st().sled.races = (st().sled.races | 0) + 1; if (youWin) st().sled.wins = (st().sled.wins | 0) + 1; G.st.autosave();
+      s.n = (s.n | 0) + 1; st().races = (st().races | 0) + 1; if (youWin) st().wins = (st().wins | 0) + 1; G.st.autosave();
       CK.confetti(); G.audio.jingle(youWin ? 'promote' : 'item');
       if (dog) { CK.bark(f, dog); CK.heart(f, dog); }
       yield* sayShow('lucho', youWin ? { icon: 'hola' } : { icon: 'perro' }, youWin ? T('¡Ganaste, {name}!', 'You won the race, {name}!') : T('¡Ganó {dog}!', '{dog} won this time!'));

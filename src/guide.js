@@ -57,7 +57,7 @@
       const [x, y] = s.at.split(',').map(Number);
       return { why: 'find ' + id, map: s.map, pts: [tileP(x, y, 14)] };
     }
-    if (CH.needsReview()) { const who = CH.reviewer(), n = here(f, who); return n ? { why: 'review ' + who, pts: [person(n)] } : { why: 'review ' + who, map: mapOfNpc(who), badge: { who } }; }
+    if (CH.needsReview() && (!G.zones || G.zones.area(f.mapId) === 'villa')) { const who = CH.reviewer(), n = here(f, who); return n ? { why: 'review ' + who, pts: [person(n)] } : { why: 'review ' + who, map: mapOfNpc(who), badge: { who } }; } // (a review day is Villa Sol's: out in a zone, its story's beat still leads)
     const L = CH.live(); if (!L || !L.b) return null;
     if (!L.started && !GD.laterChapter) return null; // (a chapter not started yet is a suggestion among the others: chapterLater)
     const b = L.b, why = L.id + ':' + L.k;
