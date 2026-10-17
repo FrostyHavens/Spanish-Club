@@ -12455,7 +12455,7 @@ G.store = {
     const id = c.id, K = AN().KINDS[id], w = G.data.words[K.word], named = G.st.seen(K.word), t = c.t;
     // pop in (0-14), stay, then flip (shrink sideways) and fly to the corner (140-170)
     const pop = Math.min(1, t / 14), e = 1 - Math.pow(1 - pop, 3), fly = Math.max(0, (t - 140) / 30);
-    const cw = 120, ch = 74, x0 = G.W / 2 - cw / 2, y0 = 14;
+    const cw = 134, ch = 74, x0 = G.W / 2 - cw / 2, y0 = 14;
     const sx = fly ? Math.max(0.05, 1 - fly) : e, cx = x0 + cw / 2 + (G.W - 24 - (x0 + cw / 2)) * fly * fly, cy = y0 + ch / 2 + (14 - (y0 + ch / 2)) * fly * fly;
     ctx.save(); ctx.translate(cx, cy); ctx.scale(sx, e * (1 - fly * 0.6)); ctx.translate(-cw / 2, -ch / 2);
     ctx.fillStyle = '#10102a'; ctx.fillRect(-2, -2, cw + 4, ch + 4);
