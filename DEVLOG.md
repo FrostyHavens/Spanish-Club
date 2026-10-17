@@ -28,7 +28,11 @@ everywhere, reasons to travel between places, and progress she can see. All of i
   spots per zone, the guide suggests them).
 - Tests: `tools/test-connect.js` (new: the letters both ways, Tomás's round, greetings, gifts, the secret and sticker,
   Lola's hearts, the Amigos tabs, the stars, *¡Completo!*, *¡Mi mundo!*, Story progress, the diploma, the dog in every
-  zone); `smoke` taps through the diploma's second page; `test-roundb-pet` checks `H.TOWN` (12).
+  zone); `smoke` taps through the diploma's second page (and its tap-while-walking check re-taps once: it was flaky
+  under load); `test-fx` allows the ring to have faded on a slow frame; `test-roundb-pet` checks `H.TOWN` (12);
+  `test-saves` turns Story progress's world page; `test-world` and `test-zone-montana` drive past the greeting of the
+  day; `test-guide` marks Tomás's letter of the day delivered where it checks the day's play; `test-hints-day` allows
+  the world's, zones' and letters' saved keys. Tomás's letter offer is suggested after the story's next chapter.
 
 ## 2026-10-17 — La montaña, the fifth and last zone (step 6 of the open world): the weather, snow and the cold
 The mountain east of Villa Sol, following "How to build a zone" (docs/WORLD_PLAN.md); it only uses universal words and
