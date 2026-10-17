@@ -132,11 +132,11 @@ async function ipad(browser) {
     await g.tapTile(18, 11);
     await g.until(() => G.world.bubble && G.world.bubble.id === 'fuente', null, 'the fountain to say its name');
     check('things: tapping the fountain from afar walks you up to it, then "la fuente"; the fish jumps', await g.ev(() => G.field.player.y === 12 && G.animals.find('pez').st === 'jump'));
-    // a walk-on thing: a flower
-    await town(g, 30, 8, 'down');
-    await g.tapTile(31, 9);
+    // a walk-on thing: a flower (one that isn't a coloured flower to pick: those, carry.js, are things you walk up to)
+    await town(g, 30, 11, 'down');
+    await g.tapTile(31, 12);
     await idle(g);
-    check('things: tapping a flower walks you onto it and it says "la flor"', await g.ev(() => G.field.player.x === 31 && G.field.player.y === 9 && G.world.bubble && G.world.bubble.id === 'flor'));
+    check('things: tapping a flower walks you onto it and it says "la flor"', await g.ev(() => G.field.map.get(31, 12) === 'o' && !G.carry.at(G.field, 31, 12) && G.field.player.x === 31 && G.field.player.y === 12 && G.world.bubble && G.world.bubble.id === 'flor'));
     // speaking off: names, no mic
     await g.ev(() => { G.prefs.mic = false; });
     await town(g, 1, 12, 'left');

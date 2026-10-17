@@ -201,11 +201,11 @@
   G.album.discover = function (id) { if (!AN().KINDS[id] || DQ.includes(id) || (cur && cur.id === id)) return; DQ.push(id); if (DQ.length > 3) DQ.shift(); };
   G.album.discovering = () => cur;
   G.album.step = function () {
-    if (cur) { cur.t++; if (cur.t === 12) { AN().cry(cur.id); G.audio.sfx('star'); } if (cur.t === 30) { const w = G.data.words[AN().KINDS[cur.id].word]; if (w && G.st.seen(AN().KINDS[cur.id].word)) G.speak(w.es.split(' / ')[0]); } if (cur.t > 170) cur = null; return; }
+    if (cur) { if (G.top() !== G.field) return; /* (a menu or a talk opened over it: it waits, hidden, and says nothing) */ cur.t++; if (cur.t === 12) { AN().cry(cur.id); G.audio.sfx('star'); } if (cur.t === 30) { const w = G.data.words[AN().KINDS[cur.id].word]; if (w && G.st.seen(AN().KINDS[cur.id].word)) G.speak(w.es.split(' / ')[0]); } if (cur.t > 170) cur = null; return; }
     if (DQ.length && G.fade.a === 0 && G.state && G.field && G.top() === G.field) { /* (on the map: never over a talk or a menu) */ cur = { id: DQ.shift(), t: 0 }; G.fx.confetti(G.W / 2 - 50, 60, -1, 10); G.fx.confetti(G.W / 2 + 50, 60, 1, 10); }
   };
   G.album.draw = function (ctx) {
-    const c = cur; if (!c || !G.state) return;
+    const c = cur; if (!c || !G.state || G.top() !== G.field) return;
     const id = c.id, K = AN().KINDS[id], w = G.data.words[K.word], named = G.st.seen(K.word), t = c.t;
     // pop in (0-14), stay, then flip (shrink sideways) and fly to the corner (140-170)
     const pop = Math.min(1, t / 14), e = 1 - Math.pow(1 - pop, 3), fly = Math.max(0, (t - 140) / 30);
