@@ -282,14 +282,52 @@ out['camino_abuelos'] = m
 # --- the zones' first maps (placeholders: each a small place with its signpost, bus stop, dog's spot and friends) ---
 def entrance(w, h, fill, edge):
     m = M(w, h, fill); m.border(edge, 1); return m
-# La playa: sand, the sea along the bottom, shallows, a sandcastle spot (dig), the bus stop by the road
-m = entrance(22, 14, 's', 'T')
-m.rect(1, 10, 20, 3, 'w'); m.rect(1, 9, 20, 1, '~'); m.vline(10, 0, 8, ','); m.hline(4, 16, 4, ',')
-for x, y in [(2, 2), (19, 2), (2, 6), (19, 6)]: m.put(x, y, 'f')
-m.mark('in', 10, 1); m.mark('north', 10, 0); m.mark('post', 11, 2); m.mark('bus', 5, 3); m.mark('busIn', 5, 4)
-m.mark('dog', 15, 7); m.mark('lola', 13, 5); m.mark('nico', 7, 6); m.pos['patos'] = [1, 10, 20, 3]
-m.mark('hide1', 2, 2); m.mark('hide2', 19, 6); m.mark('hide3', 16, 4)
-m.put(16, 4, 'k')
+# La playa (the zone, docs/WORLD_PLAN.md): grass and palms along the top (the path comes in at (10, 0), the bus stop and
+# the signpost beside it, Doña Nieves's ice-cream cart), a wide sandy beach (umbrellas, the lifeguard's tower, Tere's
+# sandcastle, the turtles' nest), wet rocks and a tide pool on the right, a wooden pier on the left with Don Paco's
+# boat at its end, then the surf (the waves roll in), the shallows (you can wade) and the deep sea along the bottom.
+# Codes (src/tiles.js): s sand, & dune grass, 9 surf, - clear shallows, w sea, d pier, 1 palm, 2 umbrella, 3 sandcastle, 4/5 the boat,
+# 6/7 the lifeguard's tower (seat / legs), 8 the ice-cream cart, 0 wet rocks.
+m = M(34, 24, 's')
+m.rect(0, 0, 34, 3, '.')                                  # the grassy dunes along the top
+for x in range(34): m.put(x, 0, 'T')
+for y in range(0, 15): m.put(0, y, 'T'); m.put(33, y, 'T')
+m.rect(1, 3, 32, 1, 's')
+for x, y in [(3, 1), (6, 2), (13, 2), (17, 1), (22, 2), (26, 1), (30, 2), (2, 2)]: m.put(x, y, 'o')
+m.vline(10, 0, 4, ',')                                    # the path in from the north, ending on the sand
+for x, y in [(2, 4), (4, 8), (8, 4), (24, 3), (30, 4), (32, 8), (1, 11), (20, 3)]: m.put(x, y, '1')   # palms
+m.rect(1, 15, 32, 1, '9')                                 # the surf
+m.rect(0, 16, 34, 2, '-')                                 # the clear shallows (you can wade)
+m.rect(0, 18, 34, 6, 'w')                                 # the sea
+for y in range(15, 18): m.put(0, y, 'w'); m.put(33, y, 'w')
+for x in range(1, 33):                                    # dune grass where the grass meets the sand
+    if x != 10 and (x * 7) % 5 < 3: m.put(x, 3, '&')
+for x, y in [(5, 6), (21, 4), (27, 5), (3, 10), (11, 7)]: m.put(x, y, '&')
+# the pier on the left, two planks wide, a platform at its end, Don Paco's boat tied beside it
+for y in range(15, 22): m.put(5, y, 'd'); m.put(6, y, 'd')
+m.rect(4, 20, 4, 2, 'd')
+m.put(8, 21, '4'); m.put(9, 21, '5')
+# wet rocks and a tide pool on the right (el charco: clear water you can wade into)
+for j, row in enumerate(['..00.0..0',
+                         '.000000.0',
+                         '.0---00..',
+                         '00----000',
+                         '.00.000..']):
+    for i, c in enumerate(row):
+        if c != '.': m.put(24 + i, 10 + j, c)
+for x, y in [(1, 13), (2, 14), (1, 14)]: m.put(x, y, '0')  # a few rocks by the pier
+# umbrellas, the lifeguard's tower, the sandcastle, the ice-cream cart
+for x, y in [(13, 8), (23, 6), (8, 11), (28, 7)]: m.put(x, y, '2')
+m.put(18, 8, '6'); m.put(18, 9, '7')
+m.put(15, 12, '3')
+m.put(14, 4, '8')
+m.mark('in', 10, 1); m.mark('north', 10, 0); m.mark('post', 11, 2); m.mark('bus', 8, 2); m.mark('busIn', 8, 3)
+m.mark('lola', 12, 6); m.mark('nico', 21, 5); m.mark('paco', 6, 19); m.mark('marina', 19, 9); m.mark('nieves', 15, 4); m.mark('tere', 16, 12)
+m.mark('dog', 11, 13); m.mark('dog2', 26, 6); m.mark('splash', 20, 15)
+m.mark('net', 5, 21); m.mark('nest', 22, 13); m.mark('castle', 15, 12); m.mark('hermit', 23, 11)
+m.pos['charco'] = [26, 12, 4, 2]; m.pos['rocas'] = [22, 8, 11, 7]; m.pos['arena'] = [3, 5, 26, 9]; m.pos['orilla'] = [10, 14, 22, 3]
+m.pos['mar'] = [12, 19, 20, 4]; m.pos['agua'] = [1, 16, 32, 7]; m.pos['bajo'] = [10, 16, 20, 2]
+m.mark('hide1', 13, 8); m.mark('hide2', 15, 12); m.mark('hide3', 26, 10); m.mark('hide4', 30, 4); m.mark('hide5', 8, 21); m.mark('hide6', 23, 6)
 out['playa'] = m
 # El bosque: tall trees all around, a clearing, a hollow log (sniff), mushrooms, a stream
 m = entrance(22, 14, '.', 'T')

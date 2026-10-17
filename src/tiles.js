@@ -153,6 +153,13 @@
     'V': WALL('Barn Wall', 'indoor'), 'C': WALL('Barn Window', 'indoor'),
     'H': OBSTACLE('Hay Bales', 'indoor'), 'E': OBSTACLE('Nest Boxes', 'indoor'), 'U': OBSTACLE('Trough', 'indoor'),
     'm': OBSTACLE('Milk Can', 'indoor'), 'A': OBSTACLE('Apples', 'indoor'),
+    // La playa (the beach zone, content/es/zone-playa.js): surf you can wade in, a wooden pier, palms, umbrellas, a
+    // sandcastle, Don Paco's boat (two tiles), the lifeguard's tower (two tiles: top, legs), the ice-cream cart, wet rocks
+    '9': tt('Surf', 0, 2, 3, 1, 1, 'river'), 'd': tt('Pier', 0, 1, 1, 1, 1, 'bridge'), '-': tt('Lagoon', 0, 3, 3, 1, 1, 'river'),
+    '&': tt('Dune Grass', 15, 1, 1, 1, 1, 'desert'),
+    '1': OBSTACLE('Palm', 'desert'), '2': OBSTACLE('Umbrella', 'desert'), '3': OBSTACLE('Sandcastle', 'desert'),
+    '4': OBSTACLE('Boat', 'river'), '5': OBSTACLE('Boat', 'river'), '6': OBSTACLE('Lifeguard Tower', 'desert'),
+    '7': OBSTACLE('Lifeguard Tower', 'desert'), '8': OBSTACLE('Ice Cream Cart', 'desert'), '0': OBSTACLE('Rocks', 'desert'),
     ' ': WALL('Void', 'grass'),
   };
 
@@ -161,11 +168,11 @@
   // =====================================================================
   // n[] order: N NE E SE S SW W NW
   const DX = [0, 1, 1, 1, 0, -1, -1, -1], DY = [-1, -1, 0, 1, 1, 1, 0, -1];
-  const BASEMAP = { '.': '.', 'o': '.', 'y': '.', 'f': '.', 'h': '.', ',': ',', '=': '=', 'p': 'p', 's': 's', 'x': 'x', 'i': 'i', 'c': 'c', 'z': 'z' };
-  const OBJ = new Set('rFlkgPLYZteaujJOHEUmA'.split(''));
+  const BASEMAP = { '.': '.', 'o': '.', 'y': '.', 'f': '.', 'h': '.', ',': ',', '=': '=', 'p': 'p', 's': 's', 'x': 'x', 'i': 'i', 'c': 'c', 'z': 'z', '&': 's' };
+  const OBJ = new Set('rFlkgPLYZteaujJOHEUmA1236780'.split('')); // (1236780: the beach's palms, umbrellas, castle, tower, cart, rocks)
   const INDOOR_OBJ = new Set('teaujHEUmA'.split(''));
   const BASE_PREF = ['=', 'p', 'x', 'c', 'z', 'i', ',', 's', '.'];
-  const WATERISH = c => c === 'w' || c === '~' || c === 'b' || c === 'B';
+  const WATERISH = c => c === 'w' || c === '~' || c === 'b' || c === 'B' || c === '9' || c === 'd' || c === '4' || c === '5' || c === '-'; // (the beach's surf, pier, boat and clear shallows)
   const ROOF = c => c === 'R' || c === 'Q' || c === '+';
   const BWALL = c => c === 'W' || c === 'N' || c === 'D' || c === 'S' || c === 'G' || c === 'K';
   const IWALL = c => c === 'I' || c === 'n' || c === 'v' || c === 'V' || c === 'C';
@@ -181,7 +188,7 @@
     for (let k = 1; k < 8; k += 2) { const b = BASEMAP[map.get(x + DX[k], y + DY[k])]; if (b) cnt[b] = (cnt[b] || 0) + 1; } // (boxed in by things: the corners)
     for (const b of BASE_PREF) if ((cnt[b] || 0) > bn) { bn = cnt[b]; best = b; }
     if (best) return best;
-    return INDOOR_OBJ.has(code) ? 'i' : '.';
+    return INDOOR_OBJ.has(code) ? 'i' : '1236780'.includes(code) ? 's' : '.'; // (the beach's things stand on sand)
   }
   function groundOf(map, x, y) {
     const c = map.get(x, y);
@@ -1538,6 +1545,185 @@
   }
 
   // =====================================================================
+  //  La playa: surf, the pier, palms, umbrellas, a sandcastle, a boat, the lifeguard's tower, the ice-cream cart, rocks
+  // =====================================================================
+  const BC = { wet: U('#c4a466'), wet2: U('#b09058'), foam: U('#ffffff'), foam2: U('#d8f2ff'), sea: U('#5aa8e8'), sea2: U('#86c4f2'),
+    palm: U('#8a5a2c'), palm2: U('#b07a40'), palm3: U('#5c3818'), leaf: U('#2e9a3a'), leaf2: U('#5ccc48'), leaf3: U('#1a6a28'), nut: U('#6a4018'),
+    red: U('#e83a30'), red2: U('#b02420'), wht: U('#fafaf4'), wht2: U('#d4d4dc'), blu: U('#3a7ae0'), blu2: U('#2450a8'), yel: U('#f8d040'),
+    pink: U('#f890c0'), pink2: U('#d06090'), mint: U('#88e0c0'), choc: U('#7a4020'), cone: U('#e0a050'), cone2: U('#b07830'),
+    rock: U('#5a5a6a'), rock2: U('#7a7a8c'), rock3: U('#3a3a48'), rock4: U('#a0a0b0'), weed: U('#3a8a40'), barn: U('#e8e0d0') };
+  // the surf: wet sand with a little wave rolling up it and back (4 frames), white foam at its edge
+  function surfTile(b, I) {
+    const { n, v, af } = I;
+    sandTex(b, v);
+    let m = maskOf(n, c => c === 'w' || c === '~' || c === 'd' || c === '4' || c === '5'); if (!m) m = 16 | 8 | 32; // (the sea's side; none: south)
+    const reach = [7, 12, 16, 11][af & 3];
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) {
+      let d = edgeDist(x, y, m, 0);
+      const along = (lastDir === 0 || lastDir === 4) ? x : y;
+      d += Math.sin(TAU * along / TS * 2 + v) * 1.2;
+      if (d < reach - 2) b.set(x, y, ((x + y + af) % 7) ? BC.sea2 : BC.sea);
+      else if (d < reach) b.set(x, y, hsh(x, y, af + v) < 0.7 ? BC.foam : BC.foam2);
+      else if (d < reach + 5) b.set(x, y, hsh(x, y, v + 3) < 0.15 ? BC.wet2 : BC.wet);
+    }
+    if (af === 1) for (let i = 0; i < 4; i++) { const x = 3 + Math.floor(hsh(i, v, 9) * 18), y = 4 + Math.floor(hsh(v, i, 7) * 6); b.set(x, y, BC.foam); } // spray
+  }
+  // the pier: planks across, water showing under its edges, posts at the corners
+  function pierTile(b, I) {
+    const n = I.n, P_ = c => c === 'd';
+    waterTile(b, I, false);
+    const x0 = P_(n[6]) ? 0 : 2, x1 = P_(n[2]) ? TS - 1 : TS - 3, y0 = P_(n[0]) || !WATERISH(n[0]) ? 0 : 2, y1 = P_(n[4]) ? TS - 1 : TS - 4;
+    if (!P_(n[4])) for (let x = x0; x <= x1; x++) { b.dk(x, y1 + 1, 0.5); b.dk(x, y1 + 2, 0.6); if (x & 1) b.dk(x, y1 + 3, 0.75); }
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      const ly = y % 6, pl = (y / 6) | 0;
+      let c = hsh(pl, 3, I.v) < 0.5 ? P.T3 : mix(P.T3, P.T4, 0.35);
+      if (ly === 5) c = P.T1; else if (ly === 0) c = lighten(c, 0.2);
+      if (hsh(x, y, I.v) < 0.035 && ly !== 5) c = P.T2;
+      b.set(x, y, c);
+    }
+    for (let y = y0 + 2; y <= y1; y += 6) { b.set(x0 + 2, y, P.T1); b.set(x1 - 2, y, P.T1); }
+    const post = (x, y) => { b.rect(x, y, 3, 5, P.T2); b.hl(x, x + 2, y, P.T5); b.vl(x + 2, y + 1, y + 4, P.T1); b.hl(x, x + 2, y + 5, P.W1); };
+    if (!P_(n[4])) { if (!P_(n[6])) post(x0, y1 - 3); if (!P_(n[2])) post(x1 - 2, y1 - 3); }
+    if (!P_(n[6])) b.vl(x0, y0, y1, P.T1); if (!P_(n[2])) b.vl(x1, y0, y1, P.T0);
+  }
+  // a little palm tree: a curved trunk with rings, big leaves, two coconuts
+  function palmTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 15, 21, 8, 2.2, 0.62);
+    const lean = I.v & 1 ? 1 : -1;
+    for (let y = 21; y >= 7; y--) {
+      const k = (21 - y) / 14, cx = 12 + lean * Math.round(k * k * 4);
+      const ring = (y % 3) === 0;
+      b.set(cx - 1, y, ring ? BC.palm3 : BC.palm); b.set(cx, y, ring ? BC.palm : BC.palm2); b.set(cx + 1, y, BC.palm3);
+    }
+    const tx = 12 + lean * 4, ty = 6;
+    const leaf = (ang, len, droop) => {
+      for (let i = 0; i <= len; i++) {
+        const u = i / len, x = tx + Math.cos(ang) * i, y = ty + Math.sin(ang) * i + droop * u * u * len * 0.5;
+        const w = u < 0.15 ? 1 : u > 0.85 ? 0 : 1;
+        b.set(x, y, BC.leaf); b.set(x, y - 1, u < 0.8 ? BC.leaf2 : BC.leaf);
+        if (w) { b.set(x, y + 1, BC.leaf3); }
+      }
+    };
+    leaf(Math.PI, 10, 1.2); leaf(0, 10, 1.2); leaf(Math.PI * 1.22, 8, 1); leaf(-Math.PI * 0.22, 8, 1); leaf(Math.PI * 0.8, 7, 1.4); leaf(Math.PI * 0.2, 7, 1.4); leaf(-Math.PI / 2, 4, 0);
+    for (const [dx, dy] of [[-1, 2], [1, 2]]) { b.rect(tx + dx - 1, ty + dy, 2, 2, BC.nut); b.set(tx + dx - 1, ty + dy, P.T4); }
+  }
+  // a striped beach umbrella over a towel
+  function umbrellaTile(b, I) {
+    drawGround(b, I.base, I);
+    const v = I.v, tc = [BC.blu, BC.pink, BC.yel, BC.mint][v & 3], uc = [BC.red, BC.blu, BC.pink, BC.yel][(v >> 1) & 3];
+    for (let y = 15; y < 22; y++) for (let x = 3; x < 21; x++) b.set(x, y, ((x >> 1) & 1) ? tc : BC.wht); // the towel
+    b.hl(3, 20, 21, mix(tc, P.X0, 0.3));
+    dropShadow(b, 14, 15, 9, 3, 0.7);
+    b.vl(12, 4, 19, P.K2); b.vl(13, 4, 19, P.K4);
+    for (let y = 1; y < 10; y++) for (let x = 1; x < 24; x++) {
+      const dx = (x + 0.5 - 12.5) / 11, dy = (y + 0.5 - 9.5) / 8.5;
+      if (dx * dx + dy * dy > 1 || y > 9) continue;
+      const seg = Math.floor((Math.atan2(dy, dx) + Math.PI) / (Math.PI / 6));
+      let c = seg & 1 ? uc : BC.wht;
+      if (y === 9) c = mix(c, P.X0, 0.25); else if (dx + dy < -0.9) c = lighten(c, 0.25);
+      b.set(x, y, c);
+    }
+    b.set(12, 0, P.K3); b.set(13, 0, P.K4);
+  }
+  // a sandcastle: two towers, battlements, a dark door, a red flag
+  function castleTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 13, 21, 10, 2, 0.62);
+    const S_ = [P.S0, P.S1, P.S2, P.S3, P.S4];
+    const block = (x0, y0, w, h) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) { const r = hsh(x, y, I.v + 7); b.set(x, y, x === x0 ? S_[3] : x === x0 + w - 1 ? S_[1] : r < 0.12 ? S_[1] : S_[2]); } b.hl(x0, x0 + w - 1, y0, S_[4]); };
+    block(5, 12, 14, 9);                                               // the keep
+    for (let x = 5; x < 19; x += 3) block(x, 10, 2, 2);                // battlements
+    block(2, 8, 5, 13); block(17, 8, 5, 13);                           // two towers
+    for (const x0 of [2, 17]) for (let x = x0; x < x0 + 5; x += 2) block(x, 6, 1, 2);
+    b.rect(10, 16, 4, 5, P.S0); b.rect(11, 15, 2, 1, P.S0);            // the door
+    b.set(4, 12, P.S0); b.set(19, 12, P.S0);                           // little windows
+    b.vl(4, 1, 6, P.T1); b.rect(5, 1, 4, 3, BC.red); b.hl(5, 8, 1, lighten(BC.red, 0.3)); // a flag on the left tower
+    for (const [x, y] of [[8, 19], [16, 20]]) { b.set(x, y, BC.pink); }  // a shell stuck in it
+  }
+  // Don Paco's boat: a red rowboat with a white stripe across two tiles ('4' its bow, '5' its stern), bobbing
+  function boatTile(b, I, half) {
+    waterTile(b, I, false);
+    const bob = I.af & 1 ? 1 : 0, ox = half ? -24 : 0;
+    const put = (x, y, c) => { const X = x + ox; if (X >= 0 && X < TS) b.set(X, y + bob, c); };
+    for (let x = 4; x < 44; x++) for (let y = 8; y < 21; y++) { // the hull, seen from above at an angle
+      const u = (x - 24) / 20, top = 8 + Math.round(u * u * 3), bot = 20 - Math.round(u * u * 6);
+      if (y < top || y > bot) continue;
+      let c = y <= top + 1 ? BC.wht : y >= bot - 2 ? BC.red2 : y >= bot - 4 ? BC.red : y === top + 2 ? BC.red : P.T3;
+      if (y > top + 2 && y < bot - 4) c = hsh(x >> 2, 1, 5) < 0.5 ? P.T3 : P.T4; // inside: planks
+      if ((x - 4) % 8 === 0 && y > top + 2 && y < bot - 4) c = P.T1;            // the seats
+      put(x, y, c);
+    }
+    for (let x = 6; x < 42; x++) { put(x, 21, P.W1); }
+    for (let i = 0; i < 12; i++) { put(27 + i, 6 + Math.round(i * 0.25), P.T2); put(27 + i, 7 + Math.round(i * 0.25), P.T4); } // an oar
+    for (let x = 12; x < 20; x++) for (let y = 12; y < 15; y++) put(x, y, (x + y) & 1 ? U('#c8c0a0') : U('#a8a080')); // a net in the boat
+  }
+  // the lifeguard's tower: '6' the seat (a red-and-white box, a red flag), '7' its white legs and ladder
+  function towerTop(b, I) {
+    drawGround(b, I.base, I);
+    const fl = I.af & 1;
+    b.vl(19, 0, 12, P.K2); b.rect(20, 0 + fl, 4, 4, BC.red); b.rect(20, 1 + fl, 3, 1, lighten(BC.red, 0.3)); // the flag
+    b.rect(3, 9, 18, 9, BC.red); for (let x = 3; x < 21; x += 4) b.rect(x, 9, 2, 9, BC.wht); b.hl(3, 20, 9, lighten(BC.wht, 0.1)); b.hl(3, 20, 17, BC.red2); // the seat box
+    b.rect(5, 4, 14, 5, U('#2a5aa0')); b.rect(6, 5, 12, 3, U('#5a8ad0')); // the seat's back
+    for (const x of [4, 18]) b.rect(x, 18, 2, 6, BC.wht);
+  }
+  function towerLegs(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 12, 21, 10, 2, 0.62);
+    for (const x of [4, 18]) { b.rect(x, 0, 2, 21, BC.wht); b.vl(x + 1, 0, 20, BC.wht2); }
+    for (let y = 3; y < 20; y += 4) b.hl(6, 17, y, BC.wht2);
+    for (const x of [4, 18]) b.hl(x - 1, x + 2, 21, P.K2);
+  }
+  // Doña Nieves's ice-cream cart: a blue box on wheels, cones on top, a pink striped sunshade
+  function cartTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 13, 21, 10, 2, 0.62);
+    b.rect(3, 11, 18, 8, BC.blu); b.hl(3, 20, 11, lighten(BC.blu, 0.3)); b.hl(3, 20, 18, BC.blu2); b.rect(6, 13, 12, 3, BC.wht);
+    for (const [x, c] of [[7, BC.pink], [10, BC.wht], [13, U('#a06030')], [16, BC.mint]]) { b.rect(x, 13, 2, 2, c); }
+    for (const x of [6, 17]) { b.rect(x - 1, 18, 3, 3, P.K0); b.set(x, 19, P.K3); }
+    b.vl(12, 3, 10, P.K2);
+    for (let y = 0; y < 5; y++) for (let x = 2; x < 23; x++) { const dx = Math.abs(x - 12.5); if (dx > 4 + y * 2.2) continue; b.set(x, y + 1, ((x >> 1) & 1) ? BC.pink : BC.wht); }
+    for (const [x, c] of [[5, BC.pink], [18, BC.mint]]) { b.rect(x, 7, 3, 2, c); b.set(x + 1, 9, BC.cone); b.set(x + 1, 10, BC.cone2); } // two cones on the counter
+  }
+  // clear beach shallows ('-'): turquoise over a sandy bottom, light ripples moving, deepening toward the sea
+  function lagoonTile(b, I) {
+    const { n, v, af } = I;
+    const L1 = U('#5cc8dc'), L2 = U('#8adcea'), L3 = U('#3aa4cc'), L4 = U('#b8ecf0'), SB = U('#9cd8c8');
+    const dm = maskOf(n, c => c === 'w' || c === '4' || c === '5'), sm = maskOf(n, c => c === '9' || (!WATERISH(c) && c !== ' '));
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) {
+      const s1 = Math.sin((x * 2 + y) / 4 + af * TAU / 4) + Math.sin((y * 2 - x) / 5 + af * TAU / 4 + 1.3);
+      let c = s1 > 1.35 ? L2 : s1 < -1.45 ? L3 : L1;
+      if (s1 > 1.75 && ((x + y) & 1)) c = L4;
+      if (sm) { const d = edgeDist(x, y, sm, 0); if (d < 6) c = mix(c, SB, (1 - d / 6) * 0.7); }
+      if (dm) { const d = edgeDist(x, y, dm, 0); if (d < 10) c = mix(c, P.W3, (1 - d / 10) * 0.85); }
+      b.set(x, y, c);
+    }
+    for (let i = 0; i < 3; i++) { const x = 2 + Math.floor(hsh(i, v, 31) * 19) + (af & 1), y = 3 + Math.floor(hsh(v, i, 33) * 17); b.set(x, y, P.W6); b.set(x + 1, y, L4); } // glints
+  }
+  // dune grass ('&'): sand with tufts of tall pale grass
+  function duneTile(b, I) {
+    sandTex(b, I.v);
+    for (let i = 0; i < 4; i++) {
+      const x = 2 + Math.floor(hsh(i, I.v, 41) * 18), y = 8 + Math.floor(hsh(I.v, i, 43) * 12);
+      for (let k = -2; k <= 2; k++) { const h = 5 - Math.abs(k) + (hsh(i, k, I.v) < 0.5 ? 1 : 0); for (let j = 0; j < h; j++) b.set(x + k + (j > 2 ? Math.sign(k) : 0), y - j, j > h - 2 ? P.G5 : k & 1 ? P.G3 : P.G4); }
+      b.hl(x - 2, x + 2, y + 1, P.S1);
+    }
+  }
+  // wet rocks by the sea: two or three dark stones, barnacles, a little seaweed
+  function rockTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 13, 19, 10, 3, 0.6);
+    const stones = I.v & 1 ? [[9, 13, 7, 6], [17, 15, 5, 4.5], [6, 18, 4, 3]] : [[12, 12, 8, 6.5], [6, 17, 4.5, 3.5], [19, 18, 4, 3]];
+    for (const [cx, cy, rx, ry] of stones) for (let y = Math.floor(cy - ry); y <= cy + ry; y++) for (let x = Math.floor(cx - rx); x <= cx + rx; x++) {
+      const dx = (x + 0.5 - cx) / rx, dy = (y + 0.5 - cy) / ry, d = dx * dx + dy * dy; if (d > 1) continue;
+      const l = -(dx * 0.6 + dy * 0.8) + (hsh(x >> 1, y >> 1, I.v) - 0.5) * 0.4;
+      b.set(x, y, d > 0.8 && dx + dy > 0 ? BC.rock3 : l > 0.55 ? BC.rock4 : l > 0 ? BC.rock2 : BC.rock);
+    }
+    for (let i = 0; i < 5; i++) { const x = 4 + Math.floor(hsh(i, I.v, 3) * 16), y = 8 + Math.floor(hsh(I.v, i, 5) * 10); if (b.get(x, y) === BC.rock2 || b.get(x, y) === BC.rock) b.set(x, y, BC.barn); }
+    for (const [x, y] of [[4, 20], [5, 19], [20, 21], [21, 20]]) b.set(x, y, BC.weed);
+  }
+
+  // =====================================================================
   //  Renderer registry + cache
   // =====================================================================
   // need: 's' (shadow only), 'n' (neighbour codes), 'g' (neighbour codes + ground classes), base: infers ground under object
@@ -1591,6 +1777,19 @@
   reg('j', { need: 'g', base: true, fn: bedTile });
   reg('v', { need: 'n', anim: 3, spd: 9, fn: hearthTile });
   reg('n', { need: 'n', fn: shelfTile });
+  reg('9', { need: 'g', anim: 4, spd: 22, fn: surfTile });
+  reg('-', { need: 'g', anim: 4, spd: 26, fn: lagoonTile });
+  reg('&', { need: 's', fn: duneTile });
+  reg('d', { need: 'g', anim: 4, spd: 24, fn: pierTile });
+  reg('1', { need: 'g', base: true, fn: palmTile });
+  reg('2', { need: 'g', base: true, fn: umbrellaTile });
+  reg('3', { need: 'g', base: true, fn: castleTile });
+  reg('4', { need: 'g', anim: 4, spd: 24, fn: (b, I) => boatTile(b, I, 0) });
+  reg('5', { need: 'g', anim: 4, spd: 24, fn: (b, I) => boatTile(b, I, 1) });
+  reg('6', { need: 'g', base: true, anim: 2, spd: 20, fn: towerTop });
+  reg('7', { need: 'g', base: true, fn: towerLegs });
+  reg('8', { need: 'g', base: true, fn: cartTile });
+  reg('0', { need: 'g', base: true, fn: rockTile });
   reg(' ', { need: '', fn: (b) => b.fill(P.X0) });
 
   const tileCache = new Map();
@@ -1639,6 +1838,7 @@
     'D': '#74421e', 'S': '#8a8a96', 'G': '#8a8a96', 'K': '#74421e', 'l': '#6c6c80', 'k': '#9c5e2a', 'g': '#9a9aa4', 'P': '#3c8a2c',
     'L': '#e8c850', 'Y': '#c8343c', 'Z': '#b4b2b4', 'J': '#c0823a', 'O': '#e2be46', 'i': '#a0602c', 'I': '#4c4032', 'q': '#9c1c2c', 't': '#c0823a', 'e': '#74421e',
     'a': '#e6e2d8', 'u': '#74421e', 'j': '#d8d8e8', 'v': '#e05818', 'n': '#5c3418', 'c': '#a08c6c', ' ': '#000000',
+    '9': '#e8f4ff', 'd': '#9c5e2a', '-': '#5cc8dc', '&': '#c8c070', '1': '#2e9a3a', '2': '#e83a30', '3': '#d8bc7c', '4': '#e83a30', '5': '#e83a30', '6': '#e83a30', '7': '#fafaf4', '8': '#3a7ae0', '0': '#5a5a6a',
     'z': '#b08a50', 'V': '#5c3418', 'C': '#5c3418', 'H': '#e2be46', 'E': '#9c5e2a', 'U': '#3a72d2', 'm': '#b4b2b4', 'A': '#c8343c',
   };
   G.MINI_COLORS = MINI;

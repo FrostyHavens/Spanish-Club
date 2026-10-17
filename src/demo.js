@@ -14,6 +14,8 @@
 //   bus      a bus stop on screen once you've been to two places: the hand taps the stop (zones.js)
 //   worldmap the world map open: the hand taps a place you've been to (the bus goes there), or a "?" one (walk there)
 //   dogspot  the dog's paw-print bubble on screen (his thing to do in this zone): the hand taps it
+//   (zones)  a zone's own new action (G.zones.demos: {kind, find(f) -> tile}): the beach's 'fillpail' (the empty pail
+//            in your hands: the hand taps the water's edge)
 // The map's demos wait for a moment of standing about (DM.IDLE, so they don't get in the way of a child who is busy).
 // API: G.demo.shown(kind), .KINDS, .cur (the demo playing: {kind, steps, ...} or null; tests), .skip() (tests: mark all
 // shown), .reset(), .step() / .draw(ctx) (core.js, after the hint hand).
@@ -26,7 +28,8 @@
   let idle = 0, scan = 0;
   const book = () => { const f = G.state.flags; if (!f.demo || typeof f.demo !== 'object') f.demo = {}; return f.demo; };
   DM.shown = k => !!(G.state && G.state.flags && G.state.flags.demo && G.state.flags.demo[k]);
-  DM.skip = () => { if (G.state) DM.KINDS.forEach(k => { book()[k] = 1; }); DM.cur = null; };
+  const kinds = () => DM.KINDS.concat(G.zones && G.zones.demos ? G.zones.demos.map(d => d.kind) : []); // (and the zones' own: zones.js Z.demos)
+  DM.skip = () => { if (G.state) kinds().forEach(k => { book()[k] = 1; }); DM.cur = null; };
   DM.reset = () => { if (G.state) G.state.flags.demo = {}; DM.cur = null; };
   const busy = () => G.input.ptr.down || !!G.input.tap() || Object.keys(G.pressed).length > 0 || Object.keys(G.keys).some(k => G.keys[k]);
   const name = s => (s && s.constructor ? s.constructor.name : '');
@@ -97,6 +100,10 @@
     }
     if (Zn && !DM.shown('bus') && Zn.visitedIds().length >= 2) {
       const z = Zn.def(Zn.of(f.mapId)); if (z && z.bus && z.bus.map === f.mapId) { const [sx, sy] = scr(z.bus.at[0], z.bus.at[1]); if (onScreen(sx, sy - 8, 14)) { start('bus', [{ x: sx, y: sy - 10, move: 24, act: 'tap', hold: 22 }]); return true; } }
+    }
+    for (const d of (Zn && Zn.demos) || []) { // a zone's own new action (zones.js Z.demos): the hand taps its tile
+      if (DM.shown(d.kind)) continue; let at = null; try { at = d.find(f); } catch (e) { at = null; }
+      if (at) { const [sx, sy] = scr(at[0], at[1]); if (onScreen(sx, sy, 14)) { start(d.kind, [{ x: sx, y: sy - 4, move: 24, act: 'tap', hold: 22 }]); return true; } }
     }
     if (h && C.DOG[h.id] && dogHere && !DM.shown('give')) {
       start('give', [{ x: px, y: py - 10, move: 16, act: 'down', hold: 8 }, { x: dx, y: dy - 2, move: 40, hold: 4 }, { x: dx, y: dy - 2, move: 1, act: 'up', hold: 4 }, { x: dx, y: dy - 2, move: 1, act: 'tap', hold: 16 }], { carry: h.it });

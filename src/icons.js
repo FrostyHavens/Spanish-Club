@@ -385,6 +385,154 @@
       p.rect(0, 0, 16, 9, '#a8e0f8'); p.disc(12, 3, 2, '#f8d030'); p.ell(4, 10, 6, 4, '#58b040'); p.ell(13, 10, 5, 3, '#48a038'); p.rect(0, 10, 16, 6, '#78c058');
       for (const [x, y] of [[7, 15], [8, 14], [8, 13], [9, 12], [9, 11], [10, 10]]) { p.put(x, y, '#e8c888'); p.put(x + 1, y, '#e8c888'); }
     },
+    // ---- La playa (content/es/zone-playa.js): the sea, the sand, its animals ----
+    mar(p) { // the sea: deep blue bands, white wave crests rolling
+      p.rect(0, 2, 16, 14, '#2460c0'); p.rect(0, 7, 16, 9, '#3478d8'); p.rect(0, 12, 16, 4, '#4c94ec');
+      for (const [y0, off] of [[3, 0], [8, 4], [13, 2]]) for (let x = 0; x < 16; x++) { const k = (x + off) % 8; const dy = [1, 0, 0, 0, 1, 2, 2, 2][k]; p.put(x, y0 + dy - 1, '#ffffff'); if (k < 5) p.put(x, y0 + dy, '#a8d8ff'); }
+    },
+    arena(p) { // the sand: a heap of it, grains glinting, a little yellow spade stuck in
+      p.ell(8, 12.5, 7.6, 4.2, '#e8c880'); p.rect(0, 14, 16, 2, '#e8c880'); p.shade(8, 12.5, 7.6, '#c8a058');
+      for (const [x, y] of [[4, 11], [7, 13], [10, 11], [12, 13], [6, 14], [9, 15], [3, 14]]) p.put(x, y, '#a88040');
+      for (const [x, y] of [[6, 10], [11, 12]]) p.put(x, y, '#fff4d0');
+      p.rect(10, 3, 1, 6, '#c08040'); p.rect(9, 8, 3, 3, '#f8d030'); p.put(11, 9, '#d8a818');
+    },
+    ola(p) { // a big wave curling over, white foam on its tip
+      p.rect(0, 13, 16, 3, '#3478d8');
+      p.disc(9, 8.5, 7, '#3478d8'); p.disc(7.5, 8, 3.6, null); p.rect(2, 9, 6, 4, '#3478d8');
+      p.shade(9, 8.5, 7, '#2460c0');
+      for (let a = Math.PI * 1.05; a <= Math.PI * 2.1; a += 0.07) p.put(9 + Math.cos(a) * 6.6 - 0.5, 8.5 + Math.sin(a) * 6.6 - 0.5, '#ffffff');
+      p.put(3, 6, '#ffffff'); p.put(4, 5, '#ffffff'); p.put(2, 5, '#d8f0ff'); p.put(1, 7, '#d8f0ff');
+      for (const x of [1, 5, 9, 13]) p.put(x, 13, '#a8d8ff');
+    },
+    solgafas(p) { // el sol: a smiling sun in dark sunglasses
+      for (let a = 0; a < 8; a++) { const t = a * Math.PI / 4 + Math.PI / 8; for (let r = 5.8; r < 7.8; r += 0.5) p.put(8 + Math.cos(t) * r - 0.5, 8 + Math.sin(t) * r - 0.5, '#f89020'); }
+      p.disc(8, 8, 5.2, '#f8d830'); p.shade(8, 8, 5.2, '#f0b020');
+      p.rect(3, 6, 4, 3, '#202030'); p.rect(9, 6, 4, 3, '#202030'); p.rect(7, 6, 2, 1, '#202030'); p.put(4, 6, '#6070a0'); p.put(10, 6, '#6070a0');
+      p.rect(6, 11, 4, 1, '#a04010'); p.put(5, 10, '#a04010'); p.put(10, 10, '#a04010');
+    },
+    concha(p, w) { // a scallop shell (its colour from w.col: the shells Lola collects)
+      const c = (w && w.col) || '#f8a8c8', d = G.shade(c, 0.78), l = G.shade(c, 1.15);
+      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+        const dx = x + 0.5 - 8, dy = y + 0.5 - 13.5, r = Math.hypot(dx, dy), a = Math.atan2(dy, dx);
+        if (dy > 0 || r > 7.6 + Math.abs(Math.sin(a * 7)) * 0.7) continue;
+        const rib = Math.floor((a + Math.PI) / (Math.PI / 7)) & 1;
+        p.put(x, y, rib ? d : c);
+        if (r > 6.8 && !rib) p.put(x, y, l);
+      }
+      p.rect(5, 13, 6, 2, c); p.rect(4, 13, 2, 2, d); p.rect(10, 13, 2, 2, d); p.put(6, 8, '#ffffff'); p.put(7, 7, '#ffffff');
+    },
+    caracola(p) { // a big spiral shell (the hermit crab's new home): its pointed spire up right, a pink opening
+      p.tri(6, 5, 11, 9, 15, 0.5, '#f0dcc0'); p.ell(7, 10, 5.6, 4.6, '#f4e4d0'); p.shade(7, 10, 5.6, '#d8bc98');
+      for (const [x, y] of [[9, 5], [11, 4], [12, 2], [13, 1]]) { p.put(x, y, '#b07858'); p.put(x - 1, y + 1, '#b07858'); }
+      for (let a = 0.3; a < Math.PI * 1.6; a += 0.15) p.put(8 + Math.cos(a) * 3.2 - 0.5, 9 + Math.sin(a) * 2.6 - 0.5, '#c08868');
+      p.ell(4, 12, 2.6, 2.2, '#f8a8a0'); p.ell(4, 12, 1.4, 1.1, '#d06868'); p.put(7, 7, '#ffffff'); p.put(8, 7, '#ffffff');
+    },
+    cubetaplaya(p) { // la cubeta: a red sand pail with a white rim, its handle, a yellow spade
+      for (let a = Math.PI * 1.05; a <= Math.PI * 1.95; a += 0.05) p.put(7.5 + Math.cos(a) * 5 - 0.5, 7 + Math.sin(a) * 4.5 - 0.5, '#303040');
+      p.tri(2, 6, 13, 6, 11, 15, '#e83a30'); p.tri(2, 6, 4, 15, 11, 15, '#e83a30'); p.rect(2, 6, 11, 2, '#fafaf4'); p.ell(7.5, 6.6, 5, 1, '#e8c880');
+      p.shade(7.5, 11, 7, '#b82420'); p.put(4, 9, '#ff8070'); p.put(4, 10, '#ff8070');
+      p.rect(13, 1, 1, 9, '#c08040'); p.rect(12, 9, 3, 4, '#f8d030'); p.put(14, 11, '#d8a818');
+    },
+    castillo(p) { // a sandcastle: two towers, battlements, a door, a red flag
+      const S1 = '#e8c880', S2 = '#c8a058';
+      p.rect(1, 6, 4, 9, S1); p.rect(11, 6, 4, 9, S1); p.rect(4, 9, 8, 6, S1);
+      for (const x of [1, 3, 11, 13]) p.rect(x, 4, 1, 2, S1); for (const x of [5, 7, 9]) p.rect(x, 7, 1, 2, S1);
+      p.rect(7, 11, 2, 4, '#8a6030'); p.put(2, 8, '#8a6030'); p.put(13, 8, '#8a6030');
+      p.rect(4, 14, 8, 1, S2); p.rect(1, 14, 4, 1, S2); p.rect(11, 14, 4, 1, S2); p.rect(4, 9, 1, 6, S2); p.rect(14, 6, 1, 9, S2);
+      p.rect(2, 0, 1, 4, '#6a4020'); p.rect(3, 0, 3, 2, '#e83a30'); p.put(3, 0, '#ff7060');
+      p.rect(0, 15, 16, 1, '#d8b070');
+    },
+    helado(p) { // an ice-cream cone: a big round strawberry scoop, a cherry on top
+      p.tri(3.5, 8, 12.5, 8, 8, 16, '#e0a050'); for (const y of [9, 11, 13]) for (let x = 3; x < 13; x++) if ((x + y) % 3 === 0) p.put(x, y, '#b07830');
+      p.disc(8, 5.2, 4.9, '#f8a0c0'); p.rect(3.5, 7, 9, 2, '#f8a0c0'); p.shade(8, 5.2, 4.9, '#e070a0');
+      p.put(4, 9, '#f8a0c0'); p.put(4, 10, '#e070a0'); p.put(11, 9, '#e070a0'); // a drip
+      p.put(6, 3, '#ffe0ec'); p.put(5, 4, '#ffe0ec'); p.disc(8.5, 0.9, 1.3, '#e02838'); p.put(8, 0, '#ff9090');
+    },
+    caliente(p) { // hot: a red face sweating under wavy heat lines, its tongue out
+      for (const x of [3, 8, 13]) [0, 1, 1, 0].forEach((dx, y) => p.put(x + dx, y, '#f86030'));
+      p.disc(8, 10, 5.6, '#f87048'); p.shade(8, 10, 5.6, '#d84828');
+      p.rect(5, 8, 2, 1, '#401010'); p.rect(9, 8, 2, 1, '#401010'); p.rect(6, 12, 4, 1, '#401010'); p.rect(7, 13, 2, 2, '#f890a0');
+      p.put(13, 7, '#68c0ff'); p.put(13, 8, '#68c0ff'); p.put(14, 9, '#68c0ff'); p.put(2, 9, '#68c0ff'); p.put(2, 10, '#68c0ff');
+    },
+    cangrejo(p) { // a red crab, claws up, eyes on stalks
+      p.ell(8, 10, 5.4, 3.6, '#e84830'); p.shade(8, 10, 5.4, '#b82818'); p.put(6, 8, '#ff9070'); p.put(7, 8, '#ff9070');
+      p.disc(2.5, 4.5, 2.2, '#e84830'); p.disc(13.5, 4.5, 2.2, '#e84830'); p.put(2, 2, null); p.put(3, 3, null); p.put(13, 2, null); p.put(12, 3, null);
+      p.rect(3, 6, 1, 3, '#e84830'); p.rect(12, 6, 1, 3, '#e84830');
+      p.rect(6, 5, 1, 2, '#c03020'); p.rect(9, 5, 1, 2, '#c03020'); p.rect(5, 4, 2, 2, '#ffffff'); p.rect(9, 4, 2, 2, '#ffffff'); p.put(6, 5, '#101010'); p.put(9, 5, '#101010');
+      for (const [x, y] of [[2, 11], [1, 13], [3, 13], [14, 11], [15, 13], [13, 13]]) p.put(x, y, '#c03020');
+      p.rect(6, 11, 4, 1, '#801810');
+    },
+    estrellamar(p) { // a starfish: a plump orange star with little bumps
+      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+        const dx = x + 0.5 - 8, dy = y + 0.5 - 8.5, a = Math.atan2(dy, dx), r = Math.hypot(dx, dy);
+        const k = Math.cos(5 * (a + Math.PI / 2)), lim = 3 + 4.6 * Math.max(0, k) ** 0.8;
+        if (r <= lim) p.put(x, y, dy > 1.5 ? '#e05830' : '#f07840');
+      }
+      for (const [x, y] of [[8, 3], [4, 7], [12, 7], [6, 12], [10, 12], [8, 8]]) p.put(x, y, '#ffc090');
+      p.put(7, 6, '#ffe0c0');
+    },
+    tortuga(p) { // a sea turtle swimming: a green shell with tiles, flippers out, its head up
+      p.ell(3, 3.5, 2.4, 1.6, '#78c058'); p.ell(13, 3.5, 2.4, 1.6, '#78c058'); p.ell(3, 13, 2, 1.4, '#78c058'); p.ell(13, 13, 2, 1.4, '#78c058');
+      p.ell(8, 9, 5.4, 5.6, '#3a8a40'); p.shade(8, 9, 5.4, '#2a6a30');
+      for (const [x, y] of [[8, 7], [6, 10], [10, 10], [8, 12]]) { p.disc(x, y, 1.3, '#68b050'); }
+      p.disc(8, 2.5, 2.2, '#78c058'); p.put(7, 2, '#101010'); p.put(9, 2, '#101010'); p.put(8, 4, '#58a040');
+    },
+    gaviota(p) { // a seagull: white, grey wings, a yellow beak with a red spot
+      p.tri(1, 9, 5, 7, 4, 12, '#a0a8b8'); p.ell(8, 10, 5, 3.4, '#ffffff'); p.disc(11.5, 5.5, 2.8, '#ffffff');
+      p.ell(7, 9, 3.6, 2, '#a8b0c0'); p.rect(4, 9, 4, 1, '#808898'); p.put(3, 10, '#303040');
+      p.rect(14, 5, 2, 1, '#f8c830'); p.put(15, 6, '#e83030'); p.put(12, 4, '#101010');
+      p.rect(8, 13, 1, 3, '#f0a040'); p.rect(10, 13, 1, 3, '#f0a040'); p.shade(8, 10, 5, '#d8dce8');
+    },
+    nadar(p) { // to swim: a child's head and an arm stroking through the waves, splashes
+      p.rect(0, 10, 16, 6, '#3888e0'); p.rect(0, 10, 16, 1, '#a8d8ff');
+      p.disc(6, 7.5, 3.4, '#f0c8a0'); p.rect(3, 4, 7, 2, '#5a3418'); p.put(3, 6, '#5a3418');
+      p.put(5, 8, '#302018'); p.put(7, 8, '#302018'); p.rect(5, 10, 3, 1, '#c87850');
+      for (let i = 0; i < 6; i++) { p.put(10 + i * 0.8, 9 - i, '#f0c8a0'); p.put(11 + i * 0.8, 9 - i, '#f0c8a0'); }
+      p.disc(15, 3, 1, '#f0c8a0');
+      for (const [x, y] of [[1, 9], [12, 9], [14, 10], [2, 8]]) p.put(x, y, '#ffffff');
+      for (const x of [2, 7, 12]) { p.put(x, 12, '#68a8f0'); p.put(x + 1, 12, '#68a8f0'); }
+    },
+    medusa(p) { // a jellyfish: a pink see-through dome and wavy tentacles
+      p.ell(8, 6, 6.5, 5, '#f0a0e0'); p.rect(1.5, 6, 13, 3, '#f0a0e0'); p.shade(8, 6, 6.5, '#c070c0');
+      p.ell(6, 4, 2.4, 1.6, '#ffe0f8'); p.put(9, 3, '#ffffff');
+      for (const x of [3, 6, 9, 12]) for (let y = 9; y < 16; y++) p.put(x + ((y + x) % 4 < 2 ? 0 : 1), y, y > 13 ? '#e080d0' : '#d070c8');
+      p.put(6, 6, '#602060'); p.put(10, 6, '#602060');
+    },
+    delfin(p) { // a dolphin leaping out of the sea: an arched grey-blue back, a pale belly, a fin, its tail flukes
+      p.rect(0, 13, 16, 3, '#3478d8'); p.rect(0, 13, 16, 1, '#a8d8ff');
+      for (let t = 0; t <= 1.001; t += 0.02) { const x = 2 + 11 * t, y = 12.5 - 7 * t - 3 * Math.sin(Math.PI * t), r = 0.6 + 1.7 * Math.sin(Math.PI * Math.pow(t, 0.75)); p.disc(x, y, r, '#6a8cc0'); }
+      for (let t = 0.15; t <= 0.95; t += 0.03) { const x = 2 + 11 * t, y = 12.5 - 7 * t - 3 * Math.sin(Math.PI * t); p.put(x + 0.9, y + 1.2, '#dce8f4'); }
+      p.rect(13, 4, 3, 1, '#6a8cc0'); p.put(15, 4, '#5070a0');
+      p.tri(6, 5.5, 9, 4.5, 5.5, 2, '#4a6ca0');
+      p.tri(0, 11, 3, 13, 1, 15, '#4a6ca0'); p.put(3, 14, '#4a6ca0');
+      p.put(12, 4, '#101010'); p.put(12, 3, '#ffffff');
+      p.put(1, 12, '#ffffff'); p.put(4, 12, '#ffffff'); p.put(14, 12, '#ffffff');
+    },
+    pulpo(p) { // an octopus: a round purple head, big eyes, curly arms
+      for (let k = 0; k < 6; k++) { const x0 = 2 + k * 2.4; for (let y = 9; y < 15; y++) p.put(x0 + Math.sin((y + k) * 0.9) * 1.1, y, '#b048a0'); p.put(x0 + Math.sin((15 + k) * 0.9) * 1.1 + 1, 15, '#b048a0'); }
+      p.ell(8, 6.5, 5.6, 5, '#c858b0'); p.shade(8, 6.5, 5.6, '#983888');
+      p.disc(5.5, 7, 1.6, '#ffffff'); p.disc(10.5, 7, 1.6, '#ffffff'); p.put(6, 7, '#101010'); p.put(11, 7, '#101010');
+      p.put(6, 3, '#f0a0e0'); p.put(7, 2, '#f0a0e0'); p.put(8, 10, '#802070');
+    },
+    redpesca(p) { // Don Paco's fishing net: a knotted mesh with orange floats
+      for (let y = 2; y < 15; y++) for (let x = 1; x < 15; x++) { const inside = Math.hypot((x + 0.5 - 8) / 7, (y + 0.5 - 9) / 6.5) < 1; if (inside && ((x + y) % 3 === 0 || (x - y + 30) % 3 === 0)) p.put(x, y, '#e8dcb8'); }
+      p.rect(2, 2, 12, 1, '#a07840');
+      for (const x of [3, 8, 13]) { p.ell(x, 2, 1.4, 1.2, '#f88830'); }
+    },
+    nidoarena(p) { // the turtles' nest: round white eggs half in a heap of sand
+      p.ell(8, 12.5, 7.8, 3.8, '#e0b870'); p.rect(0, 14, 16, 2, '#e0b870');
+      for (const [x, y] of [[4.5, 9.5], [8, 8.2], [11.5, 9.5], [6.2, 11.8], [9.8, 11.8]]) p.disc(x, y, 2.6, '#9a7040');
+      for (const [x, y] of [[4.5, 9.5], [8, 8.2], [11.5, 9.5], [6.2, 11.8], [9.8, 11.8]]) { p.disc(x, y, 1.9, '#fffaf0'); p.put(x - 0.6, y - 0.8, '#ffffff'); p.put(x + 0.7, y + 0.6, '#e0d8c8'); }
+      for (const [x, y] of [[2, 13], [13, 14], [4, 15], [11, 15]]) p.put(x, y, '#a07838');
+    },
+    bandera(p) { // a little red flag on a stick (the top of the sandcastle)
+      p.rect(4, 1, 1, 15, '#7a4a20'); p.tri(5, 1, 5, 8, 14, 4.5, '#e83a30'); p.put(6, 3, '#ff8070'); p.put(7, 3, '#ff8070'); p.put(4, 0, '#f8d030');
+    },
+    rocas(p) { // wet rocks and a tide pool (where the crabs and the octopus live)
+      p.ell(8, 12, 7.5, 3.4, '#58b8e0'); p.ell(8, 12, 5.5, 2, '#88d8f0');
+      p.ell(4, 7.5, 3.6, 3, '#6a6a7c'); p.ell(11, 6, 4.4, 3.6, '#7a7a8c'); p.shade(11, 6, 4.4, '#4a4a58'); p.shade(4, 7.5, 3.6, '#4a4a58');
+      p.put(10, 4, '#b8b8c8'); p.put(3, 6, '#b8b8c8'); p.put(13, 7, '#e8e0d0'); p.put(6, 9, '#3a8a40'); p.put(14, 9, '#3a8a40');
+    },
     granja(p) {
       p.tri(0, 7, 16, 7, 8, 1, '#c03028'); p.rect(2, 7, 12, 8, '#d84030'); p.rect(2, 14, 12, 1, '#a02820');
       p.rect(5, 9, 6, 6, '#f8f0e0'); for (let i = 0; i < 6; i++) { p.put(5 + i, 9 + i, '#f8f0e0'); }

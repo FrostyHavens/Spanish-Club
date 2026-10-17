@@ -26,9 +26,12 @@
     cosas: { name: 'En la plaza y el parque', en: 'In the plaza and the park' },
     sentir: { name: 'Así me siento', en: 'Feelings' },
     numeros: { name: 'Los números', en: 'Numbers' },
+    // the open world's zones (docs/WORLD_PLAN.md): each zone's own pages
+    playa: { name: 'La playa', en: 'The beach' },
+    mar: { name: 'En el mar', en: 'In the sea' },
   };
   // the notebook's page order: roughly the order the pages appear in the story
-  C.topicOrder = ['saludos', 'mascota', 'animales', 'sonidos', 'comida', 'colores', 'granja', 'pueblo', 'cosas', 'sentir', 'numeros'];
+  C.topicOrder = ['saludos', 'mascota', 'animales', 'sonidos', 'comida', 'colores', 'granja', 'pueblo', 'cosas', 'sentir', 'numeros', 'playa', 'mar'];
 
   C.words = {
     // ---- Saludos ----
@@ -115,6 +118,25 @@
     ocho: { es: 'ocho', en: 'eight', topic: 'numeros', icon: 'diez', n: 8 },
     nueve: { es: 'nueve', en: 'nine', topic: 'numeros', icon: 'diez', n: 9 },
     diez: { es: 'diez', en: 'ten', topic: 'numeros', icon: 'diez', n: 10 },
+    // ---- La playa (content/es/zone-playa.js): the sun, the sand and the sea; Mexican Spanish ----
+    mar: { es: 'el mar', en: 'the sea', topic: 'playa', icon: 'mar' },
+    arena: { es: 'la arena', en: 'the sand', topic: 'playa', icon: 'arena' }, // (shared with El parque de juegos: met in whichever comes first)
+    ola: { es: 'la ola', en: 'the wave', topic: 'playa', icon: 'ola', pl: 'olas', alt: 'olita / las olas' },
+    sol: { es: 'el sol', en: 'the sun', topic: 'playa', icon: 'solgafas', alt: 'sol / solecito' }, // (its own picture: a sun in sunglasses; buenos días is the plain sun)
+    concha: { es: 'la concha', en: 'the seashell', topic: 'playa', icon: 'concha', pl: 'conchas', alt: 'conchita / caracola' },
+    cubeta: { es: 'la cubeta', en: 'the pail', topic: 'playa', icon: 'cubetaplaya', alt: 'cubetita / balde / cubo' },
+    castillo: { es: 'el castillo', en: 'the sandcastle', topic: 'playa', icon: 'castillo', alt: 'castillo de arena / castillito' },
+    helado: { es: 'el helado', en: 'the ice cream', topic: 'playa', icon: 'helado', pl: 'helados', alt: 'heladito / nieve' },
+    caliente: { es: 'caliente', en: 'hot', topic: 'playa', icon: 'caliente', alt: 'calor / hace calor / tengo calor / qué calor' },
+    // ---- En el mar: the beach's animals (the album) and swimming ----
+    cangrejo: { es: 'el cangrejo', en: 'the crab', topic: 'mar', icon: 'cangrejo', pl: 'cangrejos', alt: 'cangrejito' },
+    estrellamar: { es: 'la estrella de mar', en: 'the starfish', topic: 'mar', icon: 'estrellamar', pl: 'estrellas de mar', alt: 'estrella / estrellita de mar / estrellita' },
+    tortuga: { es: 'la tortuga', en: 'the turtle', topic: 'mar', icon: 'tortuga', pl: 'tortugas', alt: 'tortuguita / tortuguitas' },
+    gaviota: { es: 'la gaviota', en: 'the seagull', topic: 'mar', icon: 'gaviota', pl: 'gaviotas' },
+    nadar: { es: 'nadar', en: 'to swim', topic: 'mar', icon: 'nadar', alt: 'nada / nadan / a nadar / nadando' },
+    medusa: { es: 'la medusa', en: 'the jellyfish', topic: 'mar', icon: 'medusa', pl: 'medusas', alt: 'aguamala' },
+    delfin: { es: 'el delfín', en: 'the dolphin', topic: 'mar', icon: 'delfin', pl: 'delfines' },
+    pulpo: { es: 'el pulpo', en: 'the octopus', topic: 'mar', icon: 'pulpo', pl: 'pulpos', alt: 'pulpito' },
   };
   C.numberWords = ['uno', 'dos', 'tres', 'cuatro', 'cinco'];
   C.numberWords10 = ['uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'];
@@ -132,6 +154,8 @@
     cosas: { topic: 'cosas', words: ['banco', 'fuente', 'flor', 'arbol'] },
     sentir: { topic: 'sentir', words: ['bien', 'cansado', 'feliz', 'triste'] },
     numeros: { topic: 'numeros', words: ['uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'] },
+    playa: { topic: 'playa', words: ['mar', 'concha', 'sol', 'caliente', 'helado', 'arena', 'cubeta', 'castillo', 'ola'] },
+    mar: { topic: 'mar', words: ['cangrejo', 'estrellamar', 'tortuga', 'gaviota', 'nadar', 'medusa', 'delfin', 'pulpo'] },
   };
   C.pageOrder = C.topicOrder.slice();
   // where each page's puzzle sparkle sits (maps.js reads this): map -> 'x,y' -> page
@@ -142,6 +166,7 @@
     biblioteca: { '2,1': 'pueblo' },
     escuela: { '3,1': 'sentir' },
     granja: { '6,2': 'sonidos' }, // (inside the barn: what do the animals say?)
+    playa: { '21,7': 'playa', '12,10': 'mar' }, // (La playa: by the lifeguard's tower, and in the middle of the beach)
   };
 
   // ---------- the 21 chapters, in order (docs/CURRICULUM.md section 4) ----------

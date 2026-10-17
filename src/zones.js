@@ -18,7 +18,8 @@
 // A map can carry (in its G.maps definition, read here):
 //   zone: id (zone maps) or path: id (the path map leading to that zone),
 //   posts: [{ at: [x, y], zone: 'playa', dir: 'left' }] (a signpost with the zone's picture and an arrow; tap: its name),
-//   dogSpots: [{ id, at: [x, y], act: 'dig' | 'splash' | 'sniff' | 'roll', gives: 'hueso' | 'palo' | ..., every: 'day' | s }]
+//   dogSpots: [{ id, at: [x, y], act: 'dig' | 'splash' | 'sniff' | 'roll' | 'chase', gives: 'hueso' | 'palo' | ..., col, every: 'day' | s,
+//              kind (chase: the animal he runs at, e.g. 'gaviota': it flies off) }]
 //     (the dog's thing to do there: a paw-print bubble; tap it: he runs over and digs, splashes, sniffs or rolls, and
 //      sometimes leaves something to pick up (carry.js). Every zone has one: the dog always has something to do)
 //   indoor: true (no bus driving in: a ride from the menu just fades)
@@ -35,6 +36,8 @@
   const Z = G.zones = {}, T = G.TILE;
   const TT = (t, en) => ({ t, en });
   Z.LIST = [];
+  // a zone's own ghost-hand demos (src/demo.js): { kind, find(f) -> [x, y] tile to tap, or null } (once each, saved)
+  Z.demos = [];
   Z.add = function (def) {
     Z.LIST = Z.LIST.filter(z => z.id !== def.id).concat([def]);
     for (const m of def.maps || []) if (G.maps[m]) G.maps[m].zone = def.id;
@@ -141,6 +144,18 @@
   // ---------- the dog's thing to do in each zone ----------
   function* dogRun(f, sp) {
     const n = G.pet.npc(f), K = G.chapters.K, [sx, sy] = sp.at;
+    if (sp.act === 'chase') { // he races at the nearest animal of sp.kind (the beach's gulls) and it flies off; he barks, hops, comes back
+      const a = G.animals && G.animals.find(sp.kind, f), tx = a ? Math.floor(a.x / T) : sx, ty = a ? Math.floor((a.y - 4) / T) : sy;
+      G.pet.sound('bark'); K.puff('ex', n.x * T + 12, n.y * T - 4, { life: 30 });
+      yield* K.walk(f, n, tx, ty, 5);
+      if (a && G.animals.takeOff) G.animals.takeOff(a);
+      if (a) G.animals.cry(sp.kind);
+      G.pet.sound('bark'); yield* G.pet.play('jump'); G.pet.sound('bark');
+      st().dog[sp.id] = { d: day(), t: clock() };
+      K.heart(f, n); if (G.hearts) G.hearts.add('canelo', 1, 'care');
+      if (G.carry && G.carry.bump) G.carry.bump('dog');
+      G.st.autosave(); yield 20; return;
+    }
     const side = [[sx - 1, sy], [sx + 1, sy], [sx, sy + 1], [sx, sy - 1]].find(([x, y]) => !f.blocked(x, y, n) && !f.exitAt(x, y)) || [sx, sy + 1];
     G.pet.sound('bark'); K.puff('ex', n.x * T + 12, n.y * T - 4, { life: 30 });
     yield* K.walk(f, n, side[0], side[1], 4);
@@ -267,6 +282,7 @@
       if (sp.act === 'dig' || !sp.act) { ctx.fillStyle = '#7a4a20'; ctx.fillRect(x + 6, y + 14, 12, 4); ctx.fillStyle = '#a06a34'; ctx.fillRect(x + 8, y + 12, 8, 3); }
       else if (sp.act === 'splash') { ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(x + 12, y + 14, 8 + (f.t >> 3) % 3, 3, 0, 0, Math.PI * 2); ctx.stroke(); }
       else if (sp.act === 'roll') { ctx.fillStyle = '#ffffff'; ctx.fillRect(x + 4, y + 13, 16, 6); ctx.fillStyle = '#d8e8f8'; ctx.fillRect(x + 6, y + 17, 12, 2); }
+      else if (sp.act === 'chase') { ctx.fillStyle = '#ffffff'; ctx.fillRect(x + 6, y + 15, 4, 1); ctx.fillRect(x + 7, y + 14, 2, 1); ctx.fillStyle = '#c8d0dc'; ctx.fillRect(x + 13, y + 17, 5, 1); ctx.fillRect(x + 15, y + 16, 2, 1); } // two feathers on the sand
       else if (sp.act === 'sniff') { ctx.fillStyle = '#5a3818'; ctx.fillRect(x + 3, y + 12, 18, 6); ctx.fillStyle = '#8a5a2c'; ctx.fillRect(x + 4, y + 13, 16, 3); ctx.fillStyle = '#c89a60'; ctx.fillRect(x + 18, y + 13, 3, 4); }
     }
   };

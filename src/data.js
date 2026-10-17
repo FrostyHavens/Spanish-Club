@@ -100,6 +100,20 @@
     lola: { name: 'Lola',
       portrait: { body: 'halfling', skin: '#d8a078', hair: '#7a3a18', hairStyle: 'ponytail', eyes: '#302010', head: 'hat', headColor: '#e8b040', outfit: '#3a9a58', trim: '#f8e8b0', age: 'young', face: 'round', lashes: true, bg: '#3a8a6a' },
       map: { body: 'halfling', skin: '#d8a078', hair: '#7a3a18', hairStyle: 'ponytail', head: 'hat', headColor: '#e8b040', outfit: '#3a9a58', trim: '#f8e8b0', eyes: '#302010' } },
+    // La playa (content/es/zone-playa.js): Don Paco the fisherman (a straw hat, a white beard), Marina the lifeguard
+    // (red, a white cap), Doña Nieves with her ice-cream cart (pink, an apron), Tere who builds sandcastles (a sun hat)
+    paco: { name: 'Don Paco',
+      portrait: { body: 'human', skin: '#c88a60', hair: '#e8e8e8', hairStyle: 'short', beard: '#f0f0f0', eyes: '#302010', head: 'hat', headColor: '#e8c870', outfit: '#2a5a9a', trim: '#f0f0f0', age: 'old', face: 'round', bg: '#2a6a9a' },
+      map: { body: 'human', skin: '#c88a60', hair: '#e8e8e8', hairStyle: 'short', beard: '#f0f0f0', head: 'hat', headColor: '#e8c870', outfit: '#2a5a9a', trim: '#f0f0f0', eyes: '#302010' } },
+    marina: { name: 'Marina',
+      portrait: { body: 'human', skin: '#b87850', hair: '#1a1010', hairStyle: 'ponytail', eyes: '#201008', head: 'bandana', headColor: '#f8f8f0', outfit: '#e03030', trim: '#f8f8f0', age: 'adult', face: 'soft', lashes: true, bg: '#e07038' },
+      map: { body: 'human', skin: '#b87850', hair: '#1a1010', hairStyle: 'ponytail', head: 'bandana', headColor: '#f8f8f0', outfit: '#e03030', trim: '#f8f8f0', eyes: '#201008' } },
+    nieves: { name: 'Doña Nieves',
+      portrait: { body: 'human', skin: '#e8b890', hair: '#6a3a20', hairStyle: 'curly', eyes: '#402010', outfit: '#f080b0', trim: '#ffffff', age: 'adult', face: 'round', lashes: true, bg: '#c05888' },
+      map: { body: 'human', skin: '#e8b890', hair: '#6a3a20', hairStyle: 'curly', outfit: '#f080b0', trim: '#ffffff', robe: true, eyes: '#402010' } },
+    tere: { name: 'Tere',
+      portrait: { body: 'halfling', skin: '#a87050', hair: '#201010', hairStyle: 'braid', eyes: '#201008', head: 'hat', headColor: '#68c8e8', outfit: '#f8c830', trim: '#ffffff', age: 'young', face: 'round', lashes: true, bg: '#3a9ab8' },
+      map: { body: 'halfling', skin: '#a87050', hair: '#201010', hairStyle: 'braid', head: 'hat', headColor: '#68c8e8', outfit: '#f8c830', trim: '#ffffff', eyes: '#201008' } },
     canelo: { name: 'Canelo',
       map: { body: 'wolf', outfit: '#b87038', trim: '#f0d8b0', eyes: '#201008' } },
   };

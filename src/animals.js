@@ -57,8 +57,17 @@
   //   G.animals.addKind('cangrejo', { word: 'cangrejo', sound: null, cry: '¡Clic, clic!', speed: 0.3,
   //     spr: { pal: { r: '#e04030', e: '#101010' }, stand: ['..r.r..', ...], walk: [...] },
   //     sfx: () => {...} /* or omit: a soft chirp */ });
+  // Generic behaviours for a zone's animals (o.move; 2026-10-17, La playa), so a zone needs no case of its own:
+  //   'walk' (the default: walk about and stand, frames stand / walk), 'scuttle' (a crab: quick sideways dashes, snaps
+  //   its claws (frame snap), runs from you), 'fly' (a gull: walks and pecks on the ground, takes off when you or the dog
+  //   come near, flaps about high up (frames fly / fly2) and lands somewhere else), 'drift' (a jellyfish: drifts slowly
+  //   on the water, pulsing (frame pulse)), 'leap' (a dolphin: only its fin shows as it swims (frame fin), now and then it
+  //   leaps out in a big arc (frames rise / dive)), 'still' (a starfish, an octopus: stays put, its frame alt now and
+  //   then), 'crawl' (a turtle: plods slowly (frames walk / walk2), pulls its head in when tapped (frame hide)).
+  //   o.on: the tile codes it lives on (default the land: '.o,=pyz'; e.g. 's' sand, '-~w' water), o.water: drawn flat
+  //   on the water / ground with the ducks (not sorted in with the people), o.shadow: its shadow's width in px.
   AN.addKind = function (id, o) {
-    AN.KINDS[id] = { word: o.word || id, sound: o.sound || null, cry: o.cry || null, speed: o.speed, order: ORDER.length };
+    AN.KINDS[id] = { word: o.word || id, sound: o.sound || null, cry: o.cry || null, speed: o.speed, order: ORDER.length, move: o.move || 'walk', on: o.on || null, water: !!o.water, shadow: o.shadow || 7 };
     if (o.spr) SPR[id] = o.spr;
     CRY[id] = o.sfx || (() => tone('triangle', 900, 1200, 0.08, 0.06, 0));
     if (!ORDER.includes(id)) ORDER = ORDER.concat([id]);
@@ -161,6 +170,7 @@
     gato() { if (G.ambient && G.ambient.sfx) G.ambient.sfx.meow(); },
     perro() { if (G.ambient && G.ambient.sfx) G.ambient.sfx.yip(); },
   };
+  AN.tone = tone; AN.noise = noise; // (a zone's animal cries: AN.addKind o.sfx)
   AN.cry = kind => { try { (CRY[kind] || (() => { }))(); } catch (e) { } };
 
   // ---------- the shared reaction: name it, record it ----------
@@ -201,11 +211,12 @@
           add(z, c.kind, px, py, { ground: [[x, y]], tint: i, pin: [px, py], perched: true, flip: (i & 1) === 1 });
         }
       } else {
-        const ground = tilesIn(f, r, (ch, x, y) => LAND.includes(ch) && !f.exitAt(x, y));
+        const K = AN.KINDS[c.kind] || {}, on = c.on || K.on || LAND;
+        const ground = tilesIn(f, r, (ch, x, y) => on.includes(ch) && !f.exitAt(x, y));
         if (!ground.length) continue;
         for (let i = 0; i < (c.n || 1); i++) {
           const [x, y] = ground[ri(ground.length)];
-          add(z, c.kind, x * T + 4 + rnd(16), y * T + 12 + rnd(10), { ground, tint: c.tint != null ? c.tint : i });
+          add(z, c.kind, x * T + 4 + rnd(16), y * T + 12 + rnd(10), { ground, tint: c.tint != null ? c.tint : i, t: 20 + ri(200) });
         }
       }
     }
@@ -215,6 +226,7 @@
     z.list.push(a); return a;
   }
   const onTile = (a) => [Math.floor(a.x / T), Math.floor(a.y / T)];
+  const flat = a => !!(AN.KINDS[a.kind] || {}).water; // (a zone's water animal: drawn on the water, under the people)
 
   // ---------- one tick per game frame ----------
   function sync(f) {
@@ -320,8 +332,10 @@
         }
         break;
       }
-      default: { // a zone's own animal (AN.addKind): walk about and stand, like the hens
-        if (a.st === 'walk') { if (goToward(a, (AN.KINDS[a.kind] || {}).speed || 0.4)) { a.st = 'idle'; a.t = 30 + ri(90); } break; }
+      default: { // a zone's own animal (AN.addKind): its move (see addKind), or walk about and stand like the hens
+        const K = AN.KINDS[a.kind] || {}, mv = MOVES[K.move];
+        if (mv) { mv(f, a, K); break; }
+        if (a.st === 'walk') { if (goToward(a, K.speed || 0.4)) { a.st = 'idle'; a.t = 30 + ri(90); } break; }
         if (--a.t <= 0) { if (Math.random() < 0.6) { [a.tx, a.ty] = pickGround(a); a.st = 'walk'; } else { a.flip = !a.flip; a.t = 40 + ri(60); } }
         break;
       }
@@ -337,6 +351,65 @@
       }
     }
   }
+  // ---------- the zone animals' generic moves (AN.addKind o.move) ----------
+  const onGround = (a, x, y) => a.ground.some(([gx, gy]) => gx === Math.floor(x / T) && gy === Math.floor(y / T));
+  const dogNear = (f, a, r) => { const n = G.pet && G.pet.npc && G.pet.npc(f); return !!n && !n.hidden && Math.hypot(n.x * T + 12 + (n.ox || 0) - a.x, n.y * T + 18 + (n.oy || 0) - a.y) < r; };
+  const youNear = (f, a, r) => Math.hypot(f.player.x * T + 12 + (f.player.ox || 0) - a.x, f.player.y * T + 18 + (f.player.oy || 0) - a.y) < r;
+  function takeOff(a) { if (a.st === 'fly') return; a.st = 'fly'; a.up = 1; const [x, y] = pickGround(a); a.tx = x; a.ty = y; a.flip = a.tx < a.x; a.t = 0; }
+  const MOVES = {
+    scuttle(f, a, K) { // quick sideways dashes; a claw snap; away from you when you come close
+      if (a.st === 'walk') { if (goToward(a, a.fast ? 1.3 : K.speed || 0.7)) { a.st = 'idle'; a.fast = 0; a.t = 30 + ri(90); } return; }
+      if (a.st === 'snap') { if (--a.t <= 0) { a.st = 'idle'; a.t = 40 + ri(80); } return; }
+      const near = (youNear(f, a, 30) || dogNear(f, a, 30)) && !a.react;
+      if (near || --a.t <= 0) {
+        if (!near && Math.random() < 0.35) { a.st = 'snap'; a.t = 36; return; }
+        const px = f.player.x * T + 12, d = near ? (a.x >= px ? 1 : -1) : (ri(2) ? 1 : -1);
+        for (const k of [1, -1]) { const tx = a.x + d * k * (near ? 30 : 10 + rnd(22)); if (onGround(a, tx, a.y)) { a.tx = tx; a.ty = a.y; a.st = 'walk'; a.fast = near ? 1 : 0; return; } }
+        [a.tx, a.ty] = pickGround(a); a.st = 'walk'; a.t = 60;
+      }
+    },
+    fly(f, a, K) { // on the ground it walks and pecks; near you or the dog (or now and then) it takes off, flaps about, lands
+      if (a.st === 'fly') {
+        a.t++;
+        const high = a.t < 50 ? Math.min(30, a.z + 1.2) : null;
+        if (high != null) a.z = high;
+        const done = goToward(a, 1.1);
+        if (a.t >= 50 && done) { a.z = Math.max(0, a.z - 0.8); if (a.z <= 0) { a.z = 0; a.st = 'idle'; a.t = 60 + ri(120); } }
+        else if (a.t > 200 && done) { a.z = Math.max(0, a.z - 0.8); }
+        if (a.t % 260 === 0 && visible(f, a)) AN.cry(a.kind);
+        return;
+      }
+      if ((youNear(f, a, 34) || dogNear(f, a, 44)) && !a.react) { takeOff(a); if (visible(f, a)) AN.cry(a.kind); return; }
+      if (a.st === 'walk') { if (goToward(a, K.speed || 0.35)) { a.st = 'idle'; a.t = 30 + ri(80); } return; }
+      if (a.st === 'peck') { if (--a.t <= 0) { a.st = 'idle'; a.t = 30 + ri(60); } return; }
+      if (--a.t <= 0) { const r = Math.random(); if (r < 0.12) takeOff(a); else if (r < 0.45) { a.st = 'peck'; a.t = 30; } else if (r < 0.85) { [a.tx, a.ty] = pickGround(a); a.st = 'walk'; } else { a.flip = !a.flip; a.t = 40; } }
+    },
+    drift(f, a, K) { // drifting on the water, pulsing
+      a.z = Math.sin(a.age / 22) * 1.5 + 1.5;
+      if (a.st === 'walk') { if (goToward(a, a.fast ? 0.6 : K.speed || 0.12)) { a.st = 'idle'; a.fast = 0; a.t = 60 + ri(160); } return; }
+      if (--a.t <= 0) { [a.tx, a.ty] = pickGround(a); a.st = 'walk'; }
+    },
+    leap(f, a, K) { // only the fin shows while it swims; now and then it leaps out in a big arc
+      if (a.st === 'jump') {
+        const s = ++a.h / 70; a.z = Math.sin(Math.min(1, s) * Math.PI) * 34; a.x = a.hx0 + (a.flip ? -1 : 1) * 46 * Math.min(1, s);
+        if (s >= 1) { a.z = 0; a.st = 'idle'; a.t = 160 + ri(260); f.zoo.fx.push({ k: 'splash', x: a.x, y: a.y - 2, t: 0, life: 24 }); f.zoo.fx.push({ k: 'ring', x: a.x, y: a.y, t: 0, life: 34 }); }
+        return;
+      }
+      if (a.st === 'walk') { if (goToward(a, K.speed || 0.5)) { a.st = 'idle'; a.t = 40 + ri(80); } }
+      else if (--a.t <= 0) { if (ri(3)) { [a.tx, a.ty] = pickGround(a); a.st = 'walk'; } else AN.leap(a, f); }
+      if (a.age % 50 === 0) f.zoo.fx.push({ k: 'ring', x: a.x, y: a.y, t: 0, life: 30 });
+    },
+    still(f, a) { // stays put; its other frame now and then
+      if (--a.t <= 0) { a.st = a.st === 'alt' ? 'idle' : 'alt'; a.t = a.st === 'alt' ? 30 + ri(30) : 60 + ri(140); }
+    },
+    crawl(f, a, K) { // plods slowly; its head in for a while when tapped
+      if (a.st === 'hide') { if (--a.t <= 0) { a.st = 'idle'; a.t = 40; } return; }
+      if (a.st === 'walk') { if (goToward(a, K.speed || 0.14)) { a.st = 'idle'; a.t = 80 + ri(160); } return; }
+      if (--a.t <= 0) { if (Math.random() < 0.7) { [a.tx, a.ty] = pickGround(a); a.st = 'walk'; } else { a.flip = !a.flip; a.t = 60; } }
+    },
+  };
+  AN.leap = function (a, f) { if (a.st === 'jump') return; f = f || G.field; a.st = 'jump'; a.h = 0; a.hx0 = a.x; const tx = a.x + (a.flip ? -46 : 46); if (!onGround(a, tx, a.y)) a.flip = !a.flip; a.hx0 = a.x; f.zoo.fx.push({ k: 'splash', x: a.x, y: a.y - 2, t: 0, life: 20 }); if (visible(f, a)) AN.cry(a.kind); };
+  AN.takeOff = takeOff;
   function startHop(a, dist, dir) {
     const d = dir || (ri(2) ? 1 : -1), dy = rnd(8) - 4;
     let tx = a.x + d * dist, ty = a.y + dy;
@@ -358,6 +431,15 @@
     else if (a.kind === 'conejo') { a.hops = 1; a.st = 'idle'; startHop(a, 4, a.flip ? -1 : 1); a.tx = a.x; a.ty = a.y; }
     else if (a.kind === 'caballo') { a.st = 'idle'; a.t = 70; a.react = 60; }
     else if (a.kind === 'gallina' || a.kind === 'pato') { if (a.st !== 'swim') a.st = 'idle'; a.t = Math.max(a.t, 40); }
+    else { // a zone's animal: its own move's reaction
+      const mv = (AN.KINDS[a.kind] || {}).move;
+      if (mv === 'fly') takeOff(a);
+      else if (mv === 'scuttle') { a.st = 'snap'; a.t = 40; }
+      else if (mv === 'leap') AN.leap(a, f);
+      else if (mv === 'crawl') { a.st = 'hide'; a.t = 90; }
+      else if (mv === 'still') { a.st = 'alt'; a.t = 40; }
+      else if (mv === 'drift') { const [x, y] = pickGround(a); a.tx = x; a.ty = y; a.st = 'walk'; a.fast = 1; }
+    }
     f.zoo.fx.push({ k: 'heart', x: a.x + (a.flip ? -8 : 8), y: a.y - frameOf(a).height + 4, t: 0, life: 50 });
   }
   // the animal under a tap (world px), nearest first; generous areas for small fingers
@@ -394,7 +476,18 @@
       case 'cabra': fr = R ? 'hop' : a.st === 'graze' ? 'graze' : 'stand'; break;
       case 'rana': fr = a.st === 'hop' ? 'hop' : a.st === 'croak' && (a.t >> 3) & 1 ? 'croak' : 'sit'; break;
       case 'pez': fr = a.st === 'jump' ? 'jump' : 'swim'; break;
-      default: fr = a.st === 'walk' && S.walk && (a.age >> 3) & 1 ? 'walk' : S.stand ? 'stand' : Object.keys(S).find(k => k !== 'pal');
+      default: {
+        const mv = (AN.KINDS[a.kind] || {}).move;
+        if (mv === 'fly' && a.st === 'fly' && a.z > 2) fr = (a.age >> 3) & 1 ? 'fly' : 'fly2';
+        else if (mv === 'fly' && a.st === 'peck' && S.peck && (a.t >> 3) & 1) fr = 'peck';
+        else if (mv === 'leap') fr = a.st === 'jump' ? (a.h < 35 ? 'rise' : 'dive') : 'fin';
+        else if (mv === 'drift') fr = (a.age >> 4) & 1 || a.fast ? 'pulse' : 'stand';
+        else if (mv === 'crawl') fr = a.st === 'hide' ? 'hide' : a.st === 'walk' && (a.age >> 4) & 1 ? 'walk2' : 'walk';
+        else if (mv === 'still') fr = a.st === 'alt' || (R && (a.react >> 3) & 1) ? 'alt' : 'stand';
+        else if (mv === 'scuttle') fr = a.st === 'snap' || R ? ((a.t >> 3) & 1 ? 'snap' : 'stand') : a.st === 'walk' && (a.age >> 2) & 1 ? 'walk' : 'stand';
+        else fr = a.st === 'walk' && S.walk && (a.age >> 3) & 1 ? 'walk' : S.stand ? 'stand' : Object.keys(S).find(k => k !== 'pal');
+        if (!S[fr]) fr = S.stand ? 'stand' : Object.keys(S).find(k => k !== 'pal');
+      }
     }
     const tint = a.tint && TINT[a.kind], pal = tint ? Object.assign({}, S.pal, tint) : S.pal;
     return pix((a.baby ? 'patito' : a.kind) + fr + (tint ? 'w' : ''), S[fr], pal, a.flip);
@@ -425,10 +518,10 @@
     }
     for (const a of z.list) {
       if (hid(f, a)) continue;
-      if (a.kind === 'pato' || a.kind === 'rana' || (a.kind === 'pez' && a.st !== 'jump')) {
+      if (a.kind === 'pato' || a.kind === 'rana' || (a.kind === 'pez' && a.st !== 'jump') || flat(a)) {
         if (a.kind === 'pez') { ctx.globalAlpha = 0.85; drawOne(ctx, a, cx, cy); ctx.globalAlpha = 1; } else drawOne(ctx, a, cx, cy);
       } else if (a.kind !== 'pez' && !a.perched) { // a soft shadow under land animals
-        const w = a.kind === 'caballo' ? 16 : a.kind === 'cabra' ? 10 : 7;
+        const w = a.kind === 'caballo' ? 16 : a.kind === 'cabra' ? 10 : (AN.KINDS[a.kind] || {}).shadow || 7;
         ctx.fillStyle = 'rgba(16,28,8,0.3)'; ctx.fillRect(Math.round(a.x - w / 2 - cx), Math.round(a.y - cy) - 1, w, 2);
       }
     }
@@ -436,8 +529,8 @@
   // land animals and the jumping fish, for field.js to draw in order with the people: [{sy, draw(ctx, cx, cy)}]
   AN.ents = function (f) {
     const z = f.zoo; if (!z) return [];
-    return z.list.filter(a => a.kind !== 'pato' && a.kind !== 'rana' && (a.kind !== 'pez' || a.st === 'jump') && !hid(f, a))
-      .map(a => ({ sy: a.kind === 'pez' ? a.y + 8 : a.y - 21, draw: (ctx, cx, cy) => drawOne(ctx, a, cx, cy) }));
+    return z.list.filter(a => a.kind !== 'pato' && a.kind !== 'rana' && (a.kind !== 'pez' || a.st === 'jump') && !flat(a) && !hid(f, a))
+      .map(a => ({ sy: a.kind === 'pez' ? a.y + 8 : a.y - 21 + (a.z > 4 ? a.z + 30 : 0), draw: (ctx, cx, cy) => drawOne(ctx, a, cx, cy) })); // (a gull up in the air: over the people)
   };
   // hearts and splashes above everything on the map
   AN.drawTop = function (f, ctx) {
