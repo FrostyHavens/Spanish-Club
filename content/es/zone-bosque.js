@@ -418,7 +418,7 @@
     if (!G.state) return;
     const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
     // night in the forest: a deep blue dusk over everything (the fireflies glow through it); the cave is always dark
-    const dark = f.mapId === 'bosque_cueva' ? 0.62 : f.mapId === 'bosque' ? (G.day ? G.day.glow() : 0) * 0.55 : 0;
+    const dark = f.mapId === 'bosque_cueva' ? 0.62 : f.mapId === 'bosque' ? (G.day ? G.day.glow() : 0) * 0.68 : 0;
     if (dark > 0) {
       ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = dark; ctx.fillStyle = f.mapId === 'bosque_cueva' ? '#302848' : '#283868'; ctx.fillRect(0, 0, G.W, G.H); ctx.restore();
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
@@ -668,13 +668,13 @@
     draw(ctx) {
       ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, G.W, G.H);
       const r = 62, cx = G.W / 2, cy = G.H / 2, k = Math.min(1, this.t / 20);
-      ctx.save(); ctx.beginPath(); ctx.arc(cx - 48, cy, r * k, 0, Math.PI * 2); ctx.arc(cx + 48, cy, r * k, 0, Math.PI * 2); ctx.clip();
+      ctx.fillStyle = '#202028'; ctx.beginPath(); ctx.arc(cx - 48, cy, r * k + 3, 0, Math.PI * 2); ctx.arc(cx + 48, cy, r * k + 3, 0, Math.PI * 2); ctx.fill(); // (the rims, under the view: no line across it)
+      ctx.save(); ctx.beginPath(); ctx.arc(cx - 48, cy, r * k, 0, Math.PI * 2); ctx.moveTo(cx + 48 + r * k, cy); ctx.arc(cx + 48, cy, r * k, 0, Math.PI * 2); ctx.clip();
       ctx.fillStyle = '#a8e0f8'; ctx.fillRect(0, 0, G.W, G.H); ctx.fillStyle = this.bg; ctx.fillRect(0, cy + 6, G.W, G.H);
       ctx.fillStyle = '#2b6a26'; for (let i = 0; i < 9; i++) { const x = i * 40 - 10; ctx.beginPath(); ctx.moveTo(x, cy + 8); ctx.lineTo(x + 18, cy - 40); ctx.lineTo(x + 36, cy + 8); ctx.fill(); }
       const bob = Math.round(Math.sin(this.t / 10) * 3), sway = Math.round(Math.sin(this.t / 23) * 6);
       G.drawIcon16(ctx, this.pic, cx - 40 + sway, cy - 36 + bob, 5);
       ctx.restore();
-      ctx.strokeStyle = '#202028'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(cx - 48, cy, r * k, 0, Math.PI * 2); ctx.stroke(); ctx.beginPath(); ctx.arc(cx + 48, cy, r * k, 0, Math.PI * 2); ctx.stroke();
     }
   }
   BQ.binoculars = (pic, bg) => { const w = new G.Wait(); G.push(new Binoculars(w, pic, bg || '#6cb83c')); return w; };
@@ -729,7 +729,7 @@
     maps: ['bosque', 'bosque_cueva', 'bosque_cabana'], path: 'camino_bosque',
     bus: { map: 'bosque', at: bus }, entry: { map: 'bosque', x: busIn[0], y: busIn[1], dir: 'down' },
     animals: KINDS, // the album page, in order
-    habitat: { ardilla: 'arbol', venado: 'flor', zorro: 'tronco', mapache: 'agua', erizo: 'hoja', oso: 'cueva', buho: 'arbol', luciernaga: 'cueva' },
+    habitat: { ardilla: 'arbol', venado: 'flor', zorro: 'tronco', mapache: 'agua', erizo: 'hoja', oso: 'mora', buho: 'arbol', luciernaga: 'cueva' },
     rare: { oso: 'cueva', buho: 'noche' },
     planned: 0,
     lola: lolaHere,

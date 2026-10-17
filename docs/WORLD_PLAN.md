@@ -96,14 +96,43 @@ tower, `8` ice-cream cart, `0` wet rocks.
 - **Also:** six hide-and-seek places (umbrellas, the castle, the rocks, a palm, the boat), two page puzzles, favours for
   Paco, Nieves and Marina (once Villa Sol's chapter 7 has opened favours), a new ghost-hand demo (`fillpail`).
 
-### El bosque (north) — woodland animals, big and small
-- **Words:** el bosque, el árbol (met in town), la hoja, el hongo, el tronco, la piña, grande, pequeño, la ardilla,
-  el zorro, el venado, el erizo, el búho, el oso, la cueva.
-- **People:** Elena the forest ranger (*la guardabosques*), with binoculars.
-- **Dog:** sniffs hollow logs (a stick, a bird flying out) — in the placeholder.
-- **Side quests:** pine cones for the squirrel (count), big or small? (sort the leaves, the animals), follow the tracks.
-- **Story:** the ranger's lost binoculars; the bear cub who can't find its mother (big / small).
-- **Album (7):** ardilla, zorro, venado, erizo, mapache, **búho** (rare: at night), **oso** (rare: only by the cave).
+### El bosque (north) — woodland animals, big and small — **BUILT** (2026-10-17, `content/es/zone-bosque.js`)
+One big map (40x30) and two small ones. A rock cliff along the top with a waterfall into a pond (a frog), a meadow
+(deer, rabbits), the bears' cave in a rock outcrop (top right, a path to it), a river across the middle with a little
+bridge on the main path and stepping stones further east, then the south woods: a clearing ringed by tall trees,
+Doña Lupe's log cabin with her blackberry bushes (left), a hollow log (right), groves of trees to wander in, the path in
+from Villa Sol at the bottom (18, 29) with the bus stop and the signpost. `bosque_cueva` (the cave inside: dark, glowing
+mushrooms, a pool, mama bear asleep, fireflies; always dim, a light around you) and `bosque_cabana` (Lupe's cabin: her
+oven, shelves, a bed; the pie cools on the table once baked). At night (`G.day.over()`) the forest goes dark blue,
+fireflies fill the clearing and an owl sits in a tall tree. New tiles in `src/tiles.js`: `(` / `)` a tall tree (crown
+over trunk; oak or pine by column; squirrels climb the trunks), `%` mushrooms (glowing teal in the cave), `*` blackberry
+bush, `_` hollow log, `#` rock cliff, `|` waterfall, `@` the cave's mouth (an exit), `:` stepping stones (walkable), `[`
+/ `]` log cabin wall and door, `{` / `}` cave floor and wall. `camino_bosque`'s north exit now lands at (18, 28).
+- **Words (17, two notebook pages):** *El bosque*: el bosque (id `elbosque`: the zone's picture is `bosque`), pequeño,
+  grande, la cueva, la bellota, la hoja, el tronco, la mora (alt *zarzamora*), el hongo. *Animales del bosque*
+  (`fauna`): el oso, la ardilla, el mapache, el venado, el zorro, el erizo, el búho (alt *tecolote*), la luciérnaga. El
+  árbol stays a town word (the trees say it). La piña was left out (in Mexico it is the pineapple).
+- **People:** Elena the ranger (a green hat, khaki: the story, her mushroom game), Doña Lupe (a grandma in a purple
+  shawl: her cabin, the blackberry pie, chapter 2); Lola and Nico as everywhere. None have hearts yet.
+- **Album (8):** ardilla (`climb`: dashes about, races up the nearest trunk when you come near, sits up there a while),
+  venado (`shy`: grazes, bounds away in leaps), zorro and mapache (`walk`, with a `react` frame: the fox sits, the
+  raccoon stands up), erizo (`crawl`: curls into a ball), **oso** (rare: only asleep in the cave; drawn at 2x, `scale`),
+  **búho** (rare: at night, perched in a tall tree), luciérnaga (`flit`, `glow`: in the cave any time, in the clearing at
+  night). Lola names an unmet one when it's tapped, as on the beach.
+- **Story (line `bosque`):** 1 *El osito perdido* (oso, pequeño, cueva, grande: a bear cub crying in the clearing; big
+  paw prints; the dog follows them over the bridge to the cave, the cub trots after you, mama bear comes out and stands
+  up BIG; they go home, and sleep in the cave afterwards), 2 *Las bellotas de la ardilla* (Lupe; ardilla, bellota,
+  hoja, erizo: five leaf piles in the clearing, three hide acorns, one a sleeping hedgehog), 3 *Los binoculares de
+  Elena* (tronco, mapache, venado, zorro: raccoon prints to the hollow log, the raccoon drops them; then look through
+  them: a full-screen binocular view, a deer, a fox).
+- **Side quests (`G.state.bosque`):** Lupe's blackberry pie (la canasta: tap four bushes, bring it back, she bakes; the
+  pie is yours: the dog eats it; daily), ¿grande o pequeño? (Elena, after chapter 1: four mushrooms, two big, two
+  little, "¡el grande!" / "¡el pequeño!", then "¿Cómo es?" with the mic; daily), Lola's leaves (verde, amarillo, rojo),
+  fireflies at night (Lola's jar: tap five, count them, let them go).
+- **Dog:** sniffs the hollow log (a stick), follows a trail of paw prints (new dog-spot act `trail`: an acorn at its
+  end), swims across the river for a stick (new act `swim`). He eats blackberries and pie.
+- **Also:** six hiding places (the squirrel's oak, the log, two blackberry bushes, a boulder by the cave, a tall tree), two
+  page puzzles (the clearing, the meadow), favours for Elena and Lupe, a ghost-hand demo (`pickberry`).
 
 ### El parque de juegos (west) — action verbs
 - **Words:** corre, salta (met as the dog's trick: reuse it), sube, baja, empuja, arriba, abajo, rápido, despacio, el
@@ -234,6 +263,16 @@ Files a zone step touches (and nothing else unless the engine truly needs it):
 - **`meetW(id, o)`** (`G.playa.meetW`): introduce a word if it isn't met, or ask it as a question if it was met in
   another zone: write every intro this way, since any zone can come first. Saved flags must not be `day()` (day 0 is
   falsy): store `true` or `{ d: day }`.
+- **From El bosque:** moves `climb` (o.trees, o.high), `shy`, `flit`; `o.glow` (a light around it), `o.scale` (a big
+  animal drawn at 2x), a `react` frame for plain walkers; dog-spot acts `trail` (`path: [[x, y], ...]`) and `swim` (`to:
+  [x, y]`, a stick thrown over water); `G.zones.meetW(id, o)` (the beach's meetW, shared: use it); a story spot on the
+  same tile as a dog's spot must win (the forest's `Z.search` wrapper defers to `G.chapters.spotAt`); a zone can darken
+  its maps at night in `drawTop` (multiply + 'lighter' glows: the forest, the cave); story-drawn sprites with a small
+  cached `spr(rows, pal)` helper (the cub, the leaf piles); a full-screen scene (`Binoculars`) for a looking moment.
+- **Pitfalls met here:** a mapgen block that replaces lines can silently drop later lines (flowers vanished once):
+  re-render the map (`G.drawTile` into a canvas) after every mapgen change; tiles whose look depends on their column
+  need `uniq: true` in `reg` (the tile cache key doesn't include x); `perch: 0` is falsy (use 1); "¡Nuevo animal!" now
+  waits (hidden, silent) while a menu or a talk is on top.
 - `G.chapters.allWrittenDone()` and the badge rows (Misiones, the diploma) are Villa Sol's line only; a zone's chapters
   get their badge card when done but aren't listed there yet (a later step could add a row per zone).
 - A zone's people talk: story, then their side quest, then `G.errands.talk` (presents, favours, "who'd love it"), then

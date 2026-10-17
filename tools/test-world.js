@@ -227,9 +227,9 @@ async function album(browser) {
     await g.ev(() => G.album()); await g.until(() => G.top().constructor.name === 'Album', null, 'the album');
     await g.frames(10); await g.shot('album_villa');
     check('album: a tab per zone (and Amigos)', await g.ev(() => G.top().tabs().join() === 'villa,playa,bosque,juegos,abuelos,montana,amigos'));
-    await g.tapRect(await g.ev(() => G.top().tabRect(2)));
-    check('album: a zone\'s tab opens its page: numbered "?" entries for animals still to come', await g.ev(() => G.top().zone === 'bosque' && G.top().ids().length === 7 && G.top().ids().every(id => id === null)));
-    await g.frames(6); await g.shot('album_bosque');
+    await g.tapRect(await g.ev(() => G.top().tabRect(3)));
+    check('album: a zone\'s tab opens its page: numbered "?" entries for animals still to come', await g.ev(() => G.top().zone === 'juegos' && G.top().ids().length === 7 && G.top().ids().every(id => id === null)));
+    await g.frames(6); await g.shot('album_juegos');
     await g.tapRect(await g.ev(() => G.top().tabRect(1)));
     check('album: a built zone\'s tab (La playa): its animals as silhouettes with a hint', await g.ev(() => G.top().zone === 'playa' && G.top().ids().length === 7 && G.top().ids().every(Boolean)));
     // a zone complete: "¡Completo!"
@@ -245,7 +245,7 @@ async function saves(browser) {
   const { ctx, g } = await open(browser, 'world-save', true);
   try {
     await g.ev(() => { localStorage.clear(); });
-    await fresh(g, { dog: 'Coco', map: 'bosque', x: 10, y: 11 });
+    await fresh(g, { dog: 'Coco', map: 'bosque', x: 18, y: 20 });
     await g.drive(() => G.top() === G.field && !G.field.locked && G.field.mapId === 'bosque', 'arriving');
     await g.ev(() => { G.zones.visit('villa'); G.state.world.want = 'montana'; G.st.begin(1); G.st.saveNow(); });
     await g.page.reload();

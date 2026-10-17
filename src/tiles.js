@@ -1843,17 +1843,20 @@
   // the rock cliff: blocks of warm grey stone, cracks, moss and grass along its top, a dark foot
   function cliffTile(b, I) {
     const n = I.n, rockN = c => c === '#' || c === '|' || c === '@' || c === 'T';
-    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) {
-      const bx = ((y / 6) | 0) & 1 ? x + 6 : x, blk = hsh((bx / 12) | 0, (y / 6) | 0, I.v + 4);
-      let c = blk < 0.33 ? FC.rock2 : blk < 0.66 ? FC.rock3 : FC.rock2;
-      if (y % 6 === 0 || bx % 12 === 0) c = FC.rock1;
-      else if (y % 6 === 1) c = blk < 0.5 ? FC.rock4 : FC.rock3;
-      if (hsh(x, y, I.v) < 0.04) c = FC.rock1;
-      b.set(x, y, c);
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) b.set(x, y, hsh(x >> 1, y >> 1, I.v + 2) < 0.5 ? FC.rock1 : FC.rock0);
+    // big rounded stones stacked into the rock face (they spill over the tile's edges a little: no seams)
+    const stones = [[4, 5, 6, 5], [15, 4, 7, 5], [9, 13, 7, 5.5], [21, 13, 5, 5], [3, 19, 5, 4.5], [14, 21, 7, 4.5]];
+    for (const [sx, sy, rx, ry] of stones) {
+      const ox = Math.round((hsh(sx, sy, I.v) - 0.5) * 3), oy = Math.round((hsh(sy, sx, I.v) - 0.5) * 2), cx = sx + ox, cy = sy + oy;
+      for (let y = Math.floor(cy - ry); y <= cy + ry; y++) for (let x = Math.floor(cx - rx); x <= cx + rx; x++) {
+        const dx = (x + 0.5 - cx) / rx, dy = (y + 0.5 - cy) / ry, d = dx * dx + dy * dy; if (d > 1) continue;
+        const l = -(dx * 0.6 + dy * 0.8) + (hsh(x, y, I.v + 5) - 0.5) * 0.35;
+        b.set(x, y, d > 0.8 && dx + dy > 0.2 ? FC.rock1 : l > 0.55 ? FC.rock4 : l > 0.05 ? FC.rock3 : FC.rock2);
+      }
     }
     if (!rockN(n[0])) { for (let x = 0; x < TS; x++) { const h = 2 + Math.floor(hsh(x >> 1, 3, I.v) * 3); for (let y = 0; y < h; y++) b.set(x, y, y === h - 1 ? FC.moss : (x + y) & 1 ? P.G4 : P.G3); } }
-    if (!rockN(n[4])) { for (let x = 0; x < TS; x++) { b.set(x, TS - 1, FC.rock0); b.set(x, TS - 2, FC.rock1); if ((x + I.v) % 5 === 0) b.set(x, TS - 3, FC.moss); } }
-    if (I.v % 3 === 0) { b.vl(9, 8, 14, FC.rock0); b.set(10, 15, FC.rock0); b.set(8, 7, FC.rock0); }
+    if (!rockN(n[4])) { for (let x = 0; x < TS; x++) { b.set(x, TS - 1, FC.rock0); if ((x + I.v) % 5 === 0) { b.set(x, TS - 2, FC.moss); b.set(x, TS - 3, FC.moss2); } } }
+    for (let i = 0; i < 3; i++) { const x = Math.floor(hsh(i, I.v, 17) * 22), y = 6 + Math.floor(hsh(I.v, i, 19) * 14); if (hsh(i, I.v, 23) < 0.5) { b.set(x, y, FC.moss); b.set(x + 1, y, FC.moss2); } }
   }
   // the waterfall: white water pouring down the rock, foam where it meets the pond
   function fallTile(b, I) {

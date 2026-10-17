@@ -376,6 +376,12 @@ for (x0, y0, w, h, dens) in [(1, 19, 11, 9, 0.5), (26, 13, 13, 15, 0.42), (1, 12
                 if rnd.random() < 0.3 and y + 1 < 29 and free(x, y + 1) and (x, y + 1) not in keep: m.put(x, y, '('); m.put(x, y + 1, ')')
                 else: m.put(x, y, 'f')
 m.put(36, 11, 'w')
+# flowers in the meadow and the clearing, mushrooms here and there (off the story's and the games' places)
+busy = {(15, 17), (17, 21), (21, 17), (11, 16), (22, 21), (20, 20), (22, 20), (21, 21), (23, 21), (16, 15), (22, 6), (14, 16), (11, 6), (27, 17), (9, 24), (21, 26), (18, 16)}
+for x, y in [(12, 5), (15, 4), (20, 7), (23, 4), (16, 8), (11, 7), (15, 15), (21, 16), (16, 20), (20, 18), (14, 18), (25, 25), (9, 19), (17, 14), (22, 18), (15, 19), (13, 15), (21, 14), (24, 20), (16, 23), (20, 24), (23, 25), (12, 9), (25, 4), (30, 7), (6, 18), (9, 16)]:
+    if m.g[y][x] == '.' and (x, y) not in busy: m.put(x, y, 'o')
+for x, y in [(13, 8), (21, 4), (34, 7), (26, 15), (11, 21), (33, 18), (4, 18), (29, 22), (16, 14), (22, 15), (20, 21), (14, 20), (23, 19), (19, 7), (8, 22)]:
+    if m.g[y][x] == '.' and (x, y) not in busy: m.put(x, y, '%')
 m.mark('in', 18, 28); m.mark('south', 18, 29); m.mark('post', 19, 27); m.mark('bus', 16, 26); m.mark('busIn', 16, 27)
 m.mark('lola', 20, 25); m.mark('nico', 25, 23); m.mark('elena', 20, 13); m.mark('lupe', 8, 17)
 m.mark('dog', 30, 19); m.mark('rio', 25, 12); m.mark('rioFar', 25, 8); m.mark('rastro', 27, 22)

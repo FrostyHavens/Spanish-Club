@@ -2,6 +2,36 @@
 
 A running record of what changed in Club de Español and why. Newest first.
 
+## 2026-10-17 — El bosque, the second zone (step 3 of the open world)
+The forest north of Villa Sol, following "How to build a zone" (docs/WORLD_PLAN.md); it only uses universal words and
+its own, so it can be the first place a child explores. The parent asked for wonder, adventure and many animals.
+- **The maps** (`tools/mapgen.py`): a 40x30 forest (a rock cliff and a waterfall into a pond, a meadow, the bears' cave,
+  a river with a little bridge and stepping stones, a clearing ringed by tall trees, Doña Lupe's log cabin and her
+  blackberry bushes, a hollow log, groves), the cave inside (dark, glowing mushrooms, fireflies, mama bear asleep) and
+  the cabin inside. Twelve new tiles (`src/tiles.js`): tall trees over two tiles (oak or pine), mushrooms, berry bush,
+  hollow log, rock cliff, waterfall, the cave's mouth, stepping stones, log cabin wall and door, cave floor and walls.
+  At night the forest goes dark blue with fireflies glowing; the cave is always dim with a light around you.
+- **17 words, two pages** (`content/es/words.js`, pictures in `src/icons.js`): el bosque, pequeño, grande, la cueva, la
+  bellota, la hoja, el tronco, la mora, el hongo; el oso, la ardilla, el mapache, el venado, el zorro, el erizo, el
+  búho, la luciérnaga. Each met in a one-unknown puzzle (`G.zones.meetW`) and used right after (many mic questions:
+  "¿Cómo es?" big or small, "¿Cuántas?").
+- **Eight album animals**, new generic moves (`src/animals.js`): squirrels `climb` up the trunks when you come near,
+  deer are `shy` and bound away, fireflies `flit` with a `glow`; the fox sits and the raccoon stands up when tapped
+  (`react` frames); the hedgehog curls up; mama bear (`scale: 2`) sleeps in the cave (rare), the owl only at night.
+- **People:** Elena the forest ranger, Doña Lupe (`src/data.js`). **Story** (line `bosque`): the lost bear cub (the dog
+  follows the paw prints to the cave; mama bear stands up BIG), the squirrel's acorns under the leaf piles (and a
+  hedgehog), Elena's binoculars (a raccoon in the hollow log; then a full-screen binocular view: a deer, a fox).
+- **Side quests:** Lupe's blackberry pie (a basket, four bushes, a pie the dog loves), Elena's big-or-small mushroom
+  game, Lola's leaves (three colours), fireflies in Lola's jar at night. The dog sniffs the log, follows a trail of paw
+  prints (`trail`) and swims across the river for a stick (`swim`). Six hiding places, two page puzzles, favours.
+- **Two old test failures fixed:** "¡Nuevo animal!" kept running (and spoke) under a menu that opened over it (the
+  notebook test heard "el perro"): it now waits, hidden and silent, while anything is on top of the map (`src/album.js`).
+  The flower walk-on test tapped a coloured flower that is a thing to pick up (carry.js walks you beside those): it now
+  taps a plain flower (`tools/test-roundb-world.js`).
+- Tests: `tools/test-zone-bosque.js` (new: walking in, every place reachable, the cave and the cabin, the bus; the
+  animals, their moves, night, the album page; the story by taps; the side quests and the demo; the dog's three things;
+  hide-and-seek, a page puzzle, save and load).
+
 ## 2026-10-17 — La playa, the first zone built (step 2 of the open world)
 The beach south of Villa Sol, following "How to build a zone" (docs/WORLD_PLAN.md); everything only uses universal
 words and the beach's own, so it can be the first place a child explores.
