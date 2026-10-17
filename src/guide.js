@@ -159,9 +159,11 @@
   // the zone's own things: the dog's spot, ... (zones.js); the way to a place asked for on the world map, or not
   // visited yet (exploring)
   const zoneGoal = f => (G.zones ? G.zones.goal(f) : null);
+  // a zone's own task going on (the beach's pail in your hands: to the water, back to Tere): with the things going on
+  const zoneTask = f => (G.zones && G.zones.task ? G.zones.task(f) : null);
   const wantGoal = f => (G.zones && G.zones.want() ? G.zones.exploreGoal(f) : null);
   const exploreGoal = f => (G.zones ? G.zones.exploreGoal(f) : null);
-  const TIERS = [chapterGoal, sunsetGoal, favourGoal, seekGoal, wantGoal, reviewGoal, zoneGoal, chapterLater, exploreGoal, playGoal, puppyGoal];
+  const TIERS = [chapterGoal, sunsetGoal, favourGoal, zoneTask, seekGoal, wantGoal, reviewGoal, zoneGoal, chapterLater, exploreGoal, playGoal, puppyGoal];
 
   // on another map: the door that leads there (from town, its door; from a building, the way out)
   function viaDoor(f, g) {

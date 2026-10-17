@@ -365,7 +365,8 @@
         if (!near && Math.random() < 0.35) { a.st = 'snap'; a.t = 36; return; }
         const px = f.player.x * T + 12, d = near ? (a.x >= px ? 1 : -1) : (ri(2) ? 1 : -1);
         for (const k of [1, -1]) { const tx = a.x + d * k * (near ? 30 : 10 + rnd(22)); if (onGround(a, tx, a.y)) { a.tx = tx; a.ty = a.y; a.st = 'walk'; a.fast = near ? 1 : 0; return; } }
-        [a.tx, a.ty] = pickGround(a); a.st = 'walk'; a.t = 60;
+        const row = a.ground.filter(([gx, gy]) => gy === Math.floor(a.y / T)); // (sideways only: a ground tile in its own row)
+        if (row.length) { const [gx] = row[ri(row.length)]; a.tx = gx * T + 4 + rnd(16); a.ty = a.y; a.st = 'walk'; } else a.t = 60;
       }
     },
     fly(f, a, K) { // on the ground it walks and pecks; near you or the dog (or now and then) it takes off, flaps about, lands

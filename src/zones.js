@@ -303,6 +303,8 @@
     if (dogHere(f)) { const sp = (f.def.dogSpots || []).find(Z.dogReady); if (sp) return { why: 'dog spot ' + sp.id, pts: [{ x: sp.at[0] * T + 12, y: sp.at[1] * T + 12, lift: 30, icon: 'huella' }] }; }
     return null;
   };
+  // a zone's own task going on (guide.js, right after the story and a favour going on): a zone file wraps it
+  Z.task = function () { return null; };
   // the way toward a zone not visited yet (the one asked for on the world map first, else the nearest new one): an exit
   Z.exploreGoal = function (f) {
     if (!G.state || !f || !opened()) return null;

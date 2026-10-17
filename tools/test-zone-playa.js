@@ -9,6 +9,7 @@ const { run, open, check } = require('./harness');
 
 // a game already going (the opener done, "go explore"), wherever o.map says
 const fresh = (g, o = {}) => g.ev(o => {
+  window.free = () => G.top() === G.field && !G.field.locked; // (free walking: used in the page-side conditions below)
   G.st.newGame(); G.state.name = 'Luz';
   Object.assign(G.state.flags, { opener: true, dogSkip: true, petStart: true, canelo: true, intro: true });
   G.words.meet('hola', 't'); if (!o.demo) G.demo.skip();
@@ -17,6 +18,14 @@ const fresh = (g, o = {}) => g.ev(o => {
   G.goto(o.map || 'playa', o.x == null ? 10 : o.x, o.y == null ? 4 : o.y, 'down');
 }, o);
 const idle = (g, map = 'playa') => g.fieldIdle(map);
+// g.drive, with a screenshot and where everyone is when it gets stuck
+async function drv(g, done, what, o) {
+  try { await g.drive(done, what, o); } catch (e) {
+    await g.shot('stuck');
+    console.log('    (stuck: ' + await g.ev(() => JSON.stringify({ top: G.top().constructor.name, locked: G.field && G.field.locked, p: G.field && [G.field.player.x, G.field.player.y], held: G.carry.held(), route: G.field && G.field.route })) + ')');
+    throw e;
+  }
+}
 // stand next to someone (on the given side) and tap them
 async function tapNpc(g, id, dx = 1, dy = 0) {
   await g.ev(([id, dx, dy]) => { const n = G.field.npc(id), p = G.field.player; p.x = n.x + dx; p.y = n.y + dy; p.dir = dx > 0 ? 'left' : dx < 0 ? 'right' : dy > 0 ? 'up' : 'down'; G.field.snapCam(); }, [id, dx, dy]);
@@ -29,7 +38,6 @@ async function tapAt(g, x, y, sx, sy) {
   await g.frames(4);
   await g.tapTile(x, y);
 }
-const free = () => G.top() === G.field && !G.field.locked;
 
 // ---------- walking in from Villa Sol, the bus ----------
 async function walkIn(browser) {
@@ -43,7 +51,7 @@ async function walkIn(browser) {
     await g.page.keyboard.down('ArrowDown'); await g.until(() => G.field.mapId === 'playa', null, 'the beach'); await g.page.keyboard.up('ArrowDown');
     await g.until(() => G.top().constructor.name === 'NewPlace', null, '"¡Nuevo lugar!"');
     await g.frames(60); await g.shot('nuevo_lugar');
-    await g.drive(() => G.top() === G.field && !G.field.locked && G.field.mapId === 'playa', 'the new place card');
+    await drv(g, () => G.top() === G.field && !G.field.locked && G.field.mapId === 'playa', 'the new place card');
     check('walk: from Villa Sol along the path onto the beach: "¡Nuevo lugar!", visited', await g.ev(() => G.zones.visited('playa') && G.field.player.y <= 2));
     await g.frames(20); await g.shot('beach_arrival');
     const r = await g.ev(() => ({ kinds: [...new Set(G.animals.here().map(a => a.kind))], ppl: ['lola', 'nico', 'paco', 'marina', 'nieves', 'tere'].filter(id => G.field.npc(id)), why: (G.guide.goal(G.field) || {}).why || '' }));
@@ -91,7 +99,7 @@ async function animals(browser) {
     await g.until(() => G.top().constructor.name === 'TextBox' || G.top().constructor.name === 'Choice', null, 'Lola naming the crab');
     await g.frames(10); await g.shot('lola_names_crab');
     check('animals: tapping an unmet beach animal: Lola names it in a one-unknown puzzle', await g.ev(() => { const s = G.top(); return s.constructor.name === 'TextBox' ? s.opts.who === 'lola' : true; }));
-    await g.drive(() => free() && G.words.met('cangrejo'), 'Lola\'s puzzle');
+    await drv(g, () => free() && G.words.met('cangrejo'), 'Lola\'s puzzle');
     check('animals: el cangrejo is met, and in the album', await g.ev(() => G.words.met('cangrejo') && G.animals.met('cangrejo')));
     await g.until(() => !G.album.discovering() || G.album.discovering().id === 'cangrejo', null, '"¡Nuevo animal!"');
     await g.frames(30); await g.shot('nuevo_animal');
@@ -114,7 +122,7 @@ async function animals(browser) {
     await g.until(() => { const d = G.animals.find('delfin'); return d && d.z > 20; }, null, 'the dolphin in the air');
     await g.shot('dolphin_leaps');
     await g.tap(...await g.ev(() => G.animals.screen(G.animals.find('delfin'))));
-    await g.drive(() => free() && G.words.met('delfin'), 'Lola naming the dolphin');
+    await drv(g, () => free() && G.words.met('delfin'), 'Lola naming the dolphin');
     check('animals: the leaping dolphin, tapped: named and in the album', await g.ev(() => G.animals.met('delfin')));
     // the album's beach page
     await g.ev(() => G.album('playa')); await g.until(() => G.top().constructor.name === 'Album', null, 'the album');
@@ -134,50 +142,50 @@ async function story(browser) {
     await idle(g);
     check('story: Don Paco has the net\'s picture in his bubble (the beach\'s quest line, beside Villa Sol\'s)', await g.ev(() => G.chapters.next('playa') === 'playa1' && !G.chapters.gate('playa1') && G.field.npc('paco').alert() && G.field.npc('paco').alert().icon === 'redpesca'));
     await tapNpc(g, 'paco', 0, -1);
-    await g.drive(() => free() && G.chapters.active('playa1') && G.chapters.state().step.playa1 === 1, 'Don Paco: el mar, his net');
+    await drv(g, () => free() && G.chapters.active('playa1') && G.chapters.state().step.playa1 === 1, 'Don Paco: el mar, his net');
     check('story 1: el mar met; the net\'s place is next', await g.ev(() => G.words.met('mar') && G.chapters.lineHere() === 'playa' && /playa1/.test((G.guide.goal(G.field) || {}).why || '')), await g.ev(() => (G.guide.goal(G.field) || {}).why));
     await g.shot('net_in_water');
     const net = await g.ev(() => G.MAPDATA.playa.pos.net);
     await tapAt(g, net[0], net[1], net[0] + 1, net[1]);
     await g.until(() => G.chapters.state().step.playa1 === 2 || G.top().constructor.name !== 'Field', null, 'the net');
     await g.until(() => G.top().constructor.name === 'TextBox', null, 'the catch'); await g.frames(30); await g.shot('net_up');
-    await g.drive(() => free() && G.chapters.state().step.playa1 === 2, 'what was in the net');
+    await drv(g, () => free() && G.chapters.state().step.playa1 === 2, 'what was in the net');
     check('story 1: el cangrejo, la estrella de mar, la concha met one at a time; the shell is in your hands', await g.ev(() => ['cangrejo', 'estrellamar', 'concha'].every(G.words.met) && G.carry.held() && G.carry.held().id === 'concha'));
     await tapNpc(g, 'paco', 0, -1);
-    await g.drive(() => free() && G.chapters.done('playa1'), 'Don Paco\'s thanks');
+    await drv(g, () => free() && G.chapters.done('playa1'), 'Don Paco\'s thanks');
     check('story 1 done: its badge; chapter 2 opens right away (Marina\'s bubble)', await g.ev(() => G.chapters.done('playa1') && G.chapters.next('playa') === 'playa2' && !!G.field.npc('marina').alert()));
     // 2 · ¡Qué calor!
     await tapNpc(g, 'marina', 1, 0);
-    await g.drive(() => free() && G.chapters.state().step.playa2 === 1, 'Marina: el sol, caliente');
+    await drv(g, () => free() && G.chapters.state().step.playa2 === 1, 'Marina: el sol, caliente');
     check('story 2: el sol and caliente met; Doña Nieves has the ice cream in her bubble', await g.ev(() => G.words.met('sol') && G.words.met('caliente') && !!G.field.npc('nieves').alert()));
     await tapNpc(g, 'nieves', 0, 1);
-    await g.drive(() => free() && G.chapters.state().step.playa2 === 2, 'Doña Nieves: el helado');
+    await drv(g, () => free() && G.chapters.state().step.playa2 === 2, 'Doña Nieves: el helado');
     check('story 2: el helado met, held up over your head for Marina', await g.ev(() => G.words.met('helado') && G.errands.bag.has('helado', { q: 'playa2' })));
     await g.shot('ice_cream');
     await tapNpc(g, 'marina', 1, 0);
-    await g.drive(() => free() && G.chapters.done('playa2'), 'the ice cream for Marina');
+    await drv(g, () => free() && G.chapters.done('playa2'), 'the ice cream for Marina');
     check('story 2 done', await g.ev(() => G.chapters.done('playa2') && !G.errands.bag.has('helado')));
     // 3 · Las tortuguitas
     await tapNpc(g, 'marina', 1, 0);
-    await g.drive(() => free() && G.chapters.state().step.playa3 === 1, 'Marina: the nest, la arena');
+    await drv(g, () => free() && G.chapters.state().step.playa3 === 1, 'Marina: the nest, la arena');
     const nest = await g.ev(() => G.MAPDATA.playa.pos.nest);
     await tapAt(g, nest[0], nest[1], nest[0], nest[1] - 1);
     await g.until(() => G.top().constructor.name === 'TextBox' || G.top().constructor.name === 'Choice', null, 'the eggs hatching');
-    await g.drive(() => free() && G.chapters.state().step.playa3 === 2, 'the babies; the gulls');
+    await drv(g, () => free() && G.chapters.state().step.playa3 === 2, 'the babies; the gulls');
     await g.frames(20); await g.shot('gulls');
     check('story 3: la arena, la tortuga, la gaviota met; the dog has the gull in his bubble', await g.ev(() => ['arena', 'tortuga', 'gaviota'].every(G.words.met) && G.pet.npc(G.field).alert() && G.pet.npc(G.field).alert().icon === 'gaviota'));
     await g.ev(() => { const n = G.pet.npc(G.field), p = G.field.player; n.x = p.x + 1; n.y = p.y; n.home = [n.x, n.y]; });
     await g.frames(4);
     await g.tapTile(...await g.ev(() => { const n = G.pet.npc(G.field); return [n.x, n.y]; }));
-    await g.drive(() => free() && G.chapters.state().step.playa3 === 3, 'the dog chasing the gulls');
+    await drv(g, () => free() && G.chapters.state().step.playa3 === 3, 'the dog chasing the gulls');
     for (let i = 0; i < 3; i++) {
       const b = await g.ev(i => { const N = G.MAPDATA.playa.pos.nest; return [[N[0] - 1, N[1]], [N[0], N[1] + 1], [N[0] + 1, N[1]]][i]; }, i);
       await tapAt(g, b[0], b[1], b[0], b[1] - 1);
       await g.until(i => (G.chapters.ctx('playa3').data.go || {})[i] != null, i, 'baby ' + i + ' going');
-      await g.drive(() => free(), 'after a baby');
+      await drv(g, () => free(), 'after a baby');
     }
     await g.frames(30); await g.shot('babies_crawl');
-    await g.drive(() => free() && G.chapters.done('playa3'), 'they swim away');
+    await drv(g, () => free() && G.chapters.done('playa3'), 'they swim away');
     check('story 3 done: nadar met; the turtle is in the album', await g.ev(() => G.chapters.done('playa3') && G.words.met('nadar') && G.animals.met('tortuga')));
     check('story: every new word was met in its own puzzle (one unknown at a time)', await g.ev(() => ['mar', 'cangrejo', 'estrellamar', 'concha', 'sol', 'caliente', 'helado', 'arena', 'tortuga', 'gaviota', 'nadar'].every(id => G.words.met(id))));
     check('story: no console errors', !g.errors.length, g.errors.join('\n'));
@@ -189,12 +197,12 @@ async function side(browser) {
   const { ctx, g } = await open(browser, 'playa-side', true);
   try {
     await fresh(g, { x: 16, y: 10, demo: true });
-    await g.ev(() => { for (const k of G.demo.KINDS) G.state.flags.demo[k] = 1; }); // (the town's demos seen; the beach's own not yet)
+    await g.ev(() => { const d = G.state.flags.demo || (G.state.flags.demo = {}); for (const k of G.demo.KINDS) d[k] = 1; }); // (the town's demos seen; the beach's own not yet)
     await idle(g);
     // Tere: her castle, la cubeta
     check('side: Tere has the pail in her bubble', await g.ev(() => { const a = G.field.npc('tere').alert(); return a && a.icon === 'cubetaplaya'; }));
     await tapNpc(g, 'tere', 0, -1);
-    await g.drive(() => free() && !!G.errands.bag.list().find(it => it.id === 'cubeta'), 'Tere: el castillo, la cubeta');
+    await drv(g, () => free() && !!G.errands.bag.list().find(it => it.id === 'cubeta'), 'Tere: el castillo, la cubeta');
     check('side: el castillo and la cubeta met; the pail is in your hands; the guide points at the water', await g.ev(() => G.words.met('castillo') && G.words.met('cubeta') && /fill the pail/.test((G.guide.goal(G.field) || {}).why || '')), await g.ev(() => (G.guide.goal(G.field) || {}).why));
     await g.until(() => G.demo.shown('fillpail'), null, 'the ghost hand at the water', 30000);
     await g.frames(10); await g.shot('demo_fillpail');
@@ -202,17 +210,18 @@ async function side(browser) {
     for (let k = 1; k <= 3; k++) {
       const at = await g.ev(() => G.playa.AT.fill);
       await tapAt(g, at[0], at[1], at[0], at[1] - 1);
-      await g.drive(() => free() && G.errands.bag.list().some(it => it.id === 'cubeta' && it.full), 'filling the pail');
+      await drv(g, () => free() && G.errands.bag.list().some(it => it.id === 'cubeta' && it.full), 'filling the pail');
       await tapNpc(g, 'tere', 0, -1);
-      await g.drive(() => free() && G.playa.state().castle.n === k, 'pouring the sand');
+      await g.ev(k => { window.__k = k; }, k);
+      await drv(g, () => free() && G.playa.state().castle.n === window.__k, 'pouring the sand');
       if (k === 2) { await g.frames(10); await g.shot('castle_growing'); }
     }
-    await g.drive(() => free() && G.playa.state().castle.flag, 'the flag on top');
+    await drv(g, () => free() && G.playa.state().castle.flag, 'the flag on top');
     await g.frames(10); await g.shot('castle_done');
     check('side: three pails of sand, then the flag: the castle is built (la arena met on the way)', await g.ev(() => G.playa.state().castle.flag && G.playa.state().built === 1 && G.words.met('arena') && !G.errands.bag.has('cubeta')));
     // Lola's shells: pick one up, bring it to her
     await tapNpc(g, 'lola', 1, 0);
-    await g.drive(() => free() && G.zones.lolaTalked('playa'), 'Lola: la ola, her shells');
+    await drv(g, () => free() && G.zones.lolaTalked('playa'), 'Lola: la ola, her shells');
     check('side: Lola shows the waves (la ola) and asks for shells of every colour', await g.ev(() => G.words.met('ola') && G.words.met('concha') && G.playa.state().asked === G.words.day()));
     check('side: the guide points at a shell to pick up', await g.ev(() => /shell for Lola/.test((G.guide.goal(G.field) || {}).why || '')), await g.ev(() => (G.guide.goal(G.field) || {}).why));
     const sh = await g.ev(() => G.carry.SOURCES.find(s => s.id === 'concha_rosa').at);
@@ -220,37 +229,37 @@ async function side(browser) {
     await g.until(() => G.carry.held() && G.carry.held().id === 'concha', null, 'the pink shell in your hands');
     check('side: Lola\'s bubble shows the shell you hold', await g.ev(() => { const a = G.field.npc('lola').alert(); return a && a.icon === 'concha'; }));
     await tapNpc(g, 'lola', 1, 0);
-    await g.drive(() => free() && G.playa.shellsHave().length === 1, 'the shell for Lola');
+    await drv(g, () => free() && G.playa.shellsHave().length === 1, 'the shell for Lola');
     await g.ev(() => { for (const c of ['blanco', 'azul', 'amarillo']) G.playa.state().shells[c] = 1; G.errands.bag.add('concha', { col: 'rojo' }); });
     await tapNpc(g, 'lola', 1, 0);
     await g.until(() => G.top().constructor.name === 'TextBox' && G.playa.shellsDone(), null, 'the last shell');
     await g.frames(20); await g.shot('shells_all');
-    await g.drive(() => free(), 'all five');
+    await drv(g, () => free(), 'all five');
     check('side: all five colours: ¡Todas!', await g.ev(() => G.playa.shellsDone()));
     // the little crab with no shell (after Don Paco's net)
     await g.ev(() => { G.state.quests.playa1 = 'done'; });
     const hc = await g.ev(() => G.playa.AT.hermit);
     await tapAt(g, hc[0], hc[1], hc[0] - 1, hc[1]);
-    await g.drive(() => free() && G.playa.state().hermitOn, 'the little crab');
+    await drv(g, () => free() && G.playa.state().hermitOn, 'the little crab');
     await g.frames(10); await g.shot('hermit');
     check('side: the little crab\'s three shells are a choice for the guide', await g.ev(() => { const gl = G.guide.goal(G.field); return gl && gl.choice && gl.pts.length === 3; }));
     const wrong = await g.ev(() => G.playa.HERMIT_SHELLS.findIndex(s => !s.right)), right = await g.ev(() => G.playa.HERMIT_SHELLS.findIndex(s => s.right));
     let at = await g.ev(k => G.playa.HERMIT_SHELLS[k].at, wrong);
     await tapAt(g, at[0], at[1], at[0], at[1] - 1);
-    await g.drive(() => free(), 'a shell too small');
+    await drv(g, () => free(), 'a shell too small');
     check('side: a small shell: "¡No!", the crab still waits', await g.ev(() => G.playa.state().hermitOn && !G.playa.state().hermit));
     at = await g.ev(k => G.playa.HERMIT_SHELLS[k].at, right);
     await tapAt(g, at[0], at[1], at[0], at[1] - 1);
-    await g.drive(() => free() && !!G.playa.state().hermit, 'the spiral shell');
+    await drv(g, () => free() && !!G.playa.state().hermit, 'the spiral shell');
     check('side: the spiral shell: the little crab moves in', await g.ev(() => !!G.playa.state().hermit));
     // an ice cream for whoever is hot today
     await g.ev(() => { G.state.quests.playa2 = 'done'; for (const w of ['helado', 'sol', 'caliente']) G.words.meet(w, 't'); });
     const hot = await g.ev(() => G.playa.hotWho());
     check('side: someone is hot today (their bubble), and Doña Nieves has ice cream', await g.ev(w => { const a = G.field.npc(w).alert(); return a && a.icon === 'caliente' && G.field.npc('nieves').alert() === 'helado'; }, hot), hot);
     await tapNpc(g, 'nieves', 0, 1);
-    await g.drive(() => free() && G.carry.held() && G.carry.held().id === 'helado', 'an ice cream from Doña Nieves');
+    await drv(g, () => free() && G.carry.held() && G.carry.held().id === 'helado', 'an ice cream from Doña Nieves');
     await tapNpc(g, hot, hot === 'paco' ? 0 : 1, hot === 'paco' ? -1 : 0);
-    await g.drive(() => free() && G.playa.state().hot.d === G.words.day(), 'the ice cream for ' + hot);
+    await drv(g, () => free() && G.playa.state().hot.d === G.words.day(), 'the ice cream for ' + hot);
     check('side: the ice cream cools them down (a star)', await g.ev(() => !G.carry.held()));
     check('side: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
@@ -301,22 +310,23 @@ async function seek(browser) {
     await idle(g);
     check('seek: Nico has a game on the beach', await g.ev(() => { const a = G.seek.alert('nico'); return !!a && a.icon === 'lupa'; }));
     await tapNpc(g, 'nico', 1, 0);
-    await g.drive(() => free() && G.seek.active(), 'Nico');
+    await drv(g, () => free() && G.seek.active(), 'Nico');
     const L = await g.ev(() => G.seek.list().map(h => ({ k: h.kind, s: h.spot, m: G.seek.SPOTS.find(s => s.id === h.spot).map })));
     check('seek: beach animals hide in the beach\'s places', L.length >= 2 && L.every(h => h.m === 'playa'), JSON.stringify(L));
     const h = await g.ev(() => { const h = G.seek.list()[0], sp = G.seek.SPOTS.find(s => s.id === h.spot), p = G.field.player; p.x = sp.at[0]; p.y = Math.max(4, sp.at[1] - 2); G.field.snapCam(); return h.spot; });
     await g.frames(200); await g.shot('seek_peek');
     const r = await g.ev(spot => { const x = G.seek.list().find(h => h.spot === spot); return G.seek.where(x, G.field); }, h);
     await g.tap(r.x + r.w / 2, r.y + 4);
-    await g.drive(() => free() && G.seek.list().find(x => x.spot === h).found, 'finding it');
+    await g.ev(h => { window.__h = h; }, h);
+    await drv(g, () => free() && G.seek.list().find(x => x.spot === window.__h).found, 'finding it');
     check('seek: found one peeking', await g.ev(spot => G.seek.list().find(h => h.spot === spot).found, h));
     // a page puzzle on the beach (four met words of the sea page)
-    await g.ev(() => { G.words.meet('pulpo', 't'); });
+    await g.ev(() => { for (const w of ['cangrejo', 'gaviota', 'tortuga', 'estrellamar', 'pulpo']) G.state.words[w] = { learned: true }; }); // (known from an earlier day)
     const pg = await g.ev(() => Object.keys(G.maps.playa.pages).find(k => G.maps.playa.pages[k] === 'mar').split(',').map(Number));
     check('page: the sea page\'s sparkle is ready on the beach', await g.ev(() => G.pages.ready('mar')));
     await tapAt(g, pg[0], pg[1], pg[0], pg[1] - 1);
     await g.until(() => G.top().constructor.name === 'PagePuzzle', null, 'the page puzzle');
-    await g.drive(() => free(), 'the page puzzle');
+    await drv(g, () => free(), 'the page puzzle');
     check('page: the beach\'s page puzzle is solved', await g.ev(() => !G.pages.ready('mar')));
     // save and load
     await g.ev(() => { const s = G.playa.state(); s.shells.rosa = 1; s.built = 2; G.state.quests.playa1 = 'done'; G.st.begin(1); G.st.saveNow(); });
@@ -330,4 +340,5 @@ async function seek(browser) {
   } finally { await ctx.close(); }
 }
 
-run('La playa', [['walking in, the bus', walkIn], ['the animals and the album', animals], ['the story by taps', story], ['side quests', side], ['the dog and carrying', dog], ['hide-and-seek, a page, save and load', seek]]);
+const ONLY = process.env.ONLY; // (run one section: ONLY=side)
+run('La playa', [['walking in, the bus', walkIn], ['the animals and the album', animals], ['the story by taps', story], ['side quests', side], ['the dog and carrying', dog], ['hide-and-seek, a page, save and load', seek]].filter(([n, f]) => !ONLY || f.name === ONLY));

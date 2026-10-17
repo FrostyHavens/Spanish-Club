@@ -184,7 +184,7 @@
       yield* sayShow('lola', { list: PL.shellsHave().map(shellPic) }, T('¡Ya la tengo! ¡Otra!', 'I have that one already! Find another colour.'));
       return;
     }
-    bag().take('concha', { col: h.col, q: null }); st().shells[h.col] = day(); G.audio.jingle('item'); G.st.autosave();
+    bag().take('concha', { col: h.col, q: null }); st().shells[h.col] = 1; G.audio.jingle('item'); G.st.autosave();
     const n = PL.shellsHave().length, nums = ['uno', 'dos', 'tres', 'cuatro', 'cinco'];
     yield* sayShow('lola', { list: PL.shellsHave().map(shellPic) }, T('¡Una [concha]! ¡[gracias:Gracias]!', 'A shell! Thank you! (' + n + ' of 5 colours)'));
     if (met(nums[n - 1])) yield* quiz('lola', '¿Cuántas?', 'How many shells has she got now?', nums[n - 1], nums.filter((k, i) => Math.abs(i - (n - 1)) === 1), { show: { icon: 'concha', count: n } });
@@ -310,7 +310,7 @@
     PL.fly = { from: s.at, to: AT.hermit, t: 0, pic: s.pic, back: !s.right };
     for (let k = 0; k < 24; k++) { PL.fly.t = k / 24; yield 1; }
     if (!s.right) { G.audio.sfx('boop'); PL.wob = 30; yield 20; for (let k = 24; k >= 0; k--) { PL.fly.t = k / 24; yield 1; } PL.fly = null; yield* tell(T('¡No! ¡Muy pequeña!', 'No! Too small! Find the big spiral shell.')); return; }
-    PL.fly = null; st().hermit = day(); st().hermitOn = false; G.audio.jingle('item'); G.st.autosave();
+    PL.fly = null; st().hermit = true; st().hermitOn = false; G.audio.jingle('item'); G.st.autosave();
     const [x, y] = AT.hermit; CK.sparkle(f, x, y, 8);
     for (let k = 0; k < 3; k++) CK.puff('heart', x * TL + 8 + k * 5, y * TL - 2, { life: 50, vy: -0.4 });
     yield 30;
@@ -357,13 +357,20 @@
   Z.special = (f, x, y) => !!sideAt(f, x, y) || zSpecial(f, x, y);
   Z.blocks = (f, x, y) => zBlocks(f, x, y) || (f.mapId === 'playa' && G.state && ((x === AT.hermit[0] && y === AT.hermit[1] && hermitOn()) || (x === AT.site[0] && y === AT.site[1] && castle().n > 0)));
   // the guide (guide.js zoneGoal): the pail to the water / back to Tere, the little crab, a shell Lola is missing
-  Z.goal = function (f) {
+  const pt = (at, lift, icon) => ({ x: at[0] * TL + 12, y: at[1] * TL + 12, lift, icon });
+  const zTask = Z.task;
+  Z.task = function (f) { // things going on: the pail in your hands, the little crab waiting for its shell
     if (f && f.mapId === 'playa' && G.state) {
-      const p = pail(), pt = (at, lift, icon) => ({ x: at[0] * TL + 12, y: at[1] * TL + 12, lift, icon });
+      const p = pail();
       if (p && !p.full) return { why: 'playa: fill the pail', pts: [pt(AT.fill, 30, 'cubetaplaya')] };
       if (p && p.full) { const n = npcAt(f, 'tere'); if (n) return { why: 'playa: the sand to Tere', pts: [{ x: n.x * TL + 12, y: n.y * TL + 12, lift: 44, npc: n }] }; }
-      if (hermitOn() && !st().hermitOn) return { why: 'playa: the little crab', pts: [pt(AT.hermit, 40, 'caracola')] };
       if (hermitOn() && st().hermitOn) return { why: 'playa: the crab\'s shell', choice: true, pts: HERMIT_SHELLS.map(s => pt(s.at, 18)) };
+    }
+    return zTask(f);
+  };
+  Z.goal = function (f) { // suggestions: the little crab, a shell Lola is missing
+    if (f && f.mapId === 'playa' && G.state) {
+      if (hermitOn() && !st().hermitOn) return { why: 'playa: the little crab', pts: [pt(AT.hermit, 40, 'caracola')] };
       if (st().asked === day() && !PL.shellsDone() && !held()) {
         const pl = f.player, srcs = G.carry.SOURCES.filter(s => s.map === 'playa' && s.item === 'concha' && !st().shells[s.col] && G.carry.avail(s.id))
           .sort((a, b) => Math.abs(a.at[0] - pl.x) + Math.abs(a.at[1] - pl.y) - Math.abs(b.at[0] - pl.x) - Math.abs(b.at[1] - pl.y));
@@ -553,12 +560,12 @@
       const n = npcAt(f, 'nieves'); if (n) CH.pointNpc(n);
       try { yield* sayShow('marina', 'helado', T('¿Un [helado]? ¡[porfavor:Por favor]!', 'An ice cream? Please! (Doña Nieves has the ice-cream cart)')); } finally { CH.point(null); }
     } },
-    { who: 'nieves', bubble: 'helado', run: function* (f, c) {
+    { who: 'nieves', bubble: { icon: 'helado' }, run: function* (f, c) {
       yield* say('nieves', T('¡Hola! ¡Soy Doña Nieves!', 'Hello! I\'m Doña Nieves, the ice-cream lady.'));
       yield* meetW('helado', { who: 'nieves', prompt: '¡Un [helado]! ¡Para Marina!', en: 'An ice cream! For Marina!', known: othersFor('helado', ['sol', 'caliente', 'concha']) });
       bag().add('helado', { q: 'playa2' }); c.data.ice = 1;
     } },
-    { who: 'marina', bubble: 'helado', run: function* (f, c) {
+    { who: 'marina', bubble: { icon: 'helado' }, run: function* (f, c) {
       bag().take('helado', { q: 'playa2' }); c.data.ice = 2; c.data.hot = 0; G.audio.jingle('item');
       const n = npcAt(f, 'marina'); if (n) for (let k = 0; k < 3; k++) CK.puff('heart', n.x * TL + 8 + k * 5, n.y * TL - 6, { life: 50, vy: -0.4 });
       yield* say('marina', T('¡Mmm! ¡[helado]! ¡[gracias:Gracias]!', 'Mmm! Ice cream! Thank you!'));
@@ -619,7 +626,7 @@
       yield* G.intro.listen('gaviota', { who: 'marina', prompt: '¡Kiaa, kiaa! ¡[gaviota:Gaviotas]!', en: 'Kiaa, kiaa! Seagulls! Which one is a seagull?', sound: () => AN.cry('gaviota'), known: othersFor('gaviota', ['tortuga', 'cangrejo', 'estrellamar']) });
       yield* sayShow('marina', { icon: 'perro' }, T('¡{dog}! ¡Las [gaviota:gaviotas]!', 'Quick! Tap {dog}: he will chase the seagulls away!'));
     } },
-    { who: 'canelo', bubble: 'gaviota', run: function* (f, c) { // the dog chases the gulls off
+    { who: 'canelo', bubble: { icon: 'gaviota' }, run: function* (f, c) { // the dog chases the gulls off
       const n = CK.dog(f); CK.bark(f, n);
       yield* CK.walk(f, n, NEST[0], NEST[1] - 1, 5); n.dir = 'up'; CK.bark(f, n); yield* G.pet.play('jump'); CK.bark(f, n);
       c.data.gulls = 0; c.data.shoo = G.frame; AN.cry('gaviota');
