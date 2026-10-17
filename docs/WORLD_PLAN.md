@@ -63,16 +63,38 @@ For each: the theme, about 12-15 first-year words for ages 4-7 (Mexican Spanish;
 story (3-5 short chapters on the zone's own quest line), and **6-8 album animals, one or two of them rare** (only at a
 time of day or in one spot), so there's always something left to find.
 
-### La playa (south) — sea animals, the sun and water
-- **Words:** el mar, la arena, la ola, el sol, la concha, el cangrejo, la estrella de mar, la tortuga, la gaviota,
-  el pez (met in town), nadar, la cubeta, el castillo (de arena), el helado, caliente.
-- **People:** Don Paco the fisherman (his boat, his net); a lifeguard (*la salvavidas*) with her flag.
-- **Dog:** digs in the sand (a bone, a shell), splashes in the waves (both spots are in the placeholder).
-- **Side quests:** shells for Lola (count them); a sandcastle (fill the pail, then a flag on top); the crab looking for
-  its shell (find the right one); an ice cream for someone hot.
-- **Story:** Don Paco's lost net (find what's tangled in it), the turtle's eggs (help the babies to the sea at dusk).
-- **Album (7):** cangrejo, gaviota, estrella de mar, tortuga, medusa, **delfín** (rare: jumping offshore in the
-  morning), **pulpo** (rare: in a tide pool at night).
+### La playa (south) — sea animals, the sun and water — **BUILT** (2026-10-17, `content/es/zone-playa.js`)
+One big map (34x24): palms and dune grass along the top (the path in at (10, 0), the bus stop, Doña Nieves's ice-cream
+cart), a wide beach (umbrellas, Marina's lifeguard tower, Tere's sandcastles, the turtles' nest), wet rocks and a tide
+pool (*el charco*, clear water you can wade into) on the right, a wooden pier with Don Paco's boat on the left, then the
+surf (animated waves), clear turquoise shallows (wade in) and the deep sea. New tiles in `src/tiles.js`: `9` surf, `-`
+clear shallows, `&` dune grass, `d` pier, `1` palm, `2` umbrella, `3` sandcastle, `4`/`5` boat, `6`/`7` lifeguard
+tower, `8` ice-cream cart, `0` wet rocks.
+- **Words (17, two notebook pages):** *La playa*: el mar, la concha, el sol (id `elsol`: its own picture, a sun in
+  sunglasses; *buenos días* keeps the plain sun), caliente, el helado, la arena, la cubeta (id `cubetaarena`: the town
+  already had a milk-pail picture called `cubeta`), el castillo, la ola. *En el mar*: el cangrejo, la estrella de mar
+  (`estrellamar`), la tortuga, la gaviota, nadar, la medusa (alt *aguamala*), el delfín, el pulpo. El pez stays a town
+  word. Word ids must not shadow icon names used as plain strings (`sol`, `cubeta`): check `grep "'<id>'" src content`.
+- **People:** Don Paco the fisherman (straw hat, white beard; on the pier), Marina the lifeguard (by her tower), Doña
+  Nieves (the ice-cream cart), Tere (a girl who builds sandcastles); Lola and Nico as everywhere. None have hearts yet.
+- **Album (7):** cangrejo (scuttles sideways, snaps its claws, runs from you), gaviota (walks and pecks, takes off when
+  you or the dog come near, circles and lands), estrella de mar (in the shallows and the pool), tortuga (plods along the
+  surf, pulls its head in when tapped), medusa (drifts and pulses out at sea), **delfín** (rare: the first minutes of a
+  session, 75%: a fin out at sea, now and then a big leap), **pulpo** (rare: at night, in the tide pool). Tapping one
+  whose word isn't met yet: Lola calls out its name (a one-unknown puzzle), so every animal can be named by finding it.
+- **Story (line `playa`, 3 chapters, no time of day):** 1 *La red de Don Paco* (mar, cangrejo, estrella de mar, concha:
+  pull his net up at the pier's end, put the crab and the starfish back in the sea, the shell is yours); 2 *¡Qué calor!*
+  (sol, caliente, helado: Marina hops on the hot sand, an ice cream from Doña Nieves); 3 *Las tortuguitas* (arena,
+  tortuga, gaviota, nadar: the nest hatches, gulls circle, tap the dog to chase them off, tap each baby to send it to
+  the sea, they swim away). The planned "turtles at dusk" became any time (evening chapters only run at home).
+- **Side quests (`G.state.playa`):** Lola's five shells (rosa, blanco, azul, amarillo, rojo: pick them up anywhere,
+  bring them; she counts with you if the numbers are met; *¡Todas!*), Tere's sandcastle (la cubeta: fill it at the
+  water's edge three times, pour, then the flag; a new castle every day), the little crab with no shell (after
+  chapter 1: three shells to choose from, the big spiral one), an ice cream for whoever is hot today (after chapter 2).
+- **Dog:** digs in the sand (a shell of some colour), splashes in the waves, chases the gulls (a new dog-spot act,
+  `chase`). He eats an ice cream if you give him one.
+- **Also:** six hide-and-seek places (umbrellas, the castle, the rocks, a palm, the boat), two page puzzles, favours for
+  Paco, Nieves and Marina (once Villa Sol's chapter 7 has opened favours), a new ghost-hand demo (`fillpail`).
 
 ### El bosque (north) — woodland animals, big and small
 - **Words:** el bosque, el árbol (met in town), la hoja, el hongo, el tronco, la piña, grande, pequeño, la ardilla,
@@ -196,6 +218,25 @@ Files a zone step touches (and nothing else unless the engine truly needs it):
 - **Never require another zone.** A zone's story and favours use the zone's words and universal words; a cross-zone
   quest (Tomás's letters) only appears between zones already visited.
 - **One unknown at a time**, used again soon (`docs/LEARNING_DESIGN.md`).
+
+## Framework additions from the zone steps (use them in the next zones)
+- **Generic animal moves** (`G.animals.addKind(id, { move, on, water, shadow })`, `src/animals.js`): `scuttle`, `fly`,
+  `drift`, `leap`, `still`, `crawl` (and the default `walk`), each with its frames and its tap reaction; `on` the tile
+  codes it lives on (sand animals need `on: 's'`: the default land is grass and paths), `water: true` draws it flat
+  with the ducks. `G.animals.takeOff(a)`, `.leap(a)`, `.tone/.noise` (for cries). No per-zone case in `tick()` needed.
+- **Dog-spot act `chase`** (`{ act: 'chase', kind: 'gaviota' }`: he runs at the nearest one, it flies off). A spot's
+  `col` may be a getter (a different shell colour each dig).
+- **`G.zones.task(f)`**: a zone's task going on (the pail in your hands), a guide tier right after a favour going on, so
+  a quest in progress beats other people's bubbles. `G.zones.goal(f)` stays the suggestion tier. Wrap both per map.
+- **`G.zones.demos`**: `{ kind, find(f) -> tile }`, a zone's own once-only ghost-hand demo (`src/demo.js`).
+- **Side places on a map**: the beach wraps `G.zones.search / special / blocks / drawUnder / drawTop` to add tappable
+  places with picture bubbles (see `SIDE` in `content/es/zone-playa.js`): a pattern to copy for a zone's side quests.
+- **`meetW(id, o)`** (`G.playa.meetW`): introduce a word if it isn't met, or ask it as a question if it was met in
+  another zone: write every intro this way, since any zone can come first. Saved flags must not be `day()` (day 0 is
+  falsy): store `true` or `{ d: day }`.
+- A zone's people talk: story, then their side quest, then `G.errands.talk` (presents, favours, "who'd love it"), then
+  their line (`person()` in the beach file). Bubbles: use `{ icon }` objects, not bare word ids (a known word's id
+  shows a "?").
 
 ## What the framework built (step 1)
 - `src/zones.js`: the zone registry, visits ("¡Nuevo lugar!"), edge exits and routes across maps (`G.zones.route`),

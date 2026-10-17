@@ -18,7 +18,9 @@ favours (`G.favores.OFFERS`), its zone (`G.zones.add({ id, name, icon, music, po
 habitat, rare })`) and its story as its own quest line (`G.chapters.add({ id, line: '<zone>', ... })` and
 `G.chapters.script(...)`: never waiting for Villa Sol's chapters). The full pattern, step by step, with the rules (any
 zone can be visited first: only universal words or the zone's own, introduced there), is "How to build a zone" in
-`docs/WORLD_PLAN.md`. The five zone files are placeholders until their step: keep their ids, path maps and bus stops.
+`docs/WORLD_PLAN.md`. The zone files are placeholders until their step (La playa is built: `content/es/zone-playa.js`
+is the worked example, with generic animal moves, side quests on map places, a zone task for the guide and a zone
+demo; see "Framework additions" in `docs/WORLD_PLAN.md`): keep their ids, path maps and bus stops.
 
 The dog's name: write `{dog}` (like `{name}`) wherever the dog is named in a line, a prompt or an English help line; the
 child names him in the opener (`G.dogName()`, default *Canelo*). Never write *Canelo* in a string.

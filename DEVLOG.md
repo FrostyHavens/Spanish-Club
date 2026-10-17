@@ -2,6 +2,41 @@
 
 A running record of what changed in Club de Español and why. Newest first.
 
+## 2026-10-17 — La playa, the first zone built (step 2 of the open world)
+The beach south of Villa Sol, following "How to build a zone" (docs/WORLD_PLAN.md); everything only uses universal
+words and the beach's own, so it can be the first place a child explores.
+- **The map** (`tools/mapgen.py`, 34x24): dune grass and palms, the path and the bus stop, Doña Nieves's ice-cream
+  cart, umbrellas, Marina's lifeguard tower, Tere's sandcastle, the turtles' nest, wet rocks with a tide pool you can
+  wade into, a pier with Don Paco's boat, the surf rolling in, clear turquoise shallows and the deep sea. New tiles
+  (`src/tiles.js`): surf `9` (a wave laps up the sand and back), clear shallows `-`, dune grass `&`, pier `d`, palm `1`,
+  umbrella `2`, sandcastle `3`, boat `4`/`5`, tower `6`/`7`, cart `8`, wet rocks `0`.
+- **17 words, two notebook pages** (`content/es/words.js`, pictures in `src/icons.js`): el mar, la concha, el sol (a sun
+  in sunglasses), caliente, el helado, la arena, la cubeta, el castillo, la ola; el cangrejo, la estrella de mar, la
+  tortuga, la gaviota, nadar, la medusa, el delfín, el pulpo. Each is met in a one-unknown puzzle (`meetW`: introduced
+  here, or asked as a question if another zone met it first) and used again right after. Ids `elsol` / `cubetaarena`:
+  `sol` and `cubeta` were already icon names used as plain strings, and a word id shadows its icon.
+- **Seven album animals** with pixel frames and cries; generic moves in `src/animals.js` (`scuttle`, `fly`, `drift`,
+  `leap`, `still`, `crawl`, chosen by `addKind({ move, on, water })`), so a zone needs no case of its own: crabs dash
+  sideways and snap, gulls take off when you or the dog come close, jellyfish pulse, the turtle pulls its head in, the
+  dolphin (rare: mornings) shows its fin and leaps, the octopus (rare: nights) waits in the tide pool. Tapping one whose
+  word isn't met: Lola calls out its name in a puzzle.
+- **People:** Don Paco, Marina, Doña Nieves, Tere (`src/data.js`), each with a bubble and a talk (story, side quest,
+  presents and favours, their line).
+- **The story** (line `playa`): Don Paco's net (what's tangled in it, back to the sea), ¡Qué calor! (an ice cream for
+  Marina), Las tortuguitas (the nest hatches, the dog chases the gulls, tap each baby to the sea, they swim).
+- **Side quests:** Lola's five shell colours, Tere's sandcastle with the pail (fill it three times, then the flag; a
+  new one daily), the little crab with no shell, an ice cream for whoever is hot today. The dog digs for shells,
+  splashes in the waves and chases the gulls (new dog-spot act `chase`); he eats ice cream. Six hiding places, two page
+  puzzles, favours for the beach's people.
+- **Framework:** a guide tier for a zone's task going on (`G.zones.task`: the pail in your hands beats other bubbles), a
+  zone's own ghost-hand demos (`G.zones.demos`: `fillpail`), `G.animals.takeOff / leap / tone / noise`. Notes for the
+  next zones in docs/WORLD_PLAN.md ("Framework additions").
+- Tests: `tools/test-zone-playa.js` (new: walking in and the bus, every place reachable, the animals and Lola's naming,
+  the rare ones, the album page, the story by taps, the side quests and the demo, the dog's three things and carrying,
+  hide-and-seek, a page puzzle, save and load). `test-world` (the album's "?" tab is now El bosque's) and
+  `test-roundb-world` (70+ words, Villa Sol's 11 animals first) follow. Known before this step and unchanged: the
+  flower walk-on check in `test-roundb-world` fails on the base commit too.
+
 ## 2026-10-17 — The open world, step 1: the framework (zones, paths, the bus, the world map, the dog's name)
 The 7-year-old loved variety and choice and wants to explore and meet people and animals; the parent decided: an open
 world, Pokémon-style but friendly (no locks, no bosses), the child names the dog, the dog tutorial can be skipped, no

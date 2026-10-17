@@ -62,11 +62,11 @@ async function data(browser) {
         sounds: G.animals.list().map(k => G.animals.KINDS[k].sound).filter(Boolean).every(id => D.words[id]),
       };
     });
-    check('data: about 75-80 words (Round A 30 + Round B)', d.n >= 70 && d.n <= 80, 'n=' + d.n);
+    check('data: 70+ words (Round A 30 + Round B, and the open world\'s zones since)', d.n >= 70, 'n=' + d.n);
     check('data: every word has its own picture (no placeholder)', !d.noPic.length, d.noPic.join(','));
     check('data: every word is on a notebook page of at most 9 (the numbers: 10, in four columns), with a topic', !d.offPage.length && !d.badTopic.length && !d.big.length && d.order, JSON.stringify(d));
     check('data: every Round B notebook page is placed somewhere in the world', !d.unplaced.length, d.unplaced.join(','));
-    check('data: 11 animals, each with its word (and sound word)', d.kinds.length === 11 && d.animalWords && d.sounds, JSON.stringify(d.kinds));
+    check('data: Villa Sol\'s 11 animals first (then the zones\'), each with its word (and sound word)', d.kinds.slice(0, 11).join() === 'perro,gato,pajaro,mariposa,pez,conejo,pato,rana,gallina,caballo,cabra' && d.animalWords && d.sounds, JSON.stringify(d.kinds));
     check('data: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
 }
