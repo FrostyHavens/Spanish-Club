@@ -222,7 +222,7 @@ async function hearts(browser) {
     await play(g, 'villa', 8, 9, 'down');
     const r = await g.ev(() => {
       const H = G.hearts, o = {};
-      o.api = ['get', 'add', 'canAddToday', 'did', 'today', 'gift', 'greet', 'milestones'].every(k => typeof H[k] === 'function') && H.WHO.length === 12;
+      o.api = ['get', 'add', 'canAddToday', 'did', 'today', 'gift', 'greet', 'milestones'].every(k => typeof H[k] === 'function') && H.TOWN.length === 12 && H.WHO.length > 12;
       o.a = H.add('rosa', 1, 'care'); o.b = H.add('rosa', 1, 'care'); o.c = H.add('rosa', 1, 'care'); // the cap: 2
       o.can = H.canAddToday('rosa', 'care');
       o.err = H.add('rosa', 2, 'errand'); // errands skip the cap

@@ -151,7 +151,7 @@ async function endOfDay(browser) {
     await g.ev(() => { G.st.learn('manzana'); G.st.practiced('manzana', true); G.st.learn('tres'); G.st.practiced('tres', true); G.st.practiced('hola', true); });
     await g.frames(2);
     check('day: today\'s words and stars are tracked', await g.ev(() => { const d = G.day.today(); return d.words.join() === 'manzana,tres' && d.stars === 3; }), JSON.stringify(await g.ev(() => G.day.today())));
-    check('day: the save format is unchanged by the day (only Round B album / sayback / pet / hearts / heartlog / friends / bag / jobs and the word model wm / finds are new in G.state)', await g.ev(() => Object.keys(G.state).every(k => ['flags', 'searched', 'playTime', 'loc', 'words', 'pages', 'quests', 'stars', 'opts', 'look', 'name', 'savedAt', 'album', 'sayback', 'pet', 'hearts', 'heartlog', 'friends', 'bag', 'jobs', 'wm', 'finds', 'ch', 'world', 'dogName'].includes(k))), await g.ev(() => Object.keys(G.state).join()));
+    check('day: the save format is unchanged by the day (only Round B album / sayback / pet / hearts / heartlog / friends / bag / jobs, the word model wm / finds, the world\'s and the zones\' and the letters\' are new in G.state)', await g.ev(() => Object.keys(G.state).every(k => ['flags', 'searched', 'playTime', 'loc', 'words', 'pages', 'quests', 'stars', 'opts', 'look', 'name', 'savedAt', 'album', 'sayback', 'pet', 'hearts', 'heartlog', 'friends', 'bag', 'jobs', 'wm', 'finds', 'ch', 'world', 'dogName', 'post', 'playa', 'bosque', 'juegos', 'abuelos', 'montana'].includes(k))), await g.ev(() => Object.keys(G.state).join()));
 
     await g.ev(() => { G.debug.sunsetAt = G.sessionTime + 1; });
     await g.until(() => G.day.over() && G.day.glow() >= 1, null, 'the sunset');

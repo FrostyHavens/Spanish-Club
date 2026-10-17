@@ -11,7 +11,8 @@
 // puzzle; the next chapter's giver; a review day's teacher) > home at sunset > a favour going on or offered > Tomás's
 // letter in your hands (to whoever it's for; another place: the bus stop, src/connect.js) > a zone's task > Nico's
 // hide-and-seek (only the edge arrow: the peeking ears are the game; the arrow over one after a long wait) > Canelo's
-// "?", Luna's palabra del día, Inés's pages, a side job, anyone else with a bubble > the day's play (src/carry.js: what
+// "?", Luna's palabra del día, Inés's pages, a side job, anyone else with a bubble > (the next chapter, then Tomás's
+// letter of the day, exploring) > the day's play (src/carry.js: what
 // you hold to whoever would love it, or Canelo; empty-handed, today's next play: fetch, an apple for Luna, a flower for
 // Mamá, the bone, an egg for Rosa, bread for the ducks, a page puzzle... and a game of fetch is always there). So there
 // is never a dead end: between chapters, while today's new words are used up, before the evening chapter, the arrow
@@ -137,7 +138,7 @@
     if (E && E.spots) { const sp = E.spots(f).filter(s => !s.quiet && !(s.nohint && s.nohint()))[0]; if (sp) return { why: 'job ' + sp.id, pts: [tileP(sp.at[0], sp.at[1], 42)] }; }
     // anyone else on this map with a bubble (a present they'd like...), the nearest
     const Lc = G.chapters && G.chapters.live(), later = Lc && !Lc.started && Lc.b && Lc.b.who; // (the next chapter's giver: a suggestion for later, chapterLater)
-    const p = f.player, ns = f.npcs.filter(n => n.spec && !n.hidden && alerting(n) && n.id !== later).sort((a, b) => Math.abs(a.x - p.x) + Math.abs(a.y - p.y) - Math.abs(b.x - p.x) - Math.abs(b.y - p.y));
+    const p = f.player, ns = f.npcs.filter(n => n.spec && !n.hidden && alerting(n) && !alerting(n).later && n.id !== later).sort((a, b) => Math.abs(a.x - p.x) + Math.abs(a.y - p.y) - Math.abs(b.x - p.x) - Math.abs(b.y - p.y));
     if (ns.length) return { why: 'bubble ' + ns[0].id, pts: [person(ns[0])] };
     if (E && E.waitsIn) for (const m in G.maps) if (m !== f.mapId && E.waitsIn(m)) return { why: 'job in ' + m, map: m, badge: { icon: G.maps[m].icon || 'pregunta' } };
     return null;
@@ -166,7 +167,8 @@
   const exploreGoal = f => (G.zones ? G.zones.exploreGoal(f) : null);
   // Tomás's letter in your hands (connect.js): to whoever it's for; in another place, by the bus (or the way there)
   const postGoal = f => (G.post && G.post.goal ? G.post.goal(f) : null);
-  const TIERS = [chapterGoal, sunsetGoal, favourGoal, postGoal, zoneTask, seekGoal, wantGoal, reviewGoal, zoneGoal, chapterLater, exploreGoal, playGoal, puppyGoal];
+  const postOffer = f => (G.post && G.post.offerGoal ? G.post.offerGoal(f) : null); // (Tomás's letter of the day: after the story's next chapter)
+  const TIERS = [chapterGoal, sunsetGoal, favourGoal, postGoal, zoneTask, seekGoal, wantGoal, reviewGoal, zoneGoal, chapterLater, postOffer, exploreGoal, playGoal, puppyGoal];
 
   // on another map: the door that leads there (from town, its door; from a building, the way out)
   function viaDoor(f, g) {

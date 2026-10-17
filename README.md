@@ -97,8 +97,24 @@ On phones and tablets, just tap: tap a spot to walk there, tap people to talk to
 - **The bus**: every place has a bus stop. Tap it: the world map opens (the places you've been to in colour, the others
   as "?"); tap a place and the bus comes, you hop on with your dog, and it drops you there. The map in the kid menu
   works too (the bus comes to you). Tapping a "?" shows footprints and the arrow suggests the way on foot.
+- **The world is connected** (`src/connect.js`): **Tomás the mail carrier** has a letter every day (his bubble shows
+  it) for someone in a place you've been to: he holds it up with their face and their place's picture; the letter in
+  your hands shows their face, the arrow leads to the bus stop (the world map shows the letter over that place) and
+  then to them; they open it (*¡Es de Mamá!*), say thank you, and you get a heart and a star; every other letter they
+  write back, so letters go both ways. Some days Tomás is on his round at a place's bus stop. **Everyone has hearts**:
+  the town's twelve and the places' people (Don Paco, Marina, Doña Nieves, Tere, Elena, Doña Lupe, Ana, Pablo, Don
+  Chuy, Abuela, Abuelo, the baby, Don Lucho, Mateo) greet you each day once you know them (say it back; then one word
+  of their place), love a present (a shell, a leaf, an acorn, the ball, an apple, a cookie, bread, an ice cream, a
+  flower), tell a secret at 3 hearts (a rare animal of their place, in pictures) with a sticker, and give a photo at 5.
+  **Lola** gets a heart the first time you meet her in each place: explore all five and she's your best friend.
 - **Friends in every place**: Lola, the friend who travels; Nico's hide-and-seek (a game in every place); your dog
-  always has something to do (dig in the sand, splash in the waves, sniff a log, roll in the snow).
+  always has something to do in every place (dig in the sand, splash in the waves, sniff a log, follow a trail, run his
+  jumping course, steal a sock, roll in the snow, dig a snow tunnel), and comes along on every path and on the bus.
+- **The whole world's progress**: each place earns three stars (its story, its album page, its friends), shown over it
+  on the world map; the map's **trophy** opens *¡Mi mundo!* (places visited, words, animals, friends; a card per place
+  with its stars, chapters, album and hearts), also the diploma's second page. A place whose story and album page are
+  complete gets a *¡Completo!* celebration. The **Amigos** page has a tab per place (faces, hearts, stickers; Lola's
+  card shows where you've met her). The grown-ups' *Story progress* has a second page with every place's chapters.
 - **The album is a Pokédex**: a page per place, numbered animals, silhouettes with a picture of where they live, rare
   ones that only come out at night or in the morning, *¡Completo!* per place, and *¡Nuevo animal!* the first time.
 - **No daily word limit**: nothing waits on a word count; good teaching lives inside each activity.

@@ -1,7 +1,8 @@
 # The open world: plan and how to build a zone
 
-*2026-10-17. All six steps are built (the framework and the five zones): this file is the plan, what each zone became,
-and the pattern a new zone follows. The engine is `src/zones.js`; each zone is one content file, `content/es/zone-<id>.js`.*
+*2026-10-17. All six steps are built (the framework and the five zones), and step 7 connected them (Tomás's letters,
+the zones' people as friends, the world's progress: "Connecting the world" below): this file is the plan, what each zone
+became, and the pattern a new zone follows. The engine is `src/zones.js`; each zone is one content file, `content/es/zone-<id>.js`.*
 
 ## Why
 The 7-year-old (the target player) loved variety and choice, wants to explore, and wants to interact with the people
@@ -53,7 +54,8 @@ pictures. Villa Sol's bus stop is by the plaza road (26, 11).
 | **The dog's thing to do** | a paw-print bubble on a spot: he digs (sand, a garden), splashes (waves), sniffs (a log), rolls (snow); he may leave something to pick up | yes (map `dogSpots`) |
 | **The album (the Pokédex)** | a page per zone, numbered entries, silhouettes with a habitat hint, rare ones marked, "¡Completo!" per zone, "¡Nuevo animal!" the first time | yes (`src/album.js`) |
 | **The bus** | a bus stop in each zone; the bus also comes to you from the map in the kid menu | yes |
-| **Tomás the mail carrier** | delivers across zones: a letter (`carta`) from someone in one zone for someone in another; the child carries it (`G.errands.bag.add('carta', { to: 'abuela' })` and the receiver in `G.hearts.LIKES` or a zone's own talk) | to build (a zone step: once two zones exist; only between visited zones) |
+| **Tomás the mail carrier** | a letter a day for someone in a place you've been to (from a town friend; later between places); they write back every other letter; some days he's at a zone's bus stop on his round | yes (`G.post`, `src/connect.js`) |
+| **Hearts with everyone** | the zones' people and Lola have hearts, a greeting a day, a gift they like, the 3-heart secret and sticker, the 5-heart photo; the Amigos page by place | yes (`G.hearts.ZONE`, `src/connect.js`) |
 | **Favours** | a zone's people add favours about the zone's words (`G.favores.OFFERS`, data-driven per map) | engine yes, content per zone |
 | **Things to pick up** | each zone has its own (`G.carry.SOURCES`), plus the stick (a toy with no word) | yes (sticks, apples) |
 
@@ -76,7 +78,7 @@ tower, `8` ice-cream cart, `0` wet rocks.
   (`estrellamar`), la tortuga, la gaviota, nadar, la medusa (alt *aguamala*), el delfín, el pulpo. El pez stays a town
   word. Word ids must not shadow icon names used as plain strings (`sol`, `cubeta`): check `grep "'<id>'" src content`.
 - **People:** Don Paco the fisherman (straw hat, white beard; on the pier), Marina the lifeguard (by her tower), Doña
-  Nieves (the ice-cream cart), Tere (a girl who builds sandcastles); Lola and Nico as everywhere. None have hearts yet.
+  Nieves (the ice-cream cart), Tere (a girl who builds sandcastles); Lola and Nico as everywhere. Hearts since step 7.
 - **Album (7):** cangrejo (scuttles sideways, snaps its claws, runs from you), gaviota (walks and pecks, takes off when
   you or the dog come near, circles and lands), estrella de mar (in the shallows and the pool), tortuga (plods along the
   surf, pulls its head in when tapped), medusa (drifts and pulses out at sea), **delfín** (rare: the first minutes of a
@@ -113,7 +115,7 @@ bush, `_` hollow log, `#` rock cliff, `|` waterfall, `@` the cave's mouth (an ex
   (`fauna`): el oso, la ardilla, el mapache, el venado, el zorro, el erizo, el búho (alt *tecolote*), la luciérnaga. El
   árbol stays a town word (the trees say it). La piña was left out (in Mexico it is the pineapple).
 - **People:** Elena the ranger (a green hat, khaki: the story, her mushroom game), Doña Lupe (a grandma in a purple
-  shawl: her cabin, the blackberry pie, chapter 2); Lola and Nico as everywhere. None have hearts yet.
+  shawl: her cabin, the blackberry pie, chapter 2); Lola and Nico as everywhere. Hearts since step 7.
 - **Album (8):** ardilla (`climb`: dashes about, races up the nearest trunk when you come near, sits up there a while),
   venado (`shy`: grazes, bounds away in leaps), zorro and mapache (`walk`, with a `react` frame: the fox sits, the
   raccoon stands up), erizo (`crawl`: curls into a ball), **oso** (rare: only asleep in the cave; drawn at 2x, `scale`),
@@ -166,7 +168,7 @@ turning wheel) are drawn by the zone in `drawUnder`, the riders by their own `dr
   a race car, *despacio* a snail.
 - **People:** Ana (a girl in orange with a ponytail: Simón dice, her jump rope), Pablo (a boy with a green bandana: the
   swings, his kite, the ball), Don Chuy (the bubble man: a straw hat, a moustache, a blue shirt, his cart). Lola meets
-  *el columpio* and points at the playground; Nico's hide-and-seek. None have hearts yet.
+  *el columpio* and points at the playground; Nico's hide-and-seek. Hearts since step 7.
 - **Album (8):** paloma (`fly`, by the fountain and the benches), catarina (`crawl`, on the flowers; its wings open when
   tapped), hormiga (new move `march`: a line of ants, each following the one before; tapped, they scatter), abeja
   (`flit`), lagartija (`scuttle`, on the rocks by the pond), lombriz (`still`, popping out of the sandbox), **grillo**
@@ -209,7 +211,7 @@ the ASCII ones are used up): `ñ` garden bed (lettuce, carrots, tomatoes, corn a
   `[huevo]` markup: met or not). Clothes pictures take `col` (the colour you wear).
 - **People:** Abuela (grey braid, pink, an apron: her kitchen; for the photo she waits on the porch), Abuelo (a straw
   hat, a white moustache, blue: the garden), the baby cousin (`bebe`: a little one in yellow, drawn small, crawling on the
-  rug). Abuela Rosa in town is a different grandma. Lola meets *la vaca* and points at the front door. No hearts yet.
+  rug). Abuela Rosa in town is a different grandma. Lola meets *la vaca* and points at the front door. Hearts since step 7.
 - **Clothes you wear** (`G.abuelos.wear`, saved in `G.state.abuelos.wear`): a cosmetic over the creator's look, on every
   map and the portrait (`G.st.playerSpec` is wrapped): the shirt is the outfit colour, the dress a robe, the jacket goes
   over the shirt (its collar shows), trousers the pants colour, shoes the boots (socks show when there are no shoes),
@@ -283,7 +285,7 @@ cabin wall and door). Night: a deep blue, the refuge's windows and the station's
   poncho, a blue scarf: chapter 1, the carrot, hot chocolate; inside the refuge at night and while chocolate is on, by
   the corral by day), Mateo (the weather kid: a yellow raincoat with its hood up, red boots, green mittens: his weather
   station, chapters 2 and 3, *¿Qué tiempo hace?*). Lola meets *la mariposa monarca* (the firs are full of them) and points
-  at Don Lucho; Nico's hide-and-seek. No hearts yet.
+  at Don Lucho; Nico's hide-and-seek. Hearts since step 7.
 - **Album (8):** llama (`walk`, a `react` frame: ears back, a hum; in the corral and the meadow), marmota (new move
   `peek`: up by its burrow, whistling; ducks into its hole when the dog comes near or you run up, pops out again),
   zorrillo (`walk`; tapped, its tail goes up and a little green cloud drifts off), carpintero (new move `cling`: on a
@@ -466,11 +468,58 @@ Files a zone step touches (and nothing else unless the engine truly needs it):
 - **Every zone is built:** `tools/test-world.js` no longer has a "zone still to be built": a zone's own line is tested
   with a test chapter added after La montaña's (its chapters marked done), the album's numbered "?" entries with a
   planned page pretended for a moment, and every tab (Villa Sol and the five zones) is checked complete.
-- `G.chapters.allWrittenDone()` and the badge rows (Misiones, the diploma) are Villa Sol's line only; a zone's chapters
-  get their badge card when done but aren't listed there yet (a later step could add a row per zone).
+- `G.chapters.allWrittenDone()` and the badge rows (Misiones, the diploma's first page) are Villa Sol's line only; every
+  zone's chapters are listed on Story progress's second page and on *¡Mi mundo!* (step 7).
 - A zone's people talk: story, then their side quest, then `G.errands.talk` (presents, favours, "who'd love it"), then
   their line (`person()` in the beach file). Bubbles: use `{ icon }` objects, not bare word ids (a known word's id
   shows a "?").
+
+## Connecting the world (step 7, 2026-10-17, `src/connect.js`)
+With all five zones built, what ties them together for the 7-year-old is people she recognizes everywhere.
+- **Tomás's letters** (`G.post`): after the opener, once a place beyond Villa Sol has been visited, Tomás has one letter a
+  day (his bubble: `carta`). He holds it up with the face of who it's for (`P.pick`: the zones' people in places you've
+  been to, Lola once two places are visited, the least written-to first, never someone in the place he's in) and their
+  place's picture; `carta` is met there first if it isn't (`Z.meetW`). The guide offers Tomás (`P.offerGoal`) after the
+  story's next chapter (his bubble is `later`: the guide's bubble tier passes it by). It goes in your hands as a story thing
+  (`bag.add('carta', { q: 'post', to, from })`: not dropped, not given away); its picture (`{ icon: 'carta', letter: npc }`,
+  `src/icons.js`) has their face, in the corner and in their bubble. The guide (`G.post.goal`, a tier right after a
+  favour going on): them on this map; another map of this place: the way there; another place: the bus stop (the
+  world map shows the letter over that place) or, without a stop here, the way on foot. Delivering (any person's talk,
+  wrapped): *¡Una carta! ¿Para mí?*, *¡Es de Pepe!* (the sender's face), thank you, a heart (`'errand'`: not capped) and
+  a star; every other letter (`n` odd) they write back to the sender (a town friend: the way back to Villa Sol). From
+  the fourth letter on, odd days' letters can come from someone in another place. Senders: `P.FROM` (Paco ← Pepe, Abuela
+  and Abuelo ← Mamá, Lucho and Mateo ← Luna, Lola ← Nico...). The baby gets none.
+- **Tomás on his round** (`P.tomasIn()`): on odd days he stands by one visited place's bus stop (`P.tomasAt`: a free
+  tile near the bus's drop-off, off the road, never where a path arrives), with the same letter of the day. He stays in
+  Villa Sol too (the town's story may need him any time).
+- **Every person's talk is wrapped** once all content has loaded (every `G.maps[m].npcs` entry but the dog): the
+  letter for them first (if their story has nothing for now, that's the talk), Tomás's letter of the day after his
+  story and favour, the greeting of the day for the zones' people and Tomás (`H.greet`; the town's own talk greets the others, maps.js). Bubbles: the
+  letter for them, then their own, then (zone people) a present they'd like (`G.errands.alert`), then Tomás's letter.
+- **The zones' people as friends** (`src/hearts.js`): `H.ZONE` (npc → zone, Lola `'*'`), `H.TOWN` (the 12), `H.WHO`
+  (all 27), `H.inZone(z)`, `H.greetsWith(npc)` (town: chapter 3; a zone's people: their zone's chapter 1 or a heart;
+  Lola: met), `H.POOLS` (their zone's words for the due word after the greeting), `H.LIKES` (paco pan, marina helado,
+  nieves flor, tere concha, elena hoja, lupe bellota, ana galleta, pablo pelota, chuy pan, abuela flor, abuelo
+  manzana, bebe pelota, lucho galleta, mateo hoja, lola manzana). Their 3-heart secret (`H.secrets`): a rare animal of
+  their place not found yet, shown as pictures (the animal and when), else a page puzzle ready there. A zone chapter's
+  giver gets the chapter's +2 hearts like the town's. **Lola**: a heart the first time you meet her in each place
+  (`G.state.world.lolaZ`), so all five places make her a best friend.
+- **The Amigos page** (`src/album.js`): a tab per place (its picture, its friends' hearts; the heart is full when all
+  have a sticker), two columns of cards (face, name, hearts, sticker); on a zone's tab Lola has a wide card with the
+  places' pictures lit where you've met her. Unvisited places' faces are "?".
+- **The world's progress** (`G.progress`): per place `story` (its line), `album`, `friends` (a sticker each), `stars`
+  (three: story, album, friends), `complete` (story and album). Three little stars over each visited place on the world
+  map (`Z.MAPDRAW`, a hook for more drawings there); the map's trophy (top left) opens *¡Mi mundo!* (`G.story.world()`,
+  also the diploma's second page: places visited, words learned, animals, friends; a card per place). A place complete
+  is celebrated once, on its map (`ZoneDone`, `G.state.world.done`). The grown-ups' Story progress: a tap turns to the
+  world page (a row per place: its chapters' badges, the one going on, album, hearts; Villa Sol's 21 as dots).
+- **The dog in every zone**: every zone and path map has his entry (he follows you), he gets off the bus with you,
+  every zone has 3 dog spots, and the guide's zone tier suggests one when nothing else is going on
+  (`tools/test-connect.js` checks all of it).
+- **Pitfalls:** a delivery to someone whose chapter is waiting goes on into the chapter in the same talk (test the
+  delivery with that zone's chapters done); `H.WHO` is no longer 12 (`H.TOWN` is); an npc def wrapped after load must
+  keep `this` for `alert` (field.js copies defs into npcs with `Object.assign`); a new full-screen moment needs its
+  name in `tools/harness.js` `drive` and `src/hint.js` `TAP_ON`.
 
 ## What the framework built (step 1)
 - `src/zones.js`: the zone registry, visits ("¡Nuevo lugar!"), edge exits and routes across maps (`G.zones.route`),

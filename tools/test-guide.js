@@ -129,7 +129,7 @@ async function noDeadEnd(browser) {
     check('play: and then the arrow is on the day\'s play again', /^play:/.test(((await at(g)) || {}).why || ''));
     // in town: the arrow on a thing to pick up (and Canelo trots that way)
     await setup(g, { done: ['c1', 'c2'], words: W12, map: 'villa', x: 6, y: 20 });
-    await g.ev(() => { G.state.ch.lastDoneSess = G.words.sess(); G.zones.ids().forEach(G.zones.visit); });
+    await g.ev(() => { G.state.ch.lastDoneSess = G.words.sess(); G.zones.ids().forEach(G.zones.visit); G.state.post = { day: G.words.day(), n: 0, log: {} }; }); // (Tomás's letter of the day already delivered: connect.js)
     await g.frames(10);
     a = await at(g);
     const goal = await g.ev(() => G.carry.plan(G.field));

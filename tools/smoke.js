@@ -209,9 +209,12 @@ async function walkRun(browser) {
 
     await go('villa', 5, 18, 'down', { intro: true });
     await g.tapTile(10, 21);
-    await g.frames(5);
+    await g.until(() => !!G.field.route || G.field.player.moving, null, 'the walk to start');
     await g.tapTile(1, 21);
-    check('walk: a new tap while walking changes the destination', await g.ev(() => G.field.route && G.field.route.x === 1 && G.field.route.y === 21));
+    const newDest = () => g.until(() => (G.field.route && G.field.route.x === 1 && G.field.route.y === 21) || (G.field.player.x === 1 && G.field.player.y === 21), null, 'the new destination', 4000).then(() => true, () => false);
+    let nd = await newDest();
+    if (!nd) { await g.tapTile(1, 21); nd = await newDest(); } // (robust: a tap that landed in the first frames after a step can be ignored by G.input.ready)
+    check('walk: a new tap while walking changes the destination', nd);
     await g.press('ArrowDown');
     check('walk: a key press cancels the tap walk', await g.ev(() => !G.field.route));
 
@@ -295,6 +298,8 @@ async function walkRun(browser) {
     check('walk: a tap closes the badge card', await result() !== 'open');
     await opened(() => { window.__w = G.story.diploma(); }, 60);
     await g.shot('diploma'); await g.tap(160, 112);
+    check('walk: a tap turns the diploma to its second page, "¡Mi mundo!"', await g.ev(() => G.top().constructor.name === 'Diploma' && G.top().page === 1));
+    await g.frames(64); await g.shot('diploma_world'); await g.tap(160, 112);
     check('walk: a tap closes the diploma', await result() !== 'open');
     check('ipad-walk: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }

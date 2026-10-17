@@ -143,6 +143,15 @@
     return { why, map: target, far: true, badge: { who: it.to } };
   };
 
+  // the guide (after the next chapter of the story here is suggested): Tomás with today's letter, here or in this place
+  P.offerGoal = function (f) {
+    if (!f || !P.canOffer()) return null;
+    const n = f.npcs.find(n => n.id === 'tomas' && n.spec && !n.hidden);
+    if (n) return { why: 'tomas: a letter', pts: [{ x: n.x * TL + (n.ox || 0) + 12, y: n.y * TL + (n.oy || 0) + 12, lift: 44, npc: n }] };
+    const m = P.where('tomas').find(m => Z.area(m) === Z.area(f.mapId));
+    return m ? { why: 'tomas: a letter', map: m, badge: { who: 'tomas' } } : null;
+  };
+
   // ---------- Tomás on his round: some days at a place's bus stop ----------
   // a free tile next to where the bus leaves you (not the stop, not an exit, not the entry itself)
   function nearEntry(z) {
@@ -179,10 +188,10 @@
       const a = P.alertFor(id); if (a) return a;
       const b = a0 ? a0.apply(this, arguments) : null; if (b) return b;
       if (H.ZONE[id] && G.errands) { const e = G.errands.alert(id); if (e) return e; } // (a present they'd like: the zones' own bubbles don't ask errands.js)
-      return id === 'tomas' && P.canOffer() ? { icon: 'carta' } : null;
+      return id === 'tomas' && P.canOffer() ? { icon: 'carta', later: true } : null; // (later: the guide offers it after the story's next chapter, P.offerGoal)
     };
     def.talk = function* (f, n) {
-      if (G.state && H.WHO.includes(id)) { yield* H.greet(id); yield* H.milestones(id); } // (once a day: the town's own talk, maps.js, greets too, after this it's a no-op)
+      if (G.state && (H.ZONE[id] || id === 'tomas')) { yield* H.greet(id); yield* H.milestones(id); } // (the town's people greet in their own talk, maps.js: Tomás first here, before his letter; theirs is then a no-op)
       if (G.state && (yield* P.deliver(id, f)) && !CH.alert(id)) return;
       if (G.state && id === 'tomas' && !CH.alert('tomas') && !(G.favores && G.favores.alert('tomas')) && P.canOffer() && (yield* P.offer(f))) return;
       const lz = id === 'lola' && G.state && f ? Z.of(f.mapId) : null, first = lz && lz !== 'villa' && !lolaZ()[lz];

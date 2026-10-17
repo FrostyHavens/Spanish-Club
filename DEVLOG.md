@@ -2,6 +2,34 @@
 
 A running record of what changed in Club de Español and why. Newest first.
 
+## 2026-10-17 — The world connected (step 7 of the open world): Tomás's letters, friends everywhere, the world's progress
+With all five places built, the parent asked for what makes them ONE world for a 7-year-old: people she recognizes
+everywhere, reasons to travel between places, and progress she can see. All of it is in a new file, `src/connect.js`
+(loaded after the zones), plus small hooks.
+- **Tomás's letters** (`G.post`): a letter a day, once a place beyond Villa Sol has been visited. Tomás's bubble shows a
+  letter; he holds it up with the face of who it's for (Don Paco, Elena, Ana, Abuela, Don Lucho... or Lola, who is
+  everywhere) and their place's picture. The letter in your hands shows their face; the guide's arrow goes to the bus
+  stop (the world map shows the letter over that place) and then to them (their bubble shows it). *¡Es de Pepe!*, a
+  thank-you, a heart and a star; every other letter is answered, so you carry the reply back (to town, or later to
+  another place). On odd days Tomás is on his round at a visited place's bus stop.
+- **Hearts with everyone**: the zones' fourteen people and Lola joined the town's twelve (`G.hearts.ZONE`, `TOWN`,
+  `inZone`, `greetsWith`): a greeting a day once you know them (their zone's chapter 1), then a due word from their
+  place's words; a present they like (a shell, a leaf, an acorn, the ball, an apple, a cookie, bread, an ice cream, a
+  flower; their bubble shows it); at 3 hearts a secret (a rare animal of their place not found yet, in pictures) and a
+  sticker; at 5 a photo. A zone chapter's giver gets its +2 hearts. Lola gets a heart the first time you meet her in
+  each place: five places, best friends.
+- **The Amigos page** has a tab per place (faces, hearts, stickers), Lola's wide card on every zone's tab with the
+  places where you've met her.
+- **The world's progress** (`G.progress`): three stars per place (story, album, friends) over it on the world map; the
+  map's trophy opens *¡Mi mundo!* (places, words, animals, friends; a card per place), also the diploma's second page;
+  a place whose story and album are complete is celebrated once (*¡Completo!*); the grown-ups' Story progress has a
+  second page with every place's chapters.
+- **The dog in every zone**: checked everywhere (his entry on every zone and path map, off the bus with you, three
+  spots per zone, the guide suggests them).
+- Tests: `tools/test-connect.js` (new: the letters both ways, Tomás's round, greetings, gifts, the secret and sticker,
+  Lola's hearts, the Amigos tabs, the stars, *¡Completo!*, *¡Mi mundo!*, Story progress, the diploma, the dog in every
+  zone); `smoke` taps through the diploma's second page; `test-roundb-pet` checks `H.TOWN` (12).
+
 ## 2026-10-17 — La montaña, the fifth and last zone (step 6 of the open world): the weather, snow and the cold
 The mountain east of Villa Sol, following "How to build a zone" (docs/WORLD_PLAN.md); it only uses universal words and
 its own (the beach's *el sol* and *caliente* are met here when they aren't yet), so it can be the first place visited.
