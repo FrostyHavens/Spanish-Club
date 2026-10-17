@@ -176,6 +176,11 @@
     // water pump; inside the cottage, the wardrobe and the dressing-up trunk
     'ñ': OBSTACLE('Garden', 'grass'), 'á': OBSTACLE('Henhouse', 'grass'), 'í': tt('Mud', 0, 2, 3, 1, 1, 'grass'), 'é': OBSTACLE('Water Pump', 'grass'),
     'ó': WALL('Wardrobe', 'indoor'), 'ú': OBSTACLE('Trunk', 'indoor'),
+    // La montaña (content/es/zone-montana.js): snow, the frozen pond (walkable ice), snowy pines, snowy peaks, the
+    // weather station, the lookout's binoculars, the refuge's snowy roof
+    'ü': tt('Snow', 15, 1, 1, 1, 1, 'grass'), 'ö': tt('Ice', 0, 1, 1, 1, 1, 'river'), 'ç': OBSTACLE('Snowy Pine', 'forest'),
+    'ï': tt('Peaks', 30, INF, INF, 1, INF, 'hills', { block: true }), 'ò': OBSTACLE('Weather Station', 'grass'), 'ù': OBSTACLE('Lookout', 'grass'),
+    'â': WALL('Roof', 'town'),
     ' ': WALL('Void', 'grass'),
   };
 
@@ -184,15 +189,15 @@
   // =====================================================================
   // n[] order: N NE E SE S SW W NW
   const DX = [0, 1, 1, 1, 0, -1, -1, -1], DY = [-1, -1, 0, 1, 1, 1, 0, -1];
-  const BASEMAP = { '.': '.', 'o': '.', 'y': '.', 'f': '.', 'h': '.', ',': ',', '=': '=', 'p': 'p', 's': 's', 'x': 'x', 'i': 'i', 'c': 'c', 'z': 'z', '&': 's', '{': '{' };
-  const OBJ = new Set('rFlkgPLYZteaujJOHEUmA1236780()%*_!<>/?^;$áéú'.split('')); // (áéú: the grandparents' henhouse, pump, trunk) // (!<>/?^;$: the playground's swings, slide, frame, seesaw, merry-go-round, goals, cart) // (()%*_: the forest's trees, mushrooms, bushes, log) // (1236780: the beach's palms, umbrellas, castle, tower, cart, rocks)
+  const BASEMAP = { '.': '.', 'o': '.', 'y': '.', 'f': '.', 'h': '.', ',': ',', '=': '=', 'p': 'p', 's': 's', 'x': 'x', 'i': 'i', 'c': 'c', 'z': 'z', '&': 's', '{': '{', 'ü': 'ü' };
+  const OBJ = new Set('rFlkgPLYZteaujJOHEUmA1236780()%*_!<>/?^;$áéúçòù'.split('')); // (çòù: the mountain's snowy pines, weather station, binoculars) // (áéú: the grandparents' henhouse, pump, trunk) // (!<>/?^;$: the playground's swings, slide, frame, seesaw, merry-go-round, goals, cart) // (()%*_: the forest's trees, mushrooms, bushes, log) // (1236780: the beach's palms, umbrellas, castle, tower, cart, rocks)
   const INDOOR_OBJ = new Set('teaujHEUmAú'.split(''));
-  const BASE_PREF = ['=', 'p', 'x', 'c', 'z', 'i', '{', ',', 's', '.'];
+  const BASE_PREF = ['=', 'p', 'x', 'c', 'z', 'i', '{', ',', 's', 'ü', '.'];
   const WATERISH = c => c === 'w' || c === '~' || c === 'b' || c === 'B' || c === '9' || c === 'd' || c === '4' || c === '5' || c === '-' || c === ':' || c === '|'; // (the beach's surf, pier, boat and clear shallows; the forest's stepping stones, waterfall)
-  const ROOF = c => c === 'R' || c === 'Q' || c === '+';
+  const ROOF = c => c === 'R' || c === 'Q' || c === '+' || c === 'â';
   const BWALL = c => c === 'W' || c === 'N' || c === 'D' || c === 'S' || c === 'G' || c === 'K';
   const IWALL = c => c === 'I' || c === 'n' || c === 'v' || c === 'V' || c === 'C' || c === 'ó';
-  const TALL = new Set('WNDSGKRQ+XIvnTVC#[]}ó'.split(''));
+  const TALL = new Set('WNDSGKRQ+XIvnTVC#[]}óâ'.split(''));
   const GRASSY = c => c === '.' || c === 'T' || c === 'M';
 
   function inferBase(map, x, y, code) {
@@ -454,6 +459,7 @@
       case 'c': stoneFloorTex(b, I.v); break;
       case 'z': strawFloorTex(b, I.v); break;
       case '{': caveFloor(b, I.v); break;
+      case 'ü': snowTex(b, I.v); break;
       case 'q': carpetTex(b, I.n); break;
       default: grassTex(b, I.v);
     }
@@ -2110,6 +2116,123 @@
     b.rect(15, 9, 3, 2, U('#3a78e0'));
   }
 
+  // ---------- La montaña (content/es/zone-montana.js): snow, ice, snowy pines and peaks, the weather station, the
+  // lookout's binoculars, a snowy roof ----------
+  const MT = { sn: U('#eef4fa'), sn2: U('#d8e6f2'), sn3: U('#bccfe4'), sn4: U('#ffffff'), sn5: U('#9eb6d2'),
+    ice: U('#a8dcf0'), ice2: U('#c8ecf8'), ice3: U('#7cbcdc'), ice4: U('#f4fcff'), ice5: U('#5a9cc4'),
+    rk: U('#6a7084'), rk2: U('#8a90a4'), rk3: U('#4a5064'), rk4: U('#a8aec0'),
+    wh: U('#f8f8f4'), wh2: U('#d0d0d8'), wh3: U('#a0a0b0'), red: U('#e04040'), red2: U('#a82828'), steel: U('#5878a8'), steel2: U('#3a5280'), steel3: U('#88a8d8'), glass: U('#c8e8ff') };
+  const SNOWY = g => g === 'ü' || g === 'ö' || g === 'ï';
+  function snowTex(b, v) { // fresh snow: soft blue dimples, sparkles
+    b.fill(MT.sn);
+    const s = v * 37 + 11;
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) { const r = hsh(x, y, s); if (r < 0.05) b.set(x, y, MT.sn2); else if (r < 0.065) b.set(x, y, MT.sn4); }
+    for (let i = 0; i < 2 + (v % 2); i++) { // a soft drift: a curved blue shadow
+      const x = 2 + Math.floor(hsh(i, v, 13) * 16), y = 3 + Math.floor(hsh(v, i, 17) * 16);
+      for (let k = 0; k < 6; k++) { b.set(x + k, y + (k === 0 || k === 5 ? 0 : 1), MT.sn2); if (k > 0 && k < 5) b.set(x + k, y, MT.sn4); }
+    }
+  }
+  // snow ('ü'): fresh snow; where the ground beside isn't snowy, the meadow's grass peeks in with a ragged edge
+  function snowTile(b, I) {
+    snowTex(b, I.v);
+    const m = maskOf(I.g, g => !SNOWY(g) && g !== undefined && g !== ' ');
+    if (m) for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) {
+      const d = edgeDist(x, y, m, 8), jag = hsh(x >> 2, y >> 2, I.v + 21) * 3 + hsh(x >> 1, y >> 1, I.v + 5) * 1.5;
+      if (d < 3 + jag) b.set(x, y, hsh(x, y, I.v) < 0.15 ? P.G4 : hsh(x, y, I.v + 1) < 0.12 ? MT.sn : P.G3);
+      else if (d < 4.2 + jag) b.set(x, y, (x + y) & 1 ? MT.sn2 : MT.sn3);
+    }
+    applyShadow(b, I.sh);
+  }
+  // the frozen pond ('ö'): pale blue ice, white streaks, a few cracks, a snowy rim where it meets the snow
+  function iceTile(b, I) {
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) b.set(x, y, hsh(x >> 2, y >> 2, I.v + 3) < 0.3 ? MT.ice2 : MT.ice);
+    for (let k = 0; k < 3; k++) { const y0 = 3 + Math.floor(hsh(k, I.v, 5) * 17), x0 = Math.floor(hsh(I.v, k, 7) * 12); for (let i = 0; i < 8; i++) b.set(x0 + i, y0 - (i >> 1), i & 1 ? MT.ice4 : MT.ice2); }
+    const cx = 4 + Math.floor(hsh(I.v, 9, 2) * 14); for (let i = 0; i < 6; i++) b.set(cx + (i & 1) - (i >> 1), 8 + i, MT.ice3);
+    if (I.af & 1) { const x = 3 + (I.v * 5) % 17, y = 4 + (I.v * 7) % 15; b.set(x, y, MT.ice4); b.set(x - 1, y, MT.ice2); b.set(x + 1, y, MT.ice2); b.set(x, y - 1, MT.ice2); b.set(x, y + 1, MT.ice2); }
+    const m = maskOf(I.g, g => g !== 'ö');
+    if (m) for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) {
+      const d = edgeDist(x, y, m, 6), jag = hsh(x >> 1, y >> 1, I.v + 4) * 1.4;
+      if (d < 2 + jag) b.set(x, y, hsh(x, y, 2) < 0.3 ? MT.sn2 : MT.sn);
+      else if (d < 3 + jag) b.set(x, y, MT.ice5);
+    }
+  }
+  // a snowy pine ('ç'): a dark fir, its boughs heavy with snow
+  function snowPineTile(b, I) {
+    drawGround(b, I.base, I);
+    const cx = 12, top = 1, h = 21;
+    dropShadow(b, cx + 2, 21, 6, 2, 0.6);
+    b.rect(cx - 1, 19, 3, 4, P.T1); b.vl(cx + 1, 19, 22, P.T0);
+    for (let y = top; y < top + h - 2; y++) {
+      const t = (y - top) / h, tier = (t * 3.2) % 1, w = 1 + t * 8 * (0.5 + tier * 0.65);
+      for (let x = Math.floor(cx - w); x <= cx + w; x++) {
+        const dx = x + 0.5 - cx;
+        let c = dx < -w * 0.3 ? P.E3 : dx < w * 0.3 ? P.E2 : P.E1;
+        if (Math.abs(dx) > w - 0.8 && dx > 0) c = P.E0;
+        if (tier < 0.32 || (tier < 0.5 && Math.abs(dx) < w * 0.5 && hsh(x, y, I.v) < 0.5)) c = dx > w * 0.35 ? MT.sn3 : dx > 0 ? MT.sn2 : MT.sn4; // snow on top of each tier
+        b.set(x, y, c);
+      }
+    }
+    b.set(cx, top, MT.sn4); b.set(cx, top + 1, MT.sn);
+  }
+  // snowy peaks ('ï'): like the rock mountains, cool grey rock with thick snow on the tops; the ground between is snow
+  function snowPeakTile(b, I) {
+    const n = I.n, isM = c => c === 'ï';
+    snowTex(b, I.v);
+    const openN = !isM(n[0]), openS = !isM(n[4]), openW = !isM(n[6]), openE = !isM(n[2]);
+    const pk = [], X0 = I.tx, Y0 = I.ty;
+    const jit = (X, Y, kind) => ({ jx: (hsh(X, Y, 91 + kind) - 0.5) * 3, jy: (hsh(X, Y, 94 + kind) - 0.5) * 3, jr: (hsh(X, Y, 97 + kind) - 0.5) * 3 });
+    { const j = jit(X0, Y0, 0); let x = 12 + j.jx, y = 9 + j.jy, R = 13 + j.jr, sS = 0.62;
+      if (openW && openE) { x = 12; R = 10.5; } else if (openW) { x = 13; R = 11.5; } else if (openE) { x = 11; R = 11.5; }
+      if (openN) { y = 11; R = Math.min(R, 11); } if (openS) { sS = 1.45; y = Math.min(y, 10); }
+      pk.push({ x, y, R, sS, i: 0 }); }
+    for (const cx of [0, 24]) { if (cx === 0 && openW) continue; if (cx === 24 && openE) continue; const j = jit(X0 + (cx ? 1 : 0), Y0, 1); let x = cx + j.jx * 0.6, y = 21 + j.jy, R = 13 + j.jr, sS = 0.62; if (openS) { y = 15; R = 10; sS = 1.5; } pk.push({ x, y, R, sS, i: cx ? 2 : 1 }); }
+    for (let k = 0; k < 8; k++) if (isM(n[k])) { const X = X0 + DX[k], Y = Y0 + DY[k], ox = DX[k] * TS, oy = DY[k] * TS, j = jit(X, Y, 0); pk.push({ x: 12 + j.jx + ox, y: 9 + j.jy + oy, R: 13 + j.jr, sS: 0.62, i: 3 + k * 3 }); for (const cx of [0, 24]) { const jj = jit(X + (cx ? 1 : 0), Y, 1); pk.push({ x: cx + jj.jx * 0.6 + ox, y: 21 + jj.jy + oy, R: 13 + jj.jr, sS: 0.62, i: 4 + k * 3 + (cx ? 1 : 0) }); } }
+    const om = maskOf(n, c => !isM(c)), ROCK = [MT.rk3, MT.rk, MT.rk2, MT.rk4], SNW = [MT.sn5, MT.sn3, MT.sn2, MT.sn, MT.sn4];
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) {
+      const px = x + 0.5, py = y + 0.5; let best = null, bs = -1e9, bh = 0;
+      for (const c of pk) { const dx = px - c.x, dy = py - c.y, h = c.R - (Math.abs(dx) + (dy < 0 ? -dy * 1.15 : dy * c.sS)); if (h > 0) { const s2 = c.y * 10 + h * 0.01; if (s2 > bs) { bs = s2; best = c; bh = h; } } }
+      if (best) {
+        const dx = px - best.x, dy = py - best.y, w = Math.max(1, best.R - (dy < 0 ? -dy * 1.15 : dy * best.sS)), t = Math.abs(dx) / w;
+        const lit = dx < 0, r = hsh(x, y, I.v + best.i), snowLine = best.R * (0.15 + hsh(Math.floor(x / 3), best.i, 5) * 0.25);
+        if (dy < snowLine) b.set(x, y, lit ? SNW[t < 0.3 ? 4 : t < 0.65 ? 3 : 2] : SNW[t < 0.35 ? 1 : 0]);
+        else b.set(x, y, lit ? ROCK[t < 0.3 ? 3 : 2] : ROCK[t < 0.4 ? 1 : 0]);
+        if (r < 0.05) b.dk(x, y, 0.85);
+        if (bh < 1.3 && dy > 0) b.set(x, y, MT.rk3);
+      } else if (edgeDist(x, y, om, 0) > 5) b.set(x, y, (x + y) & 1 ? MT.sn2 : MT.sn);
+    }
+  }
+  // the weather station ('ò'): a white louvred box on legs, a thermometer, the vane's pole going up (the vane is drawn by the zone)
+  function stationTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 12, 21, 9, 2, 0.6);
+    for (const x of [6, 17]) { b.rect(x, 14, 2, 8, MT.wh3); b.vl(x, 14, 21, MT.wh2); }
+    b.rect(4, 4, 16, 11, MT.wh); b.hl(4, 19, 4, MT.wh2); b.hl(3, 20, 3, MT.wh2); b.vl(19, 4, 14, MT.wh3); b.hl(4, 19, 14, MT.wh3);
+    for (let y = 6; y < 14; y += 2) b.hl(6, 17, y, MT.wh2);
+    b.rect(11, 0, 2, 4, MT.wh3); b.vl(11, 0, 3, MT.wh2);
+    b.rect(21, 6, 2, 9, MT.wh); b.vl(21, 6, 14, MT.red); b.set(21, 14, MT.red2); b.set(22, 15, MT.red2);
+  }
+  // the lookout's binoculars ('ù'): a coin viewer on a post, two big eyepieces, a little step to stand on
+  function viewerTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 12, 21, 8, 2, 0.6);
+    b.rect(5, 18, 14, 4, MT.rk2); b.hl(5, 18, 18, MT.rk4); b.hl(5, 18, 21, MT.rk3);
+    b.rect(11, 9, 3, 9, MT.steel2); b.vl(11, 9, 17, MT.steel);
+    b.rect(5, 3, 14, 7, MT.steel); b.hl(5, 18, 3, MT.steel3); b.hl(5, 18, 9, MT.steel2);
+    for (const x of [6, 13]) { b.rect(x, 1, 5, 3, MT.steel2); b.rect(x + 1, 1, 3, 2, MT.glass); }
+    b.rect(16, 5, 2, 2, U('#f8d040'));
+  }
+  // a snowy roof ('â'): the cabin's red roof under a thick layer of snow, little icicles along the eave
+  function snowRoofTile(b, I) {
+    roofTile(b, I, false);
+    const bot = !ROOF(I.n[4]);
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) {
+      const edge = bot ? 13 + Math.round(Math.sin((x + I.tx * 24) / 3.1) * 1.5 + hsh(x >> 1, 3, I.v) * 2) : 99;
+      const top = !ROOF(I.n[0]);
+      if (y < edge) b.set(x, y, y === edge - 1 ? MT.sn3 : top && y < 2 ? MT.sn4 : top && y < 4 ? MT.sn2 : hsh(x, y, I.v + 7) < 0.08 ? MT.sn2 : (y + (x >> 3)) % 6 === 0 && hsh(x >> 2, y, 3) < 0.5 ? MT.sn2 : y > 9 && (x + y) & 1 ? MT.sn2 : MT.sn);
+    }
+    if (bot) for (let x = 2; x < TS; x += 5 + (I.v & 1)) { const L = 2 + Math.floor(hsh(x, I.tx, 3) * 4); for (let k = 0; k < L; k++) b.set(x, 15 + k, k === L - 1 ? MT.ice4 : MT.ice2); }
+  }
+
   function reg(codes, spec) { for (const c of codes) REG[c] = spec; }
   reg('.', { need: 's', fn: (b, I) => { grassTex(b, I.v); applyShadow(b, I.sh); } });
   reg('o', { need: 's', anim: 2, spd: 30, fn: (b, I) => { flowerTex(b, I.v, I.af); applyShadow(b, I.sh); } });
@@ -2199,6 +2322,13 @@
   reg('é', { need: 'g', base: true, anim: 2, spd: 18, fn: pumpTile });
   reg('ó', { need: 'n', fn: wardrobeTile });
   reg('ú', { need: 'g', base: true, fn: trunkTile });
+  reg('ü', { need: 'g', fn: snowTile });
+  reg('ö', { need: 'g', anim: 2, spd: 40, fn: iceTile });
+  reg('ç', { need: 'g', base: true, fn: snowPineTile });
+  reg('ï', { need: 'n', uniq: true, fn: snowPeakTile });
+  reg('ò', { need: 'g', base: true, fn: stationTile });
+  reg('ù', { need: 'g', base: true, fn: viewerTile });
+  reg('â', { need: 'n', fn: snowRoofTile });
   reg(' ', { need: '', fn: (b) => b.fill(P.X0) });
 
   const tileCache = new Map();
@@ -2250,6 +2380,7 @@
     '9': '#e8f4ff', 'd': '#9c5e2a', '-': '#5cc8dc', '&': '#c8c070', '1': '#2e9a3a', '2': '#e83a30', '3': '#d8bc7c', '4': '#e83a30', '5': '#e83a30', '6': '#e83a30', '7': '#fafaf4', '8': '#3a7ae0', '0': '#5a5a6a',
     '(': '#2b6a26', ')': '#2b6a26', '%': '#e03a30', '*': '#4a2a70', '_': '#8a5a30', '#': '#6c6252', '|': '#e8f6ff', '@': '#0c0a10', ':': '#8e8e9a', '[': '#9a6634', ']': '#764a22', '{': '#3a3240', '}': '#1e1822',
     'ñ': '#5a3618', 'á': '#c04030', 'í': '#6a4a2a', 'é': '#3a7ad0', 'ó': '#8a5428', 'ú': '#8a5428',
+    'ü': '#eef4fa', 'ö': '#a8dcf0', 'ç': '#1f5634', 'ï': '#d8e6f2', 'ò': '#f8f8f4', 'ù': '#5878a8', 'â': '#f4f8fc',
     '!': '#e04040', '<': '#3870d8', '>': '#f8c830', '/': '#38a858', '?': '#e04040', '^': '#c8b8a0', ';': '#fafaf4', '$': '#3870d8',
     'z': '#b08a50', 'V': '#5c3418', 'C': '#5c3418', 'H': '#e2be46', 'E': '#9c5e2a', 'U': '#3a72d2', 'm': '#b4b2b4', 'A': '#c8343c',
   };

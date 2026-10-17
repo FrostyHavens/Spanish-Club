@@ -301,6 +301,8 @@
       else if (e.k === 'dust') { ctx.fillStyle = '#e8dcc0'; const r = 1 + Math.round(k * 2); ctx.fillRect(x - r, y - r, r * 2, r * 2); }
       else if (e.k === 'crumb') { ctx.fillStyle = '#c89048'; ctx.fillRect(x, y, 2, 2); }
       else if (e.k === 'drop') { ctx.fillStyle = '#88c8f8'; ctx.fillRect(x, y, 1, 2); }
+      else if (e.k === 'flake') { ctx.fillStyle = '#ffffff'; ctx.fillRect(x, y, 2, 2); ctx.fillStyle = '#b8d0ea'; ctx.fillRect(x + 1, y + 1, 1, 1); } // (snow: La montaña)
+      else if (e.k === 'steam') { ctx.globalAlpha = Math.max(0, 1 - k) * 0.7; ctx.fillStyle = '#ffffff'; const r = 1 + Math.round(k * 2); ctx.fillRect(x - r, y - r, r * 2, r * 2); ctx.globalAlpha = 1; } // (hot chocolate)
       else if (e.k === 'spark') { ctx.fillStyle = '#fff8b0'; ctx.fillRect(x - 2, y, 5, 1); ctx.fillRect(x, y - 2, 1, 5); }
       else if (e.k === 'q' || e.k === 'ex' || e.k === 'txt') {
         const s = e.k === 'q' ? '?' : e.k === 'ex' ? '!' : e.s, w = G.textWidth(s) + 8, bob = Math.round(Math.sin(e.t / 5) * 1.5);

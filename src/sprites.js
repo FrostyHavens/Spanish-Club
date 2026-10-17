@@ -1246,6 +1246,12 @@
         B.ell(hx, hy - 4, hr * 0.8, 2.8, cR, { test: (x, y) => y < hy - 3 });
         B.grp('hat:brim'); B.ell(hx, hy - 3, hr + 2, 1.3, cR, { shift: -1 });
       }
+    } else if (head === 'beanie') { // a knitted winter hat (el gorro, La montaña): a turned-up band and a pom-pom
+      const cR = ramp(hc), bR = ramp(mixHex(hc, '#ffffff', 0.4));
+      B.grp('hat');
+      B.ell(hx - (side ? 0.3 : 0), hy - 1.2, hr + 0.5, hr * 0.98, cR, { test: (x, y) => y < hy - 1.6 });
+      B.grp('hat:band'); B.ell(hx - (side ? 0.3 : 0), hy - 1.2, hr + 0.7, hr, bR, { test: (x, y) => y >= hy - 2.6 && y < hy - 1.0 });
+      B.grp('hat:pom'); B.ell(hx - (side ? 0.8 : 0), hy - hr - 1.3, 1.6, 1.5, ramp('#f4f4f8'));
     } else if (head === 'bandana') {
       B.grp('hat'); const cR = ramp(hc);
       B.ell(hx, hy - 1, hr + 0.3, hr, cR, { test: (x, y) => y > hy - 4.2 && y < hy - 2.2 });
@@ -1331,7 +1337,7 @@
     const arm = (sx, sy, hx2, hy2, grp) => {
       B.grp(grp); const r = bones ? 0.7 : body === 'orc' || body === 'dwarf' ? 1.4 : 1.1;
       B.cap(sx, sy, hx2, hy2, r, r * 0.9, spec.robe ? outR : bones ? skinR : (metR || outR));
-      B.grp(grp + ':h'); B.ell(hx2, hy2 + 0.3, 1.2, 1.2, (spec.weapon === 'fists') ? trimR : skinR);
+      B.grp(grp + ':h'); B.ell(hx2, hy2 + 0.3, 1.2, 1.2, spec.gloves ? ramp(spec.gloves) : (spec.weapon === 'fists') ? trimR : skinR);
     };
     let handN, handF;
     if (side) { handF = [cx - 1.5 - armSwing, top + 4.5]; arm(cx - 0.5, top + 1, handF[0], handF[1], 'armF'); }
@@ -1388,6 +1394,13 @@
       void oh;
     }
     if (C.armor && !back) { B.grp('paul'); if (side) B.ell(cx + 0.3, top + 0.8, 1.8, 1.4, metR); else { B.ell(cx - bw + 0.3, top + 0.8, 1.7, 1.4, metR); B.ell(cx + bw - 0.3, top + 0.8, 1.7, 1.4, metR); } }
+    if (spec.scarf) { // a scarf (la bufanda, La montaña): wrapped round the neck, one end hanging (flapping behind when walking sideways)
+      const sR = ramp(spec.scarf);
+      B.grp('scarf'); B.ell(cx + (side ? 0.3 : 0), top + 0.3, side ? 2.9 : bw - 0.2, 1.3, sR);
+      B.grp('scarf:end');
+      if (side) B.chain([[cx - 1.5, top + 0.6], [cx - 3.5, top + 1.5 + frame], [cx - 5, top + 2 + frame * 1.5]], [1, 0.9, 0.7], sR);
+      else B.cap(cx + (back ? -1.6 : 1.6), top + 0.8, cx + (back ? -1.8 : 1.9), top + 4.6, 0.9, 0.8, sR);
+    }
     B.lines();
     mapFace(B, spec, C, dir, H, hy, hr);
   }
@@ -1590,6 +1603,11 @@
       B.grp('gorget'); B.poly([[cx - 8, 42.5], [cx + 8, 42.5], [cx + 10, 47.5], [cx - 10, 47.5]], metR, { vg: 0.8 });
       B.grp('tabard'); B.poly([[cx - 5, 47.5], [cx + 5, 47.5], [cx + 4, 53], [cx - 4, 53]], outR);
     }
+    if (ps.scarf) { // la bufanda: a thick band round the neck, one end hanging down the chest, knitted stripes
+      const sR = ramp(ps.scarf);
+      B.grp('scarf'); B.poly([[cx - 11, 41], [cx + 11, 41], [cx + 13, 46.5], [cx - 13, 46.5]], sR, { vg: 0.5 });
+      B.grp('scarf:end'); B.poly([[cx + 3, 45], [cx + 9, 45], [cx + 10, 53], [cx + 4, 53]], sR, { vg: 0.4 });
+    }
     // back hair
     if (!hooded && !fullHelm && body !== 'skeleton' && body !== 'birdfolk') {
       B.grp('hair:back');
@@ -1694,6 +1712,10 @@
       B.grp('hat'); B.ell(cx, fringeY - 3, fw * 0.85, 6, cR, { test: (x, y) => y < fringeY });
       B.grp('hat:band'); B.rect(cx - fw * 0.85, fringeY - 2, fw * 1.7, 2, trimR[2]);
       B.grp('hat:brim'); B.ell(cx, fringeY + 0.5, fw + 8, 2.5, cR, { shift: -1 });
+    } else if (head === 'beanie') { // el gorro: a knitted cap pulled down to the brows, a turned-up band, a pom-pom
+      B.grp('hat'); B.ell(cx, cy - 3, fw + 2.2, fh + 0.8, ramp(hc), { test: (x, y) => y < fringeY + 2 });
+      B.grp('hat:band'); B.ell(cx, cy - 3, fw + 2.6, fh + 1, ramp(mixHex(hc, '#ffffff', 0.4)), { test: (x, y) => y >= fringeY - 2 && y < fringeY + 2 });
+      B.grp('hat:pom'); B.ell(cx + 1, cy - fh - 4, 4, 3.6, ramp('#f4f4f8'));
     } else if (head === 'bandana') {
       B.grp('hat'); B.ell(cx, cy - 2.5, fw + 1.8, fh + 0.6, ramp(hc), { test: (x, y) => y > fringeY - 5 && y < fringeY });
       B.poly([[cx + fw, fringeY - 4], [cx + fw + 7, fringeY + 3], [cx + fw + 4, fringeY + 5], [cx + fw, fringeY]], ramp(hc));

@@ -147,6 +147,15 @@
     bebe: { name: 'Bebé',
       portrait: { body: 'halfling', skin: '#f0c8a0', hair: '#a05a28', hairStyle: 'short', eyes: '#302010', outfit: '#f8e070', trim: '#ffffff', age: 'young', face: 'round', bg: '#e0b840' },
       map: { body: 'halfling', skin: '#f0c8a0', hair: '#a05a28', hairStyle: 'short', outfit: '#f8e070', trim: '#ffffff', pants: '#f8e070', boots: '#f8f0d0', eyes: '#302010' } },
+    // La montaña (content/es/zone-montana.js): Don Lucho, the shepherd who keeps the mountain refuge (a knitted cap, a
+    // striped poncho, a grey beard: his llamas, the hot chocolate), and Mateo, the weather kid (a yellow raincoat with
+    // its hood up, red boots, a scarf: his weather station; he can make it snow, rain, blow or shine)
+    lucho: { name: 'Don Lucho',
+      portrait: { body: 'human', skin: '#c08860', hair: '#5a4a40', hairStyle: 'short', beard: '#b8b0a8', eyes: '#302010', head: 'beanie', headColor: '#c83838', outfit: '#d87830', trim: '#f8e0a0', scarf: '#3870c8', age: 'old', face: 'round', bg: '#7a5a3a' },
+      map: { body: 'human', skin: '#c08860', hair: '#5a4a40', hairStyle: 'short', beard: '#b8b0a8', head: 'beanie', headColor: '#c83838', outfit: '#d87830', trim: '#f8e0a0', robe: true, scarf: '#3870c8', eyes: '#302010' } },
+    mateo: { name: 'Mateo',
+      portrait: { body: 'halfling', skin: '#c89070', hair: '#2a1810', hairStyle: 'short', eyes: '#2a1808', head: 'hood', headColor: '#f8d030', outfit: '#f8d030', trim: '#3870c8', scarf: '#38a858', age: 'young', face: 'round', bg: '#4a8ac8' },
+      map: { body: 'halfling', skin: '#c89070', hair: '#2a1810', hairStyle: 'short', head: 'hood', headColor: '#f8d030', outfit: '#f8d030', trim: '#3870c8', boots: '#d83030', gloves: '#38a858', eyes: '#2a1808' } },
     canelo: { name: 'Canelo',
       map: { body: 'wolf', outfit: '#b87038', trim: '#f0d8b0', eyes: '#201008' } },
   };

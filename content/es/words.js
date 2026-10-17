@@ -38,9 +38,12 @@
     cuerpo: { name: 'Mi cuerpo', en: 'My body' },
     ropa: { name: 'La ropa', en: 'Clothes' },
     rancho: { name: 'En casa de los abuelos', en: 'At the grandparents\' (their animals)' },
+    tiempo: { name: '¿Qué tiempo hace?', en: 'The weather' },
+    montana: { name: 'La montaña', en: 'The mountain (snow and cold)' },
+    faunamontana: { name: 'Animales de la montaña', en: 'Mountain animals' },
   };
   // the notebook's page order: roughly the order the pages appear in the story
-  C.topicOrder = ['saludos', 'mascota', 'animales', 'sonidos', 'comida', 'colores', 'granja', 'pueblo', 'cosas', 'sentir', 'numeros', 'playa', 'mar', 'bosque', 'fauna', 'acciones', 'juegosparque', 'bichos', 'familia', 'cuerpo', 'ropa', 'rancho'];
+  C.topicOrder = ['saludos', 'mascota', 'animales', 'sonidos', 'comida', 'colores', 'granja', 'pueblo', 'cosas', 'sentir', 'numeros', 'playa', 'mar', 'bosque', 'fauna', 'acciones', 'juegosparque', 'bichos', 'familia', 'cuerpo', 'ropa', 'rancho', 'tiempo', 'montana', 'faunamontana'];
 
   C.words = {
     // ---- Saludos ----
@@ -135,7 +138,7 @@
     concha: { es: 'la concha', en: 'the seashell', topic: 'playa', icon: 'concha', pl: 'conchas', alt: 'conchita / caracola' },
     cubetaarena: { es: 'la cubeta', en: 'the pail', topic: 'playa', icon: 'cubetaplaya', alt: 'cubetita / balde / cubo' },
     castillo: { es: 'el castillo', en: 'the sandcastle', topic: 'playa', icon: 'castillo', alt: 'castillo de arena / castillito' },
-    helado: { es: 'el helado', en: 'the ice cream', topic: 'playa', icon: 'helado', pl: 'helados', alt: 'heladito / nieve' },
+    helado: { es: 'el helado', en: 'the ice cream', topic: 'playa', icon: 'helado', pl: 'helados', alt: 'heladito / helados' },
     caliente: { es: 'caliente', en: 'hot', topic: 'playa', icon: 'caliente', alt: 'calor / hace calor / tengo calor / qué calor' },
     // ---- En el mar: the beach's animals (the album) and swimming ----
     cangrejo: { es: 'el cangrejo', en: 'the crab', topic: 'mar', icon: 'cangrejo', pl: 'cangrejos', alt: 'cangrejito' },
@@ -210,7 +213,7 @@
     calcetines: { es: 'los calcetines', en: 'the socks', topic: 'ropa', icon: 'calcetines', alt: 'calcetín / el calcetín / calcetas / calcetitas' },
     vestido: { es: 'el vestido', en: 'the dress', topic: 'ropa', icon: 'vestido', pl: 'vestidos', alt: 'vestidito' },
     zapatos: { es: 'los zapatos', en: 'the shoes', topic: 'ropa', icon: 'zapatos', alt: 'zapato / el zapato / zapatitos / tenis' },
-    sombrero: { es: 'el sombrero', en: 'the hat', topic: 'ropa', icon: 'sombrero', pl: 'sombreros', alt: 'sombrerito / gorro' },
+    sombrero: { es: 'el sombrero', en: 'the hat', topic: 'ropa', icon: 'sombrero', pl: 'sombreros', alt: 'sombrerito / sombreros' },
     chamarra: { es: 'la chamarra', en: 'the jacket', topic: 'ropa', icon: 'chamarra', alt: 'chaqueta / chamarrita / suéter' },
     // ---- En casa de los abuelos: their animals (the album) ----
     vaca: { es: 'la vaca', en: 'the cow', topic: 'rancho', icon: 'vaca', pl: 'vacas', alt: 'vaquita / vacas' },
@@ -221,6 +224,32 @@
     raton: { es: 'el ratón', en: 'the mouse', topic: 'rancho', icon: 'raton', pl: 'ratones', alt: 'ratoncito / ratones / ratita' },
     gallo: { es: 'el gallo', en: 'the rooster', topic: 'rancho', icon: 'gallo', pl: 'gallos', alt: 'gallito' },
     tlacuache: { es: 'el tlacuache', en: 'the possum', topic: 'rancho', icon: 'tlacuache', pl: 'tlacuaches', alt: 'tlacuachito / zarigüeya / tacuache' },
+    // ---- ¿Qué tiempo hace? (content/es/zone-montana.js): the weather, changed at Mateo's weather station; Mexican Spanish.
+    //      el sol (elsol) and caliente are the beach's words: the mountain meets them if they aren't met yet ----
+    nieve: { es: 'la nieve', en: 'the snow', topic: 'tiempo', icon: 'nieve', alt: 'nieve / nevando / está nevando / la nevada' },
+    frio: { es: 'frío / fría', en: 'cold', topic: 'tiempo', icon: 'frio', alt: 'hace frío / tengo frío / qué frío / el frío / friolento' },
+    nube: { es: 'la nube', en: 'the cloud', topic: 'tiempo', icon: 'nube', pl: 'nubes', alt: 'nubes / nubecita / nublado / las nubes' },
+    viento: { es: 'el viento', en: 'the wind', topic: 'tiempo', icon: 'viento', alt: 'hace viento / ventarrón / el aire / vientito' },
+    lluvia: { es: 'la lluvia', en: 'the rain', topic: 'tiempo', icon: 'lluvia', alt: 'llueve / está lloviendo / lluvia / lloviendo' },
+    arcoiris: { es: 'el arcoíris', en: 'the rainbow', topic: 'tiempo', icon: 'arcoiris', alt: 'arco iris / arcoiris / el arco iris' },
+    // ---- La montaña: snow, the cold, what you wear for it (put on and worn everywhere, like the grandparents' clothes) ----
+    lamontana: { es: 'la montaña', en: 'the mountain', topic: 'montana', icon: 'montana', pl: 'montañas', alt: 'montaña / montañas / el cerro / la sierra' },
+    gorro: { es: 'el gorro', en: 'the winter hat', topic: 'montana', icon: 'gorro', pl: 'gorros', alt: 'gorrito / gorro de lana' },
+    bufanda: { es: 'la bufanda', en: 'the scarf', topic: 'montana', icon: 'bufanda', pl: 'bufandas', alt: 'bufandita' },
+    guantes: { es: 'los guantes', en: 'the gloves', topic: 'montana', icon: 'guantes', alt: 'guante / el guante / guantitos' },
+    muneco: { es: 'el muñeco de nieve', en: 'the snowman', topic: 'montana', icon: 'muneco', alt: 'muñeco / mono de nieve / muñequito de nieve / el muñeco' },
+    chocolate: { es: 'el chocolate', en: 'the hot chocolate', topic: 'montana', icon: 'chocolate', alt: 'chocolate caliente / chocolatito / un chocolate' },
+    trineo: { es: 'el trineo', en: 'the sled', topic: 'montana', icon: 'trineo', pl: 'trineos', alt: 'trineos / el trineíto' },
+    hielo: { es: 'el hielo', en: 'the ice', topic: 'montana', icon: 'hielo', alt: 'hielito / el hielo' },
+    // ---- Animales de la montaña (the album) ----
+    llama: { es: 'la llama', en: 'the llama', topic: 'faunamontana', icon: 'llama', pl: 'llamas', alt: 'llamas / llamita' },
+    marmota: { es: 'la marmota', en: 'the marmot', topic: 'faunamontana', icon: 'marmota', pl: 'marmotas', alt: 'marmotas / marmotita' },
+    zorrillo: { es: 'el zorrillo', en: 'the skunk', topic: 'faunamontana', icon: 'zorrillo', pl: 'zorrillos', alt: 'zorrillito / mofeta' },
+    carpintero: { es: 'el pájaro carpintero', en: 'the woodpecker', topic: 'faunamontana', icon: 'carpintero', pl: 'pájaros carpinteros', alt: 'carpintero / el carpintero' },
+    monarca: { es: 'la mariposa monarca', en: 'the monarch butterfly', topic: 'faunamontana', icon: 'monarca', pl: 'mariposas monarca', alt: 'monarca / la monarca / monarcas / mariposas monarca' },
+    puma: { es: 'el puma', en: 'the puma', topic: 'faunamontana', icon: 'puma', pl: 'pumas', alt: 'pumita / león de montaña' },
+    aguila: { es: 'el águila', en: 'the eagle', topic: 'faunamontana', icon: 'aguila', pl: 'águilas', alt: 'águila / aguilita / las águilas' },
+    lobo: { es: 'el lobo', en: 'the wolf', topic: 'faunamontana', icon: 'lobo', pl: 'lobos', alt: 'lobito / lobos' },
   };
   C.numberWords = ['uno', 'dos', 'tres', 'cuatro', 'cinco'];
   C.numberWords10 = ['uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'];
@@ -249,6 +278,9 @@
     cuerpo: { topic: 'cuerpo', words: ['mano', 'pie', 'nariz', 'ojos', 'boca', 'cabeza'] },
     ropa: { topic: 'ropa', words: ['camisa', 'pantalon', 'calcetines', 'vestido', 'zapatos', 'sombrero', 'chamarra'] },
     rancho: { topic: 'rancho', words: ['vaca', 'cerdo', 'oveja', 'burro', 'pavo', 'raton', 'gallo', 'tlacuache'] },
+    tiempo: { topic: 'tiempo', words: ['nieve', 'frio', 'nube', 'viento', 'lluvia', 'arcoiris'] },
+    montana: { topic: 'montana', words: ['lamontana', 'gorro', 'bufanda', 'guantes', 'muneco', 'chocolate', 'trineo', 'hielo'] },
+    faunamontana: { topic: 'faunamontana', words: ['llama', 'marmota', 'zorrillo', 'carpintero', 'monarca', 'puma', 'aguila', 'lobo'] },
   };
   C.pageOrder = C.topicOrder.slice();
   // where each page's puzzle sparkle sits (maps.js reads this): map -> 'x,y' -> page
@@ -264,6 +296,7 @@
     juegos: { '20,8': 'acciones', '27,4': 'juegosparque', '35,17': 'bichos' }, // (El parque de juegos: the playground, under the kite tree, the garden)
     abuelos: { '14,14': 'cuerpo', '29,13': 'rancho' }, // (La casa de los abuelos: by the pump, by the paddock)
     abuelos_casa: { '5,5': 'familia', '15,5': 'ropa' }, // (inside: under the family photos, in the bedroom)
+    montana: { '10,19': 'tiempo', '13,10': 'montana', '29,19': 'faunamontana' }, // (La montaña: by the weather station, on the snowfield, by the llamas' corral)
   };
 
   // ---------- the 21 chapters, in order (docs/CURRICULUM.md section 4) ----------

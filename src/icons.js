@@ -1053,6 +1053,148 @@
       p.rect(4, 7, 3, 1, '#302018'); p.rect(9, 7, 3, 1, '#302018'); p.ell(8, 11, 1.4, 1.6, '#803030');
       p.rect(11, 0, 3, 1, '#4060c0'); p.put(12, 1, '#4060c0'); p.rect(11, 2, 3, 1, '#4060c0'); p.put(14, 3, '#4060c0'); p.put(15, 3, '#4060c0'); p.put(15, 4, '#4060c0'); p.put(14, 5, '#4060c0'); p.put(15, 5, '#4060c0');
     },
+    // ---- La montaña (content/es/zone-montana.js): the weather, snow and the cold, its animals ----
+    nieve(p) { // snow: big snowflakes falling onto a white mound
+      p.ell(8, 15, 9, 3.5, '#f4f8fc'); p.ell(8, 15.5, 8, 2, '#d0e2f4');
+      const flake = (cx, cy, r, c) => { for (let a = 0; a < 6; a++) { const t = a * Math.PI / 3; for (let k = 0; k <= r; k += 0.5) p.put(cx + Math.cos(t) * k - 0.5, cy + Math.sin(t) * k - 0.5, c); } p.put(cx - 0.5, cy - 0.5, '#ffffff'); };
+      flake(5, 5, 3.6, '#a8d0f8'); flake(12, 3, 2.2, '#c0dcf8'); flake(11.5, 9.5, 2.6, '#a8d0f8'); flake(3, 11, 1.6, '#c0dcf8');
+    },
+    frio(p) { // cold: a blue shivering face, teeth chattering, an icicle nose drip, a snowflake
+      smiley(p, '#9ccaf0', '#78a8d8');
+      p.rect(4, 6, 3, 1, '#302018'); p.rect(9, 6, 3, 1, '#302018'); p.put(5, 7, '#302018'); p.put(10, 7, '#302018');
+      p.rect(4, 10, 8, 3, '#302018'); for (let x = 5; x < 11; x += 2) { p.put(x, 10, '#ffffff'); p.put(x + 1, 12, '#ffffff'); }
+      for (const y of [4, 8, 12]) { p.put(0, y, '#5890d0'); p.put(15, y + 1, '#5890d0'); }
+      p.put(8, 9, '#e8f8ff'); p.put(8, 10, '#c8e8ff');
+      p.put(14, 1, '#ffffff'); p.put(13, 1, '#c0dcf8'); p.put(15, 1, '#c0dcf8'); p.put(14, 0, '#c0dcf8'); p.put(14, 2, '#c0dcf8');
+    },
+    nube(p) { // a fluffy white cloud
+      for (const [x, y, r] of [[5, 9, 3.6], [9, 6.5, 4.4], [12.5, 9.5, 3.2], [8, 10.5, 3.6]]) p.disc(x, y, r, '#fafcff');
+      p.rect(2, 10, 13, 3, '#fafcff'); p.rect(3, 12, 11, 1, '#c8dcf0'); p.put(6, 5, '#ffffff'); p.put(8, 4, '#ffffff');
+      for (const [x, y] of [[13, 11], [14, 10], [12, 12], [5, 12]]) p.put(x, y, '#c8dcf0');
+    },
+    viento(p) { // wind: three swooshing gusts curling at their ends, a leaf tumbling along
+      const gust = (y, x0, x1, c) => { p.rect(x0, y, x1 - x0, 1, c); p.put(x1, y - 1, c); p.put(x1 + 1, y - 2, c); p.put(x1 + 1, y - 3, c); p.put(x1, y - 4, c); p.put(x1 - 1, y - 4, c); p.put(x1 - 2, y - 3, c); };
+      gust(5, 1, 11, '#5898e0'); gust(10, 3, 13, '#78b8f0'); gust(14, 0, 8, '#5898e0');
+      p.ell(13, 13.5, 2, 1.3, '#58b040'); p.put(14, 12, '#2e7a2a');
+    },
+    lluvia(p) { // rain: a grey cloud, blue drops falling slantwise
+      for (const [x, y, r] of [[5, 5, 3.2], [9, 3.5, 3.8], [12, 5.5, 2.8]]) p.disc(x, y, r, '#a8b4c8');
+      p.rect(2, 5, 12, 3, '#a8b4c8'); p.rect(3, 7, 11, 1, '#8090a8'); p.put(7, 2, '#c8d4e4'); p.put(9, 1, '#c8d4e4');
+      for (const [x, y] of [[3, 10], [7, 9], [11, 10], [5, 13], [9, 12], [13, 13]]) { p.put(x, y, '#3a8ae8'); p.put(x - 1, y + 1, '#3a8ae8'); p.put(x, y - 1, '#a8d8ff'); }
+    },
+    arcoiris(p) { // a rainbow: six bands in an arc, a little cloud at each foot
+      const C = ['#e83a30', '#f89020', '#f8d830', '#48b848', '#3a7ae0', '#8a50c8'];
+      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const r = Math.hypot(x + 0.5 - 8, y + 0.5 - 14); const i = Math.floor((7.8 - r) / 0.88); if (r <= 7.8 && r >= 2.5 && i >= 0 && i < 6 && y < 14) p.put(x, y, C[i]); }
+      p.disc(2, 13, 2.2, '#fafcff'); p.disc(4, 13.5, 1.8, '#fafcff'); p.disc(13.5, 13, 2.2, '#fafcff'); p.disc(11.5, 13.5, 1.8, '#fafcff');
+    },
+    gorro(p, w) { // a knitted winter hat (its colour from w.col): a turned-up band, stripes, a white pom-pom
+      const c = (w && w.col) || '#3870d8', d = G.shade(c, 0.75), l = G.shade(c, 1.25);
+      p.ell(8, 10, 6.5, 6.5, c); p.rect(1, 10, 14, 5, null); p.rect(1, 10, 14, 4, l); p.rect(1, 13, 14, 1, d);
+      for (let x = 2; x < 15; x += 2) p.rect(x, 10, 1, 3, c);
+      p.rect(3, 6, 10, 1, '#f8f8f8'); p.disc(8, 2.2, 2.3, '#f8f8f8'); p.put(7, 1, '#ffffff'); p.shade(8, 2.2, 2.3, '#d8d8e0');
+    },
+    bufanda(p, w) { // a scarf (its colour from w.col): wrapped in a loop, two ends hanging with a fringe, white stripes
+      const c = (w && w.col) || '#e04040', d = G.shade(c, 0.72);
+      p.ell(8, 4.5, 6, 3, c); p.ell(8, 4.5, 3.6, 1.3, null); p.rect(4, 6, 3, 8, c); p.rect(9, 6, 3, 7, d);
+      for (const [x, y] of [[4, 9], [4, 11], [9, 9], [9, 11]]) p.rect(x, y, 3, 1, '#ffffff');
+      for (const x of [4, 6, 9, 11]) { p.put(x, 14, c); p.put(x, 15, c); }
+      p.put(2, 3, G.shade(c, 1.25)); p.put(3, 2, G.shade(c, 1.25));
+    },
+    guantes(p, w) { // a pair of mittens (their colour from w.col): a thumb out to the side, white cuffs
+      const c = (w && w.col) || '#8a50c8', d = G.shade(c, 0.75), l = G.shade(c, 1.3);
+      for (const [ox, f] of [[0, 1], [8, -1]]) {
+        p.ell(ox + 4, 6.5, 3.2, 4.5, c); p.rect(ox + 1, 7, 6, 4, c); p.ell(ox + (f > 0 ? 1.2 : 6.8), 8, 1.3, 1.8, c);
+        p.rect(ox + 1, 11, 6, 4, '#f4f4f8'); p.rect(ox + 1, 14, 6, 1, '#c8c8d8'); p.put(ox + 3, 12, d); p.put(ox + 5, 12, d);
+        p.put(ox + 3, 3, l); p.put(ox + 2, 4, l);
+      }
+    },
+    muneco(p) { // a snowman: three snowballs, coal eyes and buttons, a carrot nose, a red scarf, stick arms, a little hat
+      p.disc(8, 12.5, 3.6, '#fafcff'); p.disc(8, 7.8, 2.8, '#fafcff'); p.disc(8, 3.8, 2.2, '#fafcff');
+      p.shade(8, 12.5, 3.6, '#c8dcf0'); p.shade(8, 7.8, 2.8, '#c8dcf0');
+      p.rect(5, 0, 6, 1, '#303038'); p.rect(6, 0, 4, 1, '#303038'); p.rect(6, 1, 4, 1, '#303038');
+      p.put(7, 3, '#202028'); p.put(9, 3, '#202028'); p.rect(9, 4, 3, 1, '#f88020'); p.put(8, 7, '#202028'); p.put(8, 9, '#202028'); p.put(8, 12, '#202028');
+      p.rect(5, 5, 6, 1, '#e04040'); p.rect(9, 6, 1, 3, '#e04040');
+      for (let k = 0; k < 4; k++) { p.put(4 - k, 7 - k * 0.6, '#7a4a20'); p.put(12 + k, 7 - k * 0.6, '#7a4a20'); }
+    },
+    chocolate(p) { // a mug of hot chocolate: steam curling up, a marshmallow on top
+      p.rect(2, 7, 10, 8, '#e05030'); p.rect(2, 7, 10, 1, '#f08060'); p.ell(7, 7.5, 5, 1.4, '#6a3818'); p.rect(11, 9, 3, 4, null);
+      for (let a = -1.4; a <= 1.4; a += 0.2) p.put(12 + Math.cos(a) * 2.4, 11 + Math.sin(a) * 2.4, '#e05030');
+      p.rect(5, 6, 3, 2, '#fafaf4'); p.rect(3, 14, 8, 1, '#b83820'); p.rect(4, 10, 6, 1, '#f8f0e0');
+      for (const [x, y] of [[4, 4], [5, 3], [4, 2], [8, 3], [9, 2], [8, 1], [9, 0]]) p.put(x, y, '#d8d8e8');
+    },
+    trineo(p) { // a wooden sled: slats on two curled red runners, a rope at the front
+      p.rect(1, 6, 12, 4, '#c0823a'); for (const x of [4, 8]) p.rect(x, 6, 1, 4, '#8a5428'); p.rect(1, 6, 12, 1, '#dca65c');
+      p.rect(2, 12, 11, 1, '#d83030'); p.rect(2, 10, 1, 2, '#d83030'); p.rect(11, 10, 1, 2, '#d83030');
+      p.put(13, 11, '#d83030'); p.put(14, 10, '#d83030'); p.put(14, 9, '#d83030'); p.put(13, 8, '#d83030');
+      for (let k = 0; k < 4; k++) p.put(14 - k * 0.2, 7 - k, '#e8d8a0');
+    },
+    hielo(p) { // ice: two clear blue ice cubes with shiny edges
+      for (const [x, y, s] of [[1, 6, 8], [8, 3, 7]]) {
+        p.rect(x, y, s, s, '#b8e4f8'); p.rect(x, y, s, 1, '#f4fcff'); p.rect(x, y, 1, s, '#e0f4ff'); p.rect(x + s - 1, y + 1, 1, s - 1, '#78b8e0'); p.rect(x + 1, y + s - 1, s - 1, 1, '#78b8e0');
+        p.put(x + 2, y + 2, '#ffffff'); p.put(x + 3, y + 2, '#ffffff'); p.put(x + 2, y + 3, '#ffffff');
+      }
+    },
+    llama(p) { // a llama's head and long neck: fluffy cream wool, long banana ears with red tassels, a gentle face
+      p.rect(5, 8, 6, 8, '#f0e4cc'); p.ell(8, 6, 4.2, 3.4, '#f0e4cc'); p.ell(10.5, 7.5, 2.6, 2, '#e0d0b0');
+      p.ell(5.5, 2, 1, 2.6, '#f0e4cc'); p.ell(9.5, 2, 1, 2.6, '#f0e4cc'); p.put(5, 1, '#e04040'); p.put(9, 1, '#38a858');
+      p.put(7, 5, '#201818'); p.put(10, 5, '#201818'); p.put(12, 8, '#806050'); p.put(11, 9, '#806050');
+      for (const [x, y] of [[4, 10], [4, 12], [11, 11], [11, 13], [6, 14]]) p.put(x, y, '#d8c8a8');
+      p.rect(5, 11, 6, 1, '#e04040'); p.rect(5, 12, 6, 1, '#f8d030');
+    },
+    marmota(p) { // a marmot standing up: chubby brown, a pale belly, little paws held up, round ears
+      p.ell(8, 10.5, 5, 5, '#a06a38'); p.ell(8, 5, 3.6, 3.2, '#a06a38'); p.ell(8, 11, 3, 3.8, '#e0c098');
+      p.disc(5, 2.6, 1, '#7a4a20'); p.disc(11, 2.6, 1, '#7a4a20'); p.put(6, 4, '#101010'); p.put(10, 4, '#101010');
+      p.ell(8, 6.4, 1.6, 1, '#e8d0b0'); p.put(8, 6, '#402018'); p.rect(7, 7, 2, 1, '#ffffff');
+      p.rect(5, 8, 2, 1, '#7a4a20'); p.rect(9, 8, 2, 1, '#7a4a20'); p.rect(4, 15, 3, 1, '#7a4a20'); p.rect(9, 15, 3, 1, '#7a4a20');
+    },
+    zorrillo(p) { // a skunk: black, a white stripe from its nose up over its back, a big fluffy tail held up
+      p.ell(11, 5.5, 4.4, 5, '#282830'); p.ell(11, 5.5, 1.6, 4.4, '#f4f4f4');
+      p.ell(7, 11, 5, 3.4, '#282830'); p.ell(6, 9.4, 3.6, 1, '#f4f4f4'); p.disc(3, 11, 2.6, '#282830');
+      p.rect(2, 9, 1, 2, '#f4f4f4'); p.put(2, 11, '#101010'); p.put(1, 12, '#f090a0'); p.put(3, 8, '#282830');
+      p.rect(4, 14, 1, 2, '#282830'); p.rect(9, 14, 1, 2, '#282830');
+    },
+    carpintero(p) { // a woodpecker on a tree trunk: a red cap, black and white wings, a long beak, pecking
+      p.rect(9, 0, 6, 16, '#8a5a30'); p.rect(9, 0, 1, 16, '#6a4220'); for (const y of [3, 9, 13]) p.rect(11, y, 3, 1, '#6a4220');
+      p.ell(6, 9, 3, 5, '#202028'); p.ell(5.5, 9.5, 1.4, 3.5, '#f4f4f4'); for (const y of [7, 9, 11]) p.put(7, y, '#f4f4f4');
+      p.disc(6, 3.8, 2.4, '#202028'); p.rect(4, 1, 4, 2, '#e02828'); p.rect(5, 4, 2, 1, '#f4f4f4'); p.put(7, 3, '#ffffff'); p.put(7.5, 3.5, '#101010');
+      p.rect(8, 4, 2, 1, '#606060'); p.rect(4, 14, 2, 2, '#202028');
+    },
+    monarca(p) { // a monarch butterfly: bright orange wings with black veins, black edges dotted white
+      for (const f of [false, true]) {
+        const X = x => f ? 15 - x : x;
+        p.ell(X(4) + 0.5, 5.5, 4, 4.4, '#202020'); p.ell(X(4) + 0.5, 5.5, 3, 3.4, '#f88010');
+        p.ell(X(5) + 0.5, 11.5, 3, 3, '#202020'); p.ell(X(5) + 0.5, 11.5, 2, 2, '#f8a020');
+        p.put(X(3), 5, '#202020'); p.put(X(4), 6, '#202020'); p.put(X(5), 4, '#202020'); p.put(X(5), 11, '#202020');
+        for (const [x, y] of [[1, 3], [1, 6], [2, 9], [3, 13], [5, 14]]) p.put(X(x), y, '#ffffff');
+      }
+      p.rect(7, 3, 2, 11, '#202020'); p.put(6, 1, '#202020'); p.put(9, 1, '#202020'); p.put(6, 2, '#202020'); p.put(9, 2, '#202020');
+    },
+    puma(p) { // a puma's face: tawny, round ears, a white muzzle, a pink nose, golden eyes
+      p.disc(3, 3.5, 2.2, '#c08850'); p.disc(13, 3.5, 2.2, '#c08850'); p.disc(3, 3.5, 1, '#5a3418'); p.disc(13, 3.5, 1, '#5a3418');
+      p.ell(8, 8.5, 6.5, 6, '#d09a60'); p.ell(8, 11.5, 3.6, 2.8, '#f8f0e0'); p.shade(8, 8.5, 6.5, '#b07840');
+      p.rect(4, 7, 2, 2, '#e8c040'); p.rect(10, 7, 2, 2, '#e8c040'); p.put(5, 7, '#101010'); p.put(11, 7, '#101010');
+      p.tri(6.5, 10, 9.5, 10, 8, 12, '#e07080'); p.put(8, 13, '#5a3418'); p.put(7, 14, '#5a3418'); p.put(9, 14, '#5a3418');
+      p.put(3, 11, '#5a3418'); p.put(13, 11, '#5a3418');
+    },
+    aguila(p) { // an eagle soaring: wide brown wings, a golden head, a hooked yellow beak, its tail fanned
+      p.tri(0, 6, 8, 5, 3, 10, '#6a4020'); p.tri(16, 6, 8, 5, 13, 10, '#6a4020'); for (const x of [1, 3, 13, 15]) p.put(x, 7, '#3a2010');
+      p.ell(8, 8, 2.6, 4, '#7a4a20'); p.tri(6, 11, 10, 11, 8, 15, '#7a4a20'); p.disc(8, 3.5, 2.2, '#d8a040');
+      p.put(7, 3, '#101010'); p.rect(8, 4, 2, 1, '#f8d020'); p.put(9, 5, '#f8d020'); p.put(5, 6, '#8a5a30'); p.put(11, 6, '#8a5a30');
+    },
+    lobo(p) { // a wolf's face: grey, tall pointed ears, a pale muzzle and cheeks, amber eyes, a black nose
+      p.tri(2, 0, 6, 4, 2, 7, '#6a6a78'); p.tri(14, 0, 10, 4, 14, 7, '#6a6a78'); p.tri(3, 2, 5, 4, 3, 6, '#e0d8d0'); p.tri(13, 2, 11, 4, 13, 6, '#e0d8d0');
+      p.ell(8, 8, 6, 4.6, '#8a8a98'); p.tri(2, 8, 14, 8, 8, 15, '#8a8a98'); p.tri(4, 9, 12, 9, 8, 15, '#f0ece8');
+      p.put(5, 7, '#e8a020'); p.put(11, 7, '#e8a020'); p.put(5, 6, '#202028'); p.put(11, 6, '#202028'); p.disc(8, 13.5, 1.2, '#101010');
+      p.rect(7, 4, 2, 3, '#6a6a78');
+    },
+    // things on the mountain with no word of their own (a picture only)
+    bolanieve(p) { // a snowball: white, soft blue shading, a sparkle
+      p.disc(8, 8.5, 6, '#fafcff'); p.shade(8, 8.5, 6, '#c8dcf0'); p.put(5, 5, '#ffffff'); p.put(6, 4, '#ffffff'); for (const [x, y] of [[10, 7], [7, 10], [11, 11]]) p.put(x, y, '#e0ecf8');
+    },
+    veleta(p) { // the weather vane: an arrow on a pole with a rooster, N S E W letters' crossbars
+      p.rect(7, 4, 2, 12, '#606878'); p.rect(2, 9, 12, 1, '#606878'); p.tri(11, 1, 15, 3, 11, 5, '#e04040'); p.rect(2, 2, 10, 2, '#303840'); p.tri(0, 1, 3, 3, 0, 5, '#303840');
+      p.ell(7, 6, 2.4, 1.6, '#f8c830'); p.put(9, 5, '#e04040');
+    },
   };
 
   // G.icon(name | word, size?) -> canvas (cached). A word object may carry n / col params.

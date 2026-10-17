@@ -545,16 +545,81 @@ c.mark('photos', 2, 0); c.mark('mirror', 15, 0); c.mark('trunk', 17, 7); c.mark(
 c.mark('abuela', 10, 3); c.mark('bebe', 3, 7); c.mark('hole', 12, 9)
 c.pos['cocina'] = [8, 6, 5, 4]; c.pos['sala'] = [1, 5, 6, 4]
 out['abuelos_casa'] = c
-# La montaña: a meadow under the peaks, snow up top (roll), boulders, a goat
-m = entrance(22, 14, '.', 'M')
-m.rect(1, 1, 20, 2, 'M'); m.rect(1, 3, 20, 2, 'h')
-m.hline(0, 10, 9, ','); m.vline(10, 5, 9, ',')
-for x, y in [(4, 6), (15, 10), (18, 6), (6, 11)]: m.put(x, y, 'r')
-for x, y in [(3, 11), (13, 7), (17, 11), (8, 6)]: m.put(x, y, 'o')
-m.mark('in', 1, 9); m.mark('west', 0, 9); m.mark('post', 2, 8); m.mark('bus', 7, 10); m.mark('busIn', 7, 9)
-m.mark('dog', 12, 4); m.mark('lola', 12, 8); m.mark('nico', 16, 8); m.pos['cabras'] = [12, 5, 7, 3]
-m.mark('hide1', 4, 6); m.mark('hide2', 15, 10); m.mark('hide3', 18, 6)
+# La montaña (the zone, docs/WORLD_PLAN.md): a mountain under snowy peaks. The path comes in from Villa Sol on the west
+# edge (0, 24) into a green meadow (the bus stop, the signpost); the meadow has Mateo's weather station (its vane turns
+# with the wind), Don Lucho's refuge (a log cabin under a snowy roof: you can go in for hot chocolate), the llamas'
+# corral, a grove of tall firs where the monarch butterflies gather (and a woodpecker), flowers. Up the hill the snow
+# begins: snowy pines, the sledding slope (a straight run between two rows of pines, the sled at its top), an open
+# snowfield (the snowman), the marmots' rocks, the frozen pond (you can skate on it), and the lookout on a crag at the
+# top left (binoculars: the view over the clouds). Peaks all along the top.
+# Codes (src/tiles.js): ü snow, ö ice (walkable), ç a snowy pine, ï snowy peaks, ò the weather station, ù the lookout's
+# binoculars, â a snowy roof; [ / ] log cabin wall and door (the forest's), ( / ) tall trees (firs, the grove).
+m = M(40, 32, '.')
+m.border('T', 1)
+for y in range(0, 14):
+    for x in range(40): m.put(x, y, 'ü')
+# the snow line: a soft wave, a run-out at the slope's foot
+import math
+for x in range(40):
+    L = 12 + round(1.1 * math.sin(x * 0.45) + 0.5 * math.sin(x * 1.3 + 1))
+    if x in (16, 17, 18, 19, 20): L = 14
+    for y in range(11, 14):
+        if y > L: m.put(x, y, '.')
+for x in (16, 17, 18, 19, 20): m.put(x, 14, 'ü')
+# the peaks along the top and down both sides of the snow
+for x in range(40): m.put(x, 0, 'ï'); m.put(x, 1, 'ï')
+for x in [0, 1, 2, 9, 10, 11, 12, 23, 24, 25, 26, 37, 38, 39]: m.put(x, 2, 'ï')
+for y in range(0, 13): m.put(0, y, 'ï'); m.put(39, y, 'ï')
+for y in range(13, 32): m.put(0, y, 'T'); m.put(39, y, 'T')
+# the lookout on its crag (top left): the binoculars, rocks round it
+m.put(6, 3, 'ù'); m.mark('viewer', 6, 3)
+for x, y in [(3, 3), (4, 3), (8, 4), (2, 5)]: m.put(x, y, 'r')
+# the sledding slope: a clear run down from the sled at (18, 3), snowy pines on both sides
+for y in range(3, 12, 2): m.put(15, y, 'ç'); m.put(21, y, 'ç')
+m.mark('sled', 18, 3); m.mark('slopeTop', 18, 4); m.mark('slopeEnd', 18, 14)
+# the frozen pond (top right)
+for y, (x0, x1) in {4: (29, 33), 5: (28, 35), 6: (28, 35), 7: (29, 34), 8: (30, 33)}.items(): m.hline(x0, x1, y, 'ö')
+m.pos['hielo'] = [28, 4, 8, 5]
+for x, y in [(27, 4), (36, 6), (34, 9)]: m.put(x, y, 'r')
+# the marmots' rocks (middle right) and the puma's sunny ledge
+for x, y in [(24, 9), (27, 10), (25, 11)]: m.put(x, y, 'r')
+m.pos['marmotas'] = [23, 8, 6, 4]; m.pos['marmotas2'] = [2, 6, 6, 3]
+m.put(35, 11, 'r'); m.put(37, 10, 'r'); m.pos['puma'] = [35, 10, 2, 1]
+# snowy pines about the snowfield
+for x, y in [(3, 8), (5, 10), (13, 4), (12, 11), (23, 4), (25, 6), (36, 4), (37, 8), (22, 10), (7, 11), (31, 11), (1, 9), (28, 2), (33, 2)]:
+    if m.g[y][x] == 'ü': m.put(x, y, 'ç')
+# the snowfield: the snowman's place, snow piles to roll
+m.mark('snowman', 10, 7); m.mark('pile1', 7, 7); m.mark('pile2', 13, 8); m.mark('pile3', 9, 10)
+# --- the meadow ---
+# the main path: in from the west edge, east to the corral; up to the station, the refuge, the slope's foot
+m.hline(0, 33, 24, ','); m.vline(12, 19, 24, ','); m.vline(25, 18, 24, ','); m.vline(18, 15, 24, ','); m.vline(33, 21, 24, ',')
+# Mateo's weather station
+m.put(12, 17, 'ò'); m.mark('station', 12, 17); m.mark('mateo', 13, 18)
+# Don Lucho's refuge: a log cabin under a snowy roof, its door; a woodpile and a bench outside
+m.rect(22, 15, 7, 2, 'â'); m.hline(22, 28, 17, '['); m.put(25, 17, ']'); m.mark('door', 25, 17)
+m.put(22, 18, 'k'); m.put(27, 18, 'J'); m.mark('lucho', 29, 22)
+# the llamas' corral (right): a fence, a gate on the path, hay
+m.hline(30, 38, 15, 'F'); m.vline(30, 15, 21, 'F'); m.hline(30, 38, 21, 'F'); m.put(33, 21, ',')
+m.put(37, 16, 'O'); m.put(36, 16, 'O'); m.pos['llamas'] = [31, 16, 7, 5]; m.pos['llamas2'] = [26, 26, 8, 4]
+# the grove of tall firs (left): monarch butterflies, a woodpecker
+for x, y in [(3, 15), (6, 15), (9, 16), (2, 18), (5, 18), (8, 19), (3, 21)]: m.put(x, y, '('); m.put(x, y + 1, ')')
+m.pos['monarcas'] = [2, 15, 9, 7]; m.pos['carpintero'] = [2, 16, 9, 6]
+# flowers, a few rocks, small trees in the meadow
+for x, y in [(15, 16), (20, 20), (14, 21), (6, 27), (10, 29), (22, 28), (28, 29), (35, 27), (15, 29), (31, 26), (9, 22), (20, 17), (36, 23), (1, 15)]:
+    if m.g[y][x] == '.': m.put(x, y, 'o')
+for x, y in [(3, 28), (37, 29), (12, 27), (24, 30)]: m.put(x, y, 'f')
+for x, y in [(17, 27), (29, 27)]: m.put(x, y, 'r')
+m.mark('in', 1, 24); m.mark('west', 0, 24); m.mark('post', 2, 23); m.mark('bus', 4, 22); m.mark('busIn', 4, 23)
+m.mark('lola', 7, 25); m.mark('nico', 16, 26)
+m.mark('dog', 10, 11); m.mark('tunnel', 30, 10); m.mark('tunnelOut', 26, 7); m.mark('marmotasDog', 24, 12)
+m.pos['zorrillos'] = [13, 25, 12, 5]; m.pos['conejos'] = [4, 25, 8, 4]; m.pos['lobo'] = [3, 4, 4, 1]; m.pos['cielo'] = [2, 2, 14, 8]
+m.mark('hide1', 13, 4); m.mark('hide2', 24, 9); m.mark('hide3', 22, 18); m.mark('hide4', 12, 17); m.mark('hide5', 36, 16); m.mark('hide6', 36, 6)
 out['montana'] = m
+# Don Lucho's refuge, inside: the fireplace and the pot of hot chocolate, a long table, shelves, bunk beds, a rug
+c = room(12, 8)
+c.put(2, 1, 'v'); c.put(4, 1, 'n'); c.put(5, 1, 'n'); c.rect(4, 4, 4, 1, 't'); c.put(10, 2, 'j'); c.put(10, 3, 'j'); c.put(1, 6, 'k'); c.rect(8, 6, 2, 1, 'q')
+c.mark('hearth', 2, 1); c.mark('pot', 3, 2); c.mark('table', 4, 4); c.mark('lucho', 3, 3)
+out['montana_refugio'] = c
 
 import os
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

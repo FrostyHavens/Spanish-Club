@@ -74,6 +74,13 @@
   //   More from El parque de juegos (2026-10-17): 'march' (ants: one line per map entry; the first wanders, each one
   //   after walks along the trail of the one before; tapped, the whole line scatters for a moment), 'hop' (a cricket:
   //   sits and chirps (frame chirp), hops off in little arcs (frame hop), away from you when you come close).
+  //   More from La montaña (2026-10-17): 'peek' (a marmot: stands up by its burrow and looks about (frame alt: it
+  //   whistles); when the dog comes near or you run up it ducks into its hole (frame hole) and pops out again later
+  //   (frame peek on the way); tapped, it pops up and whistles), 'cling' (a woodpecker: clings to a tree trunk near
+  //   where it lives (o.trees: tile codes, default ')'; o.high: px up the trunk) and pecks (frame peck, a toc-toc), now
+  //   and then (or when tapped) it flies to another trunk (frames fly / fly2)), 'soar' (an eagle: circles high over its
+  //   area (o.high: px up, default 56), its shadow sliding over the ground (frames stand / alt: wings), now and then it
+  //   swoops lower and cries; tapped, it swoops).
   //   o.on: the tile codes it lives on (default the land: '.o,=pyz'; e.g. 's' sand, '-~w' water), o.water: drawn flat
   //   on the water / ground with the ducks (not sorted in with the people), o.shadow: its shadow's width in px.
   AN.addKind = function (id, o) {
@@ -474,6 +481,42 @@
       if (a.st === 'chirp') { if (--a.t <= 0) { a.st = 'idle'; a.t = 40 + ri(120); } return; }
       if (--a.t <= 0) { if (ri(2)) { a.st = 'chirp'; a.t = 40; if (visible(f, a) && Math.random() < 0.5) AN.cry(a.kind); } else go(false); }
     },
+    peek(f, a, K) { // a marmot by its burrow (where it was put): up and looking about; ducks in when the dog or a running you come near
+      if (!a.home) a.home = [a.x, a.y];
+      a.x = a.home[0]; a.y = a.home[1]; a.tx = a.x; a.ty = a.y;
+      const p = f.player, scare = (dogNear(f, a, 50) || (youNear(f, a, 34) && p.moving)) && !a.react;
+      if (a.st === 'hole') { if (--a.t <= 0 && !scare) { a.st = 'peek'; a.t = 26; } return; }
+      if (a.st === 'peek') { if (scare) { a.st = 'hole'; a.t = 120; return; } if (--a.t <= 0) { a.st = 'idle'; a.t = 60 + ri(120); } return; }
+      if (scare) { a.st = 'hole'; a.t = 140 + ri(120); if (visible(f, a)) AN.cry(a.kind); return; }
+      if (a.st === 'alt') { if (--a.t <= 0) { a.st = 'idle'; a.t = 60 + ri(140); } return; }
+      if (--a.t <= 0) { const r = Math.random(); if (r < 0.3) { a.st = 'alt'; a.t = 40; if (visible(f, a) && Math.random() < 0.5) AN.cry(a.kind); } else if (r < 0.45) { a.st = 'hole'; a.t = 90 + ri(120); } else { a.flip = !a.flip; a.t = 50 + ri(100); } }
+    },
+    cling(f, a, K) { // a woodpecker on a trunk: pecks (toc-toc), now and then flies to another trunk
+      if (!a.trees) {
+        const xs = a.ground.map(g => g[0]), ys = a.ground.map(g => g[1]), codes = K.trees || ')', out = [];
+        for (let y = Math.min(...ys) - 2; y <= Math.max(...ys) + 2; y++) for (let x = Math.min(...xs) - 2; x <= Math.max(...xs) + 2; x++) if (codes.includes(f.map.get(x, y))) out.push([x, y]);
+        a.trees = out; a.perched = true;
+        const t0 = out.length ? out[ri(out.length)] : null; if (t0) { a.trunk = t0; a.x = t0[0] * T + 7; a.y = t0[1] * T + 21; a.z = K.high || 14; a.flip = false; }
+      }
+      if (a.st === 'fly') {
+        const s = ++a.h / 50; a.x = a.hx0 + (a.tx - a.hx0) * Math.min(1, s); a.y = a.hy0 + (a.ty - a.hy0) * Math.min(1, s); a.z = (K.high || 14) + Math.sin(Math.min(1, s) * Math.PI) * 16;
+        if (s >= 1) { a.st = 'idle'; a.t = 60 + ri(120); a.z = K.high || 14; a.flip = a.side < 0; }
+        return;
+      }
+      if (a.st === 'peck') { if ((a.t & 7) === 0 && visible(f, a) && a.t > 0) AN.cry(a.kind); if (--a.t <= 0) { a.st = 'idle'; a.t = 50 + ri(120); } return; }
+      if (--a.t <= 0) {
+        if (Math.random() < 0.22 && a.trees.length > 1) AN.hopTree(a); else { a.st = 'peck'; a.t = 32; }
+      }
+    },
+    soar(f, a, K) { // an eagle: high circles over its area, its shadow on the ground; now and then it swoops lower
+      if (a.cx == null) { const xs = a.ground.map(g => g[0]), ys = a.ground.map(g => g[1]); a.cx = (Math.min(...xs) + Math.max(...xs) + 1) / 2 * T; a.cy = (Math.min(...ys) + Math.max(...ys) + 1) / 2 * T; a.ang = rnd(6); a.rad = 40 + rnd(30); }
+      const hi = K.high || 56;
+      a.ang += a.swoop > 0 ? 0.03 : 0.012;
+      a.x = a.cx + Math.cos(a.ang) * a.rad * 1.4; a.y = a.cy + Math.sin(a.ang) * a.rad * 0.8; a.flip = Math.sin(a.ang) > 0;
+      if (a.swoop > 0) { a.swoop--; a.z = hi - Math.sin((1 - a.swoop / 120) * Math.PI) * (hi - 18); if (a.swoop === 60 && visible(f, a)) AN.cry(a.kind); }
+      else { a.z = hi + Math.sin(a.age / 40) * 4; if (--a.t <= 0) { a.t = 300 + ri(400); if (Math.random() < 0.6) a.swoop = 120; } }
+      a.st = (a.age >> 4) & 1 ? 'alt' : 'idle';
+    },
     crawl(f, a, K) { // plods slowly; its head in for a while when tapped
       if (a.st === 'hide') { if (--a.t <= 0) { a.st = 'idle'; a.t = 40; } return; }
       if (a.st === 'walk') { if (goToward(a, K.speed || 0.14)) { a.st = 'idle'; a.t = 80 + ri(160); } return; }
@@ -482,6 +525,11 @@
   };
   AN.leap = function (a, f) { if (a.st === 'jump') return; f = f || G.field; a.st = 'jump'; a.h = 0; a.hx0 = a.x; const tx = a.x + (a.flip ? -46 : 46); if (!onGround(a, tx, a.y)) a.flip = !a.flip; a.hx0 = a.x; f.zoo.fx.push({ k: 'splash', x: a.x, y: a.y - 2, t: 0, life: 20 }); if (visible(f, a)) AN.cry(a.kind); };
   AN.takeOff = takeOff;
+  AN.hopTree = function (a) { // a woodpecker flies to another trunk (cling)
+    const others = (a.trees || []).filter(t => !a.trunk || t[0] !== a.trunk[0] || t[1] !== a.trunk[1]); if (!others.length) return;
+    const t = others[ri(others.length)], side = ri(2) ? 1 : -1;
+    a.trunk = t; a.side = side; a.hx0 = a.x; a.hy0 = a.y; a.tx = t[0] * T + 12 - side * 5; a.ty = t[1] * T + 21; a.h = 0; a.st = 'fly'; a.flip = a.tx < a.x;
+  };
   function startHop(a, dist, dir) {
     const d = dir || (ri(2) ? 1 : -1), dy = rnd(8) - 4;
     let tx = a.x + d * dist, ty = a.y + dy;
@@ -514,6 +562,9 @@
       else if (mv === 'climb') { if (a.st !== 'up' && a.st !== 'climb') a.wantTree = 1; } // (up the nearest tree)
       else if (mv === 'shy') { a.st = 'idle'; a.t = 50; }
       else if (mv === 'march') { for (const b of a.line || [a]) { b.scat = 40 + ri(20); const [x, y] = pickGround(b); b.tx = x; b.ty = y; } } // (the whole line scatters)
+      else if (mv === 'peek') { a.st = 'alt'; a.t = 50; a.react = 40; } // (it pops up and whistles)
+      else if (mv === 'cling') { AN.hopTree(a); }
+      else if (mv === 'soar') { a.swoop = 120; }
       else if (mv === 'hop') { a.react = 0; a.hx0 = a.x; a.hy0 = a.y; [a.tx, a.ty] = pickGround(a); a.h = 0; a.st = 'hop'; a.flip = a.tx < a.x; a.react = 40; }
       else if (mv === 'walk' || !mv) { a.st = 'idle'; a.t = Math.max(a.t, 50); }
     }
@@ -567,6 +618,9 @@
         else if (mv === 'flit') fr = (a.age >> 2) & 1 ? 'alt' : 'stand';
         else if (mv === 'march') fr = a.st === 'walk' && (a.age >> 2) & 1 ? 'walk' : 'stand';
         else if (mv === 'hop') fr = a.st === 'hop' ? 'hop' : a.st === 'chirp' && (a.t >> 2) & 1 ? 'chirp' : 'stand';
+        else if (mv === 'peek') fr = a.st === 'hole' ? 'hole' : a.st === 'peek' ? 'peek' : a.st === 'alt' || R ? ((a.t >> 3) & 1 ? 'alt' : 'stand') : 'stand';
+        else if (mv === 'cling') fr = a.st === 'fly' ? ((a.age >> 2) & 1 ? 'fly' : 'fly2') : a.st === 'peck' && (a.t >> 2) & 1 ? 'peck' : 'stand';
+        else if (mv === 'soar') fr = a.st === 'alt' ? 'alt' : 'stand';
         else if (R && S.react) fr = 'react';
         else fr = a.st === 'walk' && S.walk && (a.age >> 3) & 1 ? 'walk' : S.stand ? 'stand' : Object.keys(S).find(k => k !== 'pal');
         if (!S[fr]) fr = S.stand ? 'stand' : Object.keys(S).find(k => k !== 'pal');

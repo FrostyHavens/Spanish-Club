@@ -2342,6 +2342,11 @@ G.store = {
     // water pump; inside the cottage, the wardrobe and the dressing-up trunk
     'ñ': OBSTACLE('Garden', 'grass'), 'á': OBSTACLE('Henhouse', 'grass'), 'í': tt('Mud', 0, 2, 3, 1, 1, 'grass'), 'é': OBSTACLE('Water Pump', 'grass'),
     'ó': WALL('Wardrobe', 'indoor'), 'ú': OBSTACLE('Trunk', 'indoor'),
+    // La montaña (content/es/zone-montana.js): snow, the frozen pond (walkable ice), snowy pines, snowy peaks, the
+    // weather station, the lookout's binoculars, the refuge's snowy roof
+    'ü': tt('Snow', 15, 1, 1, 1, 1, 'grass'), 'ö': tt('Ice', 0, 1, 1, 1, 1, 'river'), 'ç': OBSTACLE('Snowy Pine', 'forest'),
+    'ï': tt('Peaks', 30, INF, INF, 1, INF, 'hills', { block: true }), 'ò': OBSTACLE('Weather Station', 'grass'), 'ù': OBSTACLE('Lookout', 'grass'),
+    'â': WALL('Roof', 'town'),
     ' ': WALL('Void', 'grass'),
   };
 
@@ -2350,15 +2355,15 @@ G.store = {
   // =====================================================================
   // n[] order: N NE E SE S SW W NW
   const DX = [0, 1, 1, 1, 0, -1, -1, -1], DY = [-1, -1, 0, 1, 1, 1, 0, -1];
-  const BASEMAP = { '.': '.', 'o': '.', 'y': '.', 'f': '.', 'h': '.', ',': ',', '=': '=', 'p': 'p', 's': 's', 'x': 'x', 'i': 'i', 'c': 'c', 'z': 'z', '&': 's', '{': '{' };
-  const OBJ = new Set('rFlkgPLYZteaujJOHEUmA1236780()%*_!<>/?^;$áéú'.split('')); // (áéú: the grandparents' henhouse, pump, trunk) // (!<>/?^;$: the playground's swings, slide, frame, seesaw, merry-go-round, goals, cart) // (()%*_: the forest's trees, mushrooms, bushes, log) // (1236780: the beach's palms, umbrellas, castle, tower, cart, rocks)
+  const BASEMAP = { '.': '.', 'o': '.', 'y': '.', 'f': '.', 'h': '.', ',': ',', '=': '=', 'p': 'p', 's': 's', 'x': 'x', 'i': 'i', 'c': 'c', 'z': 'z', '&': 's', '{': '{', 'ü': 'ü' };
+  const OBJ = new Set('rFlkgPLYZteaujJOHEUmA1236780()%*_!<>/?^;$áéúçòù'.split('')); // (çòù: the mountain's snowy pines, weather station, binoculars) // (áéú: the grandparents' henhouse, pump, trunk) // (!<>/?^;$: the playground's swings, slide, frame, seesaw, merry-go-round, goals, cart) // (()%*_: the forest's trees, mushrooms, bushes, log) // (1236780: the beach's palms, umbrellas, castle, tower, cart, rocks)
   const INDOOR_OBJ = new Set('teaujHEUmAú'.split(''));
-  const BASE_PREF = ['=', 'p', 'x', 'c', 'z', 'i', '{', ',', 's', '.'];
+  const BASE_PREF = ['=', 'p', 'x', 'c', 'z', 'i', '{', ',', 's', 'ü', '.'];
   const WATERISH = c => c === 'w' || c === '~' || c === 'b' || c === 'B' || c === '9' || c === 'd' || c === '4' || c === '5' || c === '-' || c === ':' || c === '|'; // (the beach's surf, pier, boat and clear shallows; the forest's stepping stones, waterfall)
-  const ROOF = c => c === 'R' || c === 'Q' || c === '+';
+  const ROOF = c => c === 'R' || c === 'Q' || c === '+' || c === 'â';
   const BWALL = c => c === 'W' || c === 'N' || c === 'D' || c === 'S' || c === 'G' || c === 'K';
   const IWALL = c => c === 'I' || c === 'n' || c === 'v' || c === 'V' || c === 'C' || c === 'ó';
-  const TALL = new Set('WNDSGKRQ+XIvnTVC#[]}ó'.split(''));
+  const TALL = new Set('WNDSGKRQ+XIvnTVC#[]}óâ'.split(''));
   const GRASSY = c => c === '.' || c === 'T' || c === 'M';
 
   function inferBase(map, x, y, code) {
@@ -2620,6 +2625,7 @@ G.store = {
       case 'c': stoneFloorTex(b, I.v); break;
       case 'z': strawFloorTex(b, I.v); break;
       case '{': caveFloor(b, I.v); break;
+      case 'ü': snowTex(b, I.v); break;
       case 'q': carpetTex(b, I.n); break;
       default: grassTex(b, I.v);
     }
@@ -4276,6 +4282,123 @@ G.store = {
     b.rect(15, 9, 3, 2, U('#3a78e0'));
   }
 
+  // ---------- La montaña (content/es/zone-montana.js): snow, ice, snowy pines and peaks, the weather station, the
+  // lookout's binoculars, a snowy roof ----------
+  const MT = { sn: U('#eef4fa'), sn2: U('#d8e6f2'), sn3: U('#bccfe4'), sn4: U('#ffffff'), sn5: U('#9eb6d2'),
+    ice: U('#a8dcf0'), ice2: U('#c8ecf8'), ice3: U('#7cbcdc'), ice4: U('#f4fcff'), ice5: U('#5a9cc4'),
+    rk: U('#6a7084'), rk2: U('#8a90a4'), rk3: U('#4a5064'), rk4: U('#a8aec0'),
+    wh: U('#f8f8f4'), wh2: U('#d0d0d8'), wh3: U('#a0a0b0'), red: U('#e04040'), red2: U('#a82828'), steel: U('#5878a8'), steel2: U('#3a5280'), steel3: U('#88a8d8'), glass: U('#c8e8ff') };
+  const SNOWY = g => g === 'ü' || g === 'ö' || g === 'ï';
+  function snowTex(b, v) { // fresh snow: soft blue dimples, sparkles
+    b.fill(MT.sn);
+    const s = v * 37 + 11;
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) { const r = hsh(x, y, s); if (r < 0.05) b.set(x, y, MT.sn2); else if (r < 0.065) b.set(x, y, MT.sn4); }
+    for (let i = 0; i < 2 + (v % 2); i++) { // a soft drift: a curved blue shadow
+      const x = 2 + Math.floor(hsh(i, v, 13) * 16), y = 3 + Math.floor(hsh(v, i, 17) * 16);
+      for (let k = 0; k < 6; k++) { b.set(x + k, y + (k === 0 || k === 5 ? 0 : 1), MT.sn2); if (k > 0 && k < 5) b.set(x + k, y, MT.sn4); }
+    }
+  }
+  // snow ('ü'): fresh snow; where the ground beside isn't snowy, the meadow's grass peeks in with a ragged edge
+  function snowTile(b, I) {
+    snowTex(b, I.v);
+    const m = maskOf(I.g, g => !SNOWY(g) && g !== undefined && g !== ' ');
+    if (m) for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) {
+      const d = edgeDist(x, y, m, 8), jag = hsh(x >> 2, y >> 2, I.v + 21) * 3 + hsh(x >> 1, y >> 1, I.v + 5) * 1.5;
+      if (d < 3 + jag) b.set(x, y, hsh(x, y, I.v) < 0.15 ? P.G4 : hsh(x, y, I.v + 1) < 0.12 ? MT.sn : P.G3);
+      else if (d < 4.2 + jag) b.set(x, y, (x + y) & 1 ? MT.sn2 : MT.sn3);
+    }
+    applyShadow(b, I.sh);
+  }
+  // the frozen pond ('ö'): pale blue ice, white streaks, a few cracks, a snowy rim where it meets the snow
+  function iceTile(b, I) {
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) b.set(x, y, hsh(x >> 2, y >> 2, I.v + 3) < 0.3 ? MT.ice2 : MT.ice);
+    for (let k = 0; k < 3; k++) { const y0 = 3 + Math.floor(hsh(k, I.v, 5) * 17), x0 = Math.floor(hsh(I.v, k, 7) * 12); for (let i = 0; i < 8; i++) b.set(x0 + i, y0 - (i >> 1), i & 1 ? MT.ice4 : MT.ice2); }
+    const cx = 4 + Math.floor(hsh(I.v, 9, 2) * 14); for (let i = 0; i < 6; i++) b.set(cx + (i & 1) - (i >> 1), 8 + i, MT.ice3);
+    if (I.af & 1) { const x = 3 + (I.v * 5) % 17, y = 4 + (I.v * 7) % 15; b.set(x, y, MT.ice4); b.set(x - 1, y, MT.ice2); b.set(x + 1, y, MT.ice2); b.set(x, y - 1, MT.ice2); b.set(x, y + 1, MT.ice2); }
+    const m = maskOf(I.g, g => g !== 'ö');
+    if (m) for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) {
+      const d = edgeDist(x, y, m, 6), jag = hsh(x >> 1, y >> 1, I.v + 4) * 1.4;
+      if (d < 2 + jag) b.set(x, y, hsh(x, y, 2) < 0.3 ? MT.sn2 : MT.sn);
+      else if (d < 3 + jag) b.set(x, y, MT.ice5);
+    }
+  }
+  // a snowy pine ('ç'): a dark fir, its boughs heavy with snow
+  function snowPineTile(b, I) {
+    drawGround(b, I.base, I);
+    const cx = 12, top = 1, h = 21;
+    dropShadow(b, cx + 2, 21, 6, 2, 0.6);
+    b.rect(cx - 1, 19, 3, 4, P.T1); b.vl(cx + 1, 19, 22, P.T0);
+    for (let y = top; y < top + h - 2; y++) {
+      const t = (y - top) / h, tier = (t * 3.2) % 1, w = 1 + t * 8 * (0.5 + tier * 0.65);
+      for (let x = Math.floor(cx - w); x <= cx + w; x++) {
+        const dx = x + 0.5 - cx;
+        let c = dx < -w * 0.3 ? P.E3 : dx < w * 0.3 ? P.E2 : P.E1;
+        if (Math.abs(dx) > w - 0.8 && dx > 0) c = P.E0;
+        if (tier < 0.32 || (tier < 0.5 && Math.abs(dx) < w * 0.5 && hsh(x, y, I.v) < 0.5)) c = dx > w * 0.35 ? MT.sn3 : dx > 0 ? MT.sn2 : MT.sn4; // snow on top of each tier
+        b.set(x, y, c);
+      }
+    }
+    b.set(cx, top, MT.sn4); b.set(cx, top + 1, MT.sn);
+  }
+  // snowy peaks ('ï'): like the rock mountains, cool grey rock with thick snow on the tops; the ground between is snow
+  function snowPeakTile(b, I) {
+    const n = I.n, isM = c => c === 'ï';
+    snowTex(b, I.v);
+    const openN = !isM(n[0]), openS = !isM(n[4]), openW = !isM(n[6]), openE = !isM(n[2]);
+    const pk = [], X0 = I.tx, Y0 = I.ty;
+    const jit = (X, Y, kind) => ({ jx: (hsh(X, Y, 91 + kind) - 0.5) * 3, jy: (hsh(X, Y, 94 + kind) - 0.5) * 3, jr: (hsh(X, Y, 97 + kind) - 0.5) * 3 });
+    { const j = jit(X0, Y0, 0); let x = 12 + j.jx, y = 9 + j.jy, R = 13 + j.jr, sS = 0.62;
+      if (openW && openE) { x = 12; R = 10.5; } else if (openW) { x = 13; R = 11.5; } else if (openE) { x = 11; R = 11.5; }
+      if (openN) { y = 11; R = Math.min(R, 11); } if (openS) { sS = 1.45; y = Math.min(y, 10); }
+      pk.push({ x, y, R, sS, i: 0 }); }
+    for (const cx of [0, 24]) { if (cx === 0 && openW) continue; if (cx === 24 && openE) continue; const j = jit(X0 + (cx ? 1 : 0), Y0, 1); let x = cx + j.jx * 0.6, y = 21 + j.jy, R = 13 + j.jr, sS = 0.62; if (openS) { y = 15; R = 10; sS = 1.5; } pk.push({ x, y, R, sS, i: cx ? 2 : 1 }); }
+    for (let k = 0; k < 8; k++) if (isM(n[k])) { const X = X0 + DX[k], Y = Y0 + DY[k], ox = DX[k] * TS, oy = DY[k] * TS, j = jit(X, Y, 0); pk.push({ x: 12 + j.jx + ox, y: 9 + j.jy + oy, R: 13 + j.jr, sS: 0.62, i: 3 + k * 3 }); for (const cx of [0, 24]) { const jj = jit(X + (cx ? 1 : 0), Y, 1); pk.push({ x: cx + jj.jx * 0.6 + ox, y: 21 + jj.jy + oy, R: 13 + jj.jr, sS: 0.62, i: 4 + k * 3 + (cx ? 1 : 0) }); } }
+    const om = maskOf(n, c => !isM(c)), ROCK = [MT.rk3, MT.rk, MT.rk2, MT.rk4], SNW = [MT.sn5, MT.sn3, MT.sn2, MT.sn, MT.sn4];
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) {
+      const px = x + 0.5, py = y + 0.5; let best = null, bs = -1e9, bh = 0;
+      for (const c of pk) { const dx = px - c.x, dy = py - c.y, h = c.R - (Math.abs(dx) + (dy < 0 ? -dy * 1.15 : dy * c.sS)); if (h > 0) { const s2 = c.y * 10 + h * 0.01; if (s2 > bs) { bs = s2; best = c; bh = h; } } }
+      if (best) {
+        const dx = px - best.x, dy = py - best.y, w = Math.max(1, best.R - (dy < 0 ? -dy * 1.15 : dy * best.sS)), t = Math.abs(dx) / w;
+        const lit = dx < 0, r = hsh(x, y, I.v + best.i), snowLine = best.R * (0.15 + hsh(Math.floor(x / 3), best.i, 5) * 0.25);
+        if (dy < snowLine) b.set(x, y, lit ? SNW[t < 0.3 ? 4 : t < 0.65 ? 3 : 2] : SNW[t < 0.35 ? 1 : 0]);
+        else b.set(x, y, lit ? ROCK[t < 0.3 ? 3 : 2] : ROCK[t < 0.4 ? 1 : 0]);
+        if (r < 0.05) b.dk(x, y, 0.85);
+        if (bh < 1.3 && dy > 0) b.set(x, y, MT.rk3);
+      } else if (edgeDist(x, y, om, 0) > 5) b.set(x, y, (x + y) & 1 ? MT.sn2 : MT.sn);
+    }
+  }
+  // the weather station ('ò'): a white louvred box on legs, a thermometer, the vane's pole going up (the vane is drawn by the zone)
+  function stationTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 12, 21, 9, 2, 0.6);
+    for (const x of [6, 17]) { b.rect(x, 14, 2, 8, MT.wh3); b.vl(x, 14, 21, MT.wh2); }
+    b.rect(4, 4, 16, 11, MT.wh); b.hl(4, 19, 4, MT.wh2); b.hl(3, 20, 3, MT.wh2); b.vl(19, 4, 14, MT.wh3); b.hl(4, 19, 14, MT.wh3);
+    for (let y = 6; y < 14; y += 2) b.hl(6, 17, y, MT.wh2);
+    b.rect(11, 0, 2, 4, MT.wh3); b.vl(11, 0, 3, MT.wh2);
+    b.rect(21, 6, 2, 9, MT.wh); b.vl(21, 6, 14, MT.red); b.set(21, 14, MT.red2); b.set(22, 15, MT.red2);
+  }
+  // the lookout's binoculars ('ù'): a coin viewer on a post, two big eyepieces, a little step to stand on
+  function viewerTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 12, 21, 8, 2, 0.6);
+    b.rect(5, 18, 14, 4, MT.rk2); b.hl(5, 18, 18, MT.rk4); b.hl(5, 18, 21, MT.rk3);
+    b.rect(11, 9, 3, 9, MT.steel2); b.vl(11, 9, 17, MT.steel);
+    b.rect(5, 3, 14, 7, MT.steel); b.hl(5, 18, 3, MT.steel3); b.hl(5, 18, 9, MT.steel2);
+    for (const x of [6, 13]) { b.rect(x, 1, 5, 3, MT.steel2); b.rect(x + 1, 1, 3, 2, MT.glass); }
+    b.rect(16, 5, 2, 2, U('#f8d040'));
+  }
+  // a snowy roof ('â'): the cabin's red roof under a thick layer of snow, little icicles along the eave
+  function snowRoofTile(b, I) {
+    roofTile(b, I, false);
+    const bot = !ROOF(I.n[4]);
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) {
+      const edge = bot ? 13 + Math.round(Math.sin((x + I.tx * 24) / 3.1) * 1.5 + hsh(x >> 1, 3, I.v) * 2) : 99;
+      const top = !ROOF(I.n[0]);
+      if (y < edge) b.set(x, y, y === edge - 1 ? MT.sn3 : top && y < 2 ? MT.sn4 : top && y < 4 ? MT.sn2 : hsh(x, y, I.v + 7) < 0.08 ? MT.sn2 : (y + (x >> 3)) % 6 === 0 && hsh(x >> 2, y, 3) < 0.5 ? MT.sn2 : y > 9 && (x + y) & 1 ? MT.sn2 : MT.sn);
+    }
+    if (bot) for (let x = 2; x < TS; x += 5 + (I.v & 1)) { const L = 2 + Math.floor(hsh(x, I.tx, 3) * 4); for (let k = 0; k < L; k++) b.set(x, 15 + k, k === L - 1 ? MT.ice4 : MT.ice2); }
+  }
+
   function reg(codes, spec) { for (const c of codes) REG[c] = spec; }
   reg('.', { need: 's', fn: (b, I) => { grassTex(b, I.v); applyShadow(b, I.sh); } });
   reg('o', { need: 's', anim: 2, spd: 30, fn: (b, I) => { flowerTex(b, I.v, I.af); applyShadow(b, I.sh); } });
@@ -4365,6 +4488,13 @@ G.store = {
   reg('é', { need: 'g', base: true, anim: 2, spd: 18, fn: pumpTile });
   reg('ó', { need: 'n', fn: wardrobeTile });
   reg('ú', { need: 'g', base: true, fn: trunkTile });
+  reg('ü', { need: 'g', fn: snowTile });
+  reg('ö', { need: 'g', anim: 2, spd: 40, fn: iceTile });
+  reg('ç', { need: 'g', base: true, fn: snowPineTile });
+  reg('ï', { need: 'n', uniq: true, fn: snowPeakTile });
+  reg('ò', { need: 'g', base: true, fn: stationTile });
+  reg('ù', { need: 'g', base: true, fn: viewerTile });
+  reg('â', { need: 'n', fn: snowRoofTile });
   reg(' ', { need: '', fn: (b) => b.fill(P.X0) });
 
   const tileCache = new Map();
@@ -4416,6 +4546,7 @@ G.store = {
     '9': '#e8f4ff', 'd': '#9c5e2a', '-': '#5cc8dc', '&': '#c8c070', '1': '#2e9a3a', '2': '#e83a30', '3': '#d8bc7c', '4': '#e83a30', '5': '#e83a30', '6': '#e83a30', '7': '#fafaf4', '8': '#3a7ae0', '0': '#5a5a6a',
     '(': '#2b6a26', ')': '#2b6a26', '%': '#e03a30', '*': '#4a2a70', '_': '#8a5a30', '#': '#6c6252', '|': '#e8f6ff', '@': '#0c0a10', ':': '#8e8e9a', '[': '#9a6634', ']': '#764a22', '{': '#3a3240', '}': '#1e1822',
     'ñ': '#5a3618', 'á': '#c04030', 'í': '#6a4a2a', 'é': '#3a7ad0', 'ó': '#8a5428', 'ú': '#8a5428',
+    'ü': '#eef4fa', 'ö': '#a8dcf0', 'ç': '#1f5634', 'ï': '#d8e6f2', 'ò': '#f8f8f4', 'ù': '#5878a8', 'â': '#f4f8fc',
     '!': '#e04040', '<': '#3870d8', '>': '#f8c830', '/': '#38a858', '?': '#e04040', '^': '#c8b8a0', ';': '#fafaf4', '$': '#3870d8',
     'z': '#b08a50', 'V': '#5c3418', 'C': '#5c3418', 'H': '#e2be46', 'E': '#9c5e2a', 'U': '#3a72d2', 'm': '#b4b2b4', 'A': '#c8343c',
   };
@@ -6269,6 +6400,12 @@ G.store = {
         B.ell(hx, hy - 4, hr * 0.8, 2.8, cR, { test: (x, y) => y < hy - 3 });
         B.grp('hat:brim'); B.ell(hx, hy - 3, hr + 2, 1.3, cR, { shift: -1 });
       }
+    } else if (head === 'beanie') { // a knitted winter hat (el gorro, La montaña): a turned-up band and a pom-pom
+      const cR = ramp(hc), bR = ramp(mixHex(hc, '#ffffff', 0.4));
+      B.grp('hat');
+      B.ell(hx - (side ? 0.3 : 0), hy - 1.2, hr + 0.5, hr * 0.98, cR, { test: (x, y) => y < hy - 1.6 });
+      B.grp('hat:band'); B.ell(hx - (side ? 0.3 : 0), hy - 1.2, hr + 0.7, hr, bR, { test: (x, y) => y >= hy - 2.6 && y < hy - 1.0 });
+      B.grp('hat:pom'); B.ell(hx - (side ? 0.8 : 0), hy - hr - 1.3, 1.6, 1.5, ramp('#f4f4f8'));
     } else if (head === 'bandana') {
       B.grp('hat'); const cR = ramp(hc);
       B.ell(hx, hy - 1, hr + 0.3, hr, cR, { test: (x, y) => y > hy - 4.2 && y < hy - 2.2 });
@@ -6354,7 +6491,7 @@ G.store = {
     const arm = (sx, sy, hx2, hy2, grp) => {
       B.grp(grp); const r = bones ? 0.7 : body === 'orc' || body === 'dwarf' ? 1.4 : 1.1;
       B.cap(sx, sy, hx2, hy2, r, r * 0.9, spec.robe ? outR : bones ? skinR : (metR || outR));
-      B.grp(grp + ':h'); B.ell(hx2, hy2 + 0.3, 1.2, 1.2, (spec.weapon === 'fists') ? trimR : skinR);
+      B.grp(grp + ':h'); B.ell(hx2, hy2 + 0.3, 1.2, 1.2, spec.gloves ? ramp(spec.gloves) : (spec.weapon === 'fists') ? trimR : skinR);
     };
     let handN, handF;
     if (side) { handF = [cx - 1.5 - armSwing, top + 4.5]; arm(cx - 0.5, top + 1, handF[0], handF[1], 'armF'); }
@@ -6411,6 +6548,13 @@ G.store = {
       void oh;
     }
     if (C.armor && !back) { B.grp('paul'); if (side) B.ell(cx + 0.3, top + 0.8, 1.8, 1.4, metR); else { B.ell(cx - bw + 0.3, top + 0.8, 1.7, 1.4, metR); B.ell(cx + bw - 0.3, top + 0.8, 1.7, 1.4, metR); } }
+    if (spec.scarf) { // a scarf (la bufanda, La montaña): wrapped round the neck, one end hanging (flapping behind when walking sideways)
+      const sR = ramp(spec.scarf);
+      B.grp('scarf'); B.ell(cx + (side ? 0.3 : 0), top + 0.3, side ? 2.9 : bw - 0.2, 1.3, sR);
+      B.grp('scarf:end');
+      if (side) B.chain([[cx - 1.5, top + 0.6], [cx - 3.5, top + 1.5 + frame], [cx - 5, top + 2 + frame * 1.5]], [1, 0.9, 0.7], sR);
+      else B.cap(cx + (back ? -1.6 : 1.6), top + 0.8, cx + (back ? -1.8 : 1.9), top + 4.6, 0.9, 0.8, sR);
+    }
     B.lines();
     mapFace(B, spec, C, dir, H, hy, hr);
   }
@@ -6613,6 +6757,11 @@ G.store = {
       B.grp('gorget'); B.poly([[cx - 8, 42.5], [cx + 8, 42.5], [cx + 10, 47.5], [cx - 10, 47.5]], metR, { vg: 0.8 });
       B.grp('tabard'); B.poly([[cx - 5, 47.5], [cx + 5, 47.5], [cx + 4, 53], [cx - 4, 53]], outR);
     }
+    if (ps.scarf) { // la bufanda: a thick band round the neck, one end hanging down the chest, knitted stripes
+      const sR = ramp(ps.scarf);
+      B.grp('scarf'); B.poly([[cx - 11, 41], [cx + 11, 41], [cx + 13, 46.5], [cx - 13, 46.5]], sR, { vg: 0.5 });
+      B.grp('scarf:end'); B.poly([[cx + 3, 45], [cx + 9, 45], [cx + 10, 53], [cx + 4, 53]], sR, { vg: 0.4 });
+    }
     // back hair
     if (!hooded && !fullHelm && body !== 'skeleton' && body !== 'birdfolk') {
       B.grp('hair:back');
@@ -6717,6 +6866,10 @@ G.store = {
       B.grp('hat'); B.ell(cx, fringeY - 3, fw * 0.85, 6, cR, { test: (x, y) => y < fringeY });
       B.grp('hat:band'); B.rect(cx - fw * 0.85, fringeY - 2, fw * 1.7, 2, trimR[2]);
       B.grp('hat:brim'); B.ell(cx, fringeY + 0.5, fw + 8, 2.5, cR, { shift: -1 });
+    } else if (head === 'beanie') { // el gorro: a knitted cap pulled down to the brows, a turned-up band, a pom-pom
+      B.grp('hat'); B.ell(cx, cy - 3, fw + 2.2, fh + 0.8, ramp(hc), { test: (x, y) => y < fringeY + 2 });
+      B.grp('hat:band'); B.ell(cx, cy - 3, fw + 2.6, fh + 1, ramp(mixHex(hc, '#ffffff', 0.4)), { test: (x, y) => y >= fringeY - 2 && y < fringeY + 2 });
+      B.grp('hat:pom'); B.ell(cx + 1, cy - fh - 4, 4, 3.6, ramp('#f4f4f8'));
     } else if (head === 'bandana') {
       B.grp('hat'); B.ell(cx, cy - 2.5, fw + 1.8, fh + 0.6, ramp(hc), { test: (x, y) => y > fringeY - 5 && y < fringeY });
       B.poly([[cx + fw, fringeY - 4], [cx + fw + 7, fringeY + 3], [cx + fw + 4, fringeY + 5], [cx + fw, fringeY]], ramp(hc));
@@ -7866,6 +8019,148 @@ G.store = {
       p.rect(4, 7, 3, 1, '#302018'); p.rect(9, 7, 3, 1, '#302018'); p.ell(8, 11, 1.4, 1.6, '#803030');
       p.rect(11, 0, 3, 1, '#4060c0'); p.put(12, 1, '#4060c0'); p.rect(11, 2, 3, 1, '#4060c0'); p.put(14, 3, '#4060c0'); p.put(15, 3, '#4060c0'); p.put(15, 4, '#4060c0'); p.put(14, 5, '#4060c0'); p.put(15, 5, '#4060c0');
     },
+    // ---- La montaña (content/es/zone-montana.js): the weather, snow and the cold, its animals ----
+    nieve(p) { // snow: big snowflakes falling onto a white mound
+      p.ell(8, 15, 9, 3.5, '#f4f8fc'); p.ell(8, 15.5, 8, 2, '#d0e2f4');
+      const flake = (cx, cy, r, c) => { for (let a = 0; a < 6; a++) { const t = a * Math.PI / 3; for (let k = 0; k <= r; k += 0.5) p.put(cx + Math.cos(t) * k - 0.5, cy + Math.sin(t) * k - 0.5, c); } p.put(cx - 0.5, cy - 0.5, '#ffffff'); };
+      flake(5, 5, 3.6, '#a8d0f8'); flake(12, 3, 2.2, '#c0dcf8'); flake(11.5, 9.5, 2.6, '#a8d0f8'); flake(3, 11, 1.6, '#c0dcf8');
+    },
+    frio(p) { // cold: a blue shivering face, teeth chattering, an icicle nose drip, a snowflake
+      smiley(p, '#9ccaf0', '#78a8d8');
+      p.rect(4, 6, 3, 1, '#302018'); p.rect(9, 6, 3, 1, '#302018'); p.put(5, 7, '#302018'); p.put(10, 7, '#302018');
+      p.rect(4, 10, 8, 3, '#302018'); for (let x = 5; x < 11; x += 2) { p.put(x, 10, '#ffffff'); p.put(x + 1, 12, '#ffffff'); }
+      for (const y of [4, 8, 12]) { p.put(0, y, '#5890d0'); p.put(15, y + 1, '#5890d0'); }
+      p.put(8, 9, '#e8f8ff'); p.put(8, 10, '#c8e8ff');
+      p.put(14, 1, '#ffffff'); p.put(13, 1, '#c0dcf8'); p.put(15, 1, '#c0dcf8'); p.put(14, 0, '#c0dcf8'); p.put(14, 2, '#c0dcf8');
+    },
+    nube(p) { // a fluffy white cloud
+      for (const [x, y, r] of [[5, 9, 3.6], [9, 6.5, 4.4], [12.5, 9.5, 3.2], [8, 10.5, 3.6]]) p.disc(x, y, r, '#fafcff');
+      p.rect(2, 10, 13, 3, '#fafcff'); p.rect(3, 12, 11, 1, '#c8dcf0'); p.put(6, 5, '#ffffff'); p.put(8, 4, '#ffffff');
+      for (const [x, y] of [[13, 11], [14, 10], [12, 12], [5, 12]]) p.put(x, y, '#c8dcf0');
+    },
+    viento(p) { // wind: three swooshing gusts curling at their ends, a leaf tumbling along
+      const gust = (y, x0, x1, c) => { p.rect(x0, y, x1 - x0, 1, c); p.put(x1, y - 1, c); p.put(x1 + 1, y - 2, c); p.put(x1 + 1, y - 3, c); p.put(x1, y - 4, c); p.put(x1 - 1, y - 4, c); p.put(x1 - 2, y - 3, c); };
+      gust(5, 1, 11, '#5898e0'); gust(10, 3, 13, '#78b8f0'); gust(14, 0, 8, '#5898e0');
+      p.ell(13, 13.5, 2, 1.3, '#58b040'); p.put(14, 12, '#2e7a2a');
+    },
+    lluvia(p) { // rain: a grey cloud, blue drops falling slantwise
+      for (const [x, y, r] of [[5, 5, 3.2], [9, 3.5, 3.8], [12, 5.5, 2.8]]) p.disc(x, y, r, '#a8b4c8');
+      p.rect(2, 5, 12, 3, '#a8b4c8'); p.rect(3, 7, 11, 1, '#8090a8'); p.put(7, 2, '#c8d4e4'); p.put(9, 1, '#c8d4e4');
+      for (const [x, y] of [[3, 10], [7, 9], [11, 10], [5, 13], [9, 12], [13, 13]]) { p.put(x, y, '#3a8ae8'); p.put(x - 1, y + 1, '#3a8ae8'); p.put(x, y - 1, '#a8d8ff'); }
+    },
+    arcoiris(p) { // a rainbow: six bands in an arc, a little cloud at each foot
+      const C = ['#e83a30', '#f89020', '#f8d830', '#48b848', '#3a7ae0', '#8a50c8'];
+      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const r = Math.hypot(x + 0.5 - 8, y + 0.5 - 14); const i = Math.floor((7.8 - r) / 0.88); if (r <= 7.8 && r >= 2.5 && i >= 0 && i < 6 && y < 14) p.put(x, y, C[i]); }
+      p.disc(2, 13, 2.2, '#fafcff'); p.disc(4, 13.5, 1.8, '#fafcff'); p.disc(13.5, 13, 2.2, '#fafcff'); p.disc(11.5, 13.5, 1.8, '#fafcff');
+    },
+    gorro(p, w) { // a knitted winter hat (its colour from w.col): a turned-up band, stripes, a white pom-pom
+      const c = (w && w.col) || '#3870d8', d = G.shade(c, 0.75), l = G.shade(c, 1.25);
+      p.ell(8, 10, 6.5, 6.5, c); p.rect(1, 10, 14, 5, null); p.rect(1, 10, 14, 4, l); p.rect(1, 13, 14, 1, d);
+      for (let x = 2; x < 15; x += 2) p.rect(x, 10, 1, 3, c);
+      p.rect(3, 6, 10, 1, '#f8f8f8'); p.disc(8, 2.2, 2.3, '#f8f8f8'); p.put(7, 1, '#ffffff'); p.shade(8, 2.2, 2.3, '#d8d8e0');
+    },
+    bufanda(p, w) { // a scarf (its colour from w.col): wrapped in a loop, two ends hanging with a fringe, white stripes
+      const c = (w && w.col) || '#e04040', d = G.shade(c, 0.72);
+      p.ell(8, 4.5, 6, 3, c); p.ell(8, 4.5, 3.6, 1.3, null); p.rect(4, 6, 3, 8, c); p.rect(9, 6, 3, 7, d);
+      for (const [x, y] of [[4, 9], [4, 11], [9, 9], [9, 11]]) p.rect(x, y, 3, 1, '#ffffff');
+      for (const x of [4, 6, 9, 11]) { p.put(x, 14, c); p.put(x, 15, c); }
+      p.put(2, 3, G.shade(c, 1.25)); p.put(3, 2, G.shade(c, 1.25));
+    },
+    guantes(p, w) { // a pair of mittens (their colour from w.col): a thumb out to the side, white cuffs
+      const c = (w && w.col) || '#8a50c8', d = G.shade(c, 0.75), l = G.shade(c, 1.3);
+      for (const [ox, f] of [[0, 1], [8, -1]]) {
+        p.ell(ox + 4, 6.5, 3.2, 4.5, c); p.rect(ox + 1, 7, 6, 4, c); p.ell(ox + (f > 0 ? 1.2 : 6.8), 8, 1.3, 1.8, c);
+        p.rect(ox + 1, 11, 6, 4, '#f4f4f8'); p.rect(ox + 1, 14, 6, 1, '#c8c8d8'); p.put(ox + 3, 12, d); p.put(ox + 5, 12, d);
+        p.put(ox + 3, 3, l); p.put(ox + 2, 4, l);
+      }
+    },
+    muneco(p) { // a snowman: three snowballs, coal eyes and buttons, a carrot nose, a red scarf, stick arms, a little hat
+      p.disc(8, 12.5, 3.6, '#fafcff'); p.disc(8, 7.8, 2.8, '#fafcff'); p.disc(8, 3.8, 2.2, '#fafcff');
+      p.shade(8, 12.5, 3.6, '#c8dcf0'); p.shade(8, 7.8, 2.8, '#c8dcf0');
+      p.rect(5, 0, 6, 1, '#303038'); p.rect(6, 0, 4, 1, '#303038'); p.rect(6, 1, 4, 1, '#303038');
+      p.put(7, 3, '#202028'); p.put(9, 3, '#202028'); p.rect(9, 4, 3, 1, '#f88020'); p.put(8, 7, '#202028'); p.put(8, 9, '#202028'); p.put(8, 12, '#202028');
+      p.rect(5, 5, 6, 1, '#e04040'); p.rect(9, 6, 1, 3, '#e04040');
+      for (let k = 0; k < 4; k++) { p.put(4 - k, 7 - k * 0.6, '#7a4a20'); p.put(12 + k, 7 - k * 0.6, '#7a4a20'); }
+    },
+    chocolate(p) { // a mug of hot chocolate: steam curling up, a marshmallow on top
+      p.rect(2, 7, 10, 8, '#e05030'); p.rect(2, 7, 10, 1, '#f08060'); p.ell(7, 7.5, 5, 1.4, '#6a3818'); p.rect(11, 9, 3, 4, null);
+      for (let a = -1.4; a <= 1.4; a += 0.2) p.put(12 + Math.cos(a) * 2.4, 11 + Math.sin(a) * 2.4, '#e05030');
+      p.rect(5, 6, 3, 2, '#fafaf4'); p.rect(3, 14, 8, 1, '#b83820'); p.rect(4, 10, 6, 1, '#f8f0e0');
+      for (const [x, y] of [[4, 4], [5, 3], [4, 2], [8, 3], [9, 2], [8, 1], [9, 0]]) p.put(x, y, '#d8d8e8');
+    },
+    trineo(p) { // a wooden sled: slats on two curled red runners, a rope at the front
+      p.rect(1, 6, 12, 4, '#c0823a'); for (const x of [4, 8]) p.rect(x, 6, 1, 4, '#8a5428'); p.rect(1, 6, 12, 1, '#dca65c');
+      p.rect(2, 12, 11, 1, '#d83030'); p.rect(2, 10, 1, 2, '#d83030'); p.rect(11, 10, 1, 2, '#d83030');
+      p.put(13, 11, '#d83030'); p.put(14, 10, '#d83030'); p.put(14, 9, '#d83030'); p.put(13, 8, '#d83030');
+      for (let k = 0; k < 4; k++) p.put(14 - k * 0.2, 7 - k, '#e8d8a0');
+    },
+    hielo(p) { // ice: two clear blue ice cubes with shiny edges
+      for (const [x, y, s] of [[1, 6, 8], [8, 3, 7]]) {
+        p.rect(x, y, s, s, '#b8e4f8'); p.rect(x, y, s, 1, '#f4fcff'); p.rect(x, y, 1, s, '#e0f4ff'); p.rect(x + s - 1, y + 1, 1, s - 1, '#78b8e0'); p.rect(x + 1, y + s - 1, s - 1, 1, '#78b8e0');
+        p.put(x + 2, y + 2, '#ffffff'); p.put(x + 3, y + 2, '#ffffff'); p.put(x + 2, y + 3, '#ffffff');
+      }
+    },
+    llama(p) { // a llama's head and long neck: fluffy cream wool, long banana ears with red tassels, a gentle face
+      p.rect(5, 8, 6, 8, '#f0e4cc'); p.ell(8, 6, 4.2, 3.4, '#f0e4cc'); p.ell(10.5, 7.5, 2.6, 2, '#e0d0b0');
+      p.ell(5.5, 2, 1, 2.6, '#f0e4cc'); p.ell(9.5, 2, 1, 2.6, '#f0e4cc'); p.put(5, 1, '#e04040'); p.put(9, 1, '#38a858');
+      p.put(7, 5, '#201818'); p.put(10, 5, '#201818'); p.put(12, 8, '#806050'); p.put(11, 9, '#806050');
+      for (const [x, y] of [[4, 10], [4, 12], [11, 11], [11, 13], [6, 14]]) p.put(x, y, '#d8c8a8');
+      p.rect(5, 11, 6, 1, '#e04040'); p.rect(5, 12, 6, 1, '#f8d030');
+    },
+    marmota(p) { // a marmot standing up: chubby brown, a pale belly, little paws held up, round ears
+      p.ell(8, 10.5, 5, 5, '#a06a38'); p.ell(8, 5, 3.6, 3.2, '#a06a38'); p.ell(8, 11, 3, 3.8, '#e0c098');
+      p.disc(5, 2.6, 1, '#7a4a20'); p.disc(11, 2.6, 1, '#7a4a20'); p.put(6, 4, '#101010'); p.put(10, 4, '#101010');
+      p.ell(8, 6.4, 1.6, 1, '#e8d0b0'); p.put(8, 6, '#402018'); p.rect(7, 7, 2, 1, '#ffffff');
+      p.rect(5, 8, 2, 1, '#7a4a20'); p.rect(9, 8, 2, 1, '#7a4a20'); p.rect(4, 15, 3, 1, '#7a4a20'); p.rect(9, 15, 3, 1, '#7a4a20');
+    },
+    zorrillo(p) { // a skunk: black, a white stripe from its nose up over its back, a big fluffy tail held up
+      p.ell(11, 5.5, 4.4, 5, '#282830'); p.ell(11, 5.5, 1.6, 4.4, '#f4f4f4');
+      p.ell(7, 11, 5, 3.4, '#282830'); p.ell(6, 9.4, 3.6, 1, '#f4f4f4'); p.disc(3, 11, 2.6, '#282830');
+      p.rect(2, 9, 1, 2, '#f4f4f4'); p.put(2, 11, '#101010'); p.put(1, 12, '#f090a0'); p.put(3, 8, '#282830');
+      p.rect(4, 14, 1, 2, '#282830'); p.rect(9, 14, 1, 2, '#282830');
+    },
+    carpintero(p) { // a woodpecker on a tree trunk: a red cap, black and white wings, a long beak, pecking
+      p.rect(9, 0, 6, 16, '#8a5a30'); p.rect(9, 0, 1, 16, '#6a4220'); for (const y of [3, 9, 13]) p.rect(11, y, 3, 1, '#6a4220');
+      p.ell(6, 9, 3, 5, '#202028'); p.ell(5.5, 9.5, 1.4, 3.5, '#f4f4f4'); for (const y of [7, 9, 11]) p.put(7, y, '#f4f4f4');
+      p.disc(6, 3.8, 2.4, '#202028'); p.rect(4, 1, 4, 2, '#e02828'); p.rect(5, 4, 2, 1, '#f4f4f4'); p.put(7, 3, '#ffffff'); p.put(7.5, 3.5, '#101010');
+      p.rect(8, 4, 2, 1, '#606060'); p.rect(4, 14, 2, 2, '#202028');
+    },
+    monarca(p) { // a monarch butterfly: bright orange wings with black veins, black edges dotted white
+      for (const f of [false, true]) {
+        const X = x => f ? 15 - x : x;
+        p.ell(X(4) + 0.5, 5.5, 4, 4.4, '#202020'); p.ell(X(4) + 0.5, 5.5, 3, 3.4, '#f88010');
+        p.ell(X(5) + 0.5, 11.5, 3, 3, '#202020'); p.ell(X(5) + 0.5, 11.5, 2, 2, '#f8a020');
+        p.put(X(3), 5, '#202020'); p.put(X(4), 6, '#202020'); p.put(X(5), 4, '#202020'); p.put(X(5), 11, '#202020');
+        for (const [x, y] of [[1, 3], [1, 6], [2, 9], [3, 13], [5, 14]]) p.put(X(x), y, '#ffffff');
+      }
+      p.rect(7, 3, 2, 11, '#202020'); p.put(6, 1, '#202020'); p.put(9, 1, '#202020'); p.put(6, 2, '#202020'); p.put(9, 2, '#202020');
+    },
+    puma(p) { // a puma's face: tawny, round ears, a white muzzle, a pink nose, golden eyes
+      p.disc(3, 3.5, 2.2, '#c08850'); p.disc(13, 3.5, 2.2, '#c08850'); p.disc(3, 3.5, 1, '#5a3418'); p.disc(13, 3.5, 1, '#5a3418');
+      p.ell(8, 8.5, 6.5, 6, '#d09a60'); p.ell(8, 11.5, 3.6, 2.8, '#f8f0e0'); p.shade(8, 8.5, 6.5, '#b07840');
+      p.rect(4, 7, 2, 2, '#e8c040'); p.rect(10, 7, 2, 2, '#e8c040'); p.put(5, 7, '#101010'); p.put(11, 7, '#101010');
+      p.tri(6.5, 10, 9.5, 10, 8, 12, '#e07080'); p.put(8, 13, '#5a3418'); p.put(7, 14, '#5a3418'); p.put(9, 14, '#5a3418');
+      p.put(3, 11, '#5a3418'); p.put(13, 11, '#5a3418');
+    },
+    aguila(p) { // an eagle soaring: wide brown wings, a golden head, a hooked yellow beak, its tail fanned
+      p.tri(0, 6, 8, 5, 3, 10, '#6a4020'); p.tri(16, 6, 8, 5, 13, 10, '#6a4020'); for (const x of [1, 3, 13, 15]) p.put(x, 7, '#3a2010');
+      p.ell(8, 8, 2.6, 4, '#7a4a20'); p.tri(6, 11, 10, 11, 8, 15, '#7a4a20'); p.disc(8, 3.5, 2.2, '#d8a040');
+      p.put(7, 3, '#101010'); p.rect(8, 4, 2, 1, '#f8d020'); p.put(9, 5, '#f8d020'); p.put(5, 6, '#8a5a30'); p.put(11, 6, '#8a5a30');
+    },
+    lobo(p) { // a wolf's face: grey, tall pointed ears, a pale muzzle and cheeks, amber eyes, a black nose
+      p.tri(2, 0, 6, 4, 2, 7, '#6a6a78'); p.tri(14, 0, 10, 4, 14, 7, '#6a6a78'); p.tri(3, 2, 5, 4, 3, 6, '#e0d8d0'); p.tri(13, 2, 11, 4, 13, 6, '#e0d8d0');
+      p.ell(8, 8, 6, 4.6, '#8a8a98'); p.tri(2, 8, 14, 8, 8, 15, '#8a8a98'); p.tri(4, 9, 12, 9, 8, 15, '#f0ece8');
+      p.put(5, 7, '#e8a020'); p.put(11, 7, '#e8a020'); p.put(5, 6, '#202028'); p.put(11, 6, '#202028'); p.disc(8, 13.5, 1.2, '#101010');
+      p.rect(7, 4, 2, 3, '#6a6a78');
+    },
+    // things on the mountain with no word of their own (a picture only)
+    bolanieve(p) { // a snowball: white, soft blue shading, a sparkle
+      p.disc(8, 8.5, 6, '#fafcff'); p.shade(8, 8.5, 6, '#c8dcf0'); p.put(5, 5, '#ffffff'); p.put(6, 4, '#ffffff'); for (const [x, y] of [[10, 7], [7, 10], [11, 11]]) p.put(x, y, '#e0ecf8');
+    },
+    veleta(p) { // the weather vane: an arrow on a pole with a rooster, N S E W letters' crossbars
+      p.rect(7, 4, 2, 12, '#606878'); p.rect(2, 9, 12, 1, '#606878'); p.tri(11, 1, 15, 3, 11, 5, '#e04040'); p.rect(2, 2, 10, 2, '#303840'); p.tri(0, 1, 3, 3, 0, 5, '#303840');
+      p.ell(7, 6, 2.4, 1.6, '#f8c830'); p.put(9, 5, '#e04040');
+    },
   };
 
   // G.icon(name | word, size?) -> canvas (cached). A word object may carry n / col params.
@@ -7954,9 +8249,12 @@ G.store = {
     cuerpo: { name: 'Mi cuerpo', en: 'My body' },
     ropa: { name: 'La ropa', en: 'Clothes' },
     rancho: { name: 'En casa de los abuelos', en: 'At the grandparents\' (their animals)' },
+    tiempo: { name: '¿Qué tiempo hace?', en: 'The weather' },
+    montana: { name: 'La montaña', en: 'The mountain (snow and cold)' },
+    faunamontana: { name: 'Animales de la montaña', en: 'Mountain animals' },
   };
   // the notebook's page order: roughly the order the pages appear in the story
-  C.topicOrder = ['saludos', 'mascota', 'animales', 'sonidos', 'comida', 'colores', 'granja', 'pueblo', 'cosas', 'sentir', 'numeros', 'playa', 'mar', 'bosque', 'fauna', 'acciones', 'juegosparque', 'bichos', 'familia', 'cuerpo', 'ropa', 'rancho'];
+  C.topicOrder = ['saludos', 'mascota', 'animales', 'sonidos', 'comida', 'colores', 'granja', 'pueblo', 'cosas', 'sentir', 'numeros', 'playa', 'mar', 'bosque', 'fauna', 'acciones', 'juegosparque', 'bichos', 'familia', 'cuerpo', 'ropa', 'rancho', 'tiempo', 'montana', 'faunamontana'];
 
   C.words = {
     // ---- Saludos ----
@@ -8051,7 +8349,7 @@ G.store = {
     concha: { es: 'la concha', en: 'the seashell', topic: 'playa', icon: 'concha', pl: 'conchas', alt: 'conchita / caracola' },
     cubetaarena: { es: 'la cubeta', en: 'the pail', topic: 'playa', icon: 'cubetaplaya', alt: 'cubetita / balde / cubo' },
     castillo: { es: 'el castillo', en: 'the sandcastle', topic: 'playa', icon: 'castillo', alt: 'castillo de arena / castillito' },
-    helado: { es: 'el helado', en: 'the ice cream', topic: 'playa', icon: 'helado', pl: 'helados', alt: 'heladito / nieve' },
+    helado: { es: 'el helado', en: 'the ice cream', topic: 'playa', icon: 'helado', pl: 'helados', alt: 'heladito / helados' },
     caliente: { es: 'caliente', en: 'hot', topic: 'playa', icon: 'caliente', alt: 'calor / hace calor / tengo calor / qué calor' },
     // ---- En el mar: the beach's animals (the album) and swimming ----
     cangrejo: { es: 'el cangrejo', en: 'the crab', topic: 'mar', icon: 'cangrejo', pl: 'cangrejos', alt: 'cangrejito' },
@@ -8126,7 +8424,7 @@ G.store = {
     calcetines: { es: 'los calcetines', en: 'the socks', topic: 'ropa', icon: 'calcetines', alt: 'calcetín / el calcetín / calcetas / calcetitas' },
     vestido: { es: 'el vestido', en: 'the dress', topic: 'ropa', icon: 'vestido', pl: 'vestidos', alt: 'vestidito' },
     zapatos: { es: 'los zapatos', en: 'the shoes', topic: 'ropa', icon: 'zapatos', alt: 'zapato / el zapato / zapatitos / tenis' },
-    sombrero: { es: 'el sombrero', en: 'the hat', topic: 'ropa', icon: 'sombrero', pl: 'sombreros', alt: 'sombrerito / gorro' },
+    sombrero: { es: 'el sombrero', en: 'the hat', topic: 'ropa', icon: 'sombrero', pl: 'sombreros', alt: 'sombrerito / sombreros' },
     chamarra: { es: 'la chamarra', en: 'the jacket', topic: 'ropa', icon: 'chamarra', alt: 'chaqueta / chamarrita / suéter' },
     // ---- En casa de los abuelos: their animals (the album) ----
     vaca: { es: 'la vaca', en: 'the cow', topic: 'rancho', icon: 'vaca', pl: 'vacas', alt: 'vaquita / vacas' },
@@ -8137,6 +8435,32 @@ G.store = {
     raton: { es: 'el ratón', en: 'the mouse', topic: 'rancho', icon: 'raton', pl: 'ratones', alt: 'ratoncito / ratones / ratita' },
     gallo: { es: 'el gallo', en: 'the rooster', topic: 'rancho', icon: 'gallo', pl: 'gallos', alt: 'gallito' },
     tlacuache: { es: 'el tlacuache', en: 'the possum', topic: 'rancho', icon: 'tlacuache', pl: 'tlacuaches', alt: 'tlacuachito / zarigüeya / tacuache' },
+    // ---- ¿Qué tiempo hace? (content/es/zone-montana.js): the weather, changed at Mateo's weather station; Mexican Spanish.
+    //      el sol (elsol) and caliente are the beach's words: the mountain meets them if they aren't met yet ----
+    nieve: { es: 'la nieve', en: 'the snow', topic: 'tiempo', icon: 'nieve', alt: 'nieve / nevando / está nevando / la nevada' },
+    frio: { es: 'frío / fría', en: 'cold', topic: 'tiempo', icon: 'frio', alt: 'hace frío / tengo frío / qué frío / el frío / friolento' },
+    nube: { es: 'la nube', en: 'the cloud', topic: 'tiempo', icon: 'nube', pl: 'nubes', alt: 'nubes / nubecita / nublado / las nubes' },
+    viento: { es: 'el viento', en: 'the wind', topic: 'tiempo', icon: 'viento', alt: 'hace viento / ventarrón / el aire / vientito' },
+    lluvia: { es: 'la lluvia', en: 'the rain', topic: 'tiempo', icon: 'lluvia', alt: 'llueve / está lloviendo / lluvia / lloviendo' },
+    arcoiris: { es: 'el arcoíris', en: 'the rainbow', topic: 'tiempo', icon: 'arcoiris', alt: 'arco iris / arcoiris / el arco iris' },
+    // ---- La montaña: snow, the cold, what you wear for it (put on and worn everywhere, like the grandparents' clothes) ----
+    lamontana: { es: 'la montaña', en: 'the mountain', topic: 'montana', icon: 'montana', pl: 'montañas', alt: 'montaña / montañas / el cerro / la sierra' },
+    gorro: { es: 'el gorro', en: 'the winter hat', topic: 'montana', icon: 'gorro', pl: 'gorros', alt: 'gorrito / gorro de lana' },
+    bufanda: { es: 'la bufanda', en: 'the scarf', topic: 'montana', icon: 'bufanda', pl: 'bufandas', alt: 'bufandita' },
+    guantes: { es: 'los guantes', en: 'the gloves', topic: 'montana', icon: 'guantes', alt: 'guante / el guante / guantitos' },
+    muneco: { es: 'el muñeco de nieve', en: 'the snowman', topic: 'montana', icon: 'muneco', alt: 'muñeco / mono de nieve / muñequito de nieve / el muñeco' },
+    chocolate: { es: 'el chocolate', en: 'the hot chocolate', topic: 'montana', icon: 'chocolate', alt: 'chocolate caliente / chocolatito / un chocolate' },
+    trineo: { es: 'el trineo', en: 'the sled', topic: 'montana', icon: 'trineo', pl: 'trineos', alt: 'trineos / el trineíto' },
+    hielo: { es: 'el hielo', en: 'the ice', topic: 'montana', icon: 'hielo', alt: 'hielito / el hielo' },
+    // ---- Animales de la montaña (the album) ----
+    llama: { es: 'la llama', en: 'the llama', topic: 'faunamontana', icon: 'llama', pl: 'llamas', alt: 'llamas / llamita' },
+    marmota: { es: 'la marmota', en: 'the marmot', topic: 'faunamontana', icon: 'marmota', pl: 'marmotas', alt: 'marmotas / marmotita' },
+    zorrillo: { es: 'el zorrillo', en: 'the skunk', topic: 'faunamontana', icon: 'zorrillo', pl: 'zorrillos', alt: 'zorrillito / mofeta' },
+    carpintero: { es: 'el pájaro carpintero', en: 'the woodpecker', topic: 'faunamontana', icon: 'carpintero', pl: 'pájaros carpinteros', alt: 'carpintero / el carpintero' },
+    monarca: { es: 'la mariposa monarca', en: 'the monarch butterfly', topic: 'faunamontana', icon: 'monarca', pl: 'mariposas monarca', alt: 'monarca / la monarca / monarcas / mariposas monarca' },
+    puma: { es: 'el puma', en: 'the puma', topic: 'faunamontana', icon: 'puma', pl: 'pumas', alt: 'pumita / león de montaña' },
+    aguila: { es: 'el águila', en: 'the eagle', topic: 'faunamontana', icon: 'aguila', pl: 'águilas', alt: 'águila / aguilita / las águilas' },
+    lobo: { es: 'el lobo', en: 'the wolf', topic: 'faunamontana', icon: 'lobo', pl: 'lobos', alt: 'lobito / lobos' },
   };
   C.numberWords = ['uno', 'dos', 'tres', 'cuatro', 'cinco'];
   C.numberWords10 = ['uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'];
@@ -8165,6 +8489,9 @@ G.store = {
     cuerpo: { topic: 'cuerpo', words: ['mano', 'pie', 'nariz', 'ojos', 'boca', 'cabeza'] },
     ropa: { topic: 'ropa', words: ['camisa', 'pantalon', 'calcetines', 'vestido', 'zapatos', 'sombrero', 'chamarra'] },
     rancho: { topic: 'rancho', words: ['vaca', 'cerdo', 'oveja', 'burro', 'pavo', 'raton', 'gallo', 'tlacuache'] },
+    tiempo: { topic: 'tiempo', words: ['nieve', 'frio', 'nube', 'viento', 'lluvia', 'arcoiris'] },
+    montana: { topic: 'montana', words: ['lamontana', 'gorro', 'bufanda', 'guantes', 'muneco', 'chocolate', 'trineo', 'hielo'] },
+    faunamontana: { topic: 'faunamontana', words: ['llama', 'marmota', 'zorrillo', 'carpintero', 'monarca', 'puma', 'aguila', 'lobo'] },
   };
   C.pageOrder = C.topicOrder.slice();
   // where each page's puzzle sparkle sits (maps.js reads this): map -> 'x,y' -> page
@@ -8180,6 +8507,7 @@ G.store = {
     juegos: { '20,8': 'acciones', '27,4': 'juegosparque', '35,17': 'bichos' }, // (El parque de juegos: the playground, under the kite tree, the garden)
     abuelos: { '14,14': 'cuerpo', '29,13': 'rancho' }, // (La casa de los abuelos: by the pump, by the paddock)
     abuelos_casa: { '5,5': 'familia', '15,5': 'ropa' }, // (inside: under the family photos, in the bedroom)
+    montana: { '10,19': 'tiempo', '13,10': 'montana', '29,19': 'faunamontana' }, // (La montaña: by the weather station, on the snowfield, by the llamas' corral)
   };
 
   // ---------- the 21 chapters, in order (docs/CURRICULUM.md section 4) ----------
@@ -8360,6 +8688,15 @@ G.store = {
     bebe: { name: 'Bebé',
       portrait: { body: 'halfling', skin: '#f0c8a0', hair: '#a05a28', hairStyle: 'short', eyes: '#302010', outfit: '#f8e070', trim: '#ffffff', age: 'young', face: 'round', bg: '#e0b840' },
       map: { body: 'halfling', skin: '#f0c8a0', hair: '#a05a28', hairStyle: 'short', outfit: '#f8e070', trim: '#ffffff', pants: '#f8e070', boots: '#f8f0d0', eyes: '#302010' } },
+    // La montaña (content/es/zone-montana.js): Don Lucho, the shepherd who keeps the mountain refuge (a knitted cap, a
+    // striped poncho, a grey beard: his llamas, the hot chocolate), and Mateo, the weather kid (a yellow raincoat with
+    // its hood up, red boots, a scarf: his weather station; he can make it snow, rain, blow or shine)
+    lucho: { name: 'Don Lucho',
+      portrait: { body: 'human', skin: '#c08860', hair: '#5a4a40', hairStyle: 'short', beard: '#b8b0a8', eyes: '#302010', head: 'beanie', headColor: '#c83838', outfit: '#d87830', trim: '#f8e0a0', scarf: '#3870c8', age: 'old', face: 'round', bg: '#7a5a3a' },
+      map: { body: 'human', skin: '#c08860', hair: '#5a4a40', hairStyle: 'short', beard: '#b8b0a8', head: 'beanie', headColor: '#c83838', outfit: '#d87830', trim: '#f8e0a0', robe: true, scarf: '#3870c8', eyes: '#302010' } },
+    mateo: { name: 'Mateo',
+      portrait: { body: 'halfling', skin: '#c89070', hair: '#2a1810', hairStyle: 'short', eyes: '#2a1808', head: 'hood', headColor: '#f8d030', outfit: '#f8d030', trim: '#3870c8', scarf: '#38a858', age: 'young', face: 'round', bg: '#4a8ac8' },
+      map: { body: 'halfling', skin: '#c89070', hair: '#2a1810', hairStyle: 'short', head: 'hood', headColor: '#f8d030', outfit: '#f8d030', trim: '#3870c8', boots: '#d83030', gloves: '#38a858', eyes: '#2a1808' } },
     canelo: { name: 'Canelo',
       map: { body: 'wolf', outfit: '#b87038', trim: '#f0d8b0', eyes: '#201008' } },
   };
@@ -12049,6 +12386,13 @@ G.store = {
   //   More from El parque de juegos (2026-10-17): 'march' (ants: one line per map entry; the first wanders, each one
   //   after walks along the trail of the one before; tapped, the whole line scatters for a moment), 'hop' (a cricket:
   //   sits and chirps (frame chirp), hops off in little arcs (frame hop), away from you when you come close).
+  //   More from La montaña (2026-10-17): 'peek' (a marmot: stands up by its burrow and looks about (frame alt: it
+  //   whistles); when the dog comes near or you run up it ducks into its hole (frame hole) and pops out again later
+  //   (frame peek on the way); tapped, it pops up and whistles), 'cling' (a woodpecker: clings to a tree trunk near
+  //   where it lives (o.trees: tile codes, default ')'; o.high: px up the trunk) and pecks (frame peck, a toc-toc), now
+  //   and then (or when tapped) it flies to another trunk (frames fly / fly2)), 'soar' (an eagle: circles high over its
+  //   area (o.high: px up, default 56), its shadow sliding over the ground (frames stand / alt: wings), now and then it
+  //   swoops lower and cries; tapped, it swoops).
   //   o.on: the tile codes it lives on (default the land: '.o,=pyz'; e.g. 's' sand, '-~w' water), o.water: drawn flat
   //   on the water / ground with the ducks (not sorted in with the people), o.shadow: its shadow's width in px.
   AN.addKind = function (id, o) {
@@ -12449,6 +12793,42 @@ G.store = {
       if (a.st === 'chirp') { if (--a.t <= 0) { a.st = 'idle'; a.t = 40 + ri(120); } return; }
       if (--a.t <= 0) { if (ri(2)) { a.st = 'chirp'; a.t = 40; if (visible(f, a) && Math.random() < 0.5) AN.cry(a.kind); } else go(false); }
     },
+    peek(f, a, K) { // a marmot by its burrow (where it was put): up and looking about; ducks in when the dog or a running you come near
+      if (!a.home) a.home = [a.x, a.y];
+      a.x = a.home[0]; a.y = a.home[1]; a.tx = a.x; a.ty = a.y;
+      const p = f.player, scare = (dogNear(f, a, 50) || (youNear(f, a, 34) && p.moving)) && !a.react;
+      if (a.st === 'hole') { if (--a.t <= 0 && !scare) { a.st = 'peek'; a.t = 26; } return; }
+      if (a.st === 'peek') { if (scare) { a.st = 'hole'; a.t = 120; return; } if (--a.t <= 0) { a.st = 'idle'; a.t = 60 + ri(120); } return; }
+      if (scare) { a.st = 'hole'; a.t = 140 + ri(120); if (visible(f, a)) AN.cry(a.kind); return; }
+      if (a.st === 'alt') { if (--a.t <= 0) { a.st = 'idle'; a.t = 60 + ri(140); } return; }
+      if (--a.t <= 0) { const r = Math.random(); if (r < 0.3) { a.st = 'alt'; a.t = 40; if (visible(f, a) && Math.random() < 0.5) AN.cry(a.kind); } else if (r < 0.45) { a.st = 'hole'; a.t = 90 + ri(120); } else { a.flip = !a.flip; a.t = 50 + ri(100); } }
+    },
+    cling(f, a, K) { // a woodpecker on a trunk: pecks (toc-toc), now and then flies to another trunk
+      if (!a.trees) {
+        const xs = a.ground.map(g => g[0]), ys = a.ground.map(g => g[1]), codes = K.trees || ')', out = [];
+        for (let y = Math.min(...ys) - 2; y <= Math.max(...ys) + 2; y++) for (let x = Math.min(...xs) - 2; x <= Math.max(...xs) + 2; x++) if (codes.includes(f.map.get(x, y))) out.push([x, y]);
+        a.trees = out; a.perched = true;
+        const t0 = out.length ? out[ri(out.length)] : null; if (t0) { a.trunk = t0; a.x = t0[0] * T + 7; a.y = t0[1] * T + 21; a.z = K.high || 14; a.flip = false; }
+      }
+      if (a.st === 'fly') {
+        const s = ++a.h / 50; a.x = a.hx0 + (a.tx - a.hx0) * Math.min(1, s); a.y = a.hy0 + (a.ty - a.hy0) * Math.min(1, s); a.z = (K.high || 14) + Math.sin(Math.min(1, s) * Math.PI) * 16;
+        if (s >= 1) { a.st = 'idle'; a.t = 60 + ri(120); a.z = K.high || 14; a.flip = a.side < 0; }
+        return;
+      }
+      if (a.st === 'peck') { if ((a.t & 7) === 0 && visible(f, a) && a.t > 0) AN.cry(a.kind); if (--a.t <= 0) { a.st = 'idle'; a.t = 50 + ri(120); } return; }
+      if (--a.t <= 0) {
+        if (Math.random() < 0.22 && a.trees.length > 1) AN.hopTree(a); else { a.st = 'peck'; a.t = 32; }
+      }
+    },
+    soar(f, a, K) { // an eagle: high circles over its area, its shadow on the ground; now and then it swoops lower
+      if (a.cx == null) { const xs = a.ground.map(g => g[0]), ys = a.ground.map(g => g[1]); a.cx = (Math.min(...xs) + Math.max(...xs) + 1) / 2 * T; a.cy = (Math.min(...ys) + Math.max(...ys) + 1) / 2 * T; a.ang = rnd(6); a.rad = 40 + rnd(30); }
+      const hi = K.high || 56;
+      a.ang += a.swoop > 0 ? 0.03 : 0.012;
+      a.x = a.cx + Math.cos(a.ang) * a.rad * 1.4; a.y = a.cy + Math.sin(a.ang) * a.rad * 0.8; a.flip = Math.sin(a.ang) > 0;
+      if (a.swoop > 0) { a.swoop--; a.z = hi - Math.sin((1 - a.swoop / 120) * Math.PI) * (hi - 18); if (a.swoop === 60 && visible(f, a)) AN.cry(a.kind); }
+      else { a.z = hi + Math.sin(a.age / 40) * 4; if (--a.t <= 0) { a.t = 300 + ri(400); if (Math.random() < 0.6) a.swoop = 120; } }
+      a.st = (a.age >> 4) & 1 ? 'alt' : 'idle';
+    },
     crawl(f, a, K) { // plods slowly; its head in for a while when tapped
       if (a.st === 'hide') { if (--a.t <= 0) { a.st = 'idle'; a.t = 40; } return; }
       if (a.st === 'walk') { if (goToward(a, K.speed || 0.14)) { a.st = 'idle'; a.t = 80 + ri(160); } return; }
@@ -12457,6 +12837,11 @@ G.store = {
   };
   AN.leap = function (a, f) { if (a.st === 'jump') return; f = f || G.field; a.st = 'jump'; a.h = 0; a.hx0 = a.x; const tx = a.x + (a.flip ? -46 : 46); if (!onGround(a, tx, a.y)) a.flip = !a.flip; a.hx0 = a.x; f.zoo.fx.push({ k: 'splash', x: a.x, y: a.y - 2, t: 0, life: 20 }); if (visible(f, a)) AN.cry(a.kind); };
   AN.takeOff = takeOff;
+  AN.hopTree = function (a) { // a woodpecker flies to another trunk (cling)
+    const others = (a.trees || []).filter(t => !a.trunk || t[0] !== a.trunk[0] || t[1] !== a.trunk[1]); if (!others.length) return;
+    const t = others[ri(others.length)], side = ri(2) ? 1 : -1;
+    a.trunk = t; a.side = side; a.hx0 = a.x; a.hy0 = a.y; a.tx = t[0] * T + 12 - side * 5; a.ty = t[1] * T + 21; a.h = 0; a.st = 'fly'; a.flip = a.tx < a.x;
+  };
   function startHop(a, dist, dir) {
     const d = dir || (ri(2) ? 1 : -1), dy = rnd(8) - 4;
     let tx = a.x + d * dist, ty = a.y + dy;
@@ -12489,6 +12874,9 @@ G.store = {
       else if (mv === 'climb') { if (a.st !== 'up' && a.st !== 'climb') a.wantTree = 1; } // (up the nearest tree)
       else if (mv === 'shy') { a.st = 'idle'; a.t = 50; }
       else if (mv === 'march') { for (const b of a.line || [a]) { b.scat = 40 + ri(20); const [x, y] = pickGround(b); b.tx = x; b.ty = y; } } // (the whole line scatters)
+      else if (mv === 'peek') { a.st = 'alt'; a.t = 50; a.react = 40; } // (it pops up and whistles)
+      else if (mv === 'cling') { AN.hopTree(a); }
+      else if (mv === 'soar') { a.swoop = 120; }
       else if (mv === 'hop') { a.react = 0; a.hx0 = a.x; a.hy0 = a.y; [a.tx, a.ty] = pickGround(a); a.h = 0; a.st = 'hop'; a.flip = a.tx < a.x; a.react = 40; }
       else if (mv === 'walk' || !mv) { a.st = 'idle'; a.t = Math.max(a.t, 50); }
     }
@@ -12542,6 +12930,9 @@ G.store = {
         else if (mv === 'flit') fr = (a.age >> 2) & 1 ? 'alt' : 'stand';
         else if (mv === 'march') fr = a.st === 'walk' && (a.age >> 2) & 1 ? 'walk' : 'stand';
         else if (mv === 'hop') fr = a.st === 'hop' ? 'hop' : a.st === 'chirp' && (a.t >> 2) & 1 ? 'chirp' : 'stand';
+        else if (mv === 'peek') fr = a.st === 'hole' ? 'hole' : a.st === 'peek' ? 'peek' : a.st === 'alt' || R ? ((a.t >> 3) & 1 ? 'alt' : 'stand') : 'stand';
+        else if (mv === 'cling') fr = a.st === 'fly' ? ((a.age >> 2) & 1 ? 'fly' : 'fly2') : a.st === 'peck' && (a.t >> 2) & 1 ? 'peck' : 'stand';
+        else if (mv === 'soar') fr = a.st === 'alt' ? 'alt' : 'stand';
         else if (R && S.react) fr = 'react';
         else fr = a.st === 'walk' && S.walk && (a.age >> 3) & 1 ? 'walk' : S.stand ? 'stand' : Object.keys(S).find(k => k !== 'pal');
         if (!S[fr]) fr = S.stand ? 'stand' : Object.keys(S).find(k => k !== 'pal');
@@ -13455,6 +13846,8 @@ G.store = {
       else if (e.k === 'dust') { ctx.fillStyle = '#e8dcc0'; const r = 1 + Math.round(k * 2); ctx.fillRect(x - r, y - r, r * 2, r * 2); }
       else if (e.k === 'crumb') { ctx.fillStyle = '#c89048'; ctx.fillRect(x, y, 2, 2); }
       else if (e.k === 'drop') { ctx.fillStyle = '#88c8f8'; ctx.fillRect(x, y, 1, 2); }
+      else if (e.k === 'flake') { ctx.fillStyle = '#ffffff'; ctx.fillRect(x, y, 2, 2); ctx.fillStyle = '#b8d0ea'; ctx.fillRect(x + 1, y + 1, 1, 1); } // (snow: La montaña)
+      else if (e.k === 'steam') { ctx.globalAlpha = Math.max(0, 1 - k) * 0.7; ctx.fillStyle = '#ffffff'; const r = 1 + Math.round(k * 2); ctx.fillRect(x - r, y - r, r * 2, r * 2); ctx.globalAlpha = 1; } // (hot chocolate)
       else if (e.k === 'spark') { ctx.fillStyle = '#fff8b0'; ctx.fillRect(x - 2, y, 5, 1); ctx.fillRect(x, y - 2, 1, 5); }
       else if (e.k === 'q' || e.k === 'ex' || e.k === 'txt') {
         const s = e.k === 'q' ? '?' : e.k === 'ex' ? '!' : e.s, w = G.textWidth(s) + 8, bob = Math.round(Math.sin(e.t / 5) * 1.5);
@@ -14001,7 +14394,8 @@ G.MAPDATA = {
   juegos: { rows: ["TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT", "T.fff.fff.fff.fff.fff.fff.fff.fff.fff.fT", "T....o...o....FP...........(..PF....f..T", "Tf.o.......oo.F.!!!..<>..//)...F..(...fT", "T.............F................F..).o..T", "T.........o...F................F.......T", "Tfo....................^^.ssss...f....fT", "T...o...o..o....???....^^.ssss.......(.T", "T.....,.......F...........sss3.F.....).T", "Tf.o..,....(..FJ...............F...o..fT", "T.....,.o..)..FFFFFF.,.FFFFFFFFF.......T", "T.(..o,..........J...,...J....$..P...(.T", "Tf)P..,.....L...o....,....o.L........)fT", "T...,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,", "T...,....L...........,..f........L,....T", "Tfr.,........o..f....,...(...o....,...fT", "T..wwwww.r.f.........,...).....oo.,.oo.T", "T.wwwwwww....................f....,.oo.T", "Tfwwwwwww.r.....................J.....fT", "T..wwwww..........................l.J..T", "T...,...r...;...............;........o.T", "Tf..,,,,,,............................fT", "T..............................ooo..oo.T", "T.........o....................ooo..oo.T", "Tf............(...............(....o..fT", "T..f........f.)....f....o..f..).o......T", "T.f....f.f..f....f....f....f....f...ff.T", "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"], pos: {"in": [38, 13], "east": [39, 13], "post": [38, 12], "bus": [36, 12], "busIn": [36, 13], "lola": [34, 15], "nico": [24, 12], "ana": [20, 6], "pablo": [17, 4], "chuy": [29, 11], "hill": [6, 4], "kite": [27, 2], "frame": [25, 3], "slide": [21, 3], "land": [23, 3], "mgr": [23, 6], "cart": [30, 11], "dog": [27, 7], "agility": [3, 23], "agilityEnd": [10, 23], "palomasDog": [35, 21], "cancha": [13, 17, 15, 7], "palomas": [31, 18, 7, 4], "jardin": [31, 15, 7, 10], "flores": [31, 16, 7, 8], "hormigas": [13, 11, 10, 2], "rocas": [1, 14, 11, 8], "arenero": [26, 6, 4, 3], "pasto": [2, 2, 10, 7], "estanque": [2, 16, 7, 4], "conejos": [2, 8, 9, 3], "hide1": [30, 11], "hide2": [21, 3], "hide3": [29, 8], "hide4": [32, 18], "hide5": [3, 12], "hide6": [11, 10]} },
   abuelos: { rows: ["TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT,TTTTTTTTT", "TTT....(.......(.......(......,......TTT", "T..(...)...(...)...(...).o....,....o...T", "T..).......).......)..........,........T", "T....o...o...o.......o........,..o..f..T", "T.o..............o......o.....,........T", "T.............................,......o.T", "T.FFFFFFFF...RRRRRRRRRRRRR.(..,........T", "T.F\u00e1\u00e1...OF...RRRRRRRRRRRRR.)..,........T", "T.F......F...WNWNWNDNWNWNW....,.....o..T", "T.F......F....PoJo.,.oooP.....,.......fT", "T.FFFF.FFF.........,..........,........T", "T...,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,..T", "T............,..........,.........,....T", "T..\u00f1\u00f1\u00f1\u00f1\u00f1\u00f1\u00f1\u00f1..,..........,.FFFFFFFF,FFFFT", "T............,..........,.F.......,.OO.T", "T..\u00f1\u00f1\u00f1\u00f1\u00f1\u00f1\u00f1\u00f1.\u00e9,.F......F.,.F.......,....T", "T............,..........,.F.......,....T", "T..\u00f1\u00f1\u00f1\u00f1\u00f1\u00f1\u00f1\u00f1..,..........,.F.......,....T", "T............,..........,.FO......,....T", "T...,,,,,,,,,,..........,.FFFFFFFF,FFFFT", "T.......................,.........,....T", "T.....o...o.f.r.wwwwww.....o..FFFF,FFFFT", "T...o..........wwwwwwww.......F.\u00ed\u00ed\u00ed\u00ed\u00ed..T", "T.f........o...wwwwwwww...o...F\u00ed\u00ed\u00ed\u00ed\u00ed\u00ed\u00ed.T", "T...............wwwwww.r......F\u00ed\u00ed\u00ed\u00ed\u00ed\u00ed\u00ed.T", "T.......o........r..........o.F\u00ed\u00ed\u00ed\u00ed\u00ed\u00ed..T", "TT.f.......f.............o....FFFFFFFFFT", "TTT.........................f........TTT", "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"], pos: {"door": [19, 9], "porch": [19, 10], "swing": [28, 9], "coop": [3, 8], "gallinero": [3, 9, 6, 2], "pump": [12, 16], "pumpAt": [13, 16], "huerto": [3, 14], "lineL": [15, 16], "lineR": [22, 16], "in": [30, 1], "north": [30, 0], "post": [31, 2], "bus": [28, 2], "busIn": [28, 3], "lola": [32, 5], "nico": [9, 22], "abuela": [18, 11], "abuelo": [9, 15], "dog": [6, 13], "pavosDog": [33, 7], "sock": [18, 17], "vacas": [27, 15, 7, 4], "burros": [33, 16, 5, 3], "ovejas": [24, 23, 6, 5], "cerdos": [31, 23, 7, 4], "pavos": [31, 4, 7, 6], "huertoA": [2, 13, 10, 7], "huerta": [2, 1, 24, 5], "estanque": [15, 22, 8, 4], "rana": [15, 23, 8, 2], "conejos": [3, 21, 8, 5], "gallo": [3, 9, 6, 2], "flores": [14, 10, 10, 1], "hide1": [8, 8], "hide2": [4, 8], "hide3": [27, 19], "hide4": [12, 16], "hide5": [27, 8], "hide6": [23, 25]} },
   abuelos_casa: { rows: ["IIIIIIIIIIIIIIIIIIII", "IniiiviIeevenI\u00f3ijjiI", "IiiiiiiIiiiiiIiijjiI", "IiiiiiiIiiiiiIiiiiiI", "IiuuuiiIitttiIiiiiiI", "IiiiiiiIiiiiiIiiiiiI", "IiqqqqiiiiiiiiiiiiiI", "Iiqqqqiiiiiiiiiii\u00faiI", "IiqqqqiIiiiiiIiiiiiI", "IPiiiiiIiiiiiIiiiiPI", "IIIIiIIIIIIIIIIIIIII"], pos: {"door": [4, 10], "photos": [2, 0], "mirror": [15, 0], "trunk": [17, 7], "wardrobe": [14, 1], "table": [9, 4], "abuela": [10, 3], "bebe": [3, 7], "hole": [12, 9], "cocina": [8, 6, 5, 4], "sala": [1, 5, 6, 4]} },
-  montana: { rows: ["MMMMMMMMMMMMMMMMMMMMMM", "MMMMMMMMMMMMMMMMMMMMMM", "MMMMMMMMMMMMMMMMMMMMMM", "MhhhhhhhhhhhhhhhhhhhhM", "MhhhhhhhhhhhhhhhhhhhhM", "M.........,..........M", "M...r...o.,.......r..M", "M.........,..o.......M", "M.........,..........M", ",,,,,,,,,,,..........M", "M..............r.....M", "M..o..r..........o...M", "M....................M", "MMMMMMMMMMMMMMMMMMMMMM"], pos: {"in": [1, 9], "west": [0, 9], "post": [2, 8], "bus": [7, 10], "busIn": [7, 9], "dog": [12, 4], "lola": [12, 8], "nico": [16, 8], "cabras": [12, 5, 7, 3], "hide1": [4, 6], "hide2": [15, 10], "hide3": [18, 6]} },
+  montana: { rows: ["\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef", "\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef", "\u00ef\u00ef\u00ef\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00ef\u00ef\u00ef\u00ef\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00ef\u00ef\u00ef\u00ef\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00ef\u00ef\u00ef", "\u00ef\u00fc\u00fcrr\u00fc\u00f9\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00ef", "\u00ef\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fcr\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fcr\u00fc\u00f6\u00f6\u00f6\u00f6\u00f6\u00fc\u00fc\u00e7\u00fc\u00fc\u00ef", "\u00ef\u00fcr\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00fc\u00fc\u00fc\u00ef", "\u00ef\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6r\u00fc\u00fc\u00ef", "\u00ef\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00fc\u00fc\u00fc\u00fc\u00ef", "\u00ef\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00f6\u00f6\u00f6\u00f6\u00fc\u00fc\u00fc\u00e7\u00fc\u00ef", "\u00ef\u00e7\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fcr\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fcr\u00fc\u00fc\u00fc\u00fc\u00ef", "\u00ef\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fcr\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fcr\u00fc\u00ef", "\u00ef\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fcr\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fcr\u00fc\u00fc\u00fc\u00ef", "\u00ef\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc......\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc......\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc...\u00ef", "T\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc........\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc........\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc....T", "T...............\u00fc\u00fc\u00fc\u00fc\u00fc..................T", "To.(..(...........,...\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2.FFFFFFFFFT", "T..)..)..(.....o..,...\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2.F.....OO.T", "T........)..\u00f2.....,.o.[[[][[[.F........T", "T.(..(............,...k..,.J..F........T", "T.)..)..(...,.....,......,....F........T", "T.......)...,.....,.o....,....F........T", "T..(........,.o...,......,....FFF,FFFFFT", "T..).....o..,.....,......,.......,.....T", "T...........,.....,......,.......,..o..T", ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.....T", "T......................................T", "T..............................o.......T", "T.....o.....f....r...........r.....o...T", "T..f..................o................T", "T.........o....o............o........f.T", "T.......................f..............T", "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"], pos: {"viewer": [6, 3], "sled": [18, 3], "slopeTop": [18, 4], "slopeEnd": [18, 14], "hielo": [28, 4, 8, 5], "marmotas": [23, 8, 6, 4], "marmotas2": [2, 6, 6, 3], "puma": [35, 10, 2, 1], "snowman": [10, 7], "pile1": [7, 7], "pile2": [13, 8], "pile3": [9, 10], "station": [12, 17], "mateo": [13, 18], "door": [25, 17], "lucho": [29, 22], "llamas": [31, 16, 7, 5], "llamas2": [26, 26, 8, 4], "monarcas": [2, 15, 9, 7], "carpintero": [2, 16, 9, 6], "in": [1, 24], "west": [0, 24], "post": [2, 23], "bus": [4, 22], "busIn": [4, 23], "lola": [7, 25], "nico": [16, 26], "dog": [10, 11], "tunnel": [30, 10], "tunnelOut": [26, 7], "marmotasDog": [24, 12], "zorrillos": [13, 25, 12, 5], "conejos": [4, 25, 8, 4], "lobo": [3, 4, 4, 1], "cielo": [2, 2, 14, 8], "hide1": [13, 4], "hide2": [24, 9], "hide3": [22, 18], "hide4": [12, 17], "hide5": [36, 16], "hide6": [36, 6]} },
+  montana_refugio: { rows: ["IIIIIIIIIIII", "IivinniiiiiI", "IiiiiiiiiijI", "IiiiiiiiiijI", "IiiittttiiiI", "IiiiiiiiiiiI", "IkiiiiiiqqiI", "IIIIIIiIIIII"], pos: {"door": [6, 7], "hearth": [2, 1], "pot": [3, 2], "table": [4, 4], "lucho": [3, 3]} },
 };
 
 </script>
@@ -22505,20 +22899,58 @@ G.MAPDATA = {
 
 </script>
 <script>/* content/es/zone-montana.js */
-// ===== La montaña: its path from Villa Sol and its first map (a PLACEHOLDER: docs/WORLD_PLAN.md) =====
-// The framework step (2026-10-17) built the way there and a small first place: the zone's signpost, its bus stop, the
-// dog's thing to do, Lola (the friend who travels) and Nico's hiding places. A later step replaces this file's
-// G.maps.montana with the whole zone (weather: el sol, la lluvia, la nieve, el viento, la nube, hace frío, hace calor, el arcoíris...), following docs/WORLD_PLAN.md
-// ("How to build a zone"). Keep the zone id, the path map and the bus stop: saves remember where the child has been.
+// ===== La montaña: the zone east of Villa Sol (docs/WORLD_PLAN.md) — the weather, snow and the cold =====
+// Its path from Villa Sol (rolling hills, boulders, the peaks behind, a goat) and the mountain: a green meadow below
+// (the bus stop, Mateo's weather station with its vane, Don Lucho's refuge under a snowy roof, the llamas' corral, a
+// grove of tall firs full of monarch butterflies) and the snow above (snowy pines, the sledding slope with the sled at
+// its top, the snowfield where the snowman stands, the marmots' rocks, the frozen pond you can skate on, the lookout
+// on its crag with binoculars: the view over the clouds), snowy peaks all along the top. Inside the refuge: the
+// fireplace and the pot of hot chocolate, a long table, bunk beds.
+// The WEATHER changes here: it snows, the sun shines, clouds float over, the wind blows, it rains (G.montana.weather);
+// at Mateo's weather station the child SAYS the weather she wants and it comes (after rain, the sun brings a rainbow).
+// Up in the snow it's cold: without a gorro, a bufanda, guantes (or the grandparents' chamarra) you shiver ("¡Brrr!");
+// what you put on is worn on every map (the grandparents' clothes, G.abuelos.wear: gorro, bufanda, guantes join it).
+// Everything only uses universal words and the zone's own (each met here in a one-unknown puzzle, G.zones.meetW, and
+// used again right away), so the mountain can be the very first place a child explores.
+//   The album (8): la llama (the corral, the meadow), la marmota (pops out of its burrow, ducks in), el zorrillo (the
+//     meadow; tapped, its tail goes up: a little green cloud), el pájaro carpintero (on the firs' trunks: toc, toc), la
+//     mariposa monarca (the grove: lots of them), el puma (asleep on a sunny ledge), el águila (rare: only when the sun
+//     shines, soaring over the lookout), el lobo (rare: at night on the lookout's crag, howling at the moon).
+//     Tapping one whose word isn't met: Lola names it.
+//   The story (its quest line, 'montana'): 1 ¡Qué frío! (lamontana, nieve, frio, gorro, bufanda, guantes: Don Lucho; up
+//     in the snow you shiver; warm clothes from the refuge's basket), 2 El muñeco de nieve (muneco, chocolate: Mateo; roll
+//     three snowballs, a carrot nose from Don Lucho (his llamas love carrots), a hat and a scarf, the dog steals the
+//     nose; then hot chocolate in the refuge), 3 ¡El arcoíris! (viento, nube, lluvia, arcoiris: Mateo's weather
+//     station: wind, clouds, rain... the child brings the sun: a rainbow).
+//   Side quests (G.state.montana): the weather station (say the weather you want), Mateo's "¿Qué tiempo hace?", Don
+//     Lucho's hot chocolate (pour the cups, count them; the dog gets a bone: no chocolate for dogs), a sled race with
+//     the dog down the slope (he pulls you back up), skating on the frozen pond, animal tracks in the snow (the dog
+//     follows them: who made them?), the lookout's view over the clouds, dressing the snowman. The dog rolls in the snow,
+//     digs a snow tunnel, chases the marmots. Six hiding places, three page puzzles, favours.
 'use strict';
 (function () {
-  const Z = G.zones, K = G.mapKit, MD = G.MAPDATA;
+  const Z = G.zones, K = G.mapKit, MD = G.MAPDATA, CH = G.chapters, CK = CH.K, T = CK.T, TL = G.TILE, AN = G.animals;
   const P = (m, tag) => MD[m].pos[tag];
+  const met = id => !!(G.words && G.words.met(id));
+  const say = CK.say, sayShow = CK.sayShow, ask = CK.ask;
+  const day = () => (G.words ? G.words.day() : 0);
+  const meetW = (id, o) => Z.meetW(id, o);
+  const night = () => !!(G.day && G.day.over && G.day.over());
+  const npcAt = (f, id) => (f ? f.npcs.find(n => n.id === id && !n.hidden) || null : null);
+  const inZone = f => !!f && (f.mapId === 'montana' || f.mapId === 'montana_refugio');
+  const outside = f => !!f && f.mapId === 'montana';
+  const indoors = f => !!f && f.mapId === 'montana_refugio';
+  const MT = G.montana = {};
+  const AB = G.abuelos; // (the clothes you wear: content/es/zone-abuelos.js, loaded before this file)
+  const puff = (k, x, y, o) => CK.puff(k, x, y, o);
+  const wait = function* (n) { for (let i = 0; i < n; i++) yield 1; };
+  const OLC = '#1a1420';
 
   // ---------- the path from Villa Sol: rolling hills, boulders, the mountains behind, a goat on the slope ----------
+  const IN = P('montana', 'in');
   G.maps.camino_montana = {
     name: 'El camino a la montaña', icon: 'montana', rows: MD.camino_montana.rows, music: 'field',
-    exits: [Z.edge(0, 6, 'villa', 46, 10, 'left'), Z.edge(29, 6, 'montana', 1, 9, 'right')],
+    exits: [Z.edge(0, 6, 'villa', 46, 10, 'left'), Z.edge(29, 6, 'montana', IN[0], IN[1], 'right')],
     posts: [{ at: P('camino_montana', 'postW'), zone: 'villa', dir: 'left' }, { at: P('camino_montana', 'postE'), zone: 'montana', dir: 'right' }],
     ambient: { birds: 4, butterflies: 3 },
     animals: [{ kind: 'cabra', area: 'cabras' }],
@@ -22526,33 +22958,942 @@ G.MAPDATA = {
     npcs: [K.canelo(2, 6)],
   };
 
-  // ---------- La montaña: the first map ----------
-  G.maps.montana = {
-    name: 'La montaña', icon: 'montana', rows: MD.montana.rows, music: 'field',
-    exits: [Z.edge(0, 9, 'camino_montana', 28, 6, 'left')],
-    posts: [{ at: P('montana', 'post'), zone: 'montana' }],
-    dogSpots: [{ id: 'montana_nieve', at: P('montana', 'dog'), act: 'roll', every: 120 }],
-    ambient: { birds: 3, butterflies: 3 },
-    animals: [{ kind: 'cabra', n: 2, area: 'cabras' }],
-    things: {},
-    npcs: [K.canelo(2, 10), Z.lola(...P('montana', 'lola'), 'montana'), Z.nico(...P('montana', 'nico'))],
+  // =====================================================================
+  //  The animals (src/animals.js addKind: a generic move each, pixel frames facing right, a cry)
+  // =====================================================================
+  const tone = (...a) => AN.tone(...a), noise = (...a) => AN.noise(...a);
+  const pad = spr => {
+    const ks = Object.keys(spr).filter(k => k !== 'pal'), w = Math.max(...ks.map(k => Math.max(...spr[k].map(r => r.length)))), h = Math.max(...ks.map(k => spr[k].length));
+    for (const k of ks) spr[k] = Array(h - spr[k].length).fill('.'.repeat(w)).concat(spr[k].map(r => r.padEnd(w, '.')));
+    return spr;
+  };
+  const SNOW = 'ü', LAND = '.o,';
+  AN.addKind('llama', { word: 'llama', cry: '¡Mmmm!', move: 'walk', speed: 0.25, shadow: 12, on: LAND + SNOW,
+    sfx: () => { tone('sine', 420, 380, 0.5, 0.08, 0, { vib: 6, depth: 10 }); tone('sine', 380, 440, 0.3, 0.06, 0.45, { vib: 6, depth: 10 }); },
+    spr: pad({ pal: { w: '#f0e4cc', d: '#d8c8a8', k: '#5a4030', e: '#101010', r: '#e04040', y: '#f8d030', g: '#38a858' },
+      stand: ['..........k.k', '..........w.w', '..........r.g', '.........wwww', '.........wwew', '.........wwwkk', '.........www.', '.........www.', '.........wry.', 'ww.......www.', 'wwwwwwwwwwww.', '.wwddwwwwwww.', '.wwwwwwwwwww.', '..ww.w...ww.w', '..w..w...w..w', '..k..k...k..k'],
+      walk: ['..........k.k', '..........w.w', '..........r.g', '.........wwww', '.........wwew', '.........wwwkk', '.........www.', '.........www.', '.........wry.', 'ww.......www.', 'wwwwwwwwwwww.', '.wwddwwwwwww.', '.wwwwwwwwwww.', '..w..ww.w..w.', '.w....w.w...w', '.k....k.k...k'],
+      react: ['.........k.k.', '..........ww.', '..........rg.', '.........wwww', '.........wwek', '.........wwwkk', '.........www.', '.........www.', '.........wry.', 'ww.......www.', 'wwwwwwwwwwww.', '.wwddwwwwwww.', '.wwwwwwwwwww.', '..ww.w...ww.w', '..w..w...w..w', '..k..k...k..k'] }) }); // (tapped: ears back, a hum)
+  AN.addKind('marmota', { word: 'marmota', cry: '¡Fiiiu!', move: 'peek', shadow: 8, on: SNOW + LAND,
+    sfx: () => { tone('sine', 2400, 3000, 0.25, 0.05); },
+    spr: pad({ pal: { b: '#a06a38', d: '#7a4a20', c: '#e0c098', e: '#101010', n: '#402018', h: '#3a2818', s: '#c8d8ea' },
+      stand: ['..d..d..', '.bbbbbb.', '.bebbeb.', '.bbnnbb.', '..bccb..', '.dbccbd.', '.bbccbb.', '.bbccbb.', '.bbbbbb.', 'ssddddss'],
+      alt: ['..d..d..', '.bbbbbb.', '.bebbeb.', '.bbnnbb.', '..bkkb..', 'dbbccbbd', 'd.bccb.d', '.bbccbb.', '.bbbbbb.', 'ssddddss'],
+      peek: ['........', '........', '........', '........', '........', '..d..d..', '.bbbbbb.', '.bebbeb.', 'shhnnhhs', 'sshhhhss'],
+      hole: ['........', '........', '........', '........', '........', '........', '........', '.ssssss.', 'sshhhhss', 'ssssssss'] }) });
+  AN.addKind('zorrillo', { word: 'zorrillo', cry: '¡Fff!', move: 'walk', speed: 0.3, shadow: 10, on: LAND + SNOW,
+    sfx: () => { noise(1800, 0.3, 0.05, 0, { filter: 'bandpass', ff: 2000, q: 2 }); },
+    spr: pad({ pal: { k: '#282830', w: '#f4f4f4', e: '#ffffff', p: '#f090a0' },
+      stand: ['.kkk.........', 'kkwkk........', 'kwwwk........', 'kkwkk...kwk..', '.kwk...kwwwkk', '..kwwwwwwwkek', '..kkkkkkkkkkp', '...k.k...k.k.'],
+      walk: ['.kkk.........', 'kkwkk........', 'kwwwk........', 'kkwkk...kwk..', '.kwk...kwwwkk', '..kwwwwwwwkek', '..kkkkkkkkkkp', '..k...k.k...k'],
+      react: ['..kkkk.......', '.kkwwkk......', '.kwwwwk......', '.kkwwkk.kwk..', '..kwwk.kwwwkk', '..kkwwwwwwkek', '..kkkkkkkkkkp', '...k.k...k.k.'] }) }); // (tapped: its tail up high)
+  AN.addKind('carpintero', { word: 'carpintero', cry: '¡Toc, toc, toc!', move: 'cling', shadow: 0, high: 16, trees: ')',
+    sfx: () => { for (const at of [0, 0.07, 0.14, 0.21]) noise(900, 0.03, 0.12, at, { filter: 'bandpass', ff: 1200, q: 4 }); },
+    spr: pad({ pal: { k: '#202028', w: '#f4f4f4', r: '#e02828', g: '#808080', e: '#ffffff' },
+      stand: ['.rr...', 'rkkg..', 'kekgg.', 'kwk...', 'kwkk..', 'kwwk..', 'kkwk..', '.kkk..', '.k.k..'],
+      peck: ['......', '.rr...', 'rkkgg.', 'kek...', 'kwkk..', 'kwwk..', 'kkwk..', '.kkk..', '.k.k..'],
+      fly: ['k.....', 'kk.rr.', 'kwkkkg', '.kkek.', '..kk..', '......', '......', '......', '......'],
+      fly2: ['......', '...rr.', 'kkkkkg', 'kwkek.', 'k.kk..', '......', '......', '......', '......'] }) });
+  AN.addKind('monarca', { word: 'monarca', cry: null, move: 'flit', speed: 0.3, shadow: 0, on: LAND,
+    sfx: () => { tone('sine', 1800, 2400, 0.1, 0.03); },
+    spr: pad({ pal: { o: '#f88010', k: '#202020', w: '#ffffff' },
+      stand: ['kk.kk', 'ookoo', 'wokow', '.okn.', '..k..'].map(r => r.replace('n', 'o')),
+      alt: ['.....', 'kkkkk', 'ookoo', '..k..', '.....'] }) });
+  AN.addKind('puma', { word: 'puma', cry: '¡Grrrau...!', move: 'still', shadow: 16, on: SNOW + LAND,
+    sfx: () => { tone('sawtooth', 220, 160, 0.5, 0.07, 0, { filter: 'lowpass', ff: 700 }); },
+    spr: pad({ pal: { t: '#d09a60', d: '#b07840', w: '#f8f0e0', k: '#3a2410', e: '#101010', p: '#e07080' },
+      stand: ['..................tt.', '................ttttt', '.dd.............tkkt.', 'd..tttttttttttttwwp.', 'd.tttttttttttttttww..', '.dttdddtttttddttt....', '..wwwwwwwwwwwwwww....'],
+      alt: ['..................t.t', '................ttttt', '.dd.............teet.', 'd..tttttttttttttwkkw', 'd.tttttttttttttttwpw.', '.dttdddtttttddttt....', '..wwwwwwwwwwwwwww....'] }) }); // (asleep; its other frame: a big yawn)
+  AN.addKind('aguila', { word: 'aguila', cry: '¡Kiiiaaa!', move: 'soar', shadow: 10, high: 60, on: SNOW + LAND,
+    sfx: () => { tone('sawtooth', 2400, 1600, 0.5, 0.05, 0, { filter: 'bandpass', ff: 2200, q: 2 }); },
+    spr: pad({ pal: { b: '#6a4020', d: '#3a2010', y: '#d8a040', k: '#f8d020', e: '#101010' },
+      stand: ['d..............d', 'bb............bb', '.bbb...yy...bbb.', '..bbbbbyekbbbb..', '...bbbbbbbbbb...', '......bbbb......', '.....bb..bb.....'],
+      alt: ['................', '................', '.......yy.......', 'dbbbbbbyekbbbbbd', '.bbbbbbbbbbbbbb.', '......bbbb......', '.....bb..bb.....'] }) });
+  AN.addKind('lobo', { word: 'lobo', cry: '¡Auuuuu!', move: 'still', shadow: 14, on: SNOW + LAND,
+    sfx: () => { tone('sine', 380, 620, 0.5, 0.09, 0, { vib: 5, depth: 12 }); tone('sine', 620, 520, 0.9, 0.08, 0.5, { vib: 5, depth: 14 }); },
+    spr: pad({ pal: { g: '#7a7a88', d: '#5a5a68', w: '#e0dcd8', e: '#e8a020', k: '#101010' },
+      stand: ['..........d.d..', '..........ggg..', '.........ggegk.', '.........gwwww.', '........ggww...', '..gg...gggw....', '.gggggggggg....', 'dd.ggggggg.....', '...g.g..gg.....', '...k.k..kk.....'],
+      alt: ['.........d.d.kk', '.........gggww.', '.........geg...', '........ggww...', '........ggw....', '..gg...gggw....', '.gggggggggg....', 'dd.ggggggg.....', '...g.g..gg.....', '...k.k..kk.....'] }) }); // (its other frame: howling at the moon)
+  const KINDS = ['llama', 'marmota', 'zorrillo', 'carpintero', 'monarca', 'puma', 'aguila', 'lobo'];
+  const EN = { llama: 'A llama!', marmota: 'A marmot!', zorrillo: 'A skunk! (phew!)', carpintero: 'A woodpecker!', monarca: 'A monarch butterfly!', puma: 'A puma! (asleep in the sun)', aguila: 'An eagle!', lobo: 'A wolf! (howling at the moon)' };
+  const CLASH = { monarca: ['mariposa'], carpintero: ['pajaro'], muneco: ['nieve'], nieve: ['muneco'] }; // (they sound alike: never on one question)
+  MT.KINDS = KINDS;
+
+  // =====================================================================
+  //  Saved state: G.state.montana
+  // =====================================================================
+  const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+  function st() {
+    const s = G.state; if (!isObj(s.montana)) s.montana = {};
+    const m = s.montana; for (const k of ['wx', 'choco', 'sled', 'skate', 'tracks', 'mateo', 'snowman']) if (!isObj(m[k])) m[k] = {};
+    return m;
+  }
+  MT.state = () => (G.state ? st() : null);
+  const daily = k => { const o = st()[k]; if (o.d !== day()) { for (const x in o) delete o[x]; o.d = day(); } return o; };
+  const held = () => (G.carry ? G.carry.held() : null);
+  const bag = () => G.errands.bag;
+  const othersFor = (id, prefer) => prefer.filter(k => k !== id && met(k)).concat(G.intro.known(id, 4)).filter((k, i, a) => a.indexOf(k) === i && k !== id && !(CLASH[id] || []).includes(k)).slice(0, 2);
+  const quiz = (who, prompt, en, answer, others, o) => ask(who, prompt, en, answer, others.filter(k => k !== answer && met(k) && !(CLASH[answer] || []).includes(k)).slice(0, 2), o || {});
+
+  // =====================================================================
+  //  CLOTHES for the cold: el gorro, la bufanda, los guantes (worn everywhere, with the grandparents' clothes)
+  // =====================================================================
+  const WARM = ['gorro', 'bufanda', 'guantes'];
+  MT.WARM = WARM;
+  for (const id of WARM) if (!AB.CLOTHES.includes(id)) AB.CLOTHES.push(id); // (the grandparents' trunk offers them too, once met)
+  Object.assign(AB.FIRST, { gorro: '#3870d8', bufanda: '#e04040', guantes: '#8a50c8' });
+  // the look: a knitted cap (head 'beanie': over the sombrero), a scarf, mittens (src/sprites.js)
+  const wear0 = G.st.playerSpec; let memo = { k: null, v: null };
+  G.st.playerSpec = function () {
+    const base = wear0.apply(this, arguments), w = AB.wear();
+    if (!w || !(w.gorro || w.bufanda || w.guantes)) return base;
+    const k = JSON.stringify([G.state && G.state.look, w]); if (memo.k === k) return memo.v;
+    const dress = s => { const o = Object.assign({}, s); if (w.gorro) { o.head = 'beanie'; o.headColor = w.gorro; } if (w.bufanda) o.scarf = w.bufanda; if (w.guantes) o.gloves = w.guantes; return o; };
+    memo = { k, v: { map: dress(base.map), portrait: dress(base.portrait) } };
+    return memo.v;
+  };
+  const putOn0 = AB.putOn;
+  AB.putOn = function (f, id, col) { // (a cap or a hat: one or the other)
+    const w = AB.wear(); if (id === 'gorro' && w.sombrero) delete w.sombrero; if (id === 'sombrero' && w.gorro) delete w.gorro;
+    return putOn0.call(this, f, id, col);
+  };
+  const warm = () => { const w = AB.wear() || {}; return !!(w.gorro || w.bufanda || w.guantes || w.chamarra) || (MT.cocoa && G.frame < MT.cocoa); };
+  MT.warm = warm;
+  const pic = id => ({ icon: id, col: (AB.wear() || {})[id] || AB.FIRST[id] });
+
+  // =====================================================================
+  //  The WEATHER: it snows, the sun shines, clouds float by, the wind blows, it rains. Mateo's station changes it.
+  // =====================================================================
+  const WX = ['nieve', 'elsol', 'nube', 'viento', 'lluvia'];
+  MT.WX = WX;
+  const ROTA = ['nieve', 'elsol', 'nube', 'nieve', 'viento', 'elsol', 'lluvia'];
+  MT.weather = function () {
+    if (!G.state) return 'nieve';
+    const w = st().wx;
+    if (w.k && w.d === day()) return w.k;
+    return CH.done('montana1') ? ROTA[day() % ROTA.length] : 'nieve'; // (it snows until the first chapter is done: wonder on arrival)
+  };
+  MT.trans = null;   // {from, to, f0}: the weather changing (a cross-fade)
+  MT.rainbow = 0;    // the frame a rainbow came out (after rain, the sun)
+  MT.setWeather = function (k, o = {}) {
+    const from = MT.weather(); if (!WX.includes(k)) return;
+    st().wx = { k, d: day() }; G.st.autosave();
+    if (from === k && !o.force) return;
+    MT.trans = { from, to: k, f0: G.frame };
+    if (k === 'elsol' && (from === 'lluvia' || o.rainbow)) MT.rainbow = G.frame;
+    else if (k !== 'elsol') MT.rainbow = 0;
+    const f = G.field; if (f && outside(f) && AN.find && (k === 'elsol' || from === 'elsol')) f.zoo = null; // (the eagle comes out in the sun)
+    G.audio.sfx(k === 'lluvia' ? 'swing' : k === 'elsol' ? 'chime' : k === 'viento' ? 'swing' : 'select');
+  };
+  MT.rainbowOn = () => !!MT.rainbow && MT.weather() === 'elsol' && G.frame - MT.rainbow < 60 * 60;
+  const hsh = (a, b) => { const x = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return x - Math.floor(x); };
+  // the weather drawn over the map (screen space; u: how much of it, 0..1)
+  function drawWx(ctx, k, u, f) {
+    if (u <= 0) return;
+    const t = G.frame, W = G.W, H = G.H, cx = f ? Math.round(f.cam.x) : 0, cy = f ? Math.round(f.cam.y) : 0;
+    ctx.save(); ctx.globalAlpha = u;
+    if (k === 'nieve') {
+      ctx.fillStyle = 'rgba(232,240,255,0.10)'; ctx.fillRect(0, 0, W, H);
+      for (let i = 0; i < 80; i++) {
+        const sp = 0.4 + hsh(i, 1) * 0.7, x = ((hsh(i, 2) * (W + 40) + t * 0.25 * (hsh(i, 5) - 0.3) + Math.sin(t / 40 + i) * 8 - cx * 0.3) % (W + 40) + W + 40) % (W + 40) - 20, y = ((hsh(i, 3) * (H + 20) + t * sp - cy * 0.3) % (H + 20) + H + 20) % (H + 20) - 10;
+        const s = hsh(i, 4) < 0.3 ? 2 : 1;
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(x), Math.round(y), s + 1, s + 1); if (s > 1) { ctx.fillStyle = '#c8dcf0'; ctx.fillRect(Math.round(x) + 2, Math.round(y) + 2, 1, 1); }
+      }
+    } else if (k === 'lluvia') {
+      ctx.fillStyle = 'rgba(40,56,90,0.28)'; ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = 'rgba(190,220,255,0.75)'; ctx.lineWidth = 1; ctx.beginPath();
+      for (let i = 0; i < 110; i++) {
+        const x = ((hsh(i, 6) * (W + 40) - t * 1.6 - cx * 0.5) % (W + 40) + W + 40) % (W + 40) - 20, y = ((hsh(i, 7) * (H + 30) + t * (6 + hsh(i, 8) * 3) - cy * 0.5) % (H + 30) + H + 30) % (H + 30) - 15;
+        ctx.moveTo(Math.round(x) + 0.5, Math.round(y)); ctx.lineTo(Math.round(x) - 1.5, Math.round(y) + 6);
+      }
+      ctx.stroke();
+      for (let i = 0; i < 6; i++) { const ph = (t + i * 23) % 40, x = (hsh(i, t / 40 | 0) * W) | 0, y = (hsh(i + 9, t / 40 | 0) * H) | 0; if (ph < 14) { ctx.strokeStyle = 'rgba(220,240,255,' + (0.7 - ph / 20) + ')'; ctx.beginPath(); ctx.ellipse(x, y, 2 + ph / 3, 1 + ph / 7, 0, 0, Math.PI * 2); ctx.stroke(); } }
+    } else if (k === 'nube') {
+      ctx.fillStyle = 'rgba(70,80,100,0.16)'; ctx.fillRect(0, 0, W, H);
+      for (let i = 0; i < 5; i++) {
+        const span = W + 220, x = ((hsh(i, 10) * span + t * (0.18 + hsh(i, 11) * 0.2) - cx * 0.6) % span + span) % span - 110, y = ((hsh(i, 12) * (H + 60) - cy * 0.6) % (H + 60) + H + 60) % (H + 60) - 30;
+        ctx.fillStyle = 'rgba(30,40,60,0.12)'; ctx.beginPath(); ctx.ellipse(x + 10, y + 46, 60, 18, 0, 0, Math.PI * 2); ctx.fill(); // its shadow on the ground
+        ctx.fillStyle = 'rgba(255,255,255,0.55)';
+        for (const [dx, dy, r] of [[-34, 6, 18], [-12, -4, 24], [16, 0, 22], [38, 8, 16], [0, 12, 20]]) { ctx.beginPath(); ctx.arc(x + dx, y + dy, r, 0, Math.PI * 2); ctx.fill(); }
+      }
+    } else if (k === 'viento') {
+      for (let i = 0; i < 26; i++) {
+        const sp = 4 + hsh(i, 13) * 4, x = ((hsh(i, 14) * (W + 120) + t * sp) % (W + 120)) - 60, y = hsh(i, 15) * H + Math.sin(t / 12 + i) * 6, L = 16 + hsh(i, 16) * 26;
+        ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + L / 2, y - 4, x + L, y); ctx.stroke();
+      }
+      for (let i = 0; i < 10; i++) { const x = ((hsh(i, 17) * (W + 40) + t * (3 + hsh(i, 18) * 3)) % (W + 40)) - 20, y = hsh(i, 19) * H + Math.sin(t / 8 + i * 2) * 10; ctx.fillStyle = i & 1 ? '#58b040' : '#e8a030'; ctx.fillRect(Math.round(x), Math.round(y), 3, 2); ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(x * 0.7 + 40) % W, Math.round(y * 1.3 + 30) % H, 2, 2); }
+    } else if (k === 'elsol') {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = 'rgba(60,44,10,0.10)'; ctx.fillRect(0, 0, W, H);
+      const g = ctx.createRadialGradient(W - 20, 10, 0, W - 20, 10, 120); g.addColorStop(0, 'rgba(255,240,180,0.45)'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      for (let i = 0; i < 6; i++) { const a = t / 300 + i * Math.PI / 3; ctx.strokeStyle = 'rgba(255,240,190,0.18)'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(W - 20, 10); ctx.lineTo(W - 20 + Math.cos(a) * 160, 10 + Math.sin(a) * 160); ctx.stroke(); }
+      ctx.globalCompositeOperation = 'source-over';
+      if (f) for (let i = 0; i < 8; i++) { const ph = (t + i * 17) % 50, x = (hsh(i, t / 50 | 0) * W) | 0, y = (hsh(i + 3, t / 50 | 0) * H) | 0, tx = Math.floor((x + cx) / TL), ty = Math.floor((y + cy) / TL); if (ph < 20 && f.map.get(tx, ty) === 'ü') { ctx.fillStyle = '#ffffff'; const s = ph < 10 ? ph / 4 : (20 - ph) / 4; ctx.fillRect(x - Math.round(s), y, Math.round(s) * 2 + 1, 1); ctx.fillRect(x, y - Math.round(s), 1, Math.round(s) * 2 + 1); } } // (the snow sparkles)
+    }
+    ctx.restore();
+  }
+  // the rainbow: a big soft arc across the sky (screen space)
+  function drawRainbow(ctx, k, x0, y0, R, wb) {
+    if (k <= 0) return;
+    const C = ['#e83a30', '#f89020', '#f8d830', '#48b848', '#3a7ae0', '#8a50c8'];
+    ctx.save(); ctx.globalAlpha = 0.42 * k; ctx.lineWidth = wb;
+    C.forEach((c, i) => { ctx.strokeStyle = c; ctx.beginPath(); ctx.arc(x0, y0, R - i * wb, Math.PI * 1.02, Math.PI * 1.98); ctx.stroke(); });
+    ctx.restore();
+  }
+  MT.drawRainbow = drawRainbow;
+
+  // =====================================================================
+  //  The people of the mountain are drawn here while they do something (shiver, sled, skate, drink)
+  // =====================================================================
+  function arm(ctx, x0, y0, x1, y1, col) {
+    const n = Math.max(1, Math.round(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0))));
+    for (const [c, s, d] of [[OLC, 4, -1], [col, 2, 0]]) { ctx.fillStyle = c; for (let i = 0; i <= n; i++) ctx.fillRect(Math.round(x0 + (x1 - x0) * i / n) + d, Math.round(y0 + (y1 - y0) * i / n) + d, s, s); }
+  }
+  MT.start = function (e, k, len) { e.mt = { k, f0: G.frame, len: len || 60 }; return e.mt; };
+  MT.act = function* (e, k, len) { const a = MT.start(e, k, len); while (e.mt === a && G.frame - a.f0 < a.len) yield 1; if (e.mt === a) e.mt = null; };
+  const busy = e => !!(e.mt && G.frame - e.mt.f0 < e.mt.len);
+  const handCol = e => { const s = e === (G.field && G.field.player) ? G.st.playerSpec().map : (e.spec || {}); return s.gloves || s.skin || '#f0c8a0'; };
+  function drawMT(ctx, cx, cy) {
+    const e = this, f = G.field; if (!f || !inZone(f)) return false;
+    const sled = e.sled, skate = e.skate, act = busy(e) ? e.mt : null;
+    if (!sled && !skate && !act) return false;
+    let wx = e.x * TL + 12 + (e.ox || 0), wy = e.y * TL + 21 + (e.oy || 0), dir = e.dir || 'down', fr = 0, sx = 1, sy = 1, rot = 0, arms = null, dx = 0;
+    const t = act ? G.frame - act.f0 : G.frame;
+    if (sled) { wx = sled.x; wy = sled.y; dir = sled.up ? 'up' : 'down'; sy = 0.82; arms = [[-4, -10, -7, -6], [3, -10, 6, -6]]; }
+    if (skate) { wx = skate.x; wy = skate.y; dir = skate.dir; rot = skate.lean || 0; fr = (G.frame >> 3) & 1; arms = [[-4, -12, -9, -12], [3, -12, 8, -12]]; }
+    if (act && act.k === 'shiver') { dx = (t >> 1) & 1 ? 1 : -1; arms = [[-4, -12, 2, -11], [3, -12, -3, -11]]; if (t % 14 === 0) puff('steam', wx + 4, wy - 18, { life: 26, vy: -0.4, vx: 0.2 }); }
+    if (act && act.k === 'drink') { arms = [[3, -12, 2, -15]]; if (t % 10 === 0) puff('steam', wx + 2, wy - 26, { life: 30, vy: -0.5 }); }
+    if (act && act.k === 'throw') { arms = t < 12 ? [[3, -12, 8, -20]] : [[3, -12, 10, -12]]; }
+    if (act && act.k === 'wave') { arms = [[3, -12, 8, (t >> 3) & 1 ? -21 : -18]]; }
+    const x = Math.round(wx - cx + dx), y = Math.round(wy - cy);
+    if (sled) { G.drawIcon16(ctx, 'trineo', x - 10, y - 10, 1.25); }
+    else { ctx.fillStyle = 'rgba(16,28,8,0.3)'; ctx.fillRect(x - 7, y, 14, 2); }
+    const img = G.unitSprite(e.spec, dir, fr);
+    ctx.save(); ctx.translate(x, y - (sled ? 4 : 0)); if (rot) ctx.rotate(rot); ctx.scale(sx, sy);
+    ctx.imageSmoothingEnabled = false; ctx.drawImage(img, -12, -24);
+    if (arms) { const flip = dir === 'left' ? -1 : 1, col = handCol(e); for (const [a0, b0, a1, b1] of arms) arm(ctx, a0 * flip, b0, a1 * flip, b1, col); }
+    if (act && act.k === 'drink') G.drawIcon16(ctx, 'chocolate', -1, -24, 0.5);
+    ctx.restore();
+    return true;
+  }
+  const hook = e => { if (e) e.drawSelf = drawMT; };
+  MT.hook = hook;
+
+  // up in the snow without warm clothes: you shiver ("¡Brrr!"); the dog shakes the snow off now and then
+  const snowAt = (f, x, y) => { const c = f.map.get(x, y); return c === 'ü' || c === 'ö'; };
+  let lastShiver = -9999;
+  MT.cold = f => !!f && outside(f) && snowAt(f, f.player.x, f.player.y) && !warm();
+  function shiverTick(f) {
+    const p = f.player;
+    if (!MT.cold(f) || f.locked || G.top() !== f || p.moving || busy(p) || G.frame - lastShiver < 420) return;
+    lastShiver = G.frame; MT.start(p, 'shiver', 60); G.audio.sfx('cursor');
+    puff('txt', p.x * TL + 12, p.y * TL - 10, { s: '¡Brrr!', life: 70 });
+    st().shivers = (st().shivers | 0) + 1;
+  }
+
+  // =====================================================================
+  //  Tapping an animal whose word isn't met yet: Lola calls out its name (a one-unknown puzzle)
+  // =====================================================================
+  const tapped0 = AN.tapped;
+  AN.tapped = function (f, a) {
+    const r = tapped0.call(this, f, a);
+    if (f && Z.of(f.mapId) === 'montana' && KINDS.includes(a.kind) && a.kind === 'zorrillo') { for (let i = 0; i < 6; i++) puff('steam', a.x + (a.flip ? 8 : -8) + (Math.random() - 0.5) * 10, a.y - 10, { life: 40, vy: -0.3 }); MT.stink = { a, f0: G.frame }; } // (a little green cloud)
+    if (f && Z.of(f.mapId) === 'montana' && KINDS.includes(a.kind) && !met(a.kind) && !f.locked && G.top() === f && !CH.running()) {
+      CH.scene(f, (function* () {
+        yield 30;
+        if (met(a.kind)) return;
+        CH.point(a.x, a.y - a.z - 14);
+        try { yield* G.intro.show(a.kind, { who: 'lola', prompt: '¡Mira! ¡[' + a.kind + ']!', en: 'Look! ' + EN[a.kind], known: othersFor(a.kind, KINDS.concat(['perro', 'gato', 'pajaro', 'conejo'])) }); } finally { CH.point(null); }
+      })());
+    }
+    return r;
   };
 
-  // things to pick up (carry.js) and Nico's hiding places here (seek.js: one game per zone)
-  G.carry.SOURCES.push(...[{ id: 'palo_cmontana', map: 'camino_montana', at: P('camino_montana', 'palo'), item: 'palo', every: 90 }], ...[]);
-  G.seek.SPOTS.push(...[
-    { id: 'montana1', map: 'montana', at: P('montana', 'hide1'), how: 'over', cut: 6, dx: 0, kinds: ['cabra', 'conejo', 'gato'], place: 'montana' },
-    { id: 'montana2', map: 'montana', at: P('montana', 'hide2'), how: 'over', cut: 6, dx: 0, kinds: ['cabra', 'conejo', 'gallina'], place: 'montana' },
-    { id: 'montana3', map: 'montana', at: P('montana', 'hide3'), how: 'over', cut: 6, dx: 0, kinds: ['cabra', 'gato', 'conejo'], place: 'montana' },
-  ]);
+  // =====================================================================
+  //  The people: Don Lucho, Mateo; Lola and Nico as everywhere
+  // =====================================================================
+  const sideAlert = {};
+  function person(id, x, y, dir, side, line, o = {}) {
+    return Object.assign({ id, npc: id, x, y, dir, fixed: !!o.fixed, wander: o.wander || 0,
+      alert: () => CH.alert(id) || (G.state && sideAlert[id] ? sideAlert[id]() : null) || (G.favores && G.favores.alert(id)) || null,
+      talk: function* (f) {
+        if (yield* CH.talk(id, f)) return;
+        if (side && (yield* side(f))) return;
+        if (G.errands && (yield* G.errands.talk(id, f))) return;
+        yield* line(f);
+      } }, o.extra || {});
+  }
+  function* luchoLine(f) {
+    if (MT.cold(f) || (outside(f) && !warm() && met('frio'))) { yield* sayShow('lucho', 'frio', T('¡Hace [frio:frío]! ¡Abrígate!', 'It\'s cold! Wrap up warm! (a gorro, a bufanda, guantes)')); return; }
+    if (met('llama')) yield* sayShow('lucho', 'llama', T('¡Mis [llama:llamas]! ¡Son muy buenas!', 'My llamas! They are very gentle.'));
+    else yield* say('lucho', T('¡Hola, {name}!', 'Hello, {name}! I\'m Don Lucho. I look after the refuge and my llamas.'));
+  }
+  function* mateoLine(f) {
+    const k = MT.weather();
+    if (met(k)) yield* sayShow('mateo', k, T('¡Me encanta [' + k + ']!', 'I love this weather!'));
+    else yield* say('mateo', T('¡Hola, {name}! ¡Soy Mateo!', 'Hi, {name}! I\'m Mateo. I love the weather!'));
+  }
 
+  // ---------- Don Lucho's hot chocolate (after chapter 2; every day): pour the cups, count them ----------
+  const choco = () => daily('choco');
+  const chocoOpen = () => CH.done('montana2');
+  const chocoTime = () => { if (!G.state) return false; const c2 = CH.ctx('montana2'); return (CH.active('montana2') && c2.data && c2.data.cocoa) || !!choco().on; };
+  MT.chocoTime = chocoTime;
+  sideAlert.lucho = () => {
+    if (chocoOpen() && !choco().done && !choco().on) return { icon: 'chocolate' };
+    return null;
+  };
+  function* luchoSide(f) {
+    const c = choco();
+    if (chocoOpen() && !c.done && !c.on) {
+      yield* sayShow('lucho', { icon: 'chocolate' }, T(met('chocolate') ? '¿Un [chocolate]? ¡Ven!' : '¿Chocolate? ¡Ven!', 'Some hot chocolate? Come into the refuge!'));
+      c.on = true; c.n = 0; G.st.autosave();
+      if (outside(f)) { const [dx, dy] = P('montana', 'door'); CH.point(dx * TL + 12, dy * TL - 6); try { yield 40; } finally { CH.point(null); } }
+      return true;
+    }
+    if (c.on && indoors(f)) { yield* pourCups(f); return true; }
+    return false;
+  }
+  const CUPS = 4; // (you, Lucho, Mateo, Lola: four cups)
+  function* pourCups(f, o = {}) {
+    const c = o.c || choco(), p = f.player, lu = npcAt(f, 'lucho');
+    yield* sayShow('lucho', { icon: 'chocolate', count: CUPS }, T('¡Una taza para cada quien!', 'A cup for everyone: for you, for me, for Mateo and for Lola. Tap the pot!'));
+    const pot = P('montana_refugio', 'pot');
+    for (let k = (c.n | 0); k < CUPS; k++) {
+      const r = yield G.choose({ prompt: '¡Sirve!', en: 'Pour a cup! (tap the pot)', choices: [{ icon: 'chocolate', label: met(['uno', 'dos', 'tres', 'cuatro'][k]) ? '¡' + G.baseForm(['uno', 'dos', 'tres', 'cuatro'][k]) + '!' : '¡Sirve!' }], layout: 'cards', who: null });
+      if (r.result !== 0) break;
+      c.n = k + 1; G.audio.sfx('pop'); for (let i = 0; i < 4; i++) puff('steam', pot[0] * TL + 12, pot[1] * TL - 4, { life: 34, vy: -0.6, vx: (Math.random() - 0.5) * 0.4 });
+      const nw = ['uno', 'dos', 'tres', 'cuatro'][k]; if (met(nw)) { G.fx.say(G.baseForm(nw), pot[0] * TL + 12 - Math.round(f.cam.x), pot[1] * TL - 14 - Math.round(f.cam.y), '#ffffff', true); G.speak(G.baseForm(nw)); }
+      yield 18;
+    }
+    if (met('cuatro')) yield* quiz('lucho', '¿Cuántas tazas?', 'How many cups of hot chocolate?', 'cuatro', ['tres', 'cinco', 'dos'], { show: { icon: 'chocolate', count: CUPS } });
+    yield* MT.act(p, 'drink', 90);
+    if (lu) MT.start(lu, 'drink', 80);
+    MT.cocoa = G.frame + 60 * 60 * 3; // (warm inside for a while)
+    yield* sayShow('lucho', 'chocolate', T(met('caliente') ? '¡Mmm! ¡Está [caliente]!' : '¡Mmm! ¡Qué rico!', 'Mmm! Nice and hot!'));
+    const dog = G.pet && G.pet.mine() ? CK.dog(f) : null;
+    if (dog) { // no chocolate for dogs: a bone for him
+      G.pet.place(f, dog); yield 10; yield* G.pet.play('huh');
+      yield* sayShow('lucho', { icon: 'hueso' }, T(met('hueso') ? '¡Para {dog}, no! ¡Un [hueso]!' : '¡Para {dog}, no!', 'Chocolate is bad for dogs! {dog} gets a bone instead.'));
+      yield* G.pet.play('dance'); CK.heart(f, dog);
+    }
+    if (!o.c) { c.done = true; c.on = false; st().chocos = (st().chocos | 0) + 1; }
+    CK.confetti(); G.audio.jingle('item'); G.st.autosave();
+  }
+
+  // ---------- Mateo: "¿Qué tiempo hace?" (after chapter 3; every day) ----------
+  sideAlert.mateo = () => (CH.done('montana3') && !daily('mateo').done ? { icon: 'veleta' } : null);
+  function* mateoSide(f) {
+    if (!CH.done('montana3') || daily('mateo').done) return false;
+    const k = MT.weather(), others = WX.filter(w => w !== k && met(w));
+    yield* sayShow('mateo', { icon: 'veleta' }, T('¡Mira el cielo!', 'Look at the sky! (look around you)'));
+    if (met(k)) yield* quiz('mateo', '¿Qué tiempo hace?', 'What is the weather like? (look around, then say it!)', k, others);
+    if (met('frio') && met('caliente')) { const cold = snowAt(f, f.player.x, f.player.y) || k !== 'elsol'; yield* quiz('mateo', '¿Hace [frio:frío] o [caliente:calor]?', 'Is it cold or hot? (say it!)', cold ? 'frio' : 'caliente', [cold ? 'caliente' : 'frio']); }
+    daily('mateo').done = true; st().forecasts = (st().forecasts | 0) + 1; CK.confetti(); G.audio.jingle('promote'); G.st.autosave();
+    yield* sayShow('mateo', 'veleta', T('¡Muy bien! ¡Cambia el tiempo en mi estación!', 'Well done! Change the weather at my weather station!'));
+    return true;
+  }
+  // the weather station: say the weather you want and it comes (after chapter 3: any time)
+  MT.weatherGame = function* (f, o = {}) {
+    const vs = WX.filter(met); if (!vs.length) return null;
+    const STN = P('montana', 'station'); f.wig = { x: STN[0], y: STN[1], t: 18 }; G.audio.sfx('select');
+    const r = yield G.choose({ prompt: o.prompt || '¿Qué tiempo quieres?', en: o.en || 'What weather do you want? (say it, or tap it)', choices: vs.map(w => ({ word: w })), layout: 'cards', mic: true, cancel: !o.must, who: 'mateo' });
+    const k = r.result; if (k == null || k < 0 || k >= vs.length) return null;
+    if (G.cards) G.cards.grow(vs[k], 'tap');
+    MT.setWeather(vs[k]); st().changes = (st().changes | 0) + 1;
+    G.speak(G.baseForm(vs[k])); G.fx.say('¡' + G.baseForm(vs[k]) + '!', STN[0] * TL + 12 - Math.round(f.cam.x), STN[1] * TL - 20 - Math.round(f.cam.y), '#f8e060', true);
+    yield 50;
+    return vs[k];
+  };
+
+  // ---------- Lola: the dog's spot; the monarch butterflies (la mariposa monarca); Don Lucho ----------
+  function* lolaHere(f) {
+    const sp = (f.def.dogSpots || []).find(s => Z.dogReady(s));
+    if (sp && G.pet && G.pet.mine()) { CH.point(sp.at[0] * TL + 12, sp.at[1] * TL); try { yield* sayShow('lola', { icon: 'huella' }, T('¡Mira, {dog}!', 'Look! {dog} can play up in the snow: tap the paw prints!')); } finally { CH.point(null); } }
+    const m = AN.find('monarca', f);
+    if (m && !met('monarca')) { CH.point(m.x, m.y - m.z - 12); try { yield* G.intro.show('monarca', { who: 'lola', prompt: '¡Mira! ¡Una [monarca:mariposa monarca]!', en: 'Look! A monarch butterfly! So many of them in the fir trees!', known: othersFor('monarca', ['perro', 'gato', 'pajaro', 'flor', 'arbol']) }); } finally { CH.point(null); } }
+    const lu = npcAt(f, 'lucho');
+    if (lu && !CH.done('montana1')) { CH.pointNpc(lu); try { yield* sayShow('lola', { icon: 'montana' }, T('¡Don Lucho! ¡Ven!', 'That\'s Don Lucho, who looks after the refuge. Go and say hello!')); } finally { CH.point(null); } }
+  }
+
+  // =====================================================================
+  //  The sled: a race with the dog down the slope (he pulls you back up); skating; the tracks; the lookout
+  // =====================================================================
+  const SLED = P('montana', 'sled'), TOP = P('montana', 'slopeTop'), END = P('montana', 'slopeEnd');
+  MT.sledRide = null; // {y (world px of the feet), done}
+  function* sledRace(f) {
+    const p = f.player, s = daily('sled'), dog = G.pet && G.pet.mine() ? CK.dog(f) : null;
+    if (!met('trineo')) yield* meetW('trineo', { who: 'lucho', prompt: '¡Mi [trineo]! ¡Súbete!', en: 'My sled! Hop on!', show: 'trineo', known: othersFor('trineo', ['casa', 'pelota', 'arbol', 'gorro']) });
+    for (let ride = 0; ride < 3; ride++) {
+      // on the sled at the top; the dog beside it
+      hook(p); p.x = TOP[0]; p.y = TOP[1]; p.ox = 0; p.oy = 0; p.dir = 'down'; f.snapCam && f.snapCam();
+      const y0 = SLED[1] * TL + 20, y1 = END[1] * TL + 20, x0 = SLED[0] * TL + 12;
+      p.sled = { x: x0, y: y0 }; MT.sledRide = p.sled; p.hidden = false;
+      if (dog) { CK.place(f, 'canelo', SLED[0] - 1, SLED[1] + 1, 'down'); dog.busy = true; }
+      G.audio.sfx('select');
+      const nums = ['tres', 'dos', 'uno'];
+      for (let i = 0; i < 3; i++) { const w = nums[i], txt = met(w) ? '¡' + G.baseForm(w) + '!' : String(3 - i); G.fx.say(txt, x0 - Math.round(f.cam.x), y0 - 34 - Math.round(f.cam.y), '#f8e060', true); if (met(w)) G.speak(G.baseForm(w)); G.audio.sfx('cursor'); yield* wait(36); }
+      G.audio.sfx('swing'); if (dog) G.pet.sound('bark');
+      // who wins: the child the first time; then mostly, never always
+      const youWin = !(st().sled.races) || G.rand() < 0.7, dur = 120;
+      for (let k = 0; k <= dur; k++) {
+        const u = k / dur, e = u * u * (3 - 2 * u), y = y0 + (y1 - y0) * (0.15 * u + 0.85 * e);
+        p.sled.y = y; p.y = Math.min(END[1], Math.max(TOP[1], Math.round((y - 20) / TL))); p.oy = (y - 20) - p.y * TL;
+        if (k % 4 === 0) for (let i = 0; i < 2; i++) puff('flake', x0 + (Math.random() - 0.5) * 12, y - 2, { vy: -1 - Math.random(), vx: (Math.random() - 0.5) * 1.6, g: 0.08, life: 26 });
+        if (dog) { const du = Math.min(1, u * (youWin ? 0.94 : 1.06)), de = du * du * (3 - 2 * du), dyw = y0 + (y1 - y0) * (0.15 * du + 0.85 * de), ty = Math.round((dyw - 20) / TL); dog.x = SLED[0] - 1; dog.y = Math.min(END[1], ty); dog.oy = (dyw - 20) - dog.y * TL; dog.ox = 0; dog.dir = 'down'; dog.moving = true; }
+        if (k === 60 && met('rapido')) { G.fx.say('¡' + G.baseForm('rapido') + '!', x0 - Math.round(f.cam.x), y - 40 - Math.round(f.cam.y), '#ffffff', true); G.speak(G.baseForm('rapido')); }
+        yield 1;
+      }
+      p.sled = null; MT.sledRide = null; p.y = END[1]; p.oy = 0; if (dog) { dog.moving = false; dog.oy = 0; dog.y = END[1]; dog.busy = false; }
+      s.n = (s.n | 0) + 1; st().sled.races = (st().sled.races | 0) + 1; if (youWin) st().sled.wins = (st().sled.wins | 0) + 1; G.st.autosave();
+      CK.confetti(); G.audio.jingle(youWin ? 'promote' : 'item');
+      if (dog) { CK.bark(f, dog); CK.heart(f, dog); }
+      yield* sayShow('lucho', youWin ? { icon: 'hola' } : { icon: 'perro' }, youWin ? T('¡Ganaste, {name}!', 'You won the race, {name}!') : T('¡Ganó {dog}!', '{dog} won this time!'));
+      // again? the dog pulls you back up on the sled
+      const again = yield G.choose({ prompt: '¿Otra vez?', en: 'Again? ({dog} pulls you back up)', choices: [{ icon: 'trineo', label: '¡Sí!' }, { icon: 'no', label: '¡Ya!' }], layout: 'cards', who: null });
+      if (again.result !== 0) break;
+      if (dog) {
+        dog.busy = true; p.sled = { x: x0, y: y1, up: true };
+        for (let k = 0; k <= 100; k++) {
+          const y = y1 + (y0 - y1) * (k / 100); p.sled.y = y; p.y = Math.min(END[1], Math.max(TOP[1], Math.round((y - 20) / TL))); p.oy = (y - 20) - p.y * TL;
+          const dyw = y - 30, ty = Math.round((dyw - 20) / TL); dog.x = SLED[0]; dog.y = Math.max(TOP[1] - 1, ty); dog.oy = (dyw - 20) - dog.y * TL; dog.dir = 'up'; dog.moving = true;
+          if (k % 20 === 0) G.pet.sound('woof');
+          yield 1;
+        }
+        dog.moving = false; dog.busy = false; dog.oy = 0; p.sled = null; p.oy = 0;
+      }
+    }
+    p.x = END[0]; p.y = END[1]; p.oy = 0; p.dir = 'down';
+  }
+  // skating on the frozen pond: round and round, a spin at the end (¡gira!), the dog slides after you
+  const ICE = P('montana', 'hielo');
+  function* skate(f) {
+    const p = f.player, dog = G.pet && G.pet.mine() ? CK.dog(f) : null;
+    if (!met('hielo')) yield* meetW('hielo', { who: 'mateo', prompt: '¡El [hielo]! ¡A patinar!', en: 'Ice! The pond is frozen: let\'s skate!', show: 'hielo', known: othersFor('hielo', ['agua', 'nieve', 'casa', 'pelota']) });
+    hook(p); const cx = (ICE[0] + ICE[2] / 2) * TL, cy = (ICE[1] + ICE[3] / 2) * TL + 8, rx = ICE[2] * TL / 2 - 26, ry = ICE[3] * TL / 2 - 16;
+    const sx = p.x, sy = p.y; p.skate = { x: cx + rx, y: cy, dir: 'up' }; G.audio.sfx('swing');
+    if (dog) dog.busy = true;
+    const N = 300;
+    for (let k = 0; k <= N; k++) {
+      const a = k / N * Math.PI * 4, x = cx + Math.cos(a) * rx, y = cy - Math.sin(a) * ry;
+      const vx = -Math.sin(a), vy = -Math.cos(a);
+      p.skate.x = x; p.skate.y = y; p.skate.lean = Math.sin(a * 2) * 0.12; p.skate.dir = Math.abs(vx) > Math.abs(vy) ? (vx < 0 ? 'left' : 'right') : (vy < 0 ? 'up' : 'down');
+      p.x = Math.floor(x / TL); p.y = Math.floor((y - 12) / TL); p.ox = x - 12 - p.x * TL; p.oy = y - 21 - p.y * TL;
+      if (dog) { const b = a - 0.6, dxw = cx + Math.cos(b) * rx, dyw = cy - Math.sin(b) * ry; dog.x = Math.floor(dxw / TL); dog.y = Math.floor((dyw - 12) / TL); dog.ox = dxw - 12 - dog.x * TL; dog.oy = dyw - 21 - dog.y * TL; dog.dir = p.skate.dir; dog.moving = (k >> 3) & 1; }
+      if (k % 24 === 0) G.audio.sfx('swing');
+      yield 1;
+    }
+    // a spin to finish: ¡gira!
+    for (let k = 0; k < 48; k++) { p.skate.dir = ['down', 'right', 'up', 'left'][(k >> 2) & 3]; p.skate.lean = 0; yield 1; }
+    if (met('gira')) { G.fx.say('¡' + G.baseForm('gira') + '!', p.skate.x - Math.round(f.cam.x), p.skate.y - 34 - Math.round(f.cam.y), '#f8e060', true); G.speak(G.baseForm('gira')); }
+    p.skate = null; p.x = Math.max(ICE[0], Math.min(ICE[0] + ICE[2] - 1, Math.floor((cx + rx) / TL))); p.y = Math.floor(cy / TL); p.ox = 0; p.oy = 0;
+    if (f.blocked(p.x, p.y, p)) { p.x = sx; p.y = sy; }
+    if (dog) { dog.ox = 0; dog.oy = 0; dog.moving = false; dog.busy = false; G.pet.place(f, dog); yield* G.pet.play('huh'); CK.bark(f, dog); }
+    daily('skate').done = true; st().skates = (st().skates | 0) + 1; G.audio.jingle('item'); G.st.autosave();
+    yield 20;
+  }
+  // tracks in the snow (after chapter 1; one trail a day): the dog sniffs along them; who made them?
+  const TRACKS = [
+    { kind: 'marmota', path: [[9, 12], [8, 10], [6, 9], [4, 9]], hide: [3, 8] },
+    { kind: 'zorrillo', path: [[24, 13], [23, 12], [23, 11]], hide: [22, 10] },
+    { kind: 'conejo', path: [[33, 13], [33, 12], [34, 11]], hide: [35, 11] },
+  ];
+  MT.TRACKS = TRACKS;
+  const trackToday = () => TRACKS[day() % TRACKS.length];
+  const tracksOpen = () => CH.done('montana1') && !daily('tracks').done;
+  function* tracksRun(f) {
+    const tr = trackToday(), dog = G.pet && G.pet.mine() ? CK.dog(f) : null, s = daily('tracks');
+    yield* sayShow('lola', { icon: 'huella' }, T('¡Huellas! ¿De quién son?', 'Tracks in the snow! Who made them? Let\'s follow them!'));
+    if (dog) { G.pet.place(f, dog); yield 6; for (const [x, y] of tr.path) { yield* G.pet.play('sniff'); yield* CK.walk(f, dog, x, y, 3); } CK.bark(f, dog); }
+    s.found = G.frame; AN.cry(tr.kind); G.audio.sfx('pop');
+    const [hx, hy] = tr.hide; CH.point(hx * TL + 12, hy * TL - 6);
+    try {
+      yield 30;
+      if (!met(tr.kind)) yield* meetW(tr.kind, { who: 'lola', prompt: '¡Un[a] [' + tr.kind + ']!'.replace('Un[a] ', tr.kind === 'marmota' ? 'Una ' : 'Un '), en: 'It was ' + EN[tr.kind], known: othersFor(tr.kind, KINDS.concat(['conejo', 'gato', 'perro'])) });
+      else yield* quiz('lola', '¿Quién es?', 'Who made the tracks? (say it!)', tr.kind, KINDS.concat(['conejo', 'gato', 'perro', 'llama']).filter(k => k !== tr.kind && met(k)).sort(() => G.rand() - 0.5), { show: { icon: 'huella' } });
+    } finally { CH.point(null); }
+    AN.meet(tr.kind); s.done = true; st().trails = (st().trails | 0) + 1; CK.confetti(); G.audio.jingle('promote'); G.st.autosave();
+    if (dog) { CK.heart(f, dog); if (G.hearts) G.hearts.add('canelo', 1, 'care'); }
+  }
+  // the lookout: the view over the clouds (the peaks, the sun or the moon and stars, an eagle, the rainbow, the valley far below)
+  class Mirador {
+    constructor(w) { this.w = w; this.t = 0; this.transparent = false; this.k = MT.weather(); this.night = night(); this.rb = MT.rainbowOn(); this.eagle = this.k === 'elsol' || met('aguila'); }
+    onEnter() { G.audio.sfx('ok'); }
+    update() { this.t++; if (this.t === 40) { G.audio.jingle('item'); if (this.eagle) AN.cry('aguila'); } if (this.t > 240 || (this.t > 50 && (G.input.tap() || G.input.p('A') || G.input.p('B')))) { G.pop(); this.w.resolve(); } }
+    draw(ctx) {
+      const W = G.W, H = G.H, t = this.t, k = Math.min(1, t / 24);
+      ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, W, H);
+      const cx = W / 2, cy = H / 2, r = 70 * k;
+      ctx.fillStyle = '#202838'; ctx.beginPath(); ctx.arc(cx - 54, cy, r + 3, 0, Math.PI * 2); ctx.arc(cx + 54, cy, r + 3, 0, Math.PI * 2); ctx.fill();
+      ctx.save(); ctx.beginPath(); ctx.arc(cx - 54, cy, r, 0, Math.PI * 2); ctx.moveTo(cx + 54 + r, cy); ctx.arc(cx + 54, cy, r, 0, Math.PI * 2); ctx.clip();
+      const sky = this.night ? ['#0a1030', '#1c2858'] : this.k === 'lluvia' ? ['#5a6880', '#8a98a8'] : this.k === 'nube' ? ['#7a98c0', '#b8c8dc'] : ['#2a70d8', '#9ad0f8'];
+      const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, sky[0]); g.addColorStop(1, sky[1]); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      if (this.night) { for (let i = 0; i < 40; i++) { ctx.fillStyle = (t + i * 7) % 60 < 30 ? '#ffffff' : '#a8b8e8'; ctx.fillRect((hsh(i, 1) * W) | 0, (hsh(i, 2) * H * 0.6) | 0, 1, 1); } ctx.fillStyle = '#f8f0c8'; ctx.beginPath(); ctx.arc(W - 70, 44, 12, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = sky[0]; ctx.beginPath(); ctx.arc(W - 64, 40, 11, 0, Math.PI * 2); ctx.fill(); }
+      else if (this.k === 'elsol' || this.k === 'viento' || this.k === 'nieve') { ctx.fillStyle = '#fff4b0'; ctx.beginPath(); ctx.arc(W - 70, 40, 14, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'rgba(255,240,180,0.25)'; ctx.beginPath(); ctx.arc(W - 70, 40, 24, 0, Math.PI * 2); ctx.fill(); }
+      if (this.rb) drawRainbow(ctx, 1, W / 2, H * 0.78, 140, 6);
+      // the valley far below, through a gap in the clouds: the places you've been, tiny
+      const Y = cy + 34;
+      ctx.fillStyle = '#5a9a40'; ctx.fillRect(0, Y, W, H - Y);
+      const places = Z.ids().filter(id => id !== 'montana' && Z.visited(id)).slice(0, 5);
+      places.forEach((id, i) => { const x = 40 + i * ((W - 80) / Math.max(1, places.length - 1 || 1)), bob = Math.round(Math.sin(t / 30 + i) * 1); G.drawIcon16(ctx, Z.def(id).icon, Math.round(x - 8), Y + 10 + bob); });
+      // distant peaks poking through the sea of clouds
+      for (const [x, h, w] of [[30, 70, 60], [110, 96, 80], [200, 80, 70], [280, 104, 76]]) { ctx.fillStyle = '#8a98b8'; ctx.beginPath(); ctx.moveTo(x - w, Y + 4); ctx.lineTo(x, Y - h + 30); ctx.lineTo(x + w, Y + 4); ctx.fill(); ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(x - w * 0.32, Y - h + 30 + h * 0.32); ctx.lineTo(x, Y - h + 30); ctx.lineTo(x + w * 0.32, Y - h + 30 + h * 0.32); ctx.fill(); }
+      for (let i = 0; i < 14; i++) { const x = ((i * 37 + t * 0.35) % (W + 60)) - 30, y = Y + 2 + (i % 3) * 6; ctx.fillStyle = i % 2 ? '#ffffff' : '#eef4fc'; ctx.beginPath(); ctx.arc(x, y, 14 + (i % 4) * 3, 0, Math.PI * 2); ctx.fill(); }
+      if (this.eagle && !this.night) { const a = t / 50, ex = cx + Math.cos(a) * 80, ey = cy - 30 + Math.sin(a * 2) * 10; ctx.imageSmoothingEnabled = false; ctx.drawImage(G.icon('aguila'), Math.round(ex - 16), Math.round(ey - 16), 32, 32); }
+      ctx.restore();
+    }
+  }
+  MT.mirador = () => { const w = new G.Wait(); G.push(new Mirador(w)); return w; };
+  function* lookout(f) {
+    const V = P('montana', 'viewer'); f.wig = { x: V[0], y: V[1], t: 18 }; G.audio.sfx('select');
+    yield MT.mirador();
+    st().views = (st().views | 0) + 1; G.st.autosave();
+    if (met('nube') && MT.weather() !== 'lluvia') yield* quiz('lola', '¿Qué hay abajo?', 'What is down there, under the mountain tops? (say it!)', 'nube', WX.filter(w => w !== 'nube'), { show: { icon: 'montana' } });
+    else if (met('lamontana')) yield* sayShow('lola', 'montana', T('¡Qué alta es la [lamontana:montaña]!', 'What a high mountain! We\'re above the clouds!'));
+  }
+  // the snowman (after chapter 2): dress him up (¿Qué le pones?): a cap, a scarf, in another colour
+  const SNOWMAN = P('montana', 'snowman');
+  const snowman = () => { const c = CH.ctx('montana2'), d = (c && c.data) || {}; if (CH.done('montana2')) return Object.assign({ balls: 3, nose: true, gorro: '#3870d8', bufanda: '#e04040' }, st().snowman); return { balls: d.balls | 0, nose: d.nose && !d.stolen, gorro: d.gorro, bufanda: d.bufanda }; };
+  MT.snowman = snowman;
+  function* dressSnowman(f) {
+    const vs = ['gorro', 'bufanda'].filter(met); if (!vs.length) return;
+    const sm = st().snowman, cur = snowman();
+    const ch = vs.map(w => ({ word: w, img: { icon: w, col: AB.COLS[(AB.COLS.indexOf(cur[w]) + 1) % AB.COLS.length] } }));
+    const r = yield G.choose({ prompt: '¿Qué le pones?', en: 'What will you put on the snowman? (say it, or tap it)', choices: ch, layout: 'cards', mic: true, cancel: true, who: null });
+    if (r.result == null || r.result < 0 || r.result >= ch.length) return;
+    const id = ch[r.result].word; if (G.cards) G.cards.grow(id, 'tap');
+    sm[id] = ch[r.result].img.col; G.audio.sfx('chime'); CK.sparkle(f, SNOWMAN[0], SNOWMAN[1], 5); G.speak(G.baseForm(id)); st().dressed = (st().dressed | 0) + 1; G.st.autosave();
+    yield 20;
+  }
+
+  // =====================================================================
+  //  The map's side places (zones.js hooks): the station, the sled, the binoculars, the ice, the tracks, the snowman, the pot
+  // =====================================================================
+  const STATION = P('montana', 'station'), VIEWER = P('montana', 'viewer'), DOOR = P('montana', 'door'), CDOOR = P('montana_refugio', 'door');
+  const POT = P('montana_refugio', 'pot'), HEARTH = P('montana_refugio', 'hearth');
+  const SIDE = [
+    { id: 'station', map: 'montana', at: STATION, on: () => CH.done('montana3'), icon: () => null, run: f => (function* () { yield* MT.weatherGame(f); })() },
+    { id: 'sled', map: 'montana', at: SLED, on: () => CH.done('montana1'), icon: () => (!(daily('sled').n) ? { icon: 'trineo' } : null), run: f => sledRace(f) },
+    { id: 'viewer', map: 'montana', at: VIEWER, on: () => true, icon: () => (!(st().views) ? { icon: 'montana' } : null), run: f => lookout(f) },
+    { id: 'tracks', map: 'montana', at: () => trackToday().path[0], on: () => tracksOpen() && !daily('tracks').found, icon: () => ({ icon: 'huella' }), run: f => tracksRun(f) },
+    { id: 'snowman', map: 'montana', at: SNOWMAN, on: () => CH.done('montana2'), icon: () => null, run: f => dressSnowman(f) },
+    { id: 'pot', map: 'montana_refugio', at: HEARTH, on: () => chocoOpen() && choco().on && !choco().done, icon: () => ({ icon: 'chocolate' }), run: f => pourCups(f) },
+  ];
+  MT.SIDE = SIDE;
+  const atOf = s => (typeof s.at === 'function' ? s.at() : s.at);
+  const sideAt = (f, x, y) => (f && G.state ? SIDE.find(s => s.map === f.mapId && atOf(s)[0] === x && atOf(s)[1] === y && s.on()) || null : null);
+  MT.sideAt = sideAt;
+  MT.atOf = atOf;
+  // the dog's snow tunnel (a dog's spot of its own act, 'tunel'): he digs in, a mound moves under the snow, he pops out
+  MT.tunnel = null; // {x, y (world px of the mound)}
+  function* tunnelRun(f, sp) {
+    const n = G.pet.npc(f); if (!n) return;
+    const [ax, ay] = sp.at, [bx, by] = sp.to;
+    G.pet.sound('bark'); puff('ex', n.x * TL + 12, n.y * TL - 4, { life: 30 });
+    yield* CK.walk(f, n, ax, ay + 1, 4); n.dir = 'up';
+    for (let k = 0; k < 3; k++) { for (let i = 0; i < 6; i++) puff('flake', ax * TL + 12 + (Math.random() - 0.5) * 10, ay * TL + 18, { vy: -1.5 - Math.random(), vx: (Math.random() - 0.5) * 2, g: 0.12, life: 30 }); G.pet.sound('crunch'); yield 14; }
+    n.hidden = true; n.busy = true;
+    const x0 = ax * TL + 12, y0 = ay * TL + 16, x1 = bx * TL + 12, y1 = by * TL + 16;
+    for (let k = 0; k <= 90; k++) { const u = k / 90; MT.tunnel = { x: x0 + (x1 - x0) * u, y: y0 + (y1 - y0) * u + Math.sin(u * Math.PI * 4) * 3 }; if (k % 15 === 0) G.pet.sound('crunch'); yield 1; }
+    MT.tunnel = null; n.x = bx; n.y = by; n.ox = 0; n.oy = 0; n.hidden = false; n.busy = false;
+    for (let i = 0; i < 14; i++) puff('flake', x1 + (Math.random() - 0.5) * 16, y1, { vy: -1.8 - Math.random(), vx: (Math.random() - 0.5) * 2.4, g: 0.12, life: 34 });
+    G.pet.sound('bark'); yield* G.pet.play('spin');
+    Z.state().dog[sp.id] = { d: day(), t: G.words ? G.words.now() : 0 };
+    if (sp.gives && G.carry && G.carry.state) G.carry.state().ground.push({ id: sp.gives, col: null, map: f.mapId, x: bx, y: by });
+    CK.heart(f, n); if (G.hearts) G.hearts.add('canelo', 1, 'care'); if (G.carry && G.carry.bump) G.carry.bump('dog');
+    G.st.autosave(); yield 20;
+  }
+  // rolling in the snow ('roll' here): he flops, wriggles on his back, makes a snow angel, shakes the snow off
+  MT.angels = [];
+  function* snowRoll(f, sp) {
+    const n = G.pet.npc(f); if (!n) return;
+    const [sx, sy] = sp.at;
+    G.pet.sound('bark'); puff('ex', n.x * TL + 12, n.y * TL - 4, { life: 30 });
+    yield* CK.walk(f, n, sx, sy, 4);
+    for (let k = 0; k < 2; k++) { yield* G.pet.play('spin'); for (let i = 0; i < 12; i++) puff('flake', sx * TL + 12 + (Math.random() - 0.5) * 18, sy * TL + 18, { vy: -1.2 - Math.random(), vx: (Math.random() - 0.5) * 2, g: 0.1, life: 34 }); }
+    MT.angels.push({ x: sx, y: sy, f0: G.frame });
+    yield* G.pet.play('dance'); for (let i = 0; i < 16; i++) puff('flake', n.x * TL + 12 + (Math.random() - 0.5) * 20, n.y * TL + 10, { vy: -1 - Math.random(), vx: (Math.random() - 0.5) * 3, g: 0.1, life: 30 });
+    Z.state().dog[sp.id] = { d: day(), t: G.words ? G.words.now() : 0 };
+    G.pet.sound('bark'); CK.heart(f, n); if (G.hearts) G.hearts.add('canelo', 1, 'care'); if (G.carry && G.carry.bump) G.carry.bump('dog');
+    G.st.autosave(); yield 20;
+  }
+  const zSearch = Z.search, zSpecial = Z.special, zGoal = Z.goal, zUnder = Z.drawUnder, zTop = Z.drawTop, zTask = Z.task, zBlocks = Z.blocks;
+  Z.search = (f, x, y) => {
+    if (!inZone(f)) return zSearch(f, x, y);
+    const s = sideAt(f, x, y); if (s) { const cs = CH.spotAt(f, x, y); return cs ? null : s.run(f); }
+    if (CH.spotAt(f, x, y)) return null; // (a story place wins over the dog's spot and the ice on the same tile)
+    const d = outside(f) ? Z.dogSpotAt(f, x, y) : null;
+    if (d && d.act === 'tunel') return tunnelRun(f, d);
+    if (d && d.act === 'roll') return snowRoll(f, d);
+    if (outside(f) && f.map.get(x, y) === 'ö' && !f.player.skate) return skate(f);
+    return zSearch(f, x, y);
+  };
+  Z.special = (f, x, y) => (inZone(f) && G.state && (!!sideAt(f, x, y) || !!CH.spotAt(f, x, y) || f.map.get(x, y) === 'ö')) || zSpecial(f, x, y);
+  Z.blocks = (f, x, y) => zBlocks(f, x, y) || (outside(f) && G.state && ((x === SLED[0] && y === SLED[1]) || (x === SNOWMAN[0] && y === SNOWMAN[1] && snowman().balls > 0)));
+  const pt = (at, lift, icon) => ({ x: at[0] * TL + 12, y: at[1] * TL + 12, lift, icon });
+  Z.task = function (f) { // things going on: the tracks, the hot chocolate
+    if (inZone(f) && G.state) {
+      const c = choco();
+      if (c.on && !c.done) { if (outside(f)) return { why: 'montana: hot chocolate (the refuge)', pts: [{ x: DOOR[0] * TL + 12, y: DOOR[1] * TL + 12, lift: 20, door: true }] }; return { why: 'montana: hot chocolate', pts: [pt(HEARTH, 20, 'chocolate')] }; }
+    }
+    return zTask(f);
+  };
+  Z.goal = function (f) { // suggestions: the tracks, the sled, skating, the lookout, the weather station
+    const g = zGoal(f); if (g || !inZone(f) || !G.state || !outside(f)) return g;
+    if (tracksOpen() && !daily('tracks').found) return { why: 'montana: the tracks', pts: [pt(trackToday().path[0], 22, 'huella')] };
+    if (CH.done('montana1') && !daily('sled').n) return { why: 'montana: the sled', pts: [pt(SLED, 24, 'trineo')] };
+    if (CH.done('montana1') && !daily('skate').done) return { why: 'montana: skating', pts: [pt([ICE[0] + 2, ICE[1] + 4], 20, 'hielo')] };
+    if (!st().views) return { why: 'montana: the lookout', pts: [pt(VIEWER, 24, 'montana')] };
+    return null;
+  };
+  // ---------- drawing: the vane, the sled, the snowman, the tracks, the tunnel, snow angels; the weather; night ----------
+  function drawSnowman(ctx, cx, cy) {
+    const sm = snowman(); if (!sm.balls) return;
+    const x = SNOWMAN[0] * TL + 12 - cx, y = SNOWMAN[1] * TL + 22 - cy;
+    ctx.fillStyle = 'rgba(80,100,140,0.3)'; ctx.beginPath(); ctx.ellipse(x + 2, y, 11, 3, 0, 0, Math.PI * 2); ctx.fill();
+    const balls = [[0, -7, 9], [0, -20, 7], [0, -31, 5.5]].slice(0, sm.balls);
+    for (const [dx, dy, r] of balls) { ctx.fillStyle = OLC; ctx.beginPath(); ctx.arc(x + dx, y + dy, r + 1, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#fafcff'; ctx.beginPath(); ctx.arc(x + dx, y + dy, r, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#c8dcf0'; ctx.beginPath(); ctx.arc(x + dx + r * 0.3, y + dy + r * 0.3, r * 0.6, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#fafcff'; ctx.beginPath(); ctx.arc(x + dx - 1, y + dy - 1, r * 0.75, 0, Math.PI * 2); ctx.fill(); }
+    if (sm.balls >= 2) { ctx.fillStyle = '#202028'; ctx.fillRect(x - 1, y - 22, 2, 2); ctx.fillRect(x - 1, y - 17, 2, 2); ctx.fillRect(x - 1, y - 9, 2, 2); ctx.strokeStyle = '#6a4220'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 6, y - 21); ctx.lineTo(x - 13, y - 26); ctx.moveTo(x + 6, y - 21); ctx.lineTo(x + 13, y - 27); ctx.stroke(); }
+    if (sm.balls >= 3) {
+      ctx.fillStyle = '#202028'; ctx.fillRect(x - 3, y - 33, 2, 2); ctx.fillRect(x + 1, y - 33, 2, 2);
+      if (sm.nose) { ctx.fillStyle = '#f88020'; ctx.fillRect(x, y - 31, 6, 2); ctx.fillRect(x + 6, y - 31, 1, 1); }
+      if (sm.bufanda) { ctx.fillStyle = sm.bufanda; ctx.fillRect(x - 6, y - 27, 12, 3); ctx.fillRect(x + 2, y - 25, 3, 6); ctx.fillStyle = '#ffffff'; ctx.fillRect(x + 2, y - 22, 3, 1); }
+      if (sm.gorro) { ctx.fillStyle = OLC; ctx.fillRect(x - 6, y - 41, 12, 6); ctx.fillStyle = sm.gorro; ctx.fillRect(x - 5, y - 40, 10, 5); ctx.fillStyle = G.shade(sm.gorro, 1.3); ctx.fillRect(x - 5, y - 37, 10, 2); ctx.fillStyle = '#f8f8f8'; ctx.fillRect(x - 2, y - 44, 4, 3); }
+    }
+  }
+  function drawVane(ctx, cx, cy) {
+    const x = STATION[0] * TL + 12 - cx, y = STATION[1] * TL - 2 - cy, k = MT.weather();
+    const ang = k === 'viento' ? G.frame / 4 : Math.sin(G.frame / 90) * 0.5 + (k === 'lluvia' ? 1.2 : 0.3);
+    ctx.fillStyle = '#606878'; ctx.fillRect(x - 1, y - 14, 2, 14);
+    const dx = Math.cos(ang) * 9, dy = Math.sin(ang) * 3;
+    ctx.strokeStyle = OLC; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - dx, y - 15 - dy); ctx.lineTo(x + dx, y - 15 + dy); ctx.stroke();
+    ctx.strokeStyle = '#303840'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - dx, y - 15 - dy); ctx.lineTo(x + dx, y - 15 + dy); ctx.stroke();
+    ctx.fillStyle = '#e04040'; ctx.beginPath(); ctx.arc(x + dx, y - 15 + dy, 2.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#f8c830'; ctx.fillRect(x - 3, y - 21, 5, 4); ctx.fillStyle = '#e04040'; ctx.fillRect(x + 1, y - 23, 2, 2); // the little rooster on top
+    // the windsock beside it: limp, or straight out in the wind
+    const sx = x + 14, sy = y - 6, L = k === 'viento' ? 14 : 6;
+    ctx.fillStyle = '#909098'; ctx.fillRect(sx, sy, 1, 12);
+    for (let i = 0; i < 4; i++) { ctx.fillStyle = i & 1 ? '#ffffff' : '#f06030'; const wob = k === 'viento' ? Math.sin(G.frame / 3 + i) : 0; ctx.fillRect(sx + 1 + Math.round(i * L / 4), sy + (k === 'viento' ? Math.round(wob) : i * 2), Math.ceil(L / 4), 3 - (i >> 1)); }
+  }
+  function drawTracks(f, ctx, cx, cy) {
+    if (!tracksOpen()) return;
+    const tr = trackToday(), L = tr.path.concat([tr.hide]);
+    for (let i = 0; i < L.length - 1; i++) {
+      const [ax, ay] = L[i], [bx, by] = L[i + 1], n = 4;
+      for (let k = 0; k < n; k++) { const u = (k + 0.5) / n, x = (ax + (bx - ax) * u) * TL + 12 - cx + (k & 1 ? 3 : -3), y = (ay + (by - ay) * u) * TL + 14 - cy; ctx.fillStyle = '#7890b0'; ctx.fillRect(Math.round(x) - 1, Math.round(y), 3, 3); ctx.fillRect(Math.round(x) - 2, Math.round(y) - 2, 1, 1); ctx.fillRect(Math.round(x), Math.round(y) - 3, 1, 1); ctx.fillRect(Math.round(x) + 2, Math.round(y) - 2, 1, 1); }
+    }
+    const s = daily('tracks');
+    if (s.found) { const [hx, hy] = tr.hide, img = G.icon(tr.kind), up = Math.min(8, (G.frame - s.found) / 3); ctx.drawImage(img, hx * TL + 4 - cx, hy * TL - 4 - up - cy); }
+  }
+  Z.drawUnder = function (f, ctx) {
+    zUnder(f, ctx);
+    if (!G.state || !inZone(f)) return;
+    const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
+    if (outside(f)) {
+      for (const a of MT.angels) { const x = a.x * TL + 12 - cx, y = a.y * TL + 14 - cy; ctx.fillStyle = 'rgba(150,180,215,0.6)'; ctx.beginPath(); ctx.ellipse(x, y, 9, 5, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(x - 12, y - 3, 4, 2); ctx.fillRect(x + 8, y - 3, 4, 2); }
+      drawTracks(f, ctx, cx, cy);
+      // the sled waiting at the top of the slope; little flags down the run
+      if (!MT.sledRide) G.drawIcon16(ctx, 'trineo', SLED[0] * TL + 2 - cx, SLED[1] * TL + 6 - cy, 1.25);
+      for (let y = TOP[1] + 1; y < END[1]; y += 3) for (const x of [16, 20]) { const X = x * TL + 12 - cx, Y = y * TL + 4 - cy, w = Math.round(Math.sin(G.frame / 10 + y) * 1); ctx.fillStyle = '#5a3a20'; ctx.fillRect(X, Y, 1, 12); ctx.fillStyle = y & 1 ? '#e04040' : '#3870d8'; ctx.fillRect(X + 1, Y + w, 5, 3); }
+      if (MT.tunnel) { const x = MT.tunnel.x - cx, y = MT.tunnel.y - cy; ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(x, y, 7, 4, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#c8dcf0'; ctx.fillRect(x - 5, y + 2, 10, 2); }
+    }
+    if (indoors(f)) { // the pot of hot chocolate over the fire, the cups on the table
+      const [hx, hy] = POT; G.drawIcon16(ctx, 'chocolate', hx * TL - 6 - cx, hy * TL - 26 - cy);
+      if (G.frame % 40 === 0) puff('steam', hx * TL + 2, hy * TL - 22, { life: 40, vy: -0.4 });
+      const n = choco().on || choco().done ? (choco().n | 0) : CH.active('montana2') ? (CH.ctx('montana2').data.n | 0) : 0;
+      const [tx, ty] = P('montana_refugio', 'table'); for (let i = 0; i < n; i++) G.drawIcon16(ctx, 'chocolate', (tx + i) * TL + 4 - cx, ty * TL + 2 - cy, 0.75);
+    }
+  };
+  Z.drawTop = function (f, ctx) {
+    zTop(f, ctx);
+    if (!G.state || !inZone(f)) return;
+    const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
+    if (outside(f)) {
+      drawSnowman(ctx, cx, cy); drawVane(ctx, cx, cy);
+      if (MT.stink && G.frame - MT.stink.f0 < 90) { const a = MT.stink.a, k = (G.frame - MT.stink.f0) / 90; ctx.save(); ctx.globalAlpha = 0.45 * (1 - k); ctx.fillStyle = '#a8d848'; for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(a.x - cx + (a.flip ? 10 : -10) + Math.sin(i * 2 + k * 6) * 6, a.y - 10 - cy - k * 16 - i * 4, 4 + k * 5, 0, Math.PI * 2); ctx.fill(); } ctx.restore(); }
+      // the weather (a cross-fade when it changes), the rainbow
+      const tr = MT.trans, u = tr ? Math.min(1, (G.frame - tr.f0) / 70) : 1;
+      if (tr && u < 1) drawWx(ctx, tr.from, 1 - u, f); else MT.trans = null;
+      drawWx(ctx, MT.weather(), u, f);
+      if (MT.rainbowOn()) drawRainbow(ctx, Math.min(1, (G.frame - MT.rainbow) / 90), G.W / 2, G.H + 30, 210, 7);
+      // night: a deep blue, the refuge's windows glow, the station's lamp
+      const dark = (G.day ? G.day.glow() : 0) * 0.65;
+      if (dark > 0) {
+        ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = dark; ctx.fillStyle = '#28346a'; ctx.fillRect(0, 0, G.W, G.H); ctx.restore();
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        const lights = [[f.player.x * TL + 12 + (f.player.ox || 0) - cx, f.player.y * TL + 12 + (f.player.oy || 0) - cy, 32], [STATION[0] * TL + 12 - cx, STATION[1] * TL - 10 - cy, 22]];
+        for (let x = 22; x <= 28; x++) if (f.map.get(x, 17) === '[' && x !== 25) lights.push([x * TL + 12 - cx, 17 * TL + 10 - cy, 24]);
+        for (const [x, y, r] of lights) { const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(255,224,150,' + (0.5 * dark) + ')'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(x - r, y - r, 2 * r, 2 * r); }
+        ctx.restore();
+      }
+    }
+    if (!f.locked && G.top() === f) for (const s of SIDE) { if (s.map !== f.mapId || !s.on()) continue; const ic = s.icon(); if (ic) { const a = atOf(s); G.drawAlert(ctx, ic, a[0] * TL - cx, a[1] * TL - cy + 4, f.t); } }
+  };
+  // a new ghost-hand demo: the first time a snowball is wanted, the hand taps a snow pile
+  const PILES = [P('montana', 'pile1'), P('montana', 'pile2'), P('montana', 'pile3')];
+  (Z.demos || (Z.demos = [])).push({ kind: 'snowball', find: f => { if (!outside(f) || !CH.active('montana2')) return null; const c = CH.ctx('montana2'); if (!c.data.roll || (c.data.balls | 0) >= 3) return null; return PILES.find((p, i) => !(c.data.got || {})[i]) || null; } });
+  // the per-frame hook: this zone's people are drawn by drawMT; the cold
+  const anUp0 = AN.update;
+  AN.update = function (f) {
+    anUp0.call(this, f);
+    if (!inZone(f) || !G.state) return;
+    hook(f.player);
+    for (const id of ['lucho', 'mateo']) { const n = f.npc(id); if (n) hook(n); }
+    if (outside(f)) shiverTick(f);
+  };
+
+  // =====================================================================
+  //  The maps
+  // =====================================================================
+  const luchoIn = () => night() || chocoTime();
+  G.maps.montana = {
+    name: 'La montaña', icon: 'montana', rows: MD.montana.rows, music: 'field',
+    exits: [Z.edge(0, IN[1], 'camino_montana', 28, 6, 'left'), { x: DOOR[0], y: DOOR[1], to: 'montana_refugio', tx: CDOOR[0], ty: CDOOR[1] - 1, dir: 'up' }],
+    posts: [{ at: P('montana', 'post'), zone: 'montana' }],
+    // the dog's things to do: roll in the snow (a snow angel), dig a snow tunnel, chase the marmots
+    dogSpots: [
+      { id: 'montana_nieve', at: P('montana', 'dog'), act: 'roll', every: 120 },
+      { id: 'montana_tunel', at: P('montana', 'tunnel'), to: P('montana', 'tunnelOut'), act: 'tunel', gives: 'hueso', every: 'day' },
+      { id: 'montana_marmotas', at: P('montana', 'marmotasDog'), act: 'chase', kind: 'marmota', every: 60 },
+    ],
+    pages: K.pages('montana'),
+    ambient: { birds: 2, butterflies: 2 },
+    animals: [
+      { kind: 'llama', n: 4, area: 'llamas' }, { kind: 'llama', n: 2, area: 'llamas2' },
+      { kind: 'marmota', n: 3, area: 'marmotas' }, { kind: 'marmota', n: 2, area: 'marmotas2' },
+      { kind: 'zorrillo', n: 2, area: 'zorrillos' }, { kind: 'carpintero', n: 2, area: 'carpintero' },
+      { kind: 'monarca', n: 9, area: 'monarcas' }, { kind: 'puma', n: 1, area: 'puma' },
+      { kind: 'conejo', n: 2, area: 'conejos' },
+      { kind: 'aguila', n: 1, area: 'cielo', when: () => MT.weather() === 'elsol' && !night() },   // rare: only when the sun shines
+      { kind: 'lobo', n: 1, area: 'lobo', when: 'noche' },                                            // rare: at night on the crag
+    ],
+    things: { tiles: { 'ç': 'arbol', '(': 'arbol', ')': 'arbol', 'ü': null, 'ö': null, 'ï': null, 'ò': null, 'ù': null, O: null } },
+    poke: (f, x, y) => { const c = f.map.get(x, y); if (c === 'ç') { G.audio.sfx('swing'); for (let i = 0; i < 8; i++) puff('flake', x * TL + 12 + (Math.random() - 0.5) * 16, y * TL + 4, { vy: -0.3, vx: (Math.random() - 0.5) * 1, g: 0.06, life: 40 }); return true; } return false; },
+    npcs: [
+      K.canelo(IN[0] + 1, IN[1] + 1), Z.lola(...P('montana', 'lola'), 'montana'), Z.nico(...P('montana', 'nico')),
+      Object.assign(person('lucho', ...P('montana', 'lucho'), 'down', luchoSide, luchoLine, { fixed: true }), { cond: () => !luchoIn() }),
+      person('mateo', ...P('montana', 'mateo'), 'down', mateoSide, mateoLine, { fixed: true }),
+    ],
+  };
+  G.maps.montana_refugio = {
+    name: 'El refugio', icon: 'montana', rows: MD.montana_refugio.rows, music: 'headquarters', indoor: true,
+    exits: [{ x: CDOOR[0], y: CDOOR[1], to: 'montana', tx: DOOR[0], ty: DOOR[1] + 1, dir: 'down' }],
+    animals: [],
+    things: { tiles: { j: 'cama', t: null, v: null, n: null, k: null } },
+    poke: (f, x, y) => { const c = f.map.get(x, y); if (c === 'v') { G.audio.sfx('select'); for (let i = 0; i < 3; i++) puff('steam', x * TL + 12, y * TL + 4, { vy: -0.6, life: 40 }); return true; } return false; },
+    npcs: [
+      K.canelo(CDOOR[0], CDOOR[1] - 2),
+      Object.assign(person('lucho', ...P('montana_refugio', 'lucho'), 'down', luchoSide, luchoLine, { fixed: true }), { cond: () => luchoIn() }),
+    ],
+  };
+  if (G.carry) Object.assign(G.carry.DOG, { bolanieve: 'eat' }); // (he chomps the snowball: it's gone!)
+
+  // ---------- things to pick up: snowballs (after the snowman), sticks ----------
+  G.carry.SOURCES.push(
+    { id: 'palo_cmontana', map: 'camino_montana', at: P('camino_montana', 'palo'), item: 'palo', every: 90 },
+    { id: 'palo_montana', map: 'montana', at: [20, 26], item: 'palo', every: 90 },
+    ...PILES.map((at, i) => ({ id: 'bolanieve' + i, map: 'montana', at: [at[0], at[1] + 1], item: 'bolanieve', every: 60, when: () => CH.done('montana2') })),
+  );
+  // ---------- Nico's hiding places (seek.js) ----------
+  G.seek.SPOTS.push(
+    { id: 'montana1', map: 'montana', at: P('montana', 'hide1'), how: 'over', cut: 12, dx: 0, kinds: ['marmota', 'conejo', 'zorrillo'], place: 'arbol' },    // behind a snowy pine
+    { id: 'montana2', map: 'montana', at: P('montana', 'hide2'), how: 'over', cut: 9, dx: 0, kinds: ['marmota', 'conejo', 'zorrillo'], place: 'nieve' },    // behind the marmots' rock
+    { id: 'montana3', map: 'montana', at: P('montana', 'hide3'), how: 'over', cut: 9, dx: 0, kinds: ['zorrillo', 'conejo', 'gato'], place: 'montana' },   // behind the woodpile by the refuge
+    { id: 'montana4', map: 'montana', at: P('montana', 'hide4'), how: 'over', cut: 10, dx: 0, kinds: ['conejo', 'gato', 'zorrillo'], place: 'veleta' },   // behind the weather station
+    { id: 'montana5', map: 'montana', at: P('montana', 'hide5'), how: 'over', cut: 9, dx: 0, kinds: ['llama', 'conejo', 'cabra'], place: 'llama' },      // behind the llamas' hay
+    { id: 'montana6', map: 'montana', at: P('montana', 'hide6'), how: 'over', cut: 9, dx: 0, kinds: ['marmota', 'conejo', 'zorrillo'], place: 'hielo' }, // behind a rock by the frozen pond
+  );
+  G.seek.KINDS.push('marmota', 'zorrillo', 'llama');
+  Object.assign(G.seek.PEEK, { marmota: [3, 5], zorrillo: [3, 5], llama: [4, 8] });
+  // ---------- favours (favores.js, from Villa Sol's chapter 7 on): Don Lucho and Mateo ask about the zone's words ----------
+  const been = () => Z.visited('montana');
+  G.favores.OFFERS.push(['lucho', 'thing', ['gorro', 'bufanda', 'guantes', 'chocolate', 'trineo', 'llama', 'muneco', 'lamontana'], been], ['mateo', 'thing', ['nieve', 'nube', 'lluvia', 'viento', 'arcoiris', 'frio', 'hielo'], been]);
+  Object.assign(G.favores.THINGS, { lucho: ['gorro', 'bufanda', 'guantes', 'chocolate', 'trineo', 'llama', 'muneco', 'lamontana'], mateo: ['nieve', 'nube', 'lluvia', 'viento', 'arcoiris', 'frio', 'hielo'] });
+
+  // =====================================================================
+  //  The story: the mountain's quest line (G.chapters, line 'montana')
+  // =====================================================================
+  CH.add({ id: 'montana1', line: 'montana', title: '¡Qué frío!', en: 'So cold! Up in the snow you shiver: warm clothes from Don Lucho\'s refuge', giver: 'lucho', words: ['lamontana', 'nieve', 'frio', 'gorro', 'bufanda', 'guantes'], icon: 'gorro', col: '#3870d8', goal: [['gorro', 1], ['bufanda', 1], ['guantes', 1]] });
+  CH.add({ id: 'montana2', line: 'montana', title: 'El muñeco de nieve', en: 'The snowman: roll three snowballs, a carrot nose, a hat and a scarf; then hot chocolate', giver: 'mateo', words: ['muneco', 'chocolate'], icon: 'muneco', col: '#58a8e8', goal: [['bolanieve', 3], ['muneco', 1], ['chocolate', 1]] });
+  CH.add({ id: 'montana3', line: 'montana', title: '¡El arcoíris!', en: 'The rainbow: Mateo\'s weather station; wind, clouds, rain... then you bring the sun', giver: 'mateo', words: ['viento', 'nube', 'lluvia', 'arcoiris'], icon: 'arcoiris', col: '#e8a020', goal: [['veleta', 1], ['arcoiris', 1]] });
+
+  const SNOWGATE = [9, 11], SNOWFIELD = [10, 9], BASKET = [24, 18];
+  const wearIt = function* (f, id) { const col = AB.putOn(f, id, AB.FIRST[id]); yield 24; return col; };
+  // ---------- 1 · ¡Qué frío!: la montaña, la nieve, frío, el gorro, la bufanda, los guantes ----------
+  CH.script('montana1', [
+    { who: 'lucho', run: function* (f, c) {
+      const lu = npcAt(f, 'lucho'); if (lu) MT.start(lu, 'wave', 50);
+      yield* meetW('lamontana', { who: 'lucho', prompt: '¡Bienvenid{o/a} a la [lamontana:montaña]!', en: 'Welcome to the mountain! I\'m Don Lucho.', show: 'montana', known: othersFor('lamontana', ['casa', 'arbol', 'agua', 'mar']) });
+      if (MT.weather() !== 'nieve') MT.setWeather('nieve');
+      CH.point(SNOWGATE[0] * TL + 12, (SNOWGATE[1] - 2) * TL);
+      try { yield* meetW('nieve', { who: 'lucho', prompt: '¡Mira, arriba! ¡La [nieve]!', en: 'Look, up there! Snow! Go and touch it!', show: 'nieve', known: othersFor('nieve', ['agua', 'arena', 'flor', 'casa']) }); } finally { CH.point(null); }
+      c.data.up = 1;
+    } },
+    { spot: { map: 'montana', at: SNOWGATE, icon: 'nieve' }, run: function* (f, c) { // in the snow: brrr!
+      const p = f.player; G.audio.sfx('select');
+      for (let i = 0; i < 10; i++) puff('flake', p.x * TL + 12 + (Math.random() - 0.5) * 20, p.y * TL + 18, { vy: -1.2 - Math.random(), vx: (Math.random() - 0.5) * 2, g: 0.1, life: 30 });
+      yield* MT.act(p, 'shiver', 60);
+      const dog = G.pet && G.pet.mine() ? CK.dog(f) : null; if (dog) { G.pet.place(f, dog); yield 6; yield* G.pet.play('huh'); }
+      yield* meetW('frio', { who: 'lucho', prompt: '¡Brrr! ¡Hace [frio:frío]!', en: 'Brrr! It\'s cold! (you\'re shivering)', show: 'frio', known: othersFor('frio', ['feliz', 'triste', 'cansado', 'bien', 'caliente']) });
+      CH.point(BASKET[0] * TL + 12, BASKET[1] * TL);
+      try { yield* sayShow('lucho', { icon: 'gorro', col: AB.FIRST.gorro }, T('¡Ropa para el [frio:frío]! ¡Ven!', 'Warm clothes for the cold! Come to the refuge: there\'s a basket by the door.')); } finally { CH.point(null); }
+      c.data.cold = 1;
+    } },
+    { spot: { map: 'montana', at: BASKET, icon: { icon: 'gorro', col: AB.FIRST.gorro } }, run: function* (f, c) { // the basket of warm clothes by the refuge's door
+      G.audio.sfx('door');
+      yield* meetW('gorro', { who: 'lucho', prompt: '¡Un [gorro]! ¡Póntelo!', en: 'A woolly hat! Put it on!', show: pic('gorro'), known: othersFor('gorro', ['sombrero', 'camisa', 'pelota', 'casa']) });
+      c.data.gorro = 1; yield* wearIt(f, 'gorro');
+      yield* meetW('bufanda', { who: 'lucho', prompt: '¡Una [bufanda]!', en: 'A scarf! Round your neck.', show: pic('bufanda'), known: othersFor('bufanda', ['gorro', 'camisa', 'calcetines', 'casa']) });
+      c.data.bufanda = 1; yield* wearIt(f, 'bufanda');
+      yield* meetW('guantes', { who: 'lucho', prompt: '¡Y [guantes]!', en: 'And gloves (mittens) for your hands!', show: pic('guantes'), known: othersFor('guantes', ['gorro', 'bufanda', 'mano', 'zapatos']) });
+      c.data.guantes = 1; yield* wearIt(f, 'guantes');
+      yield AB.mirror();
+      yield* quiz('lucho', '¿Qué es?', 'What is this, that you\'re wearing? (say it!)', 'gorro', ['bufanda', 'guantes'], { show: pic('gorro') });
+      yield* quiz('lucho', '¿Y esto?', 'And this?', 'guantes', ['gorro', 'bufanda'], { show: pic('guantes') });
+      CH.point(SNOWFIELD[0] * TL + 12, SNOWFIELD[1] * TL);
+      try { yield* sayShow('lucho', 'nieve', T('¡Ahora sí! ¡A la [nieve]!', 'Now you\'re ready! Off you go into the snow!')); } finally { CH.point(null); }
+    } },
+    { spot: { map: 'montana', at: SNOWFIELD, icon: 'nieve' }, run: function* (f, c) { // warm in the snow: no more shivering; the dog plays
+      const p = f.player; G.audio.sfx('chime');
+      const dog = G.pet && G.pet.mine() ? CK.dog(f) : null;
+      if (dog) { G.pet.place(f, dog); yield 8; yield* G.pet.play('spin'); for (let i = 0; i < 16; i++) puff('flake', dog.x * TL + 12 + (Math.random() - 0.5) * 20, dog.y * TL + 12, { vy: -1.4 - Math.random(), vx: (Math.random() - 0.5) * 2.6, g: 0.1, life: 34 }); CK.bark(f, dog); }
+      for (let i = 0; i < 12; i++) puff('flake', p.x * TL + 12 + (Math.random() - 0.5) * 24, p.y * TL + 8, { vy: -1 - Math.random(), vx: (Math.random() - 0.5) * 2, g: 0.08, life: 36 });
+      if (met('no') && met('si')) yield* quiz('lucho', '¿Y ahora? ¿Tienes [frio:frío]?', 'And now? Are you cold? (no!)', 'no', ['si'], {});
+      CK.confetti(); G.audio.jingle('promote');
+      yield* sayShow('lucho', { icon: 'gorro', col: (AB.wear() || {}).gorro || AB.FIRST.gorro }, T('¡Calientit{o/a}! ¡Qué bonit{o/a}!', 'Nice and warm! You look lovely. (Mateo, the weather boy, has an idea... and there\'s a sled at the top of the slope!)'));
+    } },
+  ], {
+    stage(f, c) { if (!outside(f) || !CH.active('montana1')) return; const lu = npcAt(f, 'lucho'); if (lu && !lu.busy && c.data.up && (lu.x !== BASKET[0] + 1 || lu.y !== BASKET[1] + 1)) CK.place(f, 'lucho', BASKET[0] + 1, BASKET[1] + 1, 'up'); },
+    drawTop(f, ctx, c) { if (!outside(f) || !CH.active('montana1') || !c.data.cold || c.data.guantes) return; const x = BASKET[0] * TL + 4 - Math.round(f.cam.x), y = BASKET[1] * TL + 6 - Math.round(f.cam.y); G.drawIcon16(ctx, 'canasta', x, y); },
+  });
+
+  // ---------- 2 · El muñeco de nieve: el muñeco de nieve, el chocolate (caliente) ----------
+  CH.script('montana2', [
+    { who: 'mateo', run: function* (f, c) {
+      yield* say('mateo', T('¡Hola, {name}! ¡Soy Mateo!', 'Hi, {name}! I\'m Mateo. I love the weather... and the snow!'));
+      yield* meetW('muneco', { who: 'mateo', prompt: '¿Hacemos un [muneco:muñeco de nieve]?', en: 'Shall we build a snowman?', show: 'muneco', known: othersFor('muneco', ['casa', 'arbol', 'perro', 'gato', 'pelota']) });
+      CH.point(PILES[0][0] * TL + 12, PILES[0][1] * TL);
+      try { yield* sayShow('mateo', { icon: 'bolanieve', count: 3 }, T(met('tres') ? '¡[tres:Tres] bolas de [nieve]!' : '¡Bolas de [nieve]!', 'Three big balls of snow! Roll them from the snow piles.')); } finally { CH.point(null); }
+      c.data.roll = 1; c.data.balls = 0; c.data.got = {};
+    } },
+    { spots: PILES.map((at, i) => ({ map: 'montana', at, icon: { icon: 'bolanieve' }, off: c => !!(c.data.got || {})[i] })), run: function* (f, c, i) { // roll a snowball from a pile: it grows, it rolls to the snowman's place
+      const got = c.data.got || (c.data.got = {}); if (got[i]) return false;
+      got[i] = 1; G.audio.sfx('swing');
+      const [x, y] = PILES[i]; for (let k = 0; k < 10; k++) puff('flake', x * TL + 12 + (Math.random() - 0.5) * 16, y * TL + 16, { vy: -1 - Math.random(), vx: (Math.random() - 0.5) * 2, g: 0.1, life: 28 });
+      yield 16;
+      c.data.balls = (c.data.balls | 0) + 1; G.audio.sfx('pop'); CK.sparkle(f, SNOWMAN[0], SNOWMAN[1], 4);
+      const nw = ['uno', 'dos', 'tres'][c.data.balls - 1]; if (met(nw)) { G.fx.say(G.baseForm(nw), SNOWMAN[0] * TL + 12 - Math.round(f.cam.x), SNOWMAN[1] * TL - 16 - Math.round(f.cam.y), '#ffffff', true); G.speak(G.baseForm(nw)); }
+      if (c.data.balls === 1 && met('grande')) { yield 20; yield* quiz('mateo', '¿Cómo es?', 'How is this snowball? (big or small?)', 'grande', ['pequeno'], { show: { icon: 'bolanieve' } }); }
+      if (c.data.balls === 3 && met('pequeno')) { yield 20; yield* quiz('mateo', '¿Y esta?', 'And this one, for the head?', 'pequeno', ['grande'], { show: { icon: 'bolanieve' } }); }
+      if (c.data.balls < 3) return false;
+      yield 20;
+      const lu = npcAt(f, 'lucho');
+      if (lu) CH.pointNpc(lu); else CH.point(DOOR[0] * TL + 12, DOOR[1] * TL);
+      try { yield* sayShow('mateo', { icon: 'zanahoria' }, T('¿Y la nariz? ¡Don Lucho tiene!', 'And his nose? A carrot! Don Lucho has carrots for his llamas.')); } finally { CH.point(null); }
+    } },
+    { who: 'lucho', bubble: { icon: 'zanahoria' }, run: function* (f, c) { // a carrot (the llamas love them), an old cap and scarf
+      yield* sayShow('lucho', { icon: 'zanahoria' }, T('¡Una zanahoria! ¡Tómala!', 'A carrot for the snowman\'s nose! (my llamas would love it too)'));
+      const lla = AN.find('llama', f); if (lla) { AN.cry('llama'); lla.react = 40; }
+      bag().add('zanahoria', { q: 'montana2' }); G.audio.jingle('item');
+      if (met('gorro') && met('bufanda')) yield* sayShow('lucho', { list: [{ icon: 'gorro', col: '#f8c830' }, { icon: 'bufanda', col: '#38a858' }] }, T('¡Y un [gorro] y una [bufanda] viejos!', 'And an old woolly hat and scarf for him!'));
+      CH.point(SNOWMAN[0] * TL + 12, SNOWMAN[1] * TL - 20);
+      try { yield 30; } finally { CH.point(null); }
+    } },
+    { spot: { map: 'montana', at: [SNOWMAN[0], SNOWMAN[1] + 1], icon: { icon: 'zanahoria' } }, run: function* (f, c) { // the snowman's face; the dog steals the nose
+      const p = f.player; p.dir = 'up';
+      bag().take('zanahoria', { q: 'montana2' }); c.data.nose = 1; G.audio.sfx('pop'); CK.sparkle(f, SNOWMAN[0], SNOWMAN[1] - 1, 4);
+      yield 20;
+      for (const w of ['gorro', 'bufanda'].filter(met)) {
+        const vs = ['gorro', 'bufanda'].filter(k => met(k) && !c.data[k]); if (!vs.length) break;
+        const ch = vs.map(k => ({ word: k, img: { icon: k, col: k === 'gorro' ? '#f8c830' : '#38a858' } }));
+        const r = yield G.choose({ prompt: '¿Qué le pones?', en: 'What will you put on him? (say it, or tap it)', choices: ch, layout: 'cards', mic: true, who: 'mateo' });
+        const k = ch[Math.max(0, Math.min(ch.length - 1, r.result | 0))].word; if (G.cards) G.cards.grow(k, 'tap');
+        c.data[k] = k === 'gorro' ? '#f8c830' : '#38a858'; G.audio.sfx('chime'); CK.sparkle(f, SNOWMAN[0], SNOWMAN[1] - 1, 4); G.speak(G.baseForm(k)); yield 24;
+        void w;
+      }
+      if (!met('gorro')) c.data.gorro = '#f8c830'; if (!met('bufanda')) c.data.bufanda = '#38a858';
+      const dog = G.pet && G.pet.mine() ? CK.dog(f) : null;
+      if (dog) { // the dog leaps up and runs off with the carrot!
+        G.pet.place(f, dog); yield 10; CK.bark(f, dog); yield* G.pet.play('jump');
+        c.data.stolen = 1; MT.carrot = dog; G.audio.sfx('pop');
+        for (const [x, y] of [[SNOWMAN[0] + 3, SNOWMAN[1] + 1], [SNOWMAN[0] + 2, SNOWMAN[1] + 3], [SNOWMAN[0] - 2, SNOWMAN[1] + 2]]) { G.pet.sound('bark'); yield* CK.walk(f, dog, x, y, 6); }
+        dog.dir = 'right';
+        yield* sayShow('mateo', { icon: 'perro' }, T('¡{dog}! ¡La nariz!', '{dog} ran off with the carrot nose!'));
+        if (met('ven')) {
+          yield* ask('mateo', '¿Qué le dices?', 'What do you tell {dog}? (say it!)', 'ven', ['sientate', 'salta', 'gira'].filter(met).slice(0, 2), {});
+        } else yield G.choose({ prompt: '¡{dog}!', en: 'Call {dog}! (tap him)', choices: [{ icon: 'perro', label: '¡{dog}!' }], layout: 'cards', who: null });
+        yield* CK.walk(f, dog, p.x - 1, p.y, 5); dog.dir = 'right'; CK.bark(f, dog); CK.heart(f, dog);
+        MT.carrot = null; c.data.stolen = 0; G.audio.sfx('pop'); CK.sparkle(f, SNOWMAN[0], SNOWMAN[1] - 1, 4);
+      }
+      c.data.done = 1; CK.confetti(); G.audio.jingle('promote');
+      yield* quiz('mateo', '¿Qué es?', 'What did you build? (say it!)', 'muneco', ['casa', 'arbol', 'perro', 'pelota'], { show: 'muneco' });
+      CH.point(DOOR[0] * TL + 12, DOOR[1] * TL);
+      try { yield* sayShow('mateo', { icon: 'chocolate' }, T('¡Brrr! ¡Al refugio!', 'Brrr! Let\'s warm up in the refuge: Don Lucho makes hot chocolate!')); } finally { CH.point(null); }
+      c.data.cocoa = 1;
+    } },
+    { spot: { map: 'montana_refugio', at: HEARTH, icon: { icon: 'chocolate' } }, run: function* (f, c) { // hot chocolate by the fire
+      yield* meetW('chocolate', { who: 'lucho', prompt: '¡[chocolate:Chocolate] para todos!', en: 'Hot chocolate for everyone!', show: 'chocolate', known: othersFor('chocolate', ['leche', 'agua', 'pan', 'manzana']) });
+      if (!met('caliente')) yield* meetW('caliente', { who: 'lucho', prompt: '¡Cuidado! ¡Está [caliente]!', en: 'Careful! It\'s hot!', show: 'caliente', known: othersFor('caliente', ['frio', 'feliz', 'triste']) });
+      else yield* quiz('lucho', '¿Cómo está?', 'How is the chocolate? (hot or cold?)', 'caliente', ['frio'], { show: 'chocolate' });
+      yield* pourCups(f, { c: c.data });
+    } },
+  ], {
+    stage(f, c) { if (!outside(f) || !CH.active('montana2')) return; const m = npcAt(f, 'mateo'); if (m && !m.busy && c.data.roll && !c.data.done && (m.x !== SNOWMAN[0] + 1 || m.y !== SNOWMAN[1] + 1)) CK.place(f, 'mateo', SNOWMAN[0] + 1, SNOWMAN[1] + 1, 'left'); if (m && !m.busy && c.data.done && (m.x !== P('montana', 'mateo')[0] || m.y !== P('montana', 'mateo')[1])) CK.place(f, 'mateo', ...P('montana', 'mateo'), 'down'); },
+    drawTop(f, ctx, c) { if (!outside(f) || !MT.carrot) return; const n = MT.carrot; G.drawIcon16(ctx, 'zanahoria', n.x * TL + 10 + (n.ox || 0) - Math.round(f.cam.x), n.y * TL + 8 + (n.oy || 0) - Math.round(f.cam.y), 0.6); },
+  });
+
+  // ---------- 3 · ¡El arcoíris!: el viento, la nube, la lluvia, (el sol), el arcoíris ----------
+  CH.script('montana3', [
+    { who: 'mateo', run: function* (f, c) { // the weather station: the wind, the clouds, the rain
+      CH.point(STATION[0] * TL + 12, STATION[1] * TL - 18);
+      try {
+        yield* sayShow('mateo', { icon: 'veleta' }, T('¡Mi estación del tiempo!', 'My weather station! The vane shows the wind. Watch!'));
+        MT.setWeather('viento', { force: true }); yield 70;
+        yield* meetW('viento', { who: 'mateo', prompt: '¡Uy! ¡El [viento]!', en: 'Whoa! The wind! (look at the vane spin)', show: 'viento', known: othersFor('viento', ['nieve', 'agua', 'arbol', 'hoja']) });
+        MT.setWeather('nube', { force: true }); yield 70;
+        yield* meetW('nube', { who: 'mateo', prompt: '¡Mira! ¡Las [nube:nubes]!', en: 'Look! Clouds are coming!', show: 'nube', known: othersFor('nube', ['viento', 'nieve', 'arbol', 'flor']) });
+        MT.setWeather('lluvia', { force: true }); yield 70;
+        const dog = G.pet && G.pet.mine() ? CK.dog(f) : null; if (dog) { G.pet.place(f, dog); yield 6; yield* G.pet.play('spin'); for (let i = 0; i < 10; i++) puff('drop', dog.x * TL + 12 + (Math.random() - 0.5) * 16, dog.y * TL + 10, { vy: -1.2 - Math.random(), vx: (Math.random() - 0.5) * 2, g: 0.12, life: 30 }); }
+        yield* meetW('lluvia', { who: 'mateo', prompt: '¡Ay! ¡La [lluvia]!', en: 'Oh no! Rain! We\'re getting wet!', show: 'lluvia', known: othersFor('lluvia', ['nube', 'viento', 'agua', 'nieve']) });
+        yield* sayShow('mateo', { icon: 'veleta' }, T('¡Tú! ¡Cambia el tiempo!', 'You do it! Tap my weather station and bring the sun!'));
+      } finally { CH.point(null); }
+      c.data.rain = 1;
+    } },
+    { spot: { map: 'montana', at: STATION, icon: 'elsol' }, run: function* (f, c) { // the child brings the sun: a rainbow
+      if (!met('elsol')) yield* meetW('elsol', { who: 'mateo', prompt: '¡Pide el [elsol:sol]!', en: 'Ask for the sun!', show: 'elsol', known: othersFor('elsol', ['lluvia', 'nube', 'viento', 'nieve']) });
+      for (let tries = 0; tries < 4; tries++) {
+        const k = yield* MT.weatherGame(f, { prompt: '¿Qué tiempo quieres?', en: 'What weather do you want? (say it: the sun!)', must: true });
+        if (k === 'elsol') break;
+        yield* sayShow('mateo', 'elsol', T('¿Y el [elsol:sol]?', 'And the sun? Ask for the sun!'));
+      }
+      if (MT.weather() !== 'elsol') MT.setWeather('elsol', { rainbow: true });
+      MT.rainbow = G.frame; yield 90;
+      yield* meetW('arcoiris', { who: 'mateo', prompt: '¡Un [arcoiris:arcoíris]!', en: 'A rainbow! After the rain, the sun makes a rainbow!', show: 'arcoiris', known: othersFor('arcoiris', ['elsol', 'nube', 'lluvia', 'flor']) });
+      const cols = ['rojo', 'amarillo', 'verde', 'azul', 'rosa'].filter(met);
+      if (cols.length >= 2) {
+        const r = yield G.choose({ prompt: '¿Qué colores ves?', en: 'What colours can you see? (say one!)', choices: cols.slice(0, 4).map(w => ({ word: w })), layout: 'cards', mic: true, who: 'mateo' });
+        const w = cols[Math.max(0, Math.min(cols.length - 1, r.result | 0))]; if (G.cards) G.cards.grow(w, 'tap'); G.speak(G.baseForm(w)); G.audio.sfx('chime'); yield 20;
+      }
+      CK.confetti(); G.audio.jingle('promote');
+      yield* sayShow('mateo', 'arcoiris', T('¡Qué bonito! ¡Ahora tú cambias el tiempo!', 'How beautiful! Now you can change the weather at my station whenever you like!'));
+    } },
+  ], {
+    stage(f, c) { if (!outside(f) || !CH.active('montana3')) return; const m = npcAt(f, 'mateo'); if (m && !m.busy && (m.x !== P('montana', 'mateo')[0] || m.y !== P('montana', 'mateo')[1])) CK.place(f, 'mateo', ...P('montana', 'mateo'), 'down'); },
+  });
+
+  // =====================================================================
+  //  The zone
+  // =====================================================================
   const bus = P('montana', 'bus'), busIn = P('montana', 'busIn');
   Z.add({
     id: 'montana', name: 'La montaña', en: 'the mountain', icon: 'montana', music: 'field', pos: [264, 90],
-    maps: ['montana'], path: 'camino_montana',
+    maps: ['montana', 'montana_refugio'], path: 'camino_montana',
     bus: { map: 'montana', at: bus }, entry: { map: 'montana', x: busIn[0], y: busIn[1], dir: 'down' },
-    animals: [],   // (the zone's own animals, its album page: added with the zone, docs/WORLD_PLAN.md)
-    planned: 7,    // (album entries still to come: shown as numbered "?" until the zone is built)
+    animals: KINDS, // the album page, in order
+    habitat: { llama: 'montana', marmota: 'nieve', zorrillo: 'flor', carpintero: 'arbol', monarca: 'arbol', puma: 'nieve', aguila: 'montana', lobo: 'nieve' },
+    rare: { aguila: 'elsol', lobo: 'noche' },
+    planned: 0,
+    lola: lolaHere,
   });
 })();
 
