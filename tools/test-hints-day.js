@@ -75,7 +75,7 @@ async function firstMinutes(browser) {
     // ...but not when it opens tomorrow (her sun bubble)
     await g.ev(() => { G.state.ch.lastDoneSess = G.words.sess(); });
     await g.frames(400);
-    check('ipad: a chapter after the night: Mamá is asleep (the moon and "z z"), no hand on her; the guide shows the day\'s play instead', await g.ev(m => { const a = G.field.npc('mama').alert(), h = G.hint.at; return a.wait && a.sleep && (!h || Math.abs(h.x - m[0]) > 8 || Math.abs(h.y - m[1]) > 8) && /^play:/.test((G.guide.goal(G.field) || {}).why || ''); }, m));
+    check('ipad: a chapter after the night: Mamá is asleep (the moon and "z z"), no hand on her; the guide shows the day\'s play (or a place to explore) instead', await g.ev(m => { const a = G.field.npc('mama').alert(), h = G.hint.at; return a.wait && a.sleep && (!h || Math.abs(h.x - m[0]) > 8 || Math.abs(h.y - m[1]) > 8) && /^(play:|explore )/.test((G.guide.goal(G.field) || {}).why || ''); }, m));
     await g.shot('hand_none_tomorrow');
 
     // the notebook: the hand on its close button

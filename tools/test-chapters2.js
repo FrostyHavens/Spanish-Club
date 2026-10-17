@@ -106,7 +106,7 @@ async function story(browser) {
       check('story: Canelo learned dame la pata, salta, busca and gira (all six tricks)', ['pata', 'salta', 'busca', 'gira'].every(t => r.tricks[t] === 3), JSON.stringify(r.tricks));
       check('story: the animal party and the diploma', r.q.c21 === 'done' && g.seen.has('Diploma'));
       check('story: favores and Luna\'s palabra del día came up on the way', sawFavor && sawPalabra, JSON.stringify({ sawFavor, sawPalabra }));
-      check('story: it took several days (one chapter a day, about)', FROM > 10 || r.day >= 8, 'day ' + r.day);
+      check('story: it took a few days (the morning chapters wait for a new day; no daily word limit any more)', FROM > 10 || r.day >= 2, 'day ' + r.day);
     }
     noErrors(g, 'story');
   } finally { await ctx.close(); }

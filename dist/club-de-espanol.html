@@ -12449,7 +12449,7 @@ G.store = {
   G.album.discovering = () => cur;
   G.album.step = function () {
     if (cur) { cur.t++; if (cur.t === 12) { AN().cry(cur.id); G.audio.sfx('star'); } if (cur.t === 30) { const w = G.data.words[AN().KINDS[cur.id].word]; if (w && G.st.seen(AN().KINDS[cur.id].word)) G.speak(w.es.split(' / ')[0]); } if (cur.t > 170) cur = null; return; }
-    if (DQ.length && G.fade.a === 0 && G.state) { cur = { id: DQ.shift(), t: 0 }; G.fx.confetti(G.W / 2 - 50, 60, -1, 10); G.fx.confetti(G.W / 2 + 50, 60, 1, 10); }
+    if (DQ.length && G.fade.a === 0 && G.state && G.field && G.top() === G.field) { /* (on the map: never over a talk or a menu) */ cur = { id: DQ.shift(), t: 0 }; G.fx.confetti(G.W / 2 - 50, 60, -1, 10); G.fx.confetti(G.W / 2 + 50, 60, 1, 10); }
   };
   G.album.draw = function (ctx) {
     const c = cur; if (!c || !G.state) return;
