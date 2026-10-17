@@ -2,6 +2,41 @@
 
 A running record of what changed in Club de Español and why. Newest first.
 
+## 2026-10-17 — La casa de los abuelos, the fourth zone (step 5 of the open world): family, the body, clothes
+The grandparents' countryside home south-west of Villa Sol, following "How to build a zone" (docs/WORLD_PLAN.md); it
+only uses universal words and its own, so it can be the first place visited. The child loves her own house, her dog,
+variety and choice: here she goes INTO the house, dresses up and keeps the clothes on, and her body words are DONE.
+- **The maps** (`tools/mapgen.py`): a 40x30 farm (the cottage with a front door that opens, the orchard and a swing,
+  the henhouse, the vegetable garden and the water pump, the clothesline, the duck pond, the paddock, the turkeys, the
+  sheep's meadow, the pigs' mud) and the cottage inside (living room with the family photos and the fireplace, Abuela's
+  kitchen with a mouse, the bedroom with the wardrobe, the mirror and the dressing-up trunk). Six new tiles with Unicode
+  codes (`ñ á í é ó ú`: the ASCII codes are used up). Night: a blue dusk, the windows glow, fireflies over the orchard.
+- **Clothes you wear** (`G.abuelos.wear`): whatever you put on (from the line, the trunk, Abuelo's jacket) shows on your
+  character on every map and in your portrait (a cosmetic over the creator's look, saved); a mirror screen shows you
+  big; the trunk's *¿Qué te pones?* (mic on; again for another colour) and a daily fashion show.
+- **The body is done** (`G.abuelos.act`): touch your head, eyes, nose, mouth, clap your hands, crouch to your feet, wash
+  at the pump (drops of water); Abuelo and the baby do it too, the dog does a trick. Tap yourself: *¿Qué toco?*
+- **25 words, four pages** (`content/es/words.js`, pictures in `src/icons.js`, clothes coloured by `col`): la abuela,
+  la familia, el abuelo, el bebé; la mano, el pie, la nariz, los ojos, la boca, la cabeza; la camisa, el pantalón, los
+  calcetines, el vestido, los zapatos, el sombrero, la chamarra; la vaca, el cerdo, la oveja, el burro, el pavo, el
+  ratón, el gallo, el tlacuache.
+- **Eight album animals** (all new to the album): the cow and the donkey (react frames), pigs in the mud, sheep, turkeys
+  that flap off, a mouse in the kitchen; the rooster (rare: mornings) and the possum (rare: nights; tapped, it plays dead).
+- **People** (`src/data.js`): Abuela, Abuelo, the baby cousin (drawn small). **Story** (line `abuelos`): ¡A vestirse!
+  (clothes off the line, the dog runs off with the socks: a tug of war, the mirror), ¡A lavarse! (the dog rolls in the
+  pigs' mud and jumps on you; wash your hands, feet and nose at the pump), ¡La foto de la familia! (shoes and a hat from
+  the trunk, the baby crawled off to the ducks, everyone on the porch: *¡whisky!*, a full-screen photo that then hangs
+  on the wall).
+- **Side quests:** Abuela's cookies (eggs from the hens' run, wash your hands, count), Abuelo's garden (four
+  vegetables), Simón dice with Abuelo (ojos, boca, cabeza; then you are Simón), Abuelo's jacket at night, the photo wall
+  (who's who), the swing. The dog digs up a carrot, steals a sock off the line (a new dog-spot act of the zone's own,
+  `tug`) and chases the turkeys. Six hiding places, four page puzzles, favours, a ghost-hand demo (`pickegg`).
+- Tests: `tools/test-zone-abuelos.js` (new: walking in, every place reachable outside and in, the bus, Lola, the front
+  door; the animals, the rare ones, the album page, a sheet of every new picture; the story by taps; the clothes worn in
+  town and kept in the save, tap yourself, Simón dice, the jacket at night; the cookies, the garden, the swing; the
+  dog's three things; hide-and-seek, a page puzzle, save and load). `test-world`: its "zone still to be built" checks
+  moved to La montaña. `tools/harness.js` taps through the mirror and the family photo.
+
 ## 2026-10-17 — El parque de juegos, the third zone (step 4 of the open world): action words
 The park west of Villa Sol, following "How to build a zone" (docs/WORLD_PLAN.md); it only uses universal words and its
 own (Villa Sol's *salta*, *gira* and *pelota* are met here when they aren't yet), so it can be the first place visited.

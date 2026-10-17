@@ -121,7 +121,8 @@ async function animals(browser) {
     await g.ev(() => { const p = G.field.player; p.x = 34; p.y = 21; G.field.snapCam(); }); await g.frames(20); await g.shot('pigs');
     const kinds = await g.ev(() => { const ok = G.zones.timeOk; G.zones.timeOk = () => true; G.field.zoo = null; const k = G.animals.here().map(a => a.kind); G.zones.timeOk = ok; return k; });
     check('animals: at dawn a rooster by the henhouse; at night a possum and fireflies in the orchard', kinds.includes('gallo') && kinds.includes('tlacuache') && kinds.includes('luciernaga'), JSON.stringify(kinds));
-    const dead = await g.ev(() => { const a = G.animals.find('tlacuache'), f = G.field; G.animals.tapped(f, a); return a.react > 0; });
+    const dead = await g.ev(() => { G.words.meet('tlacuache', 't'); const a = G.animals.find('tlacuache'), f = G.field; G.animals.tapped(f, a); return a.react > 0; });
+    await g.until(() => free(), null, 'the possum named');
     check('animals: the possum plays dead when tapped (its react frame)', dead);
     await g.ev(() => { G.debug.sunsetAt = 0; G.field.zoo = null; const p = G.field.player; p.x = 19; p.y = 11; G.field.snapCam(); });
     await g.frames(240); await g.shot('night');
@@ -174,14 +175,12 @@ async function story(browser) {
     await goto(g, 'abuelos', 11, 15);
     check('story 2: Abuelo has it in his bubble', await g.ev(() => !!G.field.npc('abuelo').alert()));
     await tapNpc(g, 'abuelo', 1, 0);
-    await g.until(() => !!G.abuelos.mud(), null, 'mud all over you', 90000).catch(() => {});
     await drv(g, () => !!G.abuelos.mud(), 'the dog in the mud');
     await g.frames(20); await g.shot('muddy');
     await drv(g, () => free() && G.chapters.state().step.abuelos2 === 1, 'Abuelo: el abuelo, el cerdo');
     check('story 2: el abuelo and el cerdo met; mud on your hands, feet and nose', await g.ev(() => G.words.met('abuelo') && G.words.met('cerdo') && G.abuelos.mud().mano && G.abuelos.mud().nariz));
     const pump = await g.ev(() => G.MAPDATA.abuelos.pos.pump);
     await tapAt(g, pump[0], pump[1], pump[0] + 1, pump[1]);
-    await g.until(() => G.field.player.ab && G.field.player.ab.wash, null, 'washing', 90000).catch(() => {});
     await drv(g, () => G.field.player.ab && G.field.player.ab.wash, 'washing');
     await g.frames(16); await g.shot('washing');
     await drv(g, () => free() && G.chapters.done('abuelos2'), 'wash: mano, pie, nariz');
@@ -201,7 +200,6 @@ async function story(browser) {
     await g.ev(() => { const p = G.field.player; p.x = 19; p.y = 14; G.field.snapCam(); }); await g.frames(40); await g.shot('baby_follows');
     check('story 3: Abuela waits on the porch', await g.ev(() => !!G.field.npc('abuela')));
     await tapAt(g, 19, 11, 19, 12);
-    await g.until(() => G.top().constructor.name === 'FamilyPhoto', null, 'the photo', 90000).catch(() => {});
     await drv(g, () => G.top().constructor.name === 'FamilyPhoto' && G.top().t > 60, 'the photo');
     await g.shot('family_photo');
     await drv(g, () => free() && G.chapters.done('abuelos3'), 'the family photo');
@@ -235,7 +233,8 @@ async function dress(browser) {
     await g.frames(10); await g.shot('dressed_in_town');
     // tap yourself: "¿Qué toco?"
     await goto(g, 'abuelos', 19, 12);
-    await g.tapTile(19, 12);
+    await g.ev(() => { const d = G.pet.npc(G.field); if (d) { d.x = 23; d.y = 12; } });
+    await g.frames(4); await g.tapTile(19, 12);
     await g.until(() => G.top().constructor.name === 'Choice', null, '"¿Qué toco?"');
     check('body: tapping yourself here asks "¿Qué toco?" with body words', await g.ev(() => G.top().ch.every(c => ['mano', 'pie', 'nariz'].includes(c.word))));
     const k = await g.ev(() => G.top().ch.findIndex(c => c.word === 'nariz'));
@@ -247,7 +246,6 @@ async function dress(browser) {
     await g.ev(() => { G.abuelos.state().garden.d = G.words.day(); G.abuelos.state().garden.done = true; });
     check('body: Abuelo has Simón dice in his bubble', await g.ev(() => { const a = G.field.npc('abuelo').alert(); return a && a.icon === 'cabeza'; }));
     await tapNpc(g, 'abuelo', 1, 0);
-    await g.until(() => { const n = G.field.npc('abuelo'); return n.ab && G.frame - n.ab.f0 > 14; }, null, 'Abuelo touching', 60000).catch(() => {});
     await drv(g, () => { const n = G.field.npc('abuelo'); return n.ab && G.frame - n.ab.f0 > 14; }, 'Abuelo shows');
     await g.shot('abuelo_shows');
     await drv(g, () => free() && G.abuelos.state().simon.done, 'Simón dice');
@@ -269,7 +267,7 @@ async function dress(browser) {
 async function side(browser) {
   const { ctx, g } = await open(browser, 'abuelos-side', true);
   try {
-    await fresh(g, { map: 'abuelos_casa', x: 11, y: 5, words: ['abuela', 'camisa', 'mano', 'pie', 'tres', 'cuatro', 'abuelo'], done: ['abuelos1', 'abuelos2'] });
+    await fresh(g, { map: 'abuelos_casa', x: 11, y: 5, words: ['abuela', 'camisa', 'mano', 'pie', 'tres', 'cuatro', 'abuelo'], done: ['abuelos1', 'abuelos2', 'abuelos3'] });
     await idle(g, 'abuelos_casa');
     check('side: Abuela has cookies in her bubble', await g.ev(() => { const a = G.field.npc('abuela').alert(); return a && a.icon === 'galletas'; }));
     await tapNpc(g, 'abuela', 1, 0);
@@ -310,7 +308,7 @@ async function side(browser) {
 async function dog(browser) {
   const { ctx, g } = await open(browser, 'abuelos-dog', true);
   try {
-    await fresh(g, { x: 6, y: 12 });
+    await fresh(g, { x: 6, y: 12, done: ['abuelos1'] }); // (the socks on the line are chapter 1's until it's done)
     await idle(g);
     const spot = async (id, sx, sy) => { const sp = await g.ev(id => G.field.def.dogSpots.find(s => s.id === id).at, id); await tapAt(g, sp[0], sp[1], sx, sy); await g.until(id => !G.zones.dogReady(G.field.def.dogSpots.find(s => s.id === id)), id, 'the dog at ' + id, 60000); await g.until(() => free(), null, 'done'); };
     await spot('abuelos_huerto', 6, 12);

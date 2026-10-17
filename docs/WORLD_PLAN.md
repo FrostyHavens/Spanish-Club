@@ -188,16 +188,61 @@ turning wheel) are drawn by the zone in `drawUnder`, the riders by their own `dr
   puzzles (the playground, under the kite tree, the garden), favours for Ana, Pablo and Don Chuy, the yellow ball to pick
   up on the soccer field.
 
-### La casa de los abuelos (south-west) — family, the body, clothes
-- **Words:** el abuelo, la abuela, la familia, la mano, la cabeza, los ojos, la boca, la nariz, el pie, el sombrero,
-  los zapatos, la camisa, el vestido, la bufanda, el pastel.
-- **People:** Abuelo and Abuela (the child's own grandparents; Abuela Rosa in town is a different, town grandma), their
-  cottage (the placeholder shows its back: the front door and the inside come with the zone).
-- **Dog:** digs in the garden (a carrot, a bone) — in the placeholder; naps on the porch.
-- **Side quests:** dress up from the trunk (*¿el sombrero?*), Abuelo's glasses (find them), a cake with Abuela (count the
-  eggs: hens on the path), a family photo (who's who).
-- **Story:** Abuela's birthday: a cake, a present, everyone in the photo.
-- **Album (6):** vaca, cerdo, oveja, burro, pavo, **ratón** (rare: in the pantry at night).
+### La casa de los abuelos (south-west) — family, the body, clothes — **BUILT** (2026-10-17, `content/es/zone-abuelos.js`)
+One big map (40x30) and the cottage inside (20x11). The path comes in at the top (30, 0) past the bus stop and the
+signpost (`camino_abuelos`' south exit now lands at (30, 1)); the grandparents' cottage in the middle with its front
+door at (19, 9) (it opens: `abuelos_casa`), the orchard behind it (tall trees, apples; a swing hangs from the tree east
+of the cottage), the henhouse and the hens' run on the left, the vegetable garden (three rows of beds) and the water
+pump, the clothesline (drawn by the zone: the story's clothes, then towels, a sheet and a sock), the duck pond, the
+paddock (the cow, the donkey), the turkeys' yard, the sheep's meadow and the pigs' muddy pen. Inside: the living room
+(the family photos on the wall, the fireplace, the sofa, a rug, the baby cousin), the kitchen (Abuela, the stove, the
+table where cookies cool, a mouse and its hole), the bedroom (the wardrobe with its mirror, two beds, the dressing-up
+trunk). At night the windows glow, fireflies come out over the orchard. New tiles (`src/tiles.js`, Unicode codes:
+the ASCII ones are used up): `ñ` garden bed (lettuce, carrots, tomatoes, corn along the row), `á` henhouse (2 tiles),
+`í` the pigs' mud, `é` the water pump and trough, `ó` the wardrobe (an indoor wall), `ú` the dressing-up trunk.
+- **Words (25, four notebook pages):** *La familia* (`familia`): la abuela, la familia, el abuelo, el bebé (`bebe`);
+  *Mi cuerpo* (`cuerpo`): la mano, el pie, la nariz, los ojos, la boca, la cabeza; *La ropa* (`ropa`): la camisa, el
+  pantalón (`pantalon`), los calcetines, el vestido, los zapatos, el sombrero, la chamarra (Mexican; alt *chaqueta*);
+  *En casa de los abuelos* (`rancho`): la vaca, el cerdo (alt *puerco, cochino*), la oveja (alt *borrego*), el burro,
+  el pavo (alt *guajolote*), el ratón (`raton`), el gallo, el tlacuache (alt *zarigüeya*). Las orejas, el papá and the
+  cake were left out (word count); the cookies and eggs are pictures (*huevo* and *galleta* stay town words, said with
+  `[huevo]` markup: met or not). Clothes pictures take `col` (the colour you wear).
+- **People:** Abuela (grey braid, pink, an apron: her kitchen; for the photo she waits on the porch), Abuelo (a straw
+  hat, a white moustache, blue: the garden), the baby cousin (`bebe`: a little one in yellow, drawn small, crawling on the
+  rug). Abuela Rosa in town is a different grandma. Lola meets *la vaca* and points at the front door. No hearts yet.
+- **Clothes you wear** (`G.abuelos.wear`, saved in `G.state.abuelos.wear`): a cosmetic over the creator's look, on every
+  map and the portrait (`G.st.playerSpec` is wrapped): the shirt is the outfit colour, the dress a robe, the jacket goes
+  over the shirt (its collar shows), trousers the pants colour, shoes the boots (socks show when there are no shoes),
+  the hat a `head: 'hat'`. `AB.putOn(f, id, col)` (sparkle, the sprite changes at once), `AB.takeOff`, `AB.mirror()`
+  (a full-screen mirror). The trunk (any time after chapter 1): *¿Qué te pones?* picture cards in colour (mic on; the
+  same one again: the next colour), then the mirror, and the first time each day a fashion show (the family claps).
+- **The body is DONE** (`G.abuelos.act / .start / .all`, drawn by the zone's `drawAB` as `e.drawSelf`): *toca* a part
+  (both hands on the head, over the eyes, a finger on the nose or the mouth, clapping hands, crouching to the feet),
+  `wash: true` (rubbing, drops of water), `aplaude`, `tiembla` (cold), `jala` (a tug), `saluda`; the dog does a
+  matching trick. Tap yourself here: *¿Qué toco?* (from two met body words). `AB.chooseBody` is the free choice.
+- **Album (8):** vaca and burro (`walk`, a `react` frame: the cow moos, the donkey brays), cerdo (`walk` on the mud: it
+  rolls), oveja (`walk`), pavo (`fly`: they flap off when you or the dog come near), ratón (`scuttle` on the kitchen
+  floor), **gallo** (rare: in the morning by the henhouse), **tlacuache** (rare: at night in the orchard; tapped, it
+  plays dead). Lola names an unmet one when it's tapped.
+- **Story (line `abuelos`):** 1 *¡A vestirse!* (Abuela in her kitchen: la abuela; the family photo is today, your
+  clothes are drying on the line: la camisa, el pantalón, el vestido, put on one by one, trousers or the dress your
+  choice; the dog snatches the socks and runs: a tug of war, los calcetines; the mirror in the bedroom), 2 *¡A lavarse!*
+  (Abuelo: el abuelo, el cerdo; the dog rolls in the pigs' mud and jumps on you: mud on your hands, feet and nose; at
+  the pump Abuelo shows each, you wash it: la mano, el pie, la nariz), 3 *¡La foto de la familia!* (la familia; the
+  trunk: los zapatos, el sombrero; the baby has crawled off: el bebé, little hand prints to the pond, she crawls after
+  you; everyone on the porch, the camera on its tripod, *¿Cuántos somos?*, *¡whisky!*: a full-screen photo; it hangs on
+  the wall after).
+- **Side quests (`G.state.abuelos`):** Abuela's cookies (after chapter 1: three eggs from the hens' run, *¿Cuántos?*,
+  wash your hands, she bakes; a cookie for you or the dog; daily), the photo wall (after chapter 3: *¿Quién es?*),
+  Abuelo's garden (after chapter 2: his basket, four beds, a carrot for you; daily), Simón dice with Abuelo (after
+  chapter 2: los ojos, la boca, la cabeza met one at a time (he shows, you do), then *¡Simón dice: toca tu...!* to
+  listen, then you are Simón; daily), Abuelo's jacket at night (*¡Brrr!*: la chamarra), the trunk's fashion show, the
+  swing in the orchard.
+- **Dog:** digs in the garden (a carrot), steals a sock off the line (dog-spot act `tug`, the zone's own: a tug of war,
+  three pulls; from chapter 1's end), chases the turkeys (`chase`).
+- **Also:** six hiding places (the hens' hay, the henhouse, the paddock's hay, the pump, the swing tree, a rock by the
+  pond), four page puzzles (the body page by the pump, the animals by the paddock, the family under the photos, the
+  clothes in the bedroom), favours for Abuela and Abuelo, a ghost-hand demo (`pickegg`), apples in the orchard.
 
 ### La montaña (east) — weather
 - **Words:** la montaña, el sol, la lluvia, la nieve, el viento, la nube, el arcoíris, hace frío, hace calor, el río,
@@ -328,6 +373,18 @@ Files a zone step touches (and nothing else unless the engine truly needs it):
   `CH.active(id)` when it moves people.
 - **Pitfalls met here:** a picture's `col` is a colour (`'#f8c830'`), not a colour word (the black ball); test waits on
   a dialogue need `g.drive`, not `g.until` (a TextBox waits for taps).
+- **From La casa de los abuelos:** a zone map you go INTO (a `D` door on the house's front with an explicit exit, the
+  inside as a second map; people on either map by an npc `cond` (Abuela inside, on the porch for the photo); a beat on
+  another map is found by the guide over the exits); the player's look can be dressed (`G.st.playerSpec` wrapped, memoized
+  by look + clothes; set `f.player.spec` again after a change); `G.abuelos.act` (body actions) next to `G.juegos.act`
+  (verbs) — both draw people through `e.drawSelf` (keep the sprite at `-24` from the feet, as field.js); a dog-spot act
+  of the zone's own (`tug`) caught in the zone's `Z.search` wrapper before zones.js's default dig, and `Z.dogReady`
+  wrapped to hold it back until a chapter is done; a story place under the dog is the place, not his menu (the zone's
+  `Z.special` includes `CH.spotAt`); full-screen moments (`Mirror`, `FamilyPhoto`) are listed in `tools/harness.js`
+  `drive` so tests tap through them. Map tile codes are Unicode now (`ñ á í é ó ú`): the ASCII ones are all used.
+- **Pitfalls met here:** a side quest's bubble waits behind the next chapter's (CH.alert comes first: mark the chapters
+  done in a side-quest test); `g.until(...).catch(() => {})` in a test waits its whole timeout when the thing happens
+  inside a dialogue (drive instead).
 - `G.chapters.allWrittenDone()` and the badge rows (Misiones, the diploma) are Villa Sol's line only; a zone's chapters
   get their badge card when done but aren't listed there yet (a later step could add a row per zone).
 - A zone's people talk: story, then their side quest, then `G.errands.talk` (presents, favours, "who'd love it"), then

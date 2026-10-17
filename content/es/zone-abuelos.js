@@ -587,6 +587,7 @@
     if (met('calcetines')) G.world.name('calcetines', p.x * TL + 12, p.y * TL - 6);
     G.st.autosave(); void sockDog;
   }
+  const dogReady0 = Z.dogReady; Z.dogReady = sp => (sp && sp.act === 'tug' && G.state && !CH.done('abuelos1') ? false : dogReady0(sp)); // (the socks on the line are the story's until chapter 1 is done)
   const zSearch = Z.search, zSpecial = Z.special, zGoal = Z.goal, zUnder = Z.drawUnder, zTop = Z.drawTop, zTask = Z.task;
   Z.search = (f, x, y) => {
     const s = sideAt(f, x, y); if (s) { const cs = CH.spotAt(f, x, y); return cs ? null : s.run(f); }
@@ -648,6 +649,7 @@
     if (!G.state || !inZone(f)) return;
     const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
     if (outside(f)) {
+      drawLine(f, ctx, cx, cy); drawSwing(f, ctx, cx, cy); // (under the people: you walk in front of the washing, you sit on the swing)
       const c = cookies();
       if (cookiesOpen() && c.on) EGGS.forEach(([x, y], i) => { if (!(c.got || {})[i]) G.drawIcon16(ctx, 'huevo', x * TL + 4 - cx, y * TL + 8 - cy, 0.75); });
       const g = garden();
@@ -668,7 +670,6 @@
     if (!G.state || !inZone(f)) return;
     const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
     if (outside(f)) {
-      drawLine(f, ctx, cx, cy); drawSwing(f, ctx, cx, cy);
       if (AB.tug && AB.tug.dog) { const n = AB.tug.dog; G.drawIcon16(ctx, { icon: 'calcetines', col: '#f8c830' }, n.x * TL + 10 + (n.ox || 0) - cx, n.y * TL + 6 + (n.oy || 0) - cy, 0.6); }
       // night: a blue dusk, the cottage's windows glow
       const dark = (G.day ? G.day.glow() : 0) * 0.6;
@@ -725,7 +726,7 @@
     poke: (f, x, y) => { const c = f.map.get(x, y); if (c === 'í') { G.audio.sfx('swing'); for (let i = 0; i < 4; i++) puff('crumb', x * TL + 12, y * TL + 12, { vy: -1, vx: (Math.random() - 0.5) * 2, g: 0.15, life: 20 }); return true; } if (c === 'ñ') { G.audio.sfx('select'); return true; } return false; },
     npcs: [
       K.canelo(IN[0], 3), Z.lola(...P('abuelos', 'lola'), 'abuelos'), Z.nico(...P('abuelos', 'nico')),
-      person('abuelo', ...P('abuelos', 'abuelo'), 'down', abueloSide, abueloLine, { wander: 1 }),
+      person('abuelo', ...P('abuelos', 'abuelo'), 'down', abueloSide, abueloLine, { fixed: true }),
       Object.assign(person('abuela', ...P('abuelos', 'abuela'), 'down', abuelaSide, abuelaLine, { fixed: true }), { cond: () => !!photoTime() }),
     ],
   };
