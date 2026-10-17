@@ -234,6 +234,8 @@ Files a zone step touches (and nothing else unless the engine truly needs it):
 - **`meetW(id, o)`** (`G.playa.meetW`): introduce a word if it isn't met, or ask it as a question if it was met in
   another zone: write every intro this way, since any zone can come first. Saved flags must not be `day()` (day 0 is
   falsy): store `true` or `{ d: day }`.
+- `G.chapters.allWrittenDone()` and the badge rows (Misiones, the diploma) are Villa Sol's line only; a zone's chapters
+  get their badge card when done but aren't listed there yet (a later step could add a row per zone).
 - A zone's people talk: story, then their side quest, then `G.errands.talk` (presents, favours, "who'd love it"), then
   their line (`person()` in the beach file). Bubbles: use `{ icon }` objects, not bare word ids (a known word's id
   shows a "?").

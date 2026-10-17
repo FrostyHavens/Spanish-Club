@@ -73,7 +73,8 @@
   CH.written = id => !!scripts[id];
   CH.writtenIds = () => CH.ids().filter(CH.written);
   // the badge rows (Misiones, the diploma): the chapters (and any older errands still listed in tailOrder: none now)
-  Object.defineProperty(D(), 'badgeOrder', { configurable: true, get: () => CH.writtenIds().concat(D().tailOrder || []) });
+  // (Villa Sol's line: the diploma's story; a zone's chapters show their badge when done but don't join these rows)
+  Object.defineProperty(D(), 'badgeOrder', { configurable: true, get: () => CH.writtenIds().filter(id => CH.lineOf(id) === 'villa').concat(D().tailOrder || []) });
 
   // ---------- saved state ----------
   const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -93,7 +94,7 @@
     if (!G.state || CH.current(line)) return null;
     return CH.ids().find(id => CH.lineOf(id) === line && !CH.done(id)) || null;
   };
-  CH.allWrittenDone = () => !!G.state && CH.writtenIds().every(CH.done);
+  CH.allWrittenDone = (line = 'villa') => !!G.state && CH.writtenIds().filter(id => CH.lineOf(id) === line).every(CH.done); // (a line's story: Villa Sol's by default)
   CH.data = id => { const d = st().data; if (!isObj(d[id])) d[id] = {}; return d[id]; };
   CH.ctx = id => ({ id, def: CH.def(id), data: CH.data(id), step: st().step[id] | 0 });
   CH.beat = id => { id = id || CH.current(); const sc = id && scripts[id]; return sc ? sc.beats[st().step[id] | 0] || null : null; };

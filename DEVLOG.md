@@ -29,7 +29,9 @@ words and the beach's own, so it can be the first place a child explores.
   splashes in the waves and chases the gulls (new dog-spot act `chase`); he eats ice cream. Six hiding places, two page
   puzzles, favours for the beach's people.
 - **Framework:** a guide tier for a zone's task going on (`G.zones.task`: the pail in your hands beats other bubbles), a
-  zone's own ghost-hand demos (`G.zones.demos`: `fillpail`), `G.animals.takeOff / leap / tone / noise`. Notes for the
+  zone's own ghost-hand demos (`G.zones.demos`: `fillpail`), `G.animals.takeOff / leap / tone / noise`. The first zone
+  chapters showed that "every written chapter" meant Villa Sol's story: `G.chapters.allWrittenDone(line = 'villa')`
+  and the badge rows (Misiones, the diploma) are Villa Sol's line now (a zone's chapter still gets its badge card). Notes for the
   next zones in docs/WORLD_PLAN.md ("Framework additions").
 - Tests: `tools/test-zone-playa.js` (new: walking in and the bus, every place reachable, the animals and Lola's naming,
   the rare ones, the album page, the story by taps, the side quests and the demo, the dog's three things and carrying,
