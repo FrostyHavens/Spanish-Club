@@ -469,18 +469,82 @@ m.pos['hormigas'] = [13, 11, 10, 2]; m.pos['rocas'] = [1, 14, 11, 8]; m.pos['are
 m.pos['estanque'] = [2, 16, 7, 4]; m.pos['conejos'] = [2, 8, 9, 3]
 m.mark('hide1', 30, 11); m.mark('hide2', 21, 3); m.mark('hide3', 29, 8); m.mark('hide4', 32, 18); m.mark('hide5', 3, 12); m.mark('hide6', 11, 10)
 out['juegos'] = m
-# La casa de los abuelos: a garden with a fence, the cottage seen from its back (its door is round the front: a later
-# step adds the front and the inside), an apple tree, a hen run
-m = entrance(22, 14, '.', 'T')
-m.vline(10, 0, 12, ','); m.hline(5, 16, 9, ',')
-m.house(6, 2, 7, 'R', walls='WNWNWNW'); m.put(9, 4, 'N')   # (no door on this side)
-m.rect(14, 2, 6, 1, 'F'); m.rect(14, 2, 1, 5, 'F'); m.rect(19, 2, 1, 5, 'F'); m.rect(14, 6, 6, 1, 'F'); m.put(16, 6, '.')
-for x, y in [(2, 6), (3, 7), (4, 11), (16, 11), (18, 9), (2, 2)]: m.put(x, y, 'o')
-m.put(3, 3, 'f'); m.put(18, 11, 'P')
-m.mark('in', 10, 1); m.mark('north', 10, 0); m.mark('post', 11, 6); m.mark('bus', 12, 10); m.mark('busIn', 12, 9)
-m.mark('dog', 4, 9); m.mark('lola', 8, 8); m.mark('nico', 15, 10); m.mark('manzana', 3, 4); m.pos['gallinas'] = [15, 3, 4, 3]
-m.mark('hide1', 3, 3); m.mark('hide2', 18, 11); m.mark('hide3', 2, 6)
+# La casa de los abuelos (the zone, docs/WORLD_PLAN.md): a cosy countryside home. The path comes in from Villa Sol at
+# the top (30, 0) past the bus stop and the signpost; the grandparents' cottage in the middle (its front door faces
+# the yard: you can go in), the orchard behind it (tall fruit trees, a swing hanging from one), the henhouse and the
+# hens' run on the left, the vegetable garden (rows of carrots, lettuces, tomatoes, corn) with the water pump, the
+# clothesline with the washing drying (the zone draws it), the duck pond, the paddock (the cow, the donkey) on the
+# right, the turkeys' yard, the sheep's meadow and the pigs' muddy pen at the bottom right.
+# Codes (src/tiles.js): ñ a garden bed (vegetables), á the henhouse, í mud (the pigs'), é the water pump and its
+# trough; inside the cottage: ó the wardrobe, ú the dressing-up trunk.
+m = M(40, 30, '.')
+m.border('T', 1)
+for x, y in [(1, 1), (38, 1), (1, 28), (38, 28), (2, 28), (37, 28), (1, 27), (38, 27), (2, 1), (37, 1)]: m.put(x, y, 'T')
+# the paths: in from the north at (30, 0), down to the yard; the main path across; to the door, the garden, the pond
+m.vline(30, 0, 12, ','); m.hline(4, 36, 12, ',')
+m.vline(19, 10, 12, ',')                                  # the front door's path
+m.vline(13, 12, 20, ','); m.hline(4, 13, 20, ',')         # to the garden and the pump
+m.vline(24, 12, 21, ',')                                  # to the pond
+m.vline(34, 12, 22, ',')                                  # to the pigs
+# the cottage: a red roof, cream walls with windows, the front door at (19, 9)
+m.house(13, 7, 13, 'R', walls='WNWNWNWNWNWNW')            # roof 7-8, walls on row 9, the door in the middle (19, 9)
+m.mark('door', 19, 9); m.mark('porch', 19, 10)
+m.put(14, 10, 'P'); m.put(24, 10, 'P'); m.put(16, 10, 'J')   # flower pots, the porch bench
+for x in (15, 17, 21, 22, 23): m.put(x, 10, 'o')
+# the orchard behind the cottage: tall fruit trees (apples drawn on some), grass and flowers between
+for x, y in [(3, 2), (7, 1), (11, 2), (15, 1), (19, 2), (23, 1)]: m.put(x, y, '('); m.put(x, y + 1, ')')
+for x, y in [(5, 4), (9, 4), (13, 4), (17, 5), (21, 4), (2, 5), (25, 2)]: m.put(x, y, 'o')
+# the swing tree (east of the cottage): a tall tree, the swing hangs beside its trunk (the zone draws it)
+m.put(27, 7, '('); m.put(27, 8, ')'); m.mark('swing', 28, 9)
+# the henhouse and the hens' run (left of the cottage)
+m.hline(2, 9, 7, 'F'); m.vline(2, 7, 11, 'F'); m.vline(9, 7, 11, 'F'); m.hline(2, 9, 11, 'F'); m.put(6, 11, '.')
+m.put(3, 8, 'á'); m.put(4, 8, 'á'); m.mark('coop', 3, 8)
+m.put(8, 8, 'O')
+m.pos['gallinero'] = [3, 9, 6, 2]
+# the vegetable garden (huerto): four beds with a path round them, the water pump by the path
+for y in (14, 16, 18):
+    for x in range(3, 11): m.put(x, y, 'ñ')
+m.put(12, 16, 'é'); m.mark('pump', 12, 16); m.mark('pumpAt', 13, 16)
+m.mark('huerto', 3, 14)
+# the clothesline: two posts, the washing between them (drawn by the zone; you walk under it)
+m.put(15, 16, 'F'); m.put(22, 16, 'F'); m.mark('lineL', 15, 16); m.mark('lineR', 22, 16)
+# the duck pond
+for y, (x0, x1) in {22: (16, 21), 23: (15, 22), 24: (15, 22), 25: (16, 21)}.items(): m.hline(x0, x1, y, 'w')
+for x, y in [(14, 22), (23, 25), (17, 26)]: m.put(x, y, 'r')
+# the paddock (the cow and the donkey): fenced, a gate on the path, hay bales
+m.hline(26, 38, 14, 'F'); m.vline(26, 14, 20, 'F'); m.hline(26, 33, 20, 'F'); m.put(34, 14, ','); m.put(34, 20, ',')
+m.hline(35, 38, 20, 'F')
+m.put(37, 15, 'O'); m.put(36, 15, 'O'); m.put(27, 19, 'O')
+# the pigs' pen: a muddy patch behind a fence (bottom right)
+m.hline(30, 38, 22, 'F'); m.vline(30, 22, 27, 'F'); m.hline(30, 38, 27, 'F'); m.put(34, 22, ',')
+for y in range(23, 27):
+    for x in range(31, 38):
+        if (x, y) not in [(31, 23), (37, 26), (37, 23)]: m.put(x, y, 'í')
+# the sheep's meadow (bottom, between the pond and the pen) and flowers about
+for x, y in [(26, 24), (28, 26), (25, 27), (11, 24), (8, 26), (4, 23), (6, 22), (10, 22), (27, 22), (36, 9), (33, 4), (37, 6), (35, 2), (24, 5)]:
+    if m.g[y][x] == '.': m.put(x, y, 'o')
+for x, y in [(2, 24), (3, 27), (11, 27), (36, 4), (38, 10), (12, 22), (28, 28)]:
+    if m.g[y][x] == '.': m.put(x, y, 'f')
+m.mark('in', 30, 1); m.mark('north', 30, 0); m.mark('post', 31, 2); m.mark('bus', 28, 2); m.mark('busIn', 28, 3)
+m.mark('lola', 32, 5); m.mark('nico', 9, 22); m.mark('abuela', 18, 11); m.mark('abuelo', 9, 15)
+m.mark('dog', 6, 13); m.mark('pavosDog', 33, 7); m.mark('sock', 18, 17)
+m.pos['vacas'] = [27, 15, 7, 4]; m.pos['burros'] = [33, 16, 5, 3]; m.pos['ovejas'] = [24, 23, 6, 5]; m.pos['cerdos'] = [31, 23, 7, 4]
+m.pos['pavos'] = [31, 4, 7, 6]; m.pos['huertoA'] = [2, 13, 10, 7]; m.pos['huerta'] = [2, 1, 24, 5]; m.pos['estanque'] = [15, 22, 8, 4]
+m.pos['rana'] = [15, 23, 8, 2]; m.pos['conejos'] = [3, 21, 8, 5]; m.pos['gallo'] = [3, 9, 6, 2]; m.pos['flores'] = [14, 10, 10, 1]
+m.mark('hide1', 8, 8); m.mark('hide2', 4, 8); m.mark('hide3', 27, 19); m.mark('hide4', 12, 16); m.mark('hide5', 27, 8); m.mark('hide6', 23, 25)
 out['abuelos'] = m
+# the cottage, inside: the living room (photos on the wall, the fireplace, the sofa, a rug), the kitchen (the stove,
+# the counter, the table, a mouse's hole), the bedroom (the wardrobe, the grandparents' beds, the dressing-up trunk)
+c = M(20, 11, 'i'); c.border('I', 1)
+c.vline(7, 1, 9, 'I'); c.vline(13, 1, 9, 'I'); c.put(7, 6, 'i'); c.put(7, 7, 'i'); c.put(13, 6, 'i'); c.put(13, 7, 'i')
+c.put(1, 1, 'n'); c.put(5, 1, 'v'); c.rect(2, 4, 3, 1, 'u'); c.rect(2, 6, 4, 3, 'q'); c.put(1, 9, 'P')
+c.put(8, 1, 'e'); c.put(9, 1, 'e'); c.put(10, 1, 'v'); c.put(11, 1, 'e'); c.put(12, 1, 'n'); c.rect(9, 4, 3, 1, 't')
+c.put(14, 1, 'ó'); c.put(16, 1, 'j'); c.put(16, 2, 'j'); c.put(17, 1, 'j'); c.put(17, 2, 'j'); c.put(17, 7, 'ú'); c.put(18, 9, 'P')
+c.put(4, 10, 'i'); c.mark('door', 4, 10)
+c.mark('photos', 2, 0); c.mark('mirror', 15, 0); c.mark('trunk', 17, 7); c.mark('wardrobe', 14, 1); c.mark('table', 9, 4)
+c.mark('abuela', 10, 3); c.mark('bebe', 3, 7); c.mark('hole', 12, 9)
+c.pos['cocina'] = [8, 6, 5, 4]; c.pos['sala'] = [1, 5, 6, 4]
+out['abuelos_casa'] = c
 # La montaña: a meadow under the peaks, snow up top (roll), boulders, a goat
 m = entrance(22, 14, '.', 'M')
 m.rect(1, 1, 20, 2, 'M'); m.rect(1, 3, 20, 2, 'h')

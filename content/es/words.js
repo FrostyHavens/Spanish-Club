@@ -34,9 +34,13 @@
     acciones: { name: '¡A jugar!', en: 'Let\'s play! (action words)' },
     juegosparque: { name: 'El parque de juegos', en: 'The playground' },
     bichos: { name: 'Bichos del parque', en: 'Park critters' },
+    familia: { name: 'La familia', en: 'The family' },
+    cuerpo: { name: 'Mi cuerpo', en: 'My body' },
+    ropa: { name: 'La ropa', en: 'Clothes' },
+    rancho: { name: 'En casa de los abuelos', en: 'At the grandparents\' (their animals)' },
   };
   // the notebook's page order: roughly the order the pages appear in the story
-  C.topicOrder = ['saludos', 'mascota', 'animales', 'sonidos', 'comida', 'colores', 'granja', 'pueblo', 'cosas', 'sentir', 'numeros', 'playa', 'mar', 'bosque', 'fauna', 'acciones', 'juegosparque', 'bichos'];
+  C.topicOrder = ['saludos', 'mascota', 'animales', 'sonidos', 'comida', 'colores', 'granja', 'pueblo', 'cosas', 'sentir', 'numeros', 'playa', 'mar', 'bosque', 'fauna', 'acciones', 'juegosparque', 'bichos', 'familia', 'cuerpo', 'ropa', 'rancho'];
 
   C.words = {
     // ---- Saludos ----
@@ -188,6 +192,35 @@
     lombriz: { es: 'la lombriz', en: 'the worm', topic: 'bichos', icon: 'lombriz', pl: 'lombrices', alt: 'lombricita / gusano' },
     grillo: { es: 'el grillo', en: 'the cricket', topic: 'bichos', icon: 'grillo', pl: 'grillos', alt: 'grillito' },
     colibri: { es: 'el colibrí', en: 'the hummingbird', topic: 'bichos', icon: 'colibri', pl: 'colibríes', alt: 'colibríes / chuparrosa' },
+    // ---- La familia (content/es/zone-abuelos.js): the child's own grandparents, the baby cousin; Mexican Spanish ----
+    abuela: { es: 'la abuela', en: 'grandma', topic: 'familia', icon: 'abuela', alt: 'abuelita / mi abuela / nana' },
+    abuelo: { es: 'el abuelo', en: 'grandpa', topic: 'familia', icon: 'abuelo', alt: 'abuelito / mi abuelo / tata' },
+    bebe: { es: 'el bebé', en: 'the baby', topic: 'familia', icon: 'bebe', alt: 'la bebé / bebito / bebita / nene / beba' },
+    familia: { es: 'la familia', en: 'the family', topic: 'familia', icon: 'familia', alt: 'mi familia / familia' },
+    // ---- Mi cuerpo: touched, washed and said in Simón dice ----
+    cabeza: { es: 'la cabeza', en: 'the head', topic: 'cuerpo', icon: 'cabeza', alt: 'cabecita / mi cabeza' },
+    ojos: { es: 'los ojos', en: 'the eyes', topic: 'cuerpo', icon: 'ojos', alt: 'ojo / ojitos / mis ojos / el ojo' },
+    nariz: { es: 'la nariz', en: 'the nose', topic: 'cuerpo', icon: 'nariz', alt: 'naricita / mi nariz / narices' },
+    boca: { es: 'la boca', en: 'the mouth', topic: 'cuerpo', icon: 'boca', alt: 'boquita / mi boca' },
+    mano: { es: 'la mano', en: 'the hand', topic: 'cuerpo', icon: 'mano', pl: 'manos', alt: 'manos / manita / manitas / mis manos' },
+    pie: { es: 'el pie', en: 'the foot', topic: 'cuerpo', icon: 'pie', pl: 'pies', alt: 'pies / piecito / piecitos / mis pies' },
+    // ---- La ropa: put on in the dressing-up trunk (and worn everywhere after) ----
+    camisa: { es: 'la camisa', en: 'the shirt', topic: 'ropa', icon: 'camisa', pl: 'camisas', alt: 'playera / camiseta / blusa / camisita' },
+    pantalon: { es: 'el pantalón', en: 'the trousers', topic: 'ropa', icon: 'pantalon', pl: 'pantalones', alt: 'pantalones / pants' },
+    calcetines: { es: 'los calcetines', en: 'the socks', topic: 'ropa', icon: 'calcetines', alt: 'calcetín / el calcetín / calcetas / calcetitas' },
+    vestido: { es: 'el vestido', en: 'the dress', topic: 'ropa', icon: 'vestido', pl: 'vestidos', alt: 'vestidito' },
+    zapatos: { es: 'los zapatos', en: 'the shoes', topic: 'ropa', icon: 'zapatos', alt: 'zapato / el zapato / zapatitos / tenis' },
+    sombrero: { es: 'el sombrero', en: 'the hat', topic: 'ropa', icon: 'sombrero', pl: 'sombreros', alt: 'sombrerito / gorro' },
+    chamarra: { es: 'la chamarra', en: 'the jacket', topic: 'ropa', icon: 'chamarra', alt: 'chaqueta / chamarrita / suéter' },
+    // ---- En casa de los abuelos: their animals (the album) ----
+    vaca: { es: 'la vaca', en: 'the cow', topic: 'rancho', icon: 'vaca', pl: 'vacas', alt: 'vaquita / vacas' },
+    cerdo: { es: 'el cerdo', en: 'the pig', topic: 'rancho', icon: 'cerdo', pl: 'cerdos', alt: 'puerco / cochino / marrano / cochinito / cerdito / puerquito' },
+    oveja: { es: 'la oveja', en: 'the sheep', topic: 'rancho', icon: 'oveja', pl: 'ovejas', alt: 'borrego / borrega / borreguito / ovejita' },
+    burro: { es: 'el burro', en: 'the donkey', topic: 'rancho', icon: 'burro', pl: 'burros', alt: 'burrito / burra' },
+    pavo: { es: 'el pavo', en: 'the turkey', topic: 'rancho', icon: 'pavo', pl: 'pavos', alt: 'guajolote / guajolota / pavito' },
+    raton: { es: 'el ratón', en: 'the mouse', topic: 'rancho', icon: 'raton', pl: 'ratones', alt: 'ratoncito / ratones / ratita' },
+    gallo: { es: 'el gallo', en: 'the rooster', topic: 'rancho', icon: 'gallo', pl: 'gallos', alt: 'gallito' },
+    tlacuache: { es: 'el tlacuache', en: 'the possum', topic: 'rancho', icon: 'tlacuache', pl: 'tlacuaches', alt: 'tlacuachito / zarigüeya / tacuache' },
   };
   C.numberWords = ['uno', 'dos', 'tres', 'cuatro', 'cinco'];
   C.numberWords10 = ['uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'];
@@ -212,6 +245,10 @@
     acciones: { topic: 'acciones', words: ['corre', 'baila', 'sube', 'baja', 'rapido', 'despacio', 'empuja', 'lanza', 'atrapa'] },
     juegosparque: { topic: 'juegosparque', words: ['columpio', 'papalote', 'resbaladilla', 'subibaja', 'burbujas', 'cuerda'] },
     bichos: { topic: 'bichos', words: ['paloma', 'catarina', 'hormiga', 'abeja', 'lagartija', 'lombriz', 'grillo', 'colibri'] },
+    familia: { topic: 'familia', words: ['abuela', 'familia', 'abuelo', 'bebe'] },
+    cuerpo: { topic: 'cuerpo', words: ['mano', 'pie', 'nariz', 'ojos', 'boca', 'cabeza'] },
+    ropa: { topic: 'ropa', words: ['camisa', 'pantalon', 'calcetines', 'vestido', 'zapatos', 'sombrero', 'chamarra'] },
+    rancho: { topic: 'rancho', words: ['vaca', 'cerdo', 'oveja', 'burro', 'pavo', 'raton', 'gallo', 'tlacuache'] },
   };
   C.pageOrder = C.topicOrder.slice();
   // where each page's puzzle sparkle sits (maps.js reads this): map -> 'x,y' -> page
@@ -225,6 +262,8 @@
     playa: { '21,7': 'playa', '12,10': 'mar' }, // (La playa: by the lifeguard's tower, and in the middle of the beach)
     bosque: { '16,15': 'bosque', '22,6': 'fauna' }, // (El bosque: in the clearing, and in the meadow by the cave path)
     juegos: { '20,8': 'acciones', '27,4': 'juegosparque', '35,17': 'bichos' }, // (El parque de juegos: the playground, under the kite tree, the garden)
+    abuelos: { '14,14': 'cuerpo', '29,13': 'rancho' }, // (La casa de los abuelos: by the pump, by the paddock)
+    abuelos_casa: { '5,5': 'familia', '15,5': 'ropa' }, // (inside: under the family photos, in the bedroom)
   };
 
   // ---------- the 21 chapters, in order (docs/CURRICULUM.md section 4) ----------

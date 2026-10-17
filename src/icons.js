@@ -610,6 +610,148 @@
       p.ell(7, 9.5, 3, 2.4, '#38b068'); p.tri(2, 13, 5, 10, 5, 13, '#287048');
       p.disc(10, 7.5, 2, '#48c880'); p.rect(9, 9, 2, 2, '#e02848'); p.put(10, 7, '#101010'); p.rect(12, 8, 4, 1, '#302020');
     },
+    // ---- La casa de los abuelos (content/es/zone-abuelos.js): the family, the body, clothes, the grandparents' animals ----
+    abuela(p) { // grandma: a grey bun, round glasses, rosy cheeks, a smile, a pink shawl
+      p.ell(8, 15, 7, 3, '#d05080'); p.disc(8, 2.5, 2.4, '#d8d8e0');
+      p.disc(8, 8.5, 5.6, '#d8d8e0'); p.ell(8, 9.5, 4.6, 4.6, SKIN); p.rect(3, 5, 10, 2, '#d8d8e0');
+      for (const x of [5.5, 10.5]) { p.disc(x, 9, 1.8, '#f8f8ff'); p.put(x - 0.5, 9, '#302018'); }
+      p.rect(7, 9, 2, 1, '#806060'); p.rect(4, 11, 1, 1, '#f09090'); p.rect(11, 11, 1, 1, '#f09090'); p.rect(6, 12, 4, 1, '#a04040');
+    },
+    abuelo(p) { // grandpa: a straw hat, white hair at the sides, glasses, a big white moustache
+      p.ell(8, 15, 7, 3, '#4a7ab0'); p.ell(8, 9.5, 4.8, 5, SKIN); p.rect(3, 7, 2, 4, '#e8e8f0'); p.rect(11, 7, 2, 4, '#e8e8f0');
+      p.ell(8, 4.5, 7.5, 1.5, '#e8c870'); p.ell(8, 3, 4, 2.6, '#e8c870'); p.rect(4, 4, 8, 1, '#a07030');
+      for (const x of [5.5, 10.5]) { p.disc(x, 8.5, 1.7, '#f8f8ff'); p.put(x - 0.5, 8.5, '#302018'); }
+      p.ell(8, 11.5, 3.6, 1.3, '#f0f0f8'); p.put(8, 10, '#d8a078'); p.rect(7, 13, 2, 1, '#a04040');
+    },
+    bebe(p) { // a baby: a big round head with one curl, rosy cheeks, a pacifier, a yellow blanket
+      p.ell(8, 14, 6.5, 3, '#f8e070'); p.disc(8, 8, 5.6, SKIN); p.shade(8, 8, 5.6, SKIN2);
+      p.put(8, 2, '#a05a28'); p.put(9, 1, '#a05a28'); p.put(9, 2, '#a05a28');
+      p.rect(5, 7, 1, 1, '#302018'); p.rect(10, 7, 1, 1, '#302018'); p.rect(4, 9, 1, 1, '#f09090'); p.rect(11, 9, 1, 1, '#f09090');
+      p.disc(8, 10.5, 1.6, '#f878b8'); p.put(8, 10, '#ffffff');
+    },
+    familia(p) { // the family: grandpa, grandma, a child and the baby, side by side, a heart over them
+      const head = (x, y, r, hair) => { p.disc(x, y, r, SKIN); p.rect(x - r + 0.5, y - r, 2 * r - 1, 1, hair); };
+      head(3, 8, 2.4, '#e8e8f0'); head(13, 8, 2.4, '#d8d8e0'); head(6.5, 11, 2, '#5a3418'); head(10, 12, 1.6, '#a05a28');
+      p.rect(1, 11, 5, 5, '#4a7ab0'); p.rect(11, 11, 5, 5, '#d05080'); p.rect(5, 13, 3, 3, '#38a858'); p.rect(9, 14, 2, 2, '#f8e070');
+      p.disc(7, 2, 1.3, '#f05080'); p.disc(9, 2, 1.3, '#f05080'); p.tri(5.6, 2.5, 10.4, 2.5, 8, 5.5, '#f05080');
+    },
+    cabeza(p) { // the head: a child's head, both hands on top of it
+      p.disc(8, 9, 5.5, SKIN); p.ell(8, 5, 5.5, 2.4, '#5a3418');
+      p.rect(5, 9, 1, 1, '#302018'); p.rect(10, 9, 1, 1, '#302018'); p.rect(6, 12, 4, 1, '#a04040');
+      for (const x of [3, 10]) { p.ell(x + 1.5, 2.5, 2.2, 1.6, SKIN); p.rect(x, 1, 1, 2, SKIN2); }
+    },
+    ojos(p) { // the eyes: two big eyes, brown, with a shine and lashes
+      for (const x of [4.5, 11.5]) { p.ell(x, 8.5, 3.6, 3, '#ffffff'); p.disc(x, 8.5, 2, '#7a4a20'); p.disc(x, 8.5, 1, '#101010'); p.put(x - 1, 7.5, '#ffffff'); p.rect(x - 3, 4, 6, 1, '#5a3418'); }
+      p.put(1, 6, '#302018'); p.put(14, 6, '#302018');
+    },
+    nariz(p) { // the nose: a face seen from the side, a round nose standing out
+      p.ell(6, 8, 6, 7, SKIN); p.ell(12, 8.5, 2.8, 2.4, SKIN); p.shade(12, 8.5, 2.8, SKIN2); p.put(12, 10, '#a06048');
+      p.rect(7, 5, 2, 1, '#302018'); p.rect(9, 13, 3, 1, '#a04040'); p.ell(4, 2, 4, 2, '#5a3418');
+    },
+    boca(p) { // the mouth: a big smile, red lips, white teeth, a pink tongue
+      p.ell(8, 8, 7, 4.5, '#d84050'); p.ell(8, 7.4, 5.8, 3, '#701820'); p.rect(4, 5, 8, 2, '#ffffff'); p.ell(8, 9.5, 3, 1.4, '#f07888');
+      p.rect(2, 7, 1, 1, '#f07080'); p.rect(13, 7, 1, 1, '#f07080');
+    },
+    mano(p) { hand(p, false); },
+    pie(p) { // a bare foot from above: the sole, five round toes
+      p.ell(8, 10.5, 4, 5, SKIN); p.ell(8, 6, 4.4, 2.6, SKIN);
+      for (const [x, y, r] of [[4.5, 3, 1.5], [7, 2, 1.3], [9.3, 2, 1.2], [11.3, 2.7, 1.1], [13, 4, 1]]) p.disc(x, y, r, SKIN);
+      p.shade(8, 10.5, 5, SKIN2);
+    },
+    camisa(p, w) { // a shirt: short sleeves, a collar, buttons (its colour from w.col: the trunk's)
+      const c = (w && w.col) || '#e04040', d = G.shade(c, 0.75);
+      p.rect(4, 3, 8, 12, c); p.tri(0, 6, 4, 2, 4, 8, c); p.tri(16, 6, 12, 2, 12, 8, c); p.rect(0, 6, 2, 3, d); p.rect(14, 6, 2, 3, d);
+      p.tri(6, 2, 8, 2, 8, 5, '#ffffff'); p.tri(10, 2, 8, 2, 8, 5, '#ffffff'); for (const y of [6, 9, 12]) p.put(8, y, '#f8f0d0');
+    },
+    pantalon(p, w) { // trousers: a waistband, two long legs
+      const c = (w && w.col) || '#3870d8', d = G.shade(c, 0.75);
+      p.rect(3, 1, 10, 3, c); p.rect(3, 1, 10, 1, d); p.rect(3, 4, 4, 11, c); p.rect(9, 4, 4, 11, c); p.rect(7, 4, 2, 2, c);
+      p.rect(7, 6, 2, 9, null); p.rect(3, 14, 4, 1, d); p.rect(9, 14, 4, 1, d); p.put(8, 2, '#f8d040');
+    },
+    calcetines(p, w) { // a pair of striped socks
+      const c = (w && w.col) || '#f878b8';
+      for (const ox of [0, 7]) { p.rect(ox + 2, 1, 4, 9, '#ffffff'); p.ell(ox + 4.5, 12, 3.5, 2.5, '#ffffff'); p.rect(ox + 2, 9, 4, 3, '#ffffff'); for (const y of [2, 5, 8]) p.rect(ox + 2, y, 4, 1, c); p.ell(ox + 6, 12.5, 1.6, 1.6, c); }
+    },
+    vestido(p, w) { // a dress: thin straps, a bow at the waist, a wide twirly skirt
+      const c = (w && w.col) || '#e060a0', d = G.shade(c, 0.75);
+      p.rect(5, 2, 6, 5, c); p.rect(5, 0, 1, 2, c); p.rect(10, 0, 1, 2, c); p.tri(1, 15, 15, 15, 8, 6, c); p.rect(5, 7, 6, 3, c);
+      p.rect(4, 7, 8, 1, '#ffffff'); p.put(8, 7, '#f8d040'); for (const x of [3, 8, 13]) p.put(x, 15, d);
+    },
+    zapatos(p, w) { // a pair of shoes, side by side, laces
+      const c = (w && w.col) || '#a05a28', d = G.shade(c, 0.7);
+      for (const [ox, oy] of [[0, 3], [7, 7]]) { p.ell(ox + 4.5, oy + 5, 4.5, 2.6, c); p.rect(ox + 1, oy + 1, 4, 4, c); p.rect(ox, oy + 7, 9, 1, d); p.put(ox + 3, oy + 2, '#ffffff'); p.put(ox + 4, oy + 3, '#ffffff'); }
+    },
+    sombrero(p, w) { // a wide straw hat with a ribbon
+      const c = (w && w.col) || '#e8c870', d = G.shade(c, 0.78);
+      p.ell(8, 11, 8, 3, c); p.ell(8, 7, 4.2, 4.5, c); p.rect(4, 8, 8, 2, '#e04040'); p.ell(8, 11.5, 6, 1.4, d); p.put(6, 4, G.shade(c, 1.15));
+    },
+    chamarra(p, w) { // a jacket: long sleeves, a hood, a zip down the front, pockets
+      const c = (w && w.col) || '#38a858', d = G.shade(c, 0.72);
+      p.rect(4, 3, 8, 12, c); p.rect(1, 4, 3, 10, c); p.rect(12, 4, 3, 10, c); p.ell(8, 2.5, 3.5, 2.2, d);
+      p.rect(7.5, 4, 1, 11, '#d8d8e0'); p.rect(5, 11, 2, 2, d); p.rect(9, 11, 2, 2, d); p.rect(1, 13, 3, 1, d); p.rect(12, 13, 3, 1, d);
+    },
+    vaca(p) { // a cow: white with black patches, a pink nose, little horns
+      p.ell(8, 9, 6.5, 6.5, '#f8f8f4'); p.ell(4.5, 6, 2.5, 2.4, '#202028'); p.ell(12, 12, 2, 2.4, '#202028');
+      p.rect(3, 1, 2, 2, '#f0e0c0'); p.rect(11, 1, 2, 2, '#f0e0c0'); p.ell(1, 5, 1.5, 1, '#202028'); p.ell(15, 5, 1.5, 1, '#202028');
+      p.ell(8, 12.5, 4, 2.5, '#f8a8b8'); p.put(6, 12, '#a04060'); p.put(10, 12, '#a04060'); p.rect(5, 7, 1, 1, '#101010'); p.rect(10, 7, 1, 1, '#101010');
+    },
+    cerdo(p) { // a pig: a round pink face, floppy ears, a big snout
+      p.disc(8, 9, 6.5, '#f8a8b8'); p.shade(8, 9, 6.5, '#e08898'); p.tri(2, 2, 6, 3, 3, 7, '#f08898'); p.tri(14, 2, 10, 3, 13, 7, '#f08898');
+      p.ell(8, 11, 3, 2.2, '#f87890'); p.put(7, 11, '#802838'); p.put(9, 11, '#802838'); p.rect(5, 7, 1, 1, '#101010'); p.rect(10, 7, 1, 1, '#101010');
+    },
+    oveja(p) { // a sheep: a fluffy white cloud of wool, a black face, black legs
+      for (const [x, y] of [[4, 6], [8, 5], [12, 6], [3, 9], [8, 9], [13, 9], [6, 11], [10, 11]]) p.disc(x, y, 2.8, '#f8f8f0');
+      p.rect(3, 12, 1, 3, '#202028'); p.rect(6, 13, 1, 2, '#202028'); p.rect(10, 13, 1, 2, '#202028'); p.rect(12, 12, 1, 3, '#202028');
+      p.ell(13, 7, 2.2, 2.6, '#302830'); p.put(14, 6, '#ffffff'); p.rect(14, 4, 2, 1, '#302830');
+    },
+    burro(p) { // a donkey's head: long grey ears, a pale muzzle, a dark mane
+      p.ell(8, 9.5, 4.5, 5.5, '#9a98a8'); p.ell(8, 12.5, 3.6, 2.6, '#e0dcd8'); p.ell(5, 3, 1.4, 3.5, '#9a98a8'); p.ell(11, 3, 1.4, 3.5, '#9a98a8');
+      p.put(5, 2, '#404050'); p.put(11, 2, '#404050'); p.rect(7, 4, 2, 3, '#404050'); p.rect(6, 8, 1, 1, '#101010'); p.rect(10, 8, 1, 1, '#101010'); p.put(7, 13, '#606070'); p.put(9, 13, '#606070');
+    },
+    pavo(p) { // a turkey: its tail fanned out like a rainbow of brown and orange, a red wattle
+      for (const [r, c] of [[7.5, '#8a4a20'], [6, '#e08830'], [4.5, '#a85a28']]) p.ell(8, 9, r, r * 0.95, c);
+      p.ell(8, 11, 3.2, 3.5, '#5a3418'); p.disc(8, 6.5, 1.8, '#c8b0a0'); p.put(9, 6, '#101010'); p.rect(9, 7, 1, 3, '#e02828'); p.put(10, 7, '#f8a020');
+      p.rect(6, 14, 1, 2, '#f8a020'); p.rect(9, 14, 1, 2, '#f8a020');
+    },
+    raton(p) { // a mouse: grey, big round pink ears, a long tail curling
+      p.ell(8, 11, 5, 3.5, '#a8a8b8'); p.disc(12, 9, 2.6, '#a8a8b8'); p.disc(10.5, 5.5, 2.4, '#a8a8b8'); p.disc(10.5, 5.5, 1.3, '#f8a8b8');
+      p.put(13, 8, '#101010'); p.put(15, 9, '#f87890'); for (let a = 0; a < 3.2; a += 0.25) p.put(3 - Math.sin(a) * 2.5, 12 - a * 1.6, '#f8a8b8');
+    },
+    gallo(p) { // a rooster: a big red comb, a golden neck, a tall tail of green and black feathers
+      p.ell(8, 10, 4.5, 3.6, '#c86a28'); p.ell(11, 6, 2.2, 3, '#f0b040'); p.rect(10, 2, 3, 2, '#e02828'); p.put(11, 1, '#e02828');
+      p.put(13, 5, '#f8c020'); p.put(14, 5, '#f8c020'); p.put(11, 5, '#101010'); p.rect(12, 7, 1, 2, '#e02828');
+      p.tri(0, 2, 6, 9, 3, 11, '#287048'); p.tri(1, 5, 6, 10, 2, 12, '#202028'); p.rect(7, 13, 1, 3, '#f8a020'); p.rect(9, 13, 1, 3, '#f8a020');
+    },
+    tlacuache(p) { // a possum: a grey body, a white pointy face, a pink nose, round dark ears, a long bare tail
+      p.ell(6.5, 10, 5, 3.4, '#8a8a98'); p.ell(12.5, 9, 2.6, 2, '#f0f0f0'); p.put(15, 9, '#f87890'); p.put(13, 8, '#101010');
+      p.disc(11.5, 6.5, 1.3, '#303038'); p.rect(3, 13, 1, 2, '#f0a0b0'); p.rect(9, 13, 1, 2, '#f0a0b0');
+      for (let a = 0; a < 3; a += 0.2) p.put(1.5 - Math.sin(a) * 1.4, 10 - a * 2, '#f0a0b0');
+    },
+    // things at the grandparents' with no word of their own (a picture only)
+    camara(p) { // the camera for the family photo: black, a big lens, a flash
+      p.rect(1, 5, 14, 9, '#303038'); p.rect(4, 3, 4, 2, '#303038'); p.rect(11, 3, 3, 2, '#f8f8f0'); p.disc(8, 9.5, 3.4, '#606070'); p.disc(8, 9.5, 2.2, '#68a8e8'); p.put(7, 8, '#ffffff'); p.rect(1, 5, 14, 1, '#505060');
+    },
+    foto(p) { // the family photo in a wooden frame: everyone and the dog, smiling
+      p.rect(0, 1, 16, 14, '#a06a34'); p.rect(2, 3, 12, 10, '#a8e0f8'); p.rect(2, 10, 12, 3, '#78c058');
+      for (const [x, c, h] of [[4, '#e8e8f0', 5], [7, '#5a3418', 7], [10, '#d8d8e0', 5]]) { p.disc(x, h, 1.4, SKIN); p.put(x, h - 1, c); p.rect(x - 1, h + 1, 3, 4, ['#4a7ab0', '#e04040', '#d05080'][(x - 4) / 3]); }
+      p.ell(12, 11, 1.6, 1.2, BROWN);
+    },
+    espejo(p) { // a mirror: an oval glass in a gold frame, a shine across it
+      p.ell(8, 8, 6, 7.5, '#e8b030'); p.ell(8, 8, 4.6, 6.2, '#c8e8f8'); p.rect(5, 4, 1, 3, '#ffffff'); p.put(6, 3, '#ffffff'); p.rect(7, 15, 2, 1, '#a07418');
+    },
+    zanahoria(p) { // a carrot pulled out of the garden: orange, green feathery top
+      p.tri(6, 5, 11, 5, 7, 16, '#f08828'); p.rect(7, 7, 2, 1, '#c86010'); p.rect(8, 10, 1, 1, '#c86010');
+      for (const [x, y] of [[6, 1], [8, 0], [10, 1], [7, 2], [9, 2], [8, 3], [8, 4]]) p.put(x, y, '#38a838');
+    },
+    canastaverduras(p) { // Abuelo's basket full of vegetables: a carrot, a tomato, a lettuce, corn
+      p.ell(8, 11, 7, 4.5, '#c08040'); p.rect(1, 9, 14, 2, '#a06030');
+      p.disc(5, 7, 2.6, '#58b040'); p.disc(10.5, 7.5, 2.2, '#e03a28'); p.rect(12, 3, 2, 6, '#f8d040'); p.tri(7, 4, 9, 4, 8, 9, '#f08828'); p.put(10, 5, '#38a838');
+      for (let a = Math.PI; a <= Math.PI * 2; a += 0.12) p.put(8 + Math.cos(a) * 6, 9 + Math.sin(a) * 7, '#8a5022');
+    },
+    galletas(p) { // a plate of Abuela's cookies, warm from the oven
+      p.ell(8, 12, 7.5, 2.6, '#f8f8f0'); for (const [x, y] of [[4.5, 9], [11.5, 9], [8, 7]]) { p.disc(x, y, 3, '#e0a050'); p.put(x - 1, y, '#5a3418'); p.put(x + 1, y - 1, '#5a3418'); p.put(x, y + 1, '#5a3418'); }
+      p.put(6, 2, '#ffffff'); p.put(7, 1, '#ffffff'); p.put(10, 2, '#ffffff');
+    },
     // things in the forest with no word of their own (a picture only)
     binoculares(p) { // Elena's binoculars: two black barrels, blue lenses, a strap
       for (let a = Math.PI * 1.1; a < Math.PI * 1.9; a += 0.1) p.put(8 + Math.cos(a) * 7, 8 + Math.sin(a) * 6, '#8a5a28');

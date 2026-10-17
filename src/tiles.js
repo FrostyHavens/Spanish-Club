@@ -172,6 +172,10 @@
     // seesaw, the merry-go-round, a goal, Don Chuy's bubble cart
     '!': OBSTACLE('Swings', 'grass'), '<': OBSTACLE('Slide', 'grass'), '>': OBSTACLE('Slide', 'grass'), '/': OBSTACLE('Climbing Frame', 'grass'),
     '?': OBSTACLE('Seesaw', 'grass'), '^': OBSTACLE('Merry-go-round', 'grass'), ';': OBSTACLE('Goal', 'grass'), '$': OBSTACLE('Bubble Cart', 'grass'),
+    // La casa de los abuelos (content/es/zone-abuelos.js): the vegetable garden's beds, the henhouse, the pigs' mud, the
+    // water pump; inside the cottage, the wardrobe and the dressing-up trunk
+    'ñ': OBSTACLE('Garden', 'grass'), 'á': OBSTACLE('Henhouse', 'grass'), 'í': tt('Mud', 0, 2, 3, 1, 1, 'grass'), 'é': OBSTACLE('Water Pump', 'grass'),
+    'ó': WALL('Wardrobe', 'indoor'), 'ú': OBSTACLE('Trunk', 'indoor'),
     ' ': WALL('Void', 'grass'),
   };
 
@@ -181,14 +185,14 @@
   // n[] order: N NE E SE S SW W NW
   const DX = [0, 1, 1, 1, 0, -1, -1, -1], DY = [-1, -1, 0, 1, 1, 1, 0, -1];
   const BASEMAP = { '.': '.', 'o': '.', 'y': '.', 'f': '.', 'h': '.', ',': ',', '=': '=', 'p': 'p', 's': 's', 'x': 'x', 'i': 'i', 'c': 'c', 'z': 'z', '&': 's', '{': '{' };
-  const OBJ = new Set('rFlkgPLYZteaujJOHEUmA1236780()%*_!<>/?^;$'.split('')); // (!<>/?^;$: the playground's swings, slide, frame, seesaw, merry-go-round, goals, cart) // (()%*_: the forest's trees, mushrooms, bushes, log) // (1236780: the beach's palms, umbrellas, castle, tower, cart, rocks)
-  const INDOOR_OBJ = new Set('teaujHEUmA'.split(''));
+  const OBJ = new Set('rFlkgPLYZteaujJOHEUmA1236780()%*_!<>/?^;$áéú'.split('')); // (áéú: the grandparents' henhouse, pump, trunk) // (!<>/?^;$: the playground's swings, slide, frame, seesaw, merry-go-round, goals, cart) // (()%*_: the forest's trees, mushrooms, bushes, log) // (1236780: the beach's palms, umbrellas, castle, tower, cart, rocks)
+  const INDOOR_OBJ = new Set('teaujHEUmAú'.split(''));
   const BASE_PREF = ['=', 'p', 'x', 'c', 'z', 'i', '{', ',', 's', '.'];
   const WATERISH = c => c === 'w' || c === '~' || c === 'b' || c === 'B' || c === '9' || c === 'd' || c === '4' || c === '5' || c === '-' || c === ':' || c === '|'; // (the beach's surf, pier, boat and clear shallows; the forest's stepping stones, waterfall)
   const ROOF = c => c === 'R' || c === 'Q' || c === '+';
   const BWALL = c => c === 'W' || c === 'N' || c === 'D' || c === 'S' || c === 'G' || c === 'K';
-  const IWALL = c => c === 'I' || c === 'n' || c === 'v' || c === 'V' || c === 'C';
-  const TALL = new Set('WNDSGKRQ+XIvnTVC#[]}'.split(''));
+  const IWALL = c => c === 'I' || c === 'n' || c === 'v' || c === 'V' || c === 'C' || c === 'ó';
+  const TALL = new Set('WNDSGKRQ+XIvnTVC#[]}ó'.split(''));
   const GRASSY = c => c === '.' || c === 'T' || c === 'M';
 
   function inferBase(map, x, y, code) {
@@ -2016,6 +2020,96 @@
     for (const [x, y] of [[22, 8], [1, 13]]) { b.set(x, y, JC.blu3); b.set(x + 1, y + 1, JC.wht); }
   }
 
+  // =====================================================================
+  //  La casa de los abuelos (content/es/zone-abuelos.js): the vegetable garden's beds, the henhouse, the pigs' mud,
+  //  the water pump; inside the cottage, the wardrobe and the dressing-up trunk
+  // =====================================================================
+  const AB = { soil: U('#5a3618'), soil2: U('#7a4a22'), soil3: U('#3e2410'), leaf: U('#58b040'), leaf2: U('#2e7a2a'), leaf3: U('#9cdc6a'),
+    carrot: U('#f08828'), tom: U('#e03a28'), tom2: U('#a82418'), corn: U('#f8d040'), corn2: U('#c89a20'), coop: U('#c04030'), coop2: U('#842820'), coop3: U('#e86a50'),
+    mud: U('#6a4a2a'), mud2: U('#523820'), mud3: U('#8a6a40'), mud4: U('#a8885a'), pump: U('#3a7ad0'), pump2: U('#22508a'), pump3: U('#78a8f0'),
+    wood: U('#8a5428'), wood2: U('#5a3418'), wood3: U('#b87a40'), wood4: U('#d8a060'), brass: U('#e8b030'), brass2: U('#a07418'), lid: U('#4a7ad0') };
+  // a garden bed ('ñ'): dark furrowed earth, a row of vegetables that changes along the row (lettuce, carrots, tomatoes, corn)
+  function gardenTile(b, I) {
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) b.set(x, y, y < 3 || y > 21 ? (hsh(x, y, I.v) < 0.5 ? P.G3 : P.G4) : ((y + (x >> 2)) % 4 === 0 ? AB.soil3 : hsh(x, y, I.v) < 0.25 ? AB.soil2 : AB.soil));
+    for (let x = 0; x < TS; x++) { b.set(x, 3, AB.soil3); b.set(x, 21, AB.soil2); }
+    const kind = (I.tx * 7 + I.ty * 3) % 4;
+    for (const cx of [6, 18]) {
+      if (kind === 0) { // a lettuce: a round head of curly leaves
+        for (let y = 7; y < 18; y++) for (let x = cx - 5; x <= cx + 5; x++) { const d = Math.hypot(x + 0.5 - cx, (y + 0.5 - 13) * 1.15); if (d < 5.6) b.set(x, y, d > 4.6 ? AB.leaf2 : (x + y) % 3 === 0 ? AB.leaf3 : AB.leaf); }
+      } else if (kind === 1) { // carrots: feathery tops, an orange shoulder showing
+        for (let k = -1; k <= 1; k++) { b.vl(cx + k * 3, 6, 14, AB.leaf2); b.set(cx + k * 3 - 1, 7, AB.leaf); b.set(cx + k * 3 + 1, 8, AB.leaf); b.set(cx + k * 3 - 1, 10, AB.leaf3); }
+        b.rect(cx - 3, 15, 7, 3, AB.carrot); b.hl(cx - 3, cx + 3, 15, U('#f8b060'));
+      } else if (kind === 2) { // a tomato plant on a stake, red tomatoes
+        b.vl(cx, 2, 18, AB.wood); b.vl(cx + 1, 2, 18, AB.wood2);
+        for (const [x, y] of [[-3, 6], [3, 8], [-2, 11], [3, 13], [-3, 15]]) { b.rect(cx + x - 1, y, 4, 2, AB.leaf); b.set(cx + x, y - 1, AB.leaf2); }
+        for (const [x, y] of [[-3, 8], [3, 10], [-2, 13], [2, 16]]) { b.rect(cx + x - 1, y, 3, 3, AB.tom); b.set(cx + x - 1, y, U('#f87868')); b.set(cx + x + 1, y + 2, AB.tom2); }
+      } else { // corn: a tall stalk, long leaves, a yellow cob
+        b.vl(cx, 0, 18, AB.leaf2); b.vl(cx + 1, 0, 18, AB.leaf);
+        for (const [y, d] of [[5, -1], [9, 1], [13, -1]]) for (let k = 1; k < 6; k++) b.set(cx + (d > 0 ? 1 + k : -k), y + (k >> 1), k < 4 ? AB.leaf : AB.leaf3);
+        b.rect(cx + 2, 6, 3, 6, AB.corn); b.vl(cx + 4, 6, 11, AB.corn2); b.set(cx + 3, 5, AB.leaf3);
+      }
+      dropShadow(b, cx, 19, 5, 1.2, 0.75);
+    }
+  }
+  // the henhouse ('á', two tiles): a little red wooden coop on legs, a pitched roof, a round door and a ramp
+  function coopTile(b, I) {
+    drawGround(b, I.base, I);
+    const L = I.n[6] !== 'á', R = I.n[2] !== 'á';
+    dropShadow(b, 12, 21, 12, 2, 0.6);
+    const x0 = L ? 2 : 0, x1 = R ? 21 : 23;
+    for (let y = 8; y < 18; y++) for (let x = x0; x <= x1; x++) b.set(x, y, (x % 4 === 0) ? AB.coop2 : y === 8 ? AB.coop3 : AB.coop);
+    for (let y = 2; y < 9; y++) { const inset = 8 - y; for (let x = x0 - 1 + (L ? inset : 0); x <= x1 + 1 - (R ? inset : 0); x++) b.set(x, y, y === 8 ? AB.wood2 : (x + y) % 3 === 0 ? AB.wood : AB.wood3); }
+    for (const x of [L ? 3 : -9, R ? 20 : 99]) if (x >= 0 && x < TS) { b.rect(x, 18, 2, 4, AB.wood2); }
+    if (L) { b.rect(8, 11, 6, 6, P.X0); b.rect(9, 10, 4, 1, P.X0); b.hl(8, 13, 17, AB.wood4); for (let k = 0; k < 6; k++) b.hl(5 - k, 9 - k, 17 + k, k & 1 ? AB.wood : AB.wood4); }
+    else { b.rect(6, 11, 5, 4, P.F1); b.rect(7, 12, 3, 2, U('#88d0f8')); b.set(8, 11, AB.wood2); b.vl(8, 11, 14, AB.wood2); for (const [x, y] of [[15, 11], [17, 12]]) { b.rect(x, y, 3, 2, P.H3); } }
+    b.vl(x0, 8, 17, AB.coop2); b.vl(x1, 8, 17, AB.coop2);
+  }
+  // the pigs' mud ('í'): wet brown earth, darker puddles that shine, grass at its edges
+  function mudTile(b, I) {
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) b.set(x, y, hsh(x, y, I.v) < 0.2 ? AB.mud3 : AB.mud);
+    const n = I.n, m = c => c === 'í';
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) { // grass creeps in where a side isn't mud
+      const e = Math.min(!m(n[0]) ? y : 99, !m(n[4]) ? TS - 1 - y : 99, !m(n[6]) ? x : 99, !m(n[2]) ? TS - 1 - x : 99);
+      if (e < 3 + (hsh(x, y, 3) < 0.5 ? 1 : 0)) b.set(x, y, hsh(x, y, I.v + 1) < 0.5 ? P.G3 : P.G4);
+    }
+    const sh = (I.af & 1) ? 1 : 0;
+    for (const [cx, cy, rx, ry] of [[9, 9, 5, 3], [17, 16, 4, 2.5]]) for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) {
+      const d = ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2;
+      if (d < 1 && (I.tx * 3 + I.ty * 5 + cx) % 4 === 0) b.set(x, y, d < 0.25 && x === cx - 2 + sh ? AB.mud4 : AB.mud2);
+    }
+  }
+  // the water pump ('é'): a blue iron pump with a curved handle over a wooden trough of water
+  function pumpTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 12, 21, 11, 2, 0.6);
+    b.rect(2, 13, 20, 7, AB.wood); b.hl(2, 21, 13, AB.wood4); b.hl(2, 21, 19, AB.wood2); b.vl(2, 13, 19, AB.wood3); b.vl(21, 13, 19, AB.wood2);
+    b.rect(4, 14, 16, 3, I.af & 1 ? P.W4 : P.W3); b.set(6 + (I.af & 1) * 6, 14, P.W6);
+    b.rect(9, 3, 4, 11, AB.pump); b.vl(9, 3, 13, AB.pump3); b.vl(12, 3, 13, AB.pump2); b.rect(8, 2, 6, 2, AB.pump2);
+    b.rect(13, 6, 4, 2, AB.pump); b.set(16, 8, AB.pump2); b.set(16, 9, AB.pump2); // the spout
+    for (let k = 0; k < 7; k++) b.set(8 - k, 3 - (k > 3 ? k - 3 : 0), AB.pump2); // the handle
+    if (I.af & 1) { b.set(16, 11, P.W5); b.set(16, 13, P.W5); }
+  }
+  // the wardrobe ('ó'): a tall wooden wardrobe against the wall, two doors with little knobs, a carved top
+  function wardrobeTile(b, I) {
+    iwallTile(b, I);
+    b.rect(2, 1, 20, 23, AB.wood); b.hl(1, 22, 1, AB.wood4); b.hl(1, 22, 2, AB.wood3); b.vl(2, 1, 23, AB.wood3); b.vl(21, 1, 23, AB.wood2);
+    for (const x0 of [4, 12]) { b.rect(x0, 5, 7, 16, AB.wood3); b.hl(x0, x0 + 6, 5, AB.wood4); b.vl(x0 + 6, 5, 20, AB.wood2); b.hl(x0, x0 + 6, 20, AB.wood2); b.rect(x0 + 1, 7, 5, 5, AB.wood); b.rect(x0 + 1, 13, 5, 5, AB.wood); }
+    b.vl(11, 4, 21, AB.wood2); b.set(10, 12, AB.brass); b.set(13, 12, AB.brass);
+    b.hl(4, 19, 3, AB.wood2); b.set(11, 0, AB.wood4); b.set(12, 0, AB.wood4);
+  }
+  // the dressing-up trunk ('ú'): a big old chest with a rounded lid, brass corners and lock, a sleeve peeking out
+  function trunkTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 12, 21, 11, 2, 0.6);
+    b.rect(2, 11, 20, 10, AB.wood); b.hl(2, 21, 20, AB.wood2); b.vl(2, 11, 20, AB.wood3); b.vl(21, 11, 20, AB.wood2);
+    for (let y = 5; y < 11; y++) { const d = Math.round(Math.sqrt(Math.max(0, 1 - ((y - 10.5) / 6) ** 2)) * 0); void d; b.hl(y < 7 ? 4 : 2, y < 7 ? 19 : 21, y, y === 5 ? AB.wood4 : y < 8 ? AB.wood3 : AB.wood); }
+    b.hl(2, 21, 10, AB.wood2);
+    for (const x of [2, 20]) { b.rect(x, 9, 2, 3, AB.brass); b.rect(x, 18, 2, 3, AB.brass); }
+    b.rect(10, 9, 4, 4, AB.brass); b.set(11, 11, AB.brass2); b.set(12, 11, AB.brass2);
+    b.rect(5, 10, 4, 3, U('#e04870')); b.set(5, 12, U('#f8a0c0')); // a pink sleeve peeking out
+    b.rect(15, 9, 3, 2, U('#3a78e0'));
+  }
+
   function reg(codes, spec) { for (const c of codes) REG[c] = spec; }
   reg('.', { need: 's', fn: (b, I) => { grassTex(b, I.v); applyShadow(b, I.sh); } });
   reg('o', { need: 's', anim: 2, spd: 30, fn: (b, I) => { flowerTex(b, I.v, I.af); applyShadow(b, I.sh); } });
@@ -2099,6 +2193,12 @@
   reg('^', { need: 'g', base: true, fn: mgrTile });
   reg(';', { need: 'g', base: true, fn: goalTile });
   reg('$', { need: 'g', base: true, fn: bubbleCart });
+  reg('ñ', { need: 's', uniq: true, fn: gardenTile });
+  reg('á', { need: 'g', base: true, fn: coopTile });
+  reg('í', { need: 'n', uniq: true, anim: 2, spd: 40, fn: mudTile });
+  reg('é', { need: 'g', base: true, anim: 2, spd: 18, fn: pumpTile });
+  reg('ó', { need: 'n', fn: wardrobeTile });
+  reg('ú', { need: 'g', base: true, fn: trunkTile });
   reg(' ', { need: '', fn: (b) => b.fill(P.X0) });
 
   const tileCache = new Map();
@@ -2149,6 +2249,7 @@
     'a': '#e6e2d8', 'u': '#74421e', 'j': '#d8d8e8', 'v': '#e05818', 'n': '#5c3418', 'c': '#a08c6c', ' ': '#000000',
     '9': '#e8f4ff', 'd': '#9c5e2a', '-': '#5cc8dc', '&': '#c8c070', '1': '#2e9a3a', '2': '#e83a30', '3': '#d8bc7c', '4': '#e83a30', '5': '#e83a30', '6': '#e83a30', '7': '#fafaf4', '8': '#3a7ae0', '0': '#5a5a6a',
     '(': '#2b6a26', ')': '#2b6a26', '%': '#e03a30', '*': '#4a2a70', '_': '#8a5a30', '#': '#6c6252', '|': '#e8f6ff', '@': '#0c0a10', ':': '#8e8e9a', '[': '#9a6634', ']': '#764a22', '{': '#3a3240', '}': '#1e1822',
+    'ñ': '#5a3618', 'á': '#c04030', 'í': '#6a4a2a', 'é': '#3a7ad0', 'ó': '#8a5428', 'ú': '#8a5428',
     '!': '#e04040', '<': '#3870d8', '>': '#f8c830', '/': '#38a858', '?': '#e04040', '^': '#c8b8a0', ';': '#fafaf4', '$': '#3870d8',
     'z': '#b08a50', 'V': '#5c3418', 'C': '#5c3418', 'H': '#e2be46', 'E': '#9c5e2a', 'U': '#3a72d2', 'm': '#b4b2b4', 'A': '#c8343c',
   };

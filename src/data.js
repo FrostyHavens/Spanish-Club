@@ -134,6 +134,19 @@
     chuy: { name: 'Don Chuy',
       portrait: { body: 'human', skin: '#c89070', hair: '#302018', hairStyle: 'short', beard: '#302018', eyes: '#302010', head: 'hat', headColor: '#e8d088', outfit: '#58a8e8', trim: '#ffffff', age: 'adult', face: 'round', bg: '#58a0c8' },
       map: { body: 'human', skin: '#c89070', hair: '#302018', hairStyle: 'short', beard: '#302018', head: 'hat', headColor: '#e8d088', outfit: '#58a8e8', trim: '#ffffff', eyes: '#302010' } },
+    // La casa de los abuelos (content/es/zone-abuelos.js): the child's own grandparents (Abuela Rosa in town is a
+    // different grandma): Abuela (a grey bun, a pink shawl over a flowery dress, an apron: her kitchen, the cookies,
+    // the photos), Abuelo (a straw hat, a white moustache, a checked blue shirt: his garden, his animals), and the baby
+    // cousin (a little one in yellow who crawls about the living room)
+    abuela: { name: 'Abuela',
+      portrait: { body: 'human', skin: '#e8b890', hair: '#e0e0e8', hairStyle: 'braid', eyes: '#403040', outfit: '#d05080', trim: '#fff0f4', age: 'old', face: 'round', lashes: true, bg: '#b05070' },
+      map: { body: 'human', skin: '#e8b890', hair: '#e0e0e8', hairStyle: 'braid', outfit: '#d05080', trim: '#fff0f4', robe: true, eyes: '#403040' } },
+    abuelo: { name: 'Abuelo',
+      portrait: { body: 'human', skin: '#d8a078', hair: '#e8e8f0', hairStyle: 'short', beard: '#f0f0f8', eyes: '#302010', head: 'hat', headColor: '#e8c870', outfit: '#4a7ab0', trim: '#f0f0f0', age: 'old', face: 'round', bg: '#4a8a50' },
+      map: { body: 'human', skin: '#d8a078', hair: '#e8e8f0', hairStyle: 'short', beard: '#f0f0f8', head: 'hat', headColor: '#e8c870', outfit: '#4a7ab0', trim: '#f0f0f0', pants: '#5a4a38', eyes: '#302010' } },
+    bebe: { name: 'Bebé',
+      portrait: { body: 'halfling', skin: '#f0c8a0', hair: '#a05a28', hairStyle: 'short', eyes: '#302010', outfit: '#f8e070', trim: '#ffffff', age: 'young', face: 'round', bg: '#e0b840' },
+      map: { body: 'halfling', skin: '#f0c8a0', hair: '#a05a28', hairStyle: 'short', outfit: '#f8e070', trim: '#ffffff', pants: '#f8e070', boots: '#f8f0d0', eyes: '#302010' } },
     canelo: { name: 'Canelo',
       map: { body: 'wolf', outfit: '#b87038', trim: '#f0d8b0', eyes: '#201008' } },
   };
