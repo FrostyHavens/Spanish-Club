@@ -2326,6 +2326,14 @@ G.store = {
     '1': OBSTACLE('Palm', 'desert'), '2': OBSTACLE('Umbrella', 'desert'), '3': OBSTACLE('Sandcastle', 'desert'),
     '4': OBSTACLE('Boat', 'river'), '5': OBSTACLE('Boat', 'river'), '6': OBSTACLE('Lifeguard Tower', 'desert'),
     '7': OBSTACLE('Lifeguard Tower', 'desert'), '8': OBSTACLE('Ice Cream Cart', 'desert'), '0': OBSTACLE('Rocks', 'desert'),
+    // El bosque (content/es/zone-bosque.js): a tall tree (its crown '(' over its trunk ')'), mushrooms, berry bushes, a
+    // hollow log, the rock cliff, the waterfall, the bears' cave, stepping stones, Doña Lupe's log cabin (wall, door);
+    // inside the cave: its floor and rock walls
+    '(': OBSTACLE('Tall Tree', 'forest'), ')': OBSTACLE('Tall Tree', 'forest'), '%': tt('Mushrooms', 15, 1, 1, 1, 1, 'grass'),
+    '*': OBSTACLE('Berry Bush', 'grass'), '_': OBSTACLE('Hollow Log', 'grass'), '#': WALL('Cliff', 'hills'),
+    '|': OBSTACLE('Waterfall', 'river'), '@': tt('Cave', 0, INF, INF, INF, INF, 'hills', { block: true }),
+    ':': tt('Stepping Stones', 0, 1, 1, 1, 1, 'river'), '[': WALL('Log Cabin', 'town'), ']': tt('Door', 0, INF, INF, INF, INF, 'town', { block: true }),
+    '{': tt('Cave Floor', 0, 1, 1, 1, 1, 'indoor'), '}': WALL('Cave Wall', 'indoor'),
     ' ': WALL('Void', 'grass'),
   };
 
@@ -2334,15 +2342,15 @@ G.store = {
   // =====================================================================
   // n[] order: N NE E SE S SW W NW
   const DX = [0, 1, 1, 1, 0, -1, -1, -1], DY = [-1, -1, 0, 1, 1, 1, 0, -1];
-  const BASEMAP = { '.': '.', 'o': '.', 'y': '.', 'f': '.', 'h': '.', ',': ',', '=': '=', 'p': 'p', 's': 's', 'x': 'x', 'i': 'i', 'c': 'c', 'z': 'z', '&': 's' };
-  const OBJ = new Set('rFlkgPLYZteaujJOHEUmA1236780'.split('')); // (1236780: the beach's palms, umbrellas, castle, tower, cart, rocks)
+  const BASEMAP = { '.': '.', 'o': '.', 'y': '.', 'f': '.', 'h': '.', ',': ',', '=': '=', 'p': 'p', 's': 's', 'x': 'x', 'i': 'i', 'c': 'c', 'z': 'z', '&': 's', '{': '{' };
+  const OBJ = new Set('rFlkgPLYZteaujJOHEUmA1236780()%*_'.split('')); // (()%*_: the forest's trees, mushrooms, bushes, log) // (1236780: the beach's palms, umbrellas, castle, tower, cart, rocks)
   const INDOOR_OBJ = new Set('teaujHEUmA'.split(''));
-  const BASE_PREF = ['=', 'p', 'x', 'c', 'z', 'i', ',', 's', '.'];
-  const WATERISH = c => c === 'w' || c === '~' || c === 'b' || c === 'B' || c === '9' || c === 'd' || c === '4' || c === '5' || c === '-'; // (the beach's surf, pier, boat and clear shallows)
+  const BASE_PREF = ['=', 'p', 'x', 'c', 'z', 'i', '{', ',', 's', '.'];
+  const WATERISH = c => c === 'w' || c === '~' || c === 'b' || c === 'B' || c === '9' || c === 'd' || c === '4' || c === '5' || c === '-' || c === ':' || c === '|'; // (the beach's surf, pier, boat and clear shallows; the forest's stepping stones, waterfall)
   const ROOF = c => c === 'R' || c === 'Q' || c === '+';
   const BWALL = c => c === 'W' || c === 'N' || c === 'D' || c === 'S' || c === 'G' || c === 'K';
   const IWALL = c => c === 'I' || c === 'n' || c === 'v' || c === 'V' || c === 'C';
-  const TALL = new Set('WNDSGKRQ+XIvnTVC'.split(''));
+  const TALL = new Set('WNDSGKRQ+XIvnTVC#[]}'.split(''));
   const GRASSY = c => c === '.' || c === 'T' || c === 'M';
 
   function inferBase(map, x, y, code) {
@@ -2603,6 +2611,7 @@ G.store = {
       case 'i': plankTex(b, I.v); break;
       case 'c': stoneFloorTex(b, I.v); break;
       case 'z': strawFloorTex(b, I.v); break;
+      case '{': caveFloor(b, I.v); break;
       case 'q': carpetTex(b, I.n); break;
       default: grassTex(b, I.v);
     }
@@ -2868,6 +2877,7 @@ G.store = {
     if (gc === 's') return [P.S2, P.S3, P.S0, P.S1];
     if (gc === ',') return [P.D3, P.D4, P.D1, P.D0];
     if (gc === '=' || gc === 'p' || gc === 'x' || gc === 'X' || gc === 'S' || gc === 'G' || gc === 'c') return [P.K3, P.K4, P.K1, P.K0];
+    if (gc === '{' || gc === '}' || gc === '%') return [U('#3a3240'), U('#4a4250'), U('#1e1822'), U('#0c0a10')]; // (the cave's pool: a rock edge)
     return [P.G3, P.G4, P.D1, P.D0];
   }
   function waterTile(b, I, shallow) {
@@ -3890,6 +3900,190 @@ G.store = {
   }
 
   // =====================================================================
+  //  El bosque: tall trees (two tiles), mushrooms, berry bushes, a hollow log, the cliff, a waterfall, the bears'
+  //  cave, stepping stones, Doña Lupe's log cabin; inside the cave: its floor and rock walls
+  // =====================================================================
+  const FC = { cap: U('#e03a30'), cap2: U('#a82418'), dot: U('#fff8f0'), stem: U('#f4ead8'), stem2: U('#c8b8a0'),
+    glow: U('#6af0e0'), glow2: U('#2ab0b0'), glow3: U('#d0fff8'), berry: U('#4a2a70'), berry2: U('#8a5ac0'), berry3: U('#2a1440'),
+    log: U('#8a5a30'), log2: U('#6a4020'), log3: U('#b07a48'), ring: U('#d8b07a'), moss: U('#5a9a38'), moss2: U('#86c050'),
+    rock0: U('#2c2620'), rock1: U('#4c443a'), rock2: U('#6c6252'), rock3: U('#8e836e'), rock4: U('#b0a68e'),
+    fall: U('#e8f6ff'), fall2: U('#a8d8f8'), fall3: U('#6aa8e0'), cave0: U('#0c0a10'), cave1: U('#1e1822'),
+    floor0: U('#2a2430'), floor1: U('#3a3240'), floor2: U('#4a4250'), floor3: U('#5e5462'),
+    clog: U('#9a6634'), clog2: U('#764a22'), clog3: U('#c08a50'), clog4: U('#4a2c12'), win: U('#f8e090'), win2: U('#c89a40') };
+  const OAK = [P.J1, P.J2, P.J3, P.J4, P.J5, P.J6];
+  // the big tree's canopy, drawn across its two tiles (dy: 0 for the crown tile, -24 for the trunk tile below it);
+  // seeded by its column so both halves match
+  function tallCanopy(b, dy, sd, pine) {
+    if (pine) {
+      const top = 1 + dy, h = 30;
+      for (let y = 0; y < TS; y++) {
+        const gy = y - top; if (gy < 0 || gy > h) continue;
+        const t = gy / h, tier = (t * 3.2) % 1, w = 1.5 + t * 12 * (0.5 + tier * 0.6);
+        for (let x = Math.floor(12 - w); x <= 12 + w; x++) {
+          const dx = x + 0.5 - 12;
+          let c = dx < -w * 0.35 ? P.E4 : dx < w * 0.3 ? P.E3 : P.E2;
+          if (tier > 0.82 || Math.abs(dx) > w - 1) c = dx < 0 ? P.E2 : P.E1;
+          if (Math.abs(dx) > w - 0.8 && dx > 0) c = P.E0;
+          if (hsh(x, gy, sd) < 0.05) c = P.E4;
+          b.set(x, y, c);
+        }
+      }
+      return;
+    }
+    const blobs = [[12, 14, 11.5], [4.5, 19, 7], [19.5, 19, 7], [12, 5.5, 8], [5.5, 9.5, 6], [18.5, 9.5, 6], [12, 21, 7]];
+    for (const [cx, cy0, r] of blobs) {
+      const cy = cy0 + dy;
+      for (let y = Math.max(0, Math.floor(cy - r - 1)); y <= Math.min(TS - 1, cy + r); y++) for (let x = Math.floor(cx - r - 1); x <= cx + r; x++) {
+        const gx = x + 0.5 - cx, gy = y + 0.5 - cy, d = Math.hypot(gx, gy);
+        const wob = (hsh(x >> 1, (y - dy) >> 1, sd) - 0.5) * 1.6;
+        if (d > r + wob * 0.6) continue;
+        let l = -(gx * 0.55 + gy * 0.8) / r + (hsh((x + 1) >> 1, (y - dy) >> 1, sd + 3) - 0.5) * 0.5;
+        let i = l > 0.55 ? 5 : l > 0.2 ? 4 : l > -0.15 ? 3 : l > -0.5 ? 2 : 1;
+        if (d > r - 1.1 && gx + gy > 0) i = 0;
+        b.set(x, y, OAK[i]);
+      }
+    }
+    if (dy === 0) for (const [x, y] of [[8, 9], [15, 6], [11, 13], [17, 15]]) if (hsh(x, y, sd) < 0.6) { b.set(x, y, P.F2); }
+  }
+  const pineAt = I => (I.tx * 7 + 3) % 5 < 2;
+  function treeTop(b, I) { drawGround(b, I.base, I); tallCanopy(b, 0, I.tx * 13 + 1, pineAt(I)); }
+  function treeTrunk(b, I) {
+    drawGround(b, I.base, I);
+    const pine = pineAt(I);
+    dropShadow(b, 14, 21, 9, 2.6, 0.58);
+    // roots and the trunk, its bark, a knot hole (where a squirrel or an owl might live)
+    const w = pine ? 2 : 3;
+    for (let y = 2; y < 22; y++) { const sp = y > 18 ? (y - 18) : 0; for (let x = 12 - w - sp; x <= 11 + w + sp; x++) { const dx = x - 12; b.set(x, y, dx < -w + 1 ? P.T4 : dx < 0 ? P.T3 : dx < w - 1 ? P.T2 : P.T1); } }
+    for (let y = 4; y < 20; y += 3) b.set(12 + ((y * 7) % 3) - 1, y, P.T1);
+    if (!pine) { b.rect(11, 9, 3, 4, P.T0); b.hl(11, 13, 8, P.T4); }
+    b.set(8, 21, P.T1); b.set(16, 21, P.T1);
+    tallCanopy(b, -24, I.tx * 13 + 1, pine);
+  }
+  // mushrooms: red caps with white spots in the woods; in the cave they glow teal
+  function mushroomTile(b, I) {
+    const cave = I.base === '{';
+    drawGround(b, I.base, I);
+    const sets = [[[7, 14, 4.2], [16, 18, 3], [12, 20, 2.2]], [[15, 12, 4], [7, 18, 3.2]], [[10, 13, 3.6], [16, 17, 2.6], [6, 19, 2.4]]][I.v % 3];
+    for (const [cx, cy, r] of sets) {
+      if (cave) for (let y = -6; y <= 6; y++) for (let x = -7; x <= 7; x++) if (x * x + y * y < 40 && hsh(x, y, I.v) < 0.5) b.tint(cx + x, cy - 2 + y, FC.glow2, 0.25);
+      b.rect(Math.round(cx - r * 0.35), cy - 1, Math.max(2, Math.round(r * 0.7)), Math.round(r + 1), cave ? FC.glow3 : FC.stem);
+      b.vl(Math.round(cx + r * 0.35) - 1, cy - 1, cy + Math.round(r), FC.stem2);
+      for (let y = Math.floor(cy - r - 1); y <= cy; y++) for (let x = Math.floor(cx - r - 1); x <= cx + r; x++) {
+        const dx = x + 0.5 - cx, dy = (y + 0.5 - cy) * 1.4; if (dy > 0 || dx * dx + dy * dy > r * r) continue;
+        b.set(x, y, dx > r * 0.4 ? (cave ? FC.glow2 : FC.cap2) : (cave ? FC.glow : FC.cap));
+      }
+      b.set(Math.round(cx - r * 0.4), Math.round(cy - r * 0.55), FC.dot); b.set(Math.round(cx + r * 0.15), Math.round(cy - r * 0.8), FC.dot); if (r > 3) b.set(Math.round(cx - r * 0.1), Math.round(cy - r * 0.3), FC.dot);
+    }
+  }
+  // a berry bush (las moras): a round bush heavy with dark purple berries
+  function berryTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 14, 19, 9, 3, 0.6);
+    const blobs = [[7, 13, 5.5], [17, 12, 5.5], [12, 8, 6], [12, 15, 6.5]];
+    for (const [cx, cy, r] of blobs) for (let y = Math.floor(cy - r); y <= cy + r; y++) for (let x = Math.floor(cx - r); x <= cx + r; x++) {
+      const dx = x + 0.5 - cx, dy = y + 0.5 - cy, d = Math.hypot(dx, dy); if (d > r) continue;
+      const l = -(dx * 0.6 + dy * 0.8) / r + (hsh(x >> 1, y >> 1, I.v + cx) - 0.5) * 0.45;
+      let i = l > 0.5 ? 4 : l > 0.15 ? 3 : l > -0.2 ? 2 : l > -0.55 ? 1 : 0;
+      if (d > r - 1 && dx + dy > 0) i = 0;
+      b.set(x, y, [P.G1, P.G2, P.G3, P.G4, P.G5][i]);
+    }
+    for (const [x, y] of [[6, 10], [10, 6], [15, 9], [18, 13], [9, 15], [13, 12], [16, 17], [6, 16], [12, 18]]) {
+      b.rect(x, y, 2, 2, FC.berry); b.set(x, y, FC.berry2); b.set(x + 1, y + 1, FC.berry3);
+    }
+  }
+  // a hollow log lying on its side: bark, moss on top, the dark hole at its end, a little mushroom
+  function logTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 13, 19, 11, 2.5, 0.6);
+    for (let y = 9; y < 19; y++) for (let x = 2; x < 21; x++) {
+      const k = (y - 9) / 10; let c = k < 0.2 ? FC.log3 : k < 0.7 ? FC.log : FC.log2;
+      if (hsh(x >> 1, y, I.v) < 0.12) c = FC.log2;
+      b.set(x, y, c);
+    }
+    for (let x = 4; x < 19; x += 4) b.vl(x, 11, 17, FC.log2);
+    for (let x = 3; x < 18; x++) if (hsh(x, 1, I.v) < 0.7) { b.set(x, 9, FC.moss); if (hsh(x, 2, I.v) < 0.5) b.set(x, 8, FC.moss2); }
+    // the hollow end (right): rings, a dark inside
+    for (let y = 8; y < 20; y++) for (let x = 15; x < 24; x++) { const dx = (x + 0.5 - 20) / 3.6, dy = (y + 0.5 - 14) / 5.6, d = dx * dx + dy * dy; if (d > 1) continue; b.set(x, y, d > 0.55 ? FC.ring : d > 0.4 ? FC.log2 : FC.cave0); }
+    b.rect(5, 6, 2, 3, FC.stem); b.rect(4, 5, 4, 2, FC.cap); b.set(5, 5, FC.dot);
+  }
+  // the rock cliff: blocks of warm grey stone, cracks, moss and grass along its top, a dark foot
+  function cliffTile(b, I) {
+    const n = I.n, rockN = c => c === '#' || c === '|' || c === '@' || c === 'T';
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) b.set(x, y, hsh(x >> 1, y >> 1, I.v + 2) < 0.5 ? FC.rock1 : FC.rock0);
+    // big rounded stones stacked into the rock face (they spill over the tile's edges a little: no seams)
+    const stones = [[4, 5, 6, 5], [15, 4, 7, 5], [9, 13, 7, 5.5], [21, 13, 5, 5], [3, 19, 5, 4.5], [14, 21, 7, 4.5]];
+    for (const [sx, sy, rx, ry] of stones) {
+      const ox = Math.round((hsh(sx, sy, I.v) - 0.5) * 3), oy = Math.round((hsh(sy, sx, I.v) - 0.5) * 2), cx = sx + ox, cy = sy + oy;
+      for (let y = Math.floor(cy - ry); y <= cy + ry; y++) for (let x = Math.floor(cx - rx); x <= cx + rx; x++) {
+        const dx = (x + 0.5 - cx) / rx, dy = (y + 0.5 - cy) / ry, d = dx * dx + dy * dy; if (d > 1) continue;
+        const l = -(dx * 0.6 + dy * 0.8) + (hsh(x, y, I.v + 5) - 0.5) * 0.35;
+        b.set(x, y, d > 0.8 && dx + dy > 0.2 ? FC.rock1 : l > 0.55 ? FC.rock4 : l > 0.05 ? FC.rock3 : FC.rock2);
+      }
+    }
+    if (!rockN(n[0])) { for (let x = 0; x < TS; x++) { const h = 2 + Math.floor(hsh(x >> 1, 3, I.v) * 3); for (let y = 0; y < h; y++) b.set(x, y, y === h - 1 ? FC.moss : (x + y) & 1 ? P.G4 : P.G3); } }
+    if (!rockN(n[4])) { for (let x = 0; x < TS; x++) { b.set(x, TS - 1, FC.rock0); if ((x + I.v) % 5 === 0) { b.set(x, TS - 2, FC.moss); b.set(x, TS - 3, FC.moss2); } } }
+    for (let i = 0; i < 3; i++) { const x = Math.floor(hsh(i, I.v, 17) * 22), y = 6 + Math.floor(hsh(I.v, i, 19) * 14); if (hsh(i, I.v, 23) < 0.5) { b.set(x, y, FC.moss); b.set(x + 1, y, FC.moss2); } }
+  }
+  // the waterfall: white water pouring down the rock, foam where it meets the pond
+  function fallTile(b, I) {
+    const n = I.n, af = I.af;
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) {
+      const s = (y * 2 - af * 6 + Math.floor(hsh(x, 0, 3) * 24) + 96) % 24;
+      b.set(x, y, s < 3 ? FC.fall : s < 9 ? FC.fall2 : s < 16 ? FC.fall3 : FC.fall2);
+    }
+    if (n[2] !== '|') for (let y = 0; y < TS; y++) { b.set(TS - 1, y, FC.rock1); b.set(TS - 2, y, (y + af) % 3 ? FC.fall : FC.fall2); }
+    if (n[6] !== '|') for (let y = 0; y < TS; y++) { b.set(0, y, FC.rock1); b.set(1, y, (y + af) % 3 ? FC.fall : FC.fall2); }
+    if (n[4] !== '|') for (let x = 0; x < TS; x++) for (let y = TS - 5; y < TS; y++) if (hsh(x, y, af) < 0.75) b.set(x, y, hsh(x, y, af + 9) < 0.5 ? P.W6 : FC.fall);
+  }
+  // the cave's mouth: the cliff with a dark rounded opening at its foot
+  function caveTile(b, I) {
+    cliffTile(b, Object.assign({}, I, { v: 1 }));
+    for (let y = 2; y < TS; y++) for (let x = 1; x < 23; x++) {
+      const dx = (x + 0.5 - 12) / 10.5, dy = (y + 0.5 - 25) / 22, d = dx * dx + dy * dy;
+      if (d > 1) continue;
+      b.set(x, y, d > 0.82 ? FC.rock0 : d > 0.6 ? FC.cave1 : FC.cave0);
+    }
+    for (const [x, y] of [[4, 21], [19, 20], [6, 22]]) { b.rect(x, y, 3, 2, FC.rock3); b.set(x, y, FC.rock4); }
+  }
+  // stepping stones over the river: water rushing past three flat stones
+  function stonesTile(b, I) {
+    waterTile(b, I, false);
+    for (const [cx, cy, r] of [[7, 7, 4.5], [16, 13, 5], [8, 19, 4.2]]) {
+      for (let y = Math.floor(cy - r); y <= cy + r; y++) for (let x = Math.floor(cx - r); x <= cx + r; x++) {
+        const dx = (x + 0.5 - cx) / r, dy = (y + 0.5 - cy) / (r * 0.75), d = dx * dx + dy * dy; if (d > 1) continue;
+        b.set(x, y, d > 0.75 && dx + dy > 0 ? P.K1 : dy < -0.3 ? P.K4 : P.K3);
+      }
+      b.hl(Math.round(cx - r), Math.round(cx + r), Math.round(cy + r * 0.75) + 1, (I.af & 1) ? P.W6 : P.W5);
+    }
+  }
+  // Doña Lupe's log cabin: round logs stacked, a window with a flower box; its door
+  function cabinTile(b, I, door) {
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) {
+      const ly = y % 6; let c = ly === 0 ? FC.clog4 : ly === 1 ? FC.clog3 : ly < 4 ? FC.clog : FC.clog2;
+      if (hsh(x >> 2, (y / 6) | 0, I.v) < 0.1 && ly > 1) c = FC.clog2;
+      b.set(x, y, c);
+    }
+    const n = I.n;
+    for (const [side, x0] of [[6, 0], [2, TS - 4]]) if (n[side] !== '[' && n[side] !== ']') for (let y = 0; y < TS; y += 6) { b.rect(x0, y + 1, 4, 4, FC.ring); b.set(x0 + 1, y + 2, FC.clog2); b.set(x0 + 2, y + 3, FC.clog2); }
+    if (door) {
+      b.rect(6, 3, 12, 21, FC.clog4); b.rect(7, 4, 10, 20, U('#8a4a1a')); for (let x = 9; x < 17; x += 3) b.vl(x, 4, 23, U('#6a3410'));
+      b.rect(14, 13, 2, 2, P.Y3); b.hl(7, 16, 4, U('#a86030'));
+    } else if (I.v % 2 === 0) {
+      b.rect(6, 4, 12, 10, FC.clog4); b.rect(7, 5, 10, 8, FC.win); b.vl(12, 5, 12, FC.win2); b.hl(7, 16, 9, FC.win2);
+      b.rect(6, 14, 12, 3, U('#8a4a1a')); for (const x of [8, 11, 14]) { b.set(x, 13, P.F3); b.set(x + 1, 13, P.F4); b.set(x, 12, P.G4); }
+    }
+  }
+  // inside the cave: a dark stone floor with pebbles; rock walls, lit along their foot
+  function caveFloor(b, v) {
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) { const r = hsh(x >> 1, y >> 1, v + 21); b.set(x, y, r < 0.3 ? FC.floor0 : r < 0.75 ? FC.floor1 : FC.floor2); }
+    for (let i = 0; i < 4; i++) { const x = 2 + Math.floor(hsh(i, v, 5) * 19), y = 2 + Math.floor(hsh(v, i, 7) * 19); b.rect(x, y, 2, 1, FC.floor3); b.set(x, y + 1, FC.floor0); }
+  }
+  function caveWall(b, I) {
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) { const r = hsh(x >> 2, y >> 2, I.v + 31); b.set(x, y, r < 0.4 ? FC.cave1 : r < 0.8 ? FC.rock0 : FC.rock1); }
+    if (I.n[4] === '{' || I.n[4] === '%' || I.n[4] === 'w') for (let x = 0; x < TS; x++) { b.set(x, TS - 1, FC.rock2); b.set(x, TS - 2, FC.rock1); if (hsh(x, 1, I.v) < 0.4) b.set(x, TS - 3, FC.rock1); }
+  }
+
+  // =====================================================================
   //  Renderer registry + cache
   // =====================================================================
   // need: 's' (shadow only), 'n' (neighbour codes), 'g' (neighbour codes + ground classes), base: infers ground under object
@@ -3956,6 +4150,19 @@ G.store = {
   reg('7', { need: 'g', base: true, fn: towerLegs });
   reg('8', { need: 'g', base: true, fn: cartTile });
   reg('0', { need: 'g', base: true, fn: rockTile });
+  reg('(', { need: 'g', base: true, uniq: true, fn: treeTop });
+  reg(')', { need: 'g', base: true, uniq: true, fn: treeTrunk });
+  reg('%', { need: 'g', base: true, fn: mushroomTile });
+  reg('*', { need: 'g', base: true, fn: berryTile });
+  reg('_', { need: 'g', base: true, fn: logTile });
+  reg('#', { need: 'n', fn: cliffTile });
+  reg('|', { need: 'n', anim: 4, spd: 8, fn: fallTile });
+  reg('@', { need: 'n', fn: caveTile });
+  reg(':', { need: 'g', anim: 4, spd: 24, fn: stonesTile });
+  reg('[', { need: 'n', fn: (b, I) => cabinTile(b, I, false) });
+  reg(']', { need: 'n', fn: (b, I) => cabinTile(b, I, true) });
+  reg('{', { need: 'g', fn: (b, I) => drawGround(b, '{', I) });
+  reg('}', { need: 'n', fn: caveWall });
   reg(' ', { need: '', fn: (b) => b.fill(P.X0) });
 
   const tileCache = new Map();
@@ -4005,6 +4212,7 @@ G.store = {
     'L': '#e8c850', 'Y': '#c8343c', 'Z': '#b4b2b4', 'J': '#c0823a', 'O': '#e2be46', 'i': '#a0602c', 'I': '#4c4032', 'q': '#9c1c2c', 't': '#c0823a', 'e': '#74421e',
     'a': '#e6e2d8', 'u': '#74421e', 'j': '#d8d8e8', 'v': '#e05818', 'n': '#5c3418', 'c': '#a08c6c', ' ': '#000000',
     '9': '#e8f4ff', 'd': '#9c5e2a', '-': '#5cc8dc', '&': '#c8c070', '1': '#2e9a3a', '2': '#e83a30', '3': '#d8bc7c', '4': '#e83a30', '5': '#e83a30', '6': '#e83a30', '7': '#fafaf4', '8': '#3a7ae0', '0': '#5a5a6a',
+    '(': '#2b6a26', ')': '#2b6a26', '%': '#e03a30', '*': '#4a2a70', '_': '#8a5a30', '#': '#6c6252', '|': '#e8f6ff', '@': '#0c0a10', ':': '#8e8e9a', '[': '#9a6634', ']': '#764a22', '{': '#3a3240', '}': '#1e1822',
     'z': '#b08a50', 'V': '#5c3418', 'C': '#5c3418', 'H': '#e2be46', 'E': '#9c5e2a', 'U': '#3a72d2', 'm': '#b4b2b4', 'A': '#c8343c',
   };
   G.MINI_COLORS = MINI;
@@ -6457,6 +6665,16 @@ G.store = {
   function waves(p, cx, cy, col, radii = [3.5, 6]) {
     for (const r of radii) for (let a = -1.35; a <= 0.15; a += 0.08) p.put(cx + Math.cos(a) * r, cy + Math.sin(a) * r, col);
   }
+  // a bear's head (el oso; grande / pequeño show a big one and a little one): round ears, a pale muzzle, a black nose
+  function bearHead(p, cx, cy, r, col, dk, sleepy) {
+    p.disc(cx - r * 0.7, cy - r * 0.72, r * 0.36, col); p.disc(cx + r * 0.7, cy - r * 0.72, r * 0.36, col);
+    if (r > 3) { p.disc(cx - r * 0.7, cy - r * 0.72, r * 0.18, dk); p.disc(cx + r * 0.7, cy - r * 0.72, r * 0.18, dk); }
+    p.disc(cx, cy, r, col); p.shade(cx, cy, r, dk);
+    p.ell(cx, cy + r * 0.38, r * 0.45, r * 0.34, '#f0d8b0'); p.disc(cx, cy + r * 0.22, Math.max(0.6, r * 0.16), '#101010');
+    const e = Math.max(1, Math.round(r * 0.14));
+    if (sleepy) { p.rect(Math.round(cx - r * 0.45), Math.round(cy - r * 0.15), e + 1, 1, '#302018'); p.rect(Math.round(cx + r * 0.25), Math.round(cy - r * 0.15), e + 1, 1, '#302018'); }
+    else { p.rect(Math.round(cx - r * 0.42), Math.round(cy - r * 0.2), e, e, '#101010'); p.rect(Math.round(cx + r * 0.3), Math.round(cy - r * 0.2), e, e, '#101010'); }
+  }
   // little faces for the sound words (about 9x9, bottom left)
   const MINI = {
     perro(p) { p.ell(5, 11, 3.8, 3.4, '#c07838'); p.ell(1.6, 11, 1.3, 2.6, '#7a4420'); p.ell(8.4, 11, 1.3, 2.6, '#7a4420'); p.ell(5, 13, 2, 1.5, '#f0d8b0'); p.rect(3, 10, 1, 1, '#201010'); p.rect(6, 10, 1, 1, '#201010'); p.rect(4, 12, 2, 1, '#201010'); p.rect(4, 14, 2, 1, '#f07080'); },
@@ -6785,6 +7003,130 @@ G.store = {
     explorar(p) { // going exploring: a winding path to green hills, the sun
       p.rect(0, 0, 16, 9, '#a8e0f8'); p.disc(12, 3, 2, '#f8d030'); p.ell(4, 10, 6, 4, '#58b040'); p.ell(13, 10, 5, 3, '#48a038'); p.rect(0, 10, 16, 6, '#78c058');
       for (const [x, y] of [[7, 15], [8, 14], [8, 13], [9, 12], [9, 11], [10, 10]]) { p.put(x, y, '#e8c888'); p.put(x + 1, y, '#e8c888'); }
+    },
+    // ---- El bosque (content/es/zone-bosque.js): the woods, big and small, its animals ----
+    hoja(p, w) { // a leaf: pointed, a midrib and veins, a little stem (its colour from w.col: Lola's leaves)
+      const c = (w && w.col) || '#58b040', d = G.shade(c, 0.75), l = G.shade(c, 1.2);
+      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+        const u = (x + 0.5 + (y + 0.5)) / 2 - 1, v = ((x + 0.5) - (y + 0.5)) / 1.414; // along the leaf (bottom-left to top-right), across it
+        const t = (u - 1) / 12; if (t < 0 || t > 1) continue;
+        const half = Math.sin(Math.PI * Math.pow(t, 0.8)) * 4.2;
+        if (Math.abs(v) <= half) p.put(x, y, v > 0 ? d : c);
+      }
+      for (let i = 2; i < 13; i++) p.put(i, 15 - i, l);                         // the midrib
+      for (const [x, y] of [[5, 8], [8, 5], [7, 10], [10, 7]]) p.put(x, y, l);
+      p.put(1, 15, '#7a5028'); p.put(2, 14, '#7a5028');
+    },
+    hongo(p, w) { // a mushroom: a red cap with white spots on a pale stem (w.n 's': a little one, 'b': a big one)
+      const k = w && w.n === 's' ? 0.55 : 1, cx = 8, by = 15.5, cy = by - 9.5 * k;
+      p.rect(Math.round(cx - 2 * k), Math.round(by - 7 * k), Math.max(2, Math.round(4 * k)), Math.round(7 * k), '#ffffff'); p.rect(Math.round(cx + 1.2 * k), Math.round(by - 7 * k), 1, Math.round(7 * k), '#c0ae90');
+      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const dx = (x + 0.5 - cx) / (7 * k), dy = (y + 0.5 - cy) / (5 * k); if (dy <= 0.45 && dx * dx + dy * dy <= 1) p.put(x, y, dx > 0.45 ? '#a82418' : '#e03a30'); }
+      for (const [dx, dy, r] of [[-3.5, -2, 1.3], [1, -3.4, 1.2], [3.6, -0.6, 1.1], [-1, 0, 0.9]]) p.disc(cx + dx * k, cy + dy * k, Math.max(0.6, r * k), '#fff8f0');
+    },
+    tronco(p) { // a log lying on its side: bark, rings on its end, moss on top
+      p.rect(1, 6, 11, 8, '#8a5a30'); p.rect(1, 6, 11, 2, '#b07a48'); p.rect(1, 12, 11, 2, '#6a4020');
+      for (const x of [3, 6, 9]) p.rect(x, 8, 1, 4, '#6a4020');
+      p.ell(12.5, 10, 3.2, 4.2, '#d8b07a'); p.ell(12.5, 10, 2.1, 2.9, '#b8905a'); p.ell(12.5, 10, 0.9, 1.4, '#8a6034');
+      for (const x of [2, 4, 5, 8, 10]) p.put(x, 5, '#5a9a38'); p.rect(3, 6, 3, 1, '#86c050');
+    },
+    bellota(p) { // an acorn: a shiny brown nut under a bumpy cap with a little stalk
+      p.ell(8, 10.5, 4.6, 5, '#b8742a'); p.shade(8, 10.5, 4.6, '#8a5018'); p.put(6, 9, '#f0b060'); p.put(6, 10, '#e0a050');
+      p.ell(8, 6, 6, 3, '#7a5028'); for (const [x, y] of [[4, 5], [6, 4], [8, 5], [10, 4], [12, 5], [5, 7], [9, 7], [11, 7]]) p.put(x, y, '#a07040');
+      p.rect(8, 1, 1, 3, '#5a3818'); p.put(9, 1, '#5a3818'); p.put(8, 15, '#6a3a10');
+    },
+    mora(p) { // a blackberry: a cluster of shiny dark purple beads, two leaves
+      p.ell(5, 3, 3.2, 1.8, '#58b040'); p.ell(11, 3, 3.2, 1.8, '#3a9030'); p.rect(7, 2, 2, 3, '#3a7a28');
+      for (const [x, y] of [[6, 6], [10, 6], [4.5, 9], [8, 8.5], [11.5, 9], [6, 12], [10, 12], [8, 14.5], [8, 11]]) { p.disc(x, y, 2.1, '#4a2a70'); }
+      for (const [x, y] of [[6, 6], [10, 6], [4.5, 9], [8, 8.5], [11.5, 9], [6, 12], [10, 12], [8, 14.5], [8, 11]]) { p.put(x - 1, y - 1, '#9a6ad0'); }
+    },
+    cueva(p) { // a cave: a dark round mouth in grey rock, grass on top, pebbles at its foot
+      p.ell(8, 10, 8, 8, '#8e836e'); p.rect(0, 10, 16, 6, '#8e836e'); p.shade(8, 10, 8, '#6c6252');
+      p.rect(0, 2, 16, 2, '#58b040'); p.put(3, 1, '#58b040'); p.put(11, 1, '#58b040'); p.put(14, 2, '#3a9030');
+      p.ell(8, 14, 5, 8, '#0c0a10'); p.rect(3, 14, 10, 2, '#0c0a10'); p.ell(8, 14, 3.4, 6.5, '#1e1822');
+      p.put(2, 15, '#b0a68e'); p.put(13, 15, '#b0a68e'); p.put(14, 14, '#b0a68e'); p.put(5, 8, '#b0a68e'); p.put(11, 7, '#b0a68e');
+    },
+    grande(p) { // big: a big bear in colour beside a little grey one (the big one is the answer)
+      bearHead(p, 6.5, 8, 6, '#9a6030', '#6a3e18');
+      bearHead(p, 13.5, 13, 2.2, '#c8c0b8', '#a8a098');
+    },
+    pequeno(p) { // small: a little bear cub in colour beside a big grey one (the little one is the answer)
+      bearHead(p, 6, 8, 6, '#d8d0c8', '#b8b0a8', true);
+      bearHead(p, 13, 12.5, 2.8, '#b87838', '#7a4a20');
+    },
+    oso(p, w) { // a brown bear's head: round ears, a pale muzzle, a black nose (w.n 's': a cub, smaller and lighter)
+      if (w && w.n === 's') { bearHead(p, 8, 9, 4.6, '#b87838', '#8a5420'); return; }
+      bearHead(p, 8, 8.5, 6.6, '#9a6030', '#6a3e18');
+    },
+    ardilla(p) { // a squirrel sitting up: a big curly bushy tail behind, holding an acorn
+      p.ell(4.5, 6, 4, 5.5, '#c0662a'); p.ell(4, 4, 2.6, 3.4, '#e08a40'); p.ell(5, 11, 3, 3, '#c0662a');
+      p.ell(10, 11, 3.4, 4, '#d0782e'); p.ell(10.5, 12, 2, 2.6, '#f8e0b8');
+      p.disc(11, 5.5, 3, '#d0782e'); p.put(9, 2, '#d0782e'); p.put(9, 1, '#a04a18'); p.put(12, 2, '#d0782e'); p.put(12, 1, '#a04a18');
+      p.put(12, 5, '#101010'); p.put(14, 6, '#402018'); p.ell(12.5, 6.8, 1.4, 0.9, '#f8e0b8');
+      p.disc(12.5, 9.5, 1.3, '#8a5018'); p.rect(12, 8, 2, 1, '#5a3818');
+      p.rect(8, 15, 2, 1, '#a04a18'); p.rect(11, 15, 2, 1, '#a04a18');
+    },
+    mapache(p) { // a raccoon's face: grey, a black bandit mask, white brows and muzzle, round ears
+      p.disc(3.5, 3.5, 2.2, '#5a5a62'); p.disc(12.5, 3.5, 2.2, '#5a5a62'); p.put(3, 3, '#e8e0d8'); p.put(12, 3, '#e8e0d8');
+      p.ell(8, 9, 7, 6, '#8a8a92'); p.shade(8, 9, 7, '#6a6a72');
+      p.ell(8, 6.5, 5, 1.2, '#f4f0ea'); p.ell(5, 9, 2.6, 1.8, '#202028'); p.ell(11, 9, 2.6, 1.8, '#202028'); p.rect(5, 8.5, 6, 1, '#202028');
+      p.put(5, 9, '#ffffff'); p.put(11, 9, '#ffffff'); p.ell(8, 12.5, 3, 2.2, '#f4f0ea'); p.rect(7, 11, 2, 1, '#101010');
+    },
+    venado(p) { // a deer's head: big ears, little antlers, a white-spotted brown face
+      for (const [x, y] of [[4, 4], [3, 3], [2, 1], [4, 2], [5, 1], [12, 4], [13, 3], [14, 1], [12, 2], [11, 1]]) p.put(x, y, '#7a5028');
+      p.ell(3.5, 7, 2.6, 1.4, '#b87838'); p.ell(12.5, 7, 2.6, 1.4, '#b87838'); p.put(3, 7, '#f0c8a0'); p.put(12, 7, '#f0c8a0');
+      p.ell(8, 8.5, 3.8, 4.2, '#c08040'); p.ell(8, 12.5, 2.6, 2.6, '#c08040'); p.shade(8, 8.5, 3.8, '#9a6028');
+      p.put(6, 8, '#101010'); p.put(10, 8, '#101010'); p.put(6, 7, '#ffffff'); p.ell(8, 13.5, 1.6, 1, '#302018'); p.put(8, 5, '#f8e8c8'); p.put(7, 11, '#f0d8b0'); p.put(9, 11, '#f0d8b0');
+    },
+    zorro(p) { // a fox's face: orange, pointed ears, a white cheek ruff, a little black nose
+      p.tri(1, 1, 6, 4, 2, 8, '#e06a20'); p.tri(15, 1, 10, 4, 14, 8, '#e06a20'); p.tri(2, 2.5, 4.5, 4.5, 2.6, 6.5, '#401810'); p.tri(14, 2.5, 11.5, 4.5, 13.4, 6.5, '#401810');
+      p.ell(8, 8, 6, 4.4, '#e87a28'); p.tri(2, 8, 14, 8, 8, 15, '#e87a28');
+      p.tri(2, 9, 7.5, 10, 8, 15, '#fff4e8'); p.tri(14, 9, 8.5, 10, 8, 15, '#fff4e8');
+      p.put(5, 7, '#101010'); p.put(11, 7, '#101010'); p.put(5, 6, '#f8c060'); p.disc(8, 14, 1, '#101010');
+    },
+    erizo(p) { // a hedgehog: a round spiky brown back, a little pointed face, a black nose
+      for (let a = Math.PI * 0.95; a <= Math.PI * 2.05; a += 0.22) for (let r = 4; r <= 7.4; r += 0.6) p.put(7 + Math.cos(a) * r, 11 + Math.sin(a) * r * 0.95, r > 6.6 ? '#4a3018' : '#7a5530');
+      p.ell(7, 11.5, 5.8, 3.8, '#6a4826');
+      for (const [x, y] of [[4, 7], [7, 6], [10, 7], [5, 9], [9, 9]]) p.put(x, y, '#c8a070');
+      p.ell(12, 12.5, 3, 2.4, '#e8c8a0'); p.tri(13, 11, 13, 14, 16, 13, '#e8c8a0'); p.put(15, 13, '#101010'); p.put(12, 11, '#101010');
+      p.rect(4, 15, 2, 1, '#8a6040'); p.rect(9, 15, 2, 1, '#8a6040');
+    },
+    buho(p) { // an owl: big round eyes, ear tufts, brown feathers with a pale chest, on a branch
+      p.tri(2.5, 1, 5.5, 4, 2.5, 5, '#7a5028'); p.tri(13.5, 1, 10.5, 4, 13.5, 5, '#7a5028');
+      p.ell(8, 8.5, 6, 6.5, '#9a6a38'); p.shade(8, 8.5, 6, '#7a4e24'); p.ell(8, 11, 3.6, 3.4, '#e8d0a0');
+      for (const [x, y] of [[7, 10], [9, 11], [7, 12], [9, 13]]) p.put(x, y, '#b08858');
+      p.disc(5.3, 6.5, 2.5, '#fff4d0'); p.disc(10.7, 6.5, 2.5, '#fff4d0'); p.disc(5.3, 6.5, 1.4, '#f8b020'); p.disc(10.7, 6.5, 1.4, '#f8b020');
+      p.put(5, 6, '#101010'); p.put(10, 6, '#101010'); p.tri(7, 8, 9, 8, 8, 10, '#e89020');
+      p.rect(0, 15, 16, 1, '#6a4020'); p.put(5, 14, '#e89020'); p.put(10, 14, '#e89020');
+    },
+    luciernaga(p) { // a firefly: a little black-and-red beetle with see-through wings and a glowing yellow tail
+      p.disc(8, 11, 4.6, '#f8f080'); p.disc(8, 11.5, 3.4, '#fff8b0');
+      p.ell(4.5, 6, 3, 2, '#d8f0ff'); p.ell(11.5, 6, 3, 2, '#d8f0ff');
+      p.ell(8, 7, 2.2, 3.6, '#302830'); p.disc(8, 3, 1.8, '#e04030'); p.put(7, 3, '#101010'); p.put(9, 3, '#101010');
+      p.put(6, 0, '#302830'); p.put(7, 1, '#302830'); p.put(10, 0, '#302830'); p.put(9, 1, '#302830');
+      p.disc(8, 11.5, 2, '#f8e020'); p.put(8, 11, '#ffffff');
+    },
+    // things in the forest with no word of their own (a picture only)
+    binoculares(p) { // Elena's binoculars: two black barrels, blue lenses, a strap
+      for (let a = Math.PI * 1.1; a < Math.PI * 1.9; a += 0.1) p.put(8 + Math.cos(a) * 7, 8 + Math.sin(a) * 6, '#8a5a28');
+      p.rect(2, 6, 5, 8, '#303038'); p.rect(9, 6, 5, 8, '#303038'); p.rect(6, 8, 4, 3, '#404048');
+      p.disc(4.5, 13, 2.3, '#68a8e8'); p.disc(11.5, 13, 2.3, '#68a8e8'); p.put(4, 12, '#ffffff'); p.put(11, 12, '#ffffff'); p.rect(2, 6, 5, 1, '#505060'); p.rect(9, 6, 5, 1, '#505060');
+    },
+    canastamoras(p) { // Doña Lupe's basket, heaped with blackberries
+      for (let a = Math.PI; a <= Math.PI * 2; a += 0.05) p.put(8 + Math.cos(a) * 5.5 - 0.5, 7 + Math.sin(a) * 5 - 0.5, '#8a5022');
+      for (const [x, y] of [[5, 7], [8, 6], [11, 7], [6.5, 8], [9.5, 8]]) p.disc(x, y, 1.6, '#4a2a70');
+      p.put(5, 6, '#9a6ad0'); p.put(8, 5, '#9a6ad0'); p.put(11, 6, '#9a6ad0');
+      p.rect(2, 8, 12, 6, '#c88a40'); p.rect(3, 14, 10, 1, '#8a5022'); for (let y = 9; y < 14; y += 2) p.rect(2, y, 12, 1, '#a86a28');
+    },
+    pay(p) { // Doña Lupe's blackberry pie: a golden crust with a lattice, purple filling peeking through
+      p.ell(8, 10, 7.5, 4.5, '#e0a050'); p.ell(8, 9.5, 6.2, 3.4, '#5a2a70');
+      for (const x of [4, 7, 10, 13]) for (let y = 7; y < 13; y++) p.put(x - (y - 7) * 0.3, y, '#f0c070');
+      for (const y of [8, 10, 12]) for (let x = 3; x < 14; x++) if (Math.abs(x - 8) < 6.5 - Math.abs(y - 10)) p.put(x, y, '#f0c070');
+      p.rect(1, 13, 14, 2, '#c08038'); p.put(4, 5, '#ffffff'); p.put(8, 4, '#ffffff'); p.put(12, 5, '#ffffff');
+    },
+    frasco(p) { // a glass jar with a lid, fireflies glowing inside
+      p.rect(3, 4, 10, 11, '#c8e8f8'); p.rect(4, 3, 8, 1, '#c8e8f8'); p.rect(4, 1, 8, 2, '#a07040'); p.rect(4, 1, 8, 1, '#c09050');
+      p.rect(4, 5, 8, 9, '#203048'); for (const [x, y] of [[6, 7], [10, 9], [7, 11], [9, 6], [5, 12]]) { p.put(x, y, '#f8f080'); p.put(x + 1, y, '#fff8c0'); }
+      p.rect(3, 5, 1, 8, '#ffffff');
     },
     // ---- La playa (content/es/zone-playa.js): the sea, the sand, its animals ----
     mar(p) { // the sea: deep blue bands, white wave crests rolling
@@ -7143,9 +7485,11 @@ G.store = {
     // the open world's zones (docs/WORLD_PLAN.md): each zone's own pages
     playa: { name: 'La playa', en: 'The beach' },
     mar: { name: 'En el mar', en: 'In the sea' },
+    bosque: { name: 'El bosque', en: 'The forest' },
+    fauna: { name: 'Animales del bosque', en: 'Forest animals' },
   };
   // the notebook's page order: roughly the order the pages appear in the story
-  C.topicOrder = ['saludos', 'mascota', 'animales', 'sonidos', 'comida', 'colores', 'granja', 'pueblo', 'cosas', 'sentir', 'numeros', 'playa', 'mar'];
+  C.topicOrder = ['saludos', 'mascota', 'animales', 'sonidos', 'comida', 'colores', 'granja', 'pueblo', 'cosas', 'sentir', 'numeros', 'playa', 'mar', 'bosque', 'fauna'];
 
   C.words = {
     // ---- Saludos ----
@@ -7251,6 +7595,25 @@ G.store = {
     medusa: { es: 'la medusa', en: 'the jellyfish', topic: 'mar', icon: 'medusa', pl: 'medusas', alt: 'aguamala' },
     delfin: { es: 'el delfín', en: 'the dolphin', topic: 'mar', icon: 'delfin', pl: 'delfines' },
     pulpo: { es: 'el pulpo', en: 'the octopus', topic: 'mar', icon: 'pulpo', pl: 'pulpos', alt: 'pulpito' },
+    // ---- El bosque (content/es/zone-bosque.js): the woods, big and small; Mexican Spanish ----
+    elbosque: { es: 'el bosque', en: 'the forest', topic: 'bosque', icon: 'bosque', alt: 'bosque / bosquecito' }, // (id: the zone's picture is called bosque)
+    hoja: { es: 'la hoja', en: 'the leaf', topic: 'bosque', icon: 'hoja', pl: 'hojas', alt: 'hojita / hojitas' },
+    hongo: { es: 'el hongo', en: 'the mushroom', topic: 'bosque', icon: 'hongo', pl: 'hongos', alt: 'honguito / champiñón' },
+    tronco: { es: 'el tronco', en: 'the log', topic: 'bosque', icon: 'tronco', pl: 'troncos', alt: 'tronquito' },
+    bellota: { es: 'la bellota', en: 'the acorn', topic: 'bosque', icon: 'bellota', pl: 'bellotas', alt: 'bellotita' },
+    mora: { es: 'la mora', en: 'the blackberry', topic: 'bosque', icon: 'mora', pl: 'moras', alt: 'zarzamora / moritas / zarzamoras' },
+    cueva: { es: 'la cueva', en: 'the cave', topic: 'bosque', icon: 'cueva', pl: 'cuevas' },
+    grande: { es: 'grande', en: 'big', topic: 'bosque', icon: 'grande', alt: 'grandote / grandota / muy grande' },
+    pequeno: { es: 'pequeño / pequeña', en: 'small', topic: 'bosque', icon: 'pequeno', alt: 'chiquito / chiquita / chico / chica / pequeñito' },
+    // ---- Animales del bosque: the forest's animals (the album) ----
+    oso: { es: 'el oso', en: 'the bear', topic: 'fauna', icon: 'oso', pl: 'osos', alt: 'osito / osa / osita' },
+    ardilla: { es: 'la ardilla', en: 'the squirrel', topic: 'fauna', icon: 'ardilla', pl: 'ardillas', alt: 'ardillita' },
+    mapache: { es: 'el mapache', en: 'the raccoon', topic: 'fauna', icon: 'mapache', pl: 'mapaches', alt: 'mapachito' },
+    venado: { es: 'el venado', en: 'the deer', topic: 'fauna', icon: 'venado', pl: 'venados', alt: 'venadito / ciervo' },
+    zorro: { es: 'el zorro', en: 'the fox', topic: 'fauna', icon: 'zorro', pl: 'zorros', alt: 'zorrito / zorra' },
+    erizo: { es: 'el erizo', en: 'the hedgehog', topic: 'fauna', icon: 'erizo', pl: 'erizos', alt: 'erizito' },
+    buho: { es: 'el búho', en: 'the owl', topic: 'fauna', icon: 'buho', pl: 'búhos', alt: 'tecolote / buhito' },
+    luciernaga: { es: 'la luciérnaga', en: 'the firefly', topic: 'fauna', icon: 'luciernaga', pl: 'luciérnagas', alt: 'luciernaguita' },
   };
   C.numberWords = ['uno', 'dos', 'tres', 'cuatro', 'cinco'];
   C.numberWords10 = ['uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'];
@@ -7270,6 +7633,8 @@ G.store = {
     numeros: { topic: 'numeros', words: ['uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'] },
     playa: { topic: 'playa', words: ['mar', 'concha', 'elsol', 'caliente', 'helado', 'arena', 'cubetaarena', 'castillo', 'ola'] },
     mar: { topic: 'mar', words: ['cangrejo', 'estrellamar', 'tortuga', 'gaviota', 'nadar', 'medusa', 'delfin', 'pulpo'] },
+    bosque: { topic: 'bosque', words: ['elbosque', 'pequeno', 'grande', 'cueva', 'bellota', 'hoja', 'tronco', 'mora', 'hongo'] },
+    fauna: { topic: 'fauna', words: ['oso', 'ardilla', 'mapache', 'venado', 'zorro', 'erizo', 'buho', 'luciernaga'] },
   };
   C.pageOrder = C.topicOrder.slice();
   // where each page's puzzle sparkle sits (maps.js reads this): map -> 'x,y' -> page
@@ -7281,6 +7646,7 @@ G.store = {
     escuela: { '3,1': 'sentir' },
     granja: { '6,2': 'sonidos' }, // (inside the barn: what do the animals say?)
     playa: { '21,7': 'playa', '12,10': 'mar' }, // (La playa: by the lifeguard's tower, and in the middle of the beach)
+    bosque: { '16,15': 'bosque', '22,6': 'fauna' }, // (El bosque: in the clearing, and in the meadow by the cave path)
   };
 
   // ---------- the 21 chapters, in order (docs/CURRICULUM.md section 4) ----------
@@ -7428,6 +7794,14 @@ G.store = {
     tere: { name: 'Tere',
       portrait: { body: 'halfling', skin: '#a87050', hair: '#201010', hairStyle: 'braid', eyes: '#201008', head: 'hat', headColor: '#68c8e8', outfit: '#f8c830', trim: '#ffffff', age: 'young', face: 'round', lashes: true, bg: '#3a9ab8' },
       map: { body: 'halfling', skin: '#a87050', hair: '#201010', hairStyle: 'braid', head: 'hat', headColor: '#68c8e8', outfit: '#f8c830', trim: '#ffffff', eyes: '#201008' } },
+    // El bosque (content/es/zone-bosque.js): Elena the forest ranger (a green ranger's hat, khaki, binoculars), Doña
+    // Lupe in her log cabin (a grandma: grey braid, a purple shawl, an apron; she picks blackberries and bakes pies)
+    elena: { name: 'Elena',
+      portrait: { body: 'human', skin: '#c89070', hair: '#3a2010', hairStyle: 'braid', eyes: '#302010', head: 'hat', headColor: '#4a7a38', outfit: '#b89a60', trim: '#4a7a38', age: 'adult', face: 'soft', lashes: true, bg: '#3a6a30' },
+      map: { body: 'human', skin: '#c89070', hair: '#3a2010', hairStyle: 'braid', head: 'hat', headColor: '#4a7a38', outfit: '#b89a60', trim: '#4a7a38', eyes: '#302010' } },
+    lupe: { name: 'Doña Lupe',
+      portrait: { body: 'human', skin: '#d8a880', hair: '#d8d8e0', hairStyle: 'braid', eyes: '#402818', head: 'bandana', headColor: '#8a4ab0', outfit: '#6a3a90', trim: '#f8f0e0', age: 'old', face: 'round', lashes: true, bg: '#6a3a7a' },
+      map: { body: 'human', skin: '#d8a880', hair: '#d8d8e0', hairStyle: 'braid', head: 'bandana', headColor: '#8a4ab0', outfit: '#6a3a90', trim: '#f8f0e0', robe: true, eyes: '#402818' } },
     canelo: { name: 'Canelo',
       map: { body: 'wolf', outfit: '#b87038', trim: '#f0d8b0', eyes: '#201008' } },
   };
@@ -11107,10 +11481,17 @@ G.store = {
   //   on the water, pulsing (frame pulse)), 'leap' (a dolphin: only its fin shows as it swims (frame fin), now and then it
   //   leaps out in a big arc (frames rise / dive)), 'still' (a starfish, an octopus: stays put, its frame alt now and
   //   then), 'crawl' (a turtle: plods slowly (frames walk / walk2), pulls its head in when tapped (frame hide)).
+  //   More from El bosque (2026-10-17): 'climb' (a squirrel: scurries about in dashes, and when you or the dog come near
+  //   (or now and then) it races to the nearest tree trunk (o.trees: tile codes, default ')') and runs up it (frame
+  //   climb), sits up there a while (o.high: px, default 26), then comes back down), 'shy' (a deer: grazes (frame graze)
+  //   and walks slowly; when you or the dog come close it bounds away in big leaps (frame jump)), 'flit' (a firefly:
+  //   hovers and wanders, bobbing up and down; tapped, it darts off). o.glow: a colour: a soft pulsing light around it
+  //   (fireflies). The default 'walk' shows frame react (if it has one) for a moment when tapped (a fox sits, a
+  //   raccoon stands up).
   //   o.on: the tile codes it lives on (default the land: '.o,=pyz'; e.g. 's' sand, '-~w' water), o.water: drawn flat
   //   on the water / ground with the ducks (not sorted in with the people), o.shadow: its shadow's width in px.
   AN.addKind = function (id, o) {
-    AN.KINDS[id] = { word: o.word || id, sound: o.sound || null, cry: o.cry || null, speed: o.speed, order: ORDER.length, move: o.move || 'walk', on: o.on || null, water: !!o.water, shadow: o.shadow || 7 };
+    AN.KINDS[id] = { word: o.word || id, sound: o.sound || null, cry: o.cry || null, speed: o.speed, order: ORDER.length, move: o.move || 'walk', on: o.on || null, water: !!o.water, shadow: o.shadow || 7, glow: o.glow || null, trees: o.trees || null, high: o.high || 0, scale: o.scale || 1 };
     if (o.spr) SPR[id] = o.spr;
     CRY[id] = o.sfx || (() => tone('triangle', 900, 1200, 0.08, 0.06, 0));
     if (!ORDER.includes(id)) ORDER = ORDER.concat([id]);
@@ -11446,6 +11827,44 @@ G.store = {
     still(f, a) { // stays put; its other frame now and then
       if (--a.t <= 0) { a.st = a.st === 'alt' ? 'idle' : 'alt'; a.t = a.st === 'alt' ? 30 + ri(30) : 60 + ri(140); }
     },
+    climb(f, a, K) { // a squirrel: dashes about; near you (or now and then) up the nearest tree, a while up there, then down
+      if (!a.trees) { // the trunks near where it lives
+        const xs = a.ground.map(g => g[0]), ys = a.ground.map(g => g[1]), codes = K.trees || ')', out = [];
+        for (let y = Math.min(...ys) - 3; y <= Math.max(...ys) + 3; y++) for (let x = Math.min(...xs) - 3; x <= Math.max(...xs) + 3; x++) if (codes.includes(f.map.get(x, y))) out.push([x, y]);
+        a.trees = out;
+      }
+      const near = (youNear(f, a, 40) || dogNear(f, a, 46)) && !a.react;
+      if (a.st === 'up') { a.z = K.high || 26; if (--a.t <= 0 && !youNear(f, a, 40)) { a.st = 'down'; } return; }
+      if (a.st === 'climb') { a.z = Math.min(K.high || 26, a.z + 0.9); if (a.z >= (K.high || 26)) { a.st = 'up'; a.t = 150 + ri(240); } return; }
+      if (a.st === 'down') { a.z = Math.max(0, a.z - 0.7); if (a.z <= 0) { a.z = 0; const [x, y] = pickGround(a); a.tx = x; a.ty = y; a.st = 'walk'; a.fast = 1; } return; }
+      if (a.st === 'totree') { if (goToward(a, 1.5)) { a.st = 'climb'; a.flip = false; } return; }
+      if ((near || a.wantTree) && a.trees.length) {
+        a.wantTree = 0;
+        let best = null, bd = 1e9; for (const [x, y] of a.trees) { const d = Math.hypot(x * T + 12 - a.x, y * T + 20 - a.y); if (d < bd) { bd = d; best = [x, y]; } }
+        if (best && bd < 6 * T) { a.tx = best[0] * T + 12; a.ty = best[1] * T + 21; a.st = 'totree'; a.flip = a.tx < a.x; if (near && visible(f, a)) AN.cry(a.kind); return; }
+      }
+      if (a.st === 'walk') { if (goToward(a, a.fast ? 1.4 : K.speed || 0.9)) { a.st = 'idle'; a.fast = 0; a.t = 20 + ri(70); } return; }
+      if (--a.t <= 0) { const r = Math.random(); if (r < 0.2) { a.wantTree = 1; a.t = 1; } else if (r < 0.75) { [a.tx, a.ty] = pickGround(a); a.st = 'walk'; } else { a.flip = !a.flip; a.t = 30 + ri(40); } }
+    },
+    shy(f, a, K) { // a deer: grazes, walks slowly; you or the dog close: it bounds away in big leaps
+      if (a.st === 'run') {
+        const s = ++a.h / 22; a.z = Math.abs(Math.sin(s * Math.PI)) * 7;
+        if (goToward(a, 1.6)) { a.z = 0; a.st = 'idle'; a.t = 90 + ri(90); }
+        return;
+      }
+      if ((youNear(f, a, 46) || dogNear(f, a, 54)) && a.react <= 0) {
+        const px = f.player.x * T + 12, py = f.player.y * T + 18; let best = null, bd = -1;
+        for (let k = 0; k < 8; k++) { const g = pickGround(a), d = Math.hypot(g[0] - px, g[1] - py); if (d > bd) { bd = d; best = g; } }
+        a.tx = best[0]; a.ty = best[1]; a.st = 'run'; a.h = 0; a.flip = a.tx < a.x; return;
+      }
+      if (a.st === 'walk') { if (goToward(a, K.speed || 0.3)) { a.st = 'graze'; a.t = 120 + ri(200); } return; }
+      if (--a.t <= 0) { if (a.st === 'graze' && ri(2)) { a.st = 'idle'; a.t = 60 + ri(90); } else if (ri(2)) { [a.tx, a.ty] = pickGround(a); a.st = 'walk'; } else { a.st = 'graze'; a.t = 140 + ri(200); } }
+    },
+    flit(f, a, K) { // a firefly: hovers, bobbing, and wanders slowly; tapped, it darts away
+      a.z = 10 + Math.sin(a.age / 17 + a.tint * 1.7) * 5;
+      if (a.st === 'walk') { if (goToward(a, a.fast ? 1.2 : K.speed || 0.25)) { a.st = 'idle'; a.fast = 0; a.t = 20 + ri(60); } return; }
+      if (--a.t <= 0) { [a.tx, a.ty] = pickGround(a); a.st = 'walk'; }
+    },
     crawl(f, a, K) { // plods slowly; its head in for a while when tapped
       if (a.st === 'hide') { if (--a.t <= 0) { a.st = 'idle'; a.t = 40; } return; }
       if (a.st === 'walk') { if (goToward(a, K.speed || 0.14)) { a.st = 'idle'; a.t = 80 + ri(160); } return; }
@@ -11482,7 +11901,10 @@ G.store = {
       else if (mv === 'leap') AN.leap(a, f);
       else if (mv === 'crawl') { a.st = 'hide'; a.t = 90; }
       else if (mv === 'still') { a.st = 'alt'; a.t = 40; }
-      else if (mv === 'drift') { const [x, y] = pickGround(a); a.tx = x; a.ty = y; a.st = 'walk'; a.fast = 1; }
+      else if (mv === 'drift' || mv === 'flit') { const [x, y] = pickGround(a); a.tx = x; a.ty = y; a.st = 'walk'; a.fast = 1; }
+      else if (mv === 'climb') { if (a.st !== 'up' && a.st !== 'climb') a.wantTree = 1; } // (up the nearest tree)
+      else if (mv === 'shy') { a.st = 'idle'; a.t = 50; }
+      else if (mv === 'walk' || !mv) { a.st = 'idle'; a.t = Math.max(a.t, 50); }
     }
     f.zoo.fx.push({ k: 'heart', x: a.x + (a.flip ? -8 : 8), y: a.y - frameOf(a).height + 4, t: 0, life: 50 });
   }
@@ -11494,7 +11916,7 @@ G.store = {
     let best = null, bd = 1e9;
     for (const a of f.zoo.list) {
       if ((a.kind === 'pez' && a.st !== 'jump') || hid(f, a)) continue; // the fish only while it jumps (the fountain names itself)
-      const img = frameOf(a), w = Math.max(20, img.width + 6), h = Math.max(20, img.height + 6), cy = a.y - a.z - img.height / 2;
+      const img = frameOf(a), sc = (AN.KINDS[a.kind] || {}).scale || 1, w = Math.max(20, img.width * sc + 6), h = Math.max(20, img.height * sc + 6), cy = a.y - a.z - img.height * sc / 2;
       const dx = Math.abs(wx - a.x), dy = Math.abs(wy - cy);
       if (dx <= w / 2 && dy <= h / 2 && dx + dy < bd) { best = a; bd = dx + dy; }
     }
@@ -11529,6 +11951,10 @@ G.store = {
         else if (mv === 'crawl') fr = a.st === 'hide' ? 'hide' : a.st === 'walk' && (a.age >> 4) & 1 ? 'walk2' : 'walk';
         else if (mv === 'still') fr = a.st === 'alt' || (R && (a.react >> 3) & 1) ? 'alt' : 'stand';
         else if (mv === 'scuttle') fr = a.st === 'snap' || R ? ((a.t >> 3) & 1 ? 'snap' : 'stand') : a.st === 'walk' && (a.age >> 2) & 1 ? 'walk' : 'stand';
+        else if (mv === 'climb') fr = a.st === 'climb' || a.st === 'down' ? ((a.age >> 2) & 1 ? 'climb' : 'climb2') : a.st === 'up' ? 'climb' : (a.st === 'walk' || a.st === 'totree') && (a.age >> 2) & 1 ? 'walk' : 'stand';
+        else if (mv === 'shy') fr = a.st === 'run' ? (a.z > 3 ? 'jump' : 'walk') : R ? 'stand' : a.st === 'graze' ? 'graze' : a.st === 'walk' && (a.age >> 3) & 1 ? 'walk' : 'stand';
+        else if (mv === 'flit') fr = (a.age >> 2) & 1 ? 'alt' : 'stand';
+        else if (R && S.react) fr = 'react';
         else fr = a.st === 'walk' && S.walk && (a.age >> 3) & 1 ? 'walk' : S.stand ? 'stand' : Object.keys(S).find(k => k !== 'pal');
         if (!S[fr]) fr = S.stand ? 'stand' : Object.keys(S).find(k => k !== 'pal');
       }
@@ -11537,7 +11963,15 @@ G.store = {
     return pix((a.baby ? 'patito' : a.kind) + fr + (tint ? 'w' : ''), S[fr], pal, a.flip);
   }
   function drawOne(ctx, a, cx, cy) {
+    const sc = (AN.KINDS[a.kind] || {}).scale || 1;
+    if (sc !== 1) { const img = frameOf(a), w = img.width * sc, h = img.height * sc; ctx.drawImage(img, Math.round(a.x - w / 2 - cx), Math.round(a.y - h - a.z - cy), w, h); return; } // (a big animal: mama bear)
     const img = frameOf(a), x = Math.round(a.x - img.width / 2 - cx), y = Math.round(a.y - img.height - a.z - cy);
+    const gl = (AN.KINDS[a.kind] || {}).glow;
+    if (gl) { // a soft light around it, pulsing (fireflies)
+      const k = 0.55 + 0.45 * Math.sin(a.age / 9 + (a.tint | 0)), gx = x + img.width / 2, gy = y + img.height - 2, r = 7 + k * 4;
+      const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, r); g.addColorStop(0, gl); g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.save(); ctx.globalAlpha = 0.5 + 0.4 * k; ctx.fillStyle = g; ctx.fillRect(gx - r, gy - r, 2 * r, 2 * r); ctx.restore();
+    }
     if (a.kind === 'caballo' || a.kind === 'cabra') { // a swishing tail: one pixel that moves
       const sw = (a.age >> 4) & 1;
       ctx.drawImage(img, x, y);
@@ -12929,11 +13363,11 @@ G.store = {
   G.album.discover = function (id) { if (!AN().KINDS[id] || DQ.includes(id) || (cur && cur.id === id)) return; DQ.push(id); if (DQ.length > 3) DQ.shift(); };
   G.album.discovering = () => cur;
   G.album.step = function () {
-    if (cur) { cur.t++; if (cur.t === 12) { AN().cry(cur.id); G.audio.sfx('star'); } if (cur.t === 30) { const w = G.data.words[AN().KINDS[cur.id].word]; if (w && G.st.seen(AN().KINDS[cur.id].word)) G.speak(w.es.split(' / ')[0]); } if (cur.t > 170) cur = null; return; }
+    if (cur) { if (G.top() !== G.field) return; /* (a menu or a talk opened over it: it waits, hidden, and says nothing) */ cur.t++; if (cur.t === 12) { AN().cry(cur.id); G.audio.sfx('star'); } if (cur.t === 30) { const w = G.data.words[AN().KINDS[cur.id].word]; if (w && G.st.seen(AN().KINDS[cur.id].word)) G.speak(w.es.split(' / ')[0]); } if (cur.t > 170) cur = null; return; }
     if (DQ.length && G.fade.a === 0 && G.state && G.field && G.top() === G.field) { /* (on the map: never over a talk or a menu) */ cur = { id: DQ.shift(), t: 0 }; G.fx.confetti(G.W / 2 - 50, 60, -1, 10); G.fx.confetti(G.W / 2 + 50, 60, 1, 10); }
   };
   G.album.draw = function (ctx) {
-    const c = cur; if (!c || !G.state) return;
+    const c = cur; if (!c || !G.state || G.top() !== G.field) return;
     const id = c.id, K = AN().KINDS[id], w = G.data.words[K.word], named = G.st.seen(K.word), t = c.t;
     // pop in (0-14), stay, then flip (shrink sideways) and fly to the corner (140-170)
     const pop = Math.min(1, t / 14), e = 1 - Math.pow(1 - pop, 3), fly = Math.max(0, (t - 140) / 30);
@@ -12973,7 +13407,9 @@ G.MAPDATA = {
   camino_playa: { rows: ["TTTTTT,TTTTTTT", "TT....,.....TT", "TT....,.....TT", "TT.o..,...o.TT", "TT....,.....TT", "TT.P..,.....TT", "TT....,.wwwwTT", "TT....,.wwwwTT", "TT..o.,.wwwwTT", "TT....,.wwwwTT", "TT.o..,.....TT", "TT....,.....TT", "TTssss,sssssTT", "TTssss,sssssTT", "TTssss,sssssTT", "TTssss,sssssTT", "Tfssss,sssssfT", "Tfssss,sssssfT", "Tfssss,sssssfT", "Tfssss,sssssfT", "Tfssss,sssssfT", "Tfssss,sssssfT", "Tfssss,sssssfT", "TTTTTT,TTTTTTT"], pos: {"laguna": [8, 6, 4, 4], "palo": [4, 15], "lola": [7, 13], "north": [6, 0], "south": [6, 23], "postN": [5, 2], "postS": [7, 21]} },
   camino_abuelos: { rows: ["TTTTTT,TTTTTTT", "TT....,.....TT", "TT....,.....TT", "TT....,FyyyyTT", "TT.o..,FyyyyTT", "TT....,FyyyyTT", "TT....,.yyyyTT", "TT....,FyyyyTT", "TT....,FyyyyTT", "TT....,FyyyyTT", "TT..o.,.....TT", "TT....,.....TT", "TT....,.....TT", "TT....,..o..TT", "TTyyy.,.....TT", "TTyyy.,...f.TT", "TTyyy.,.....TT", "TTyyy.,.....TT", "TTyyy.,...o.TT", "TTyyy.,.....TT", "TT....,.....TT", "TT.o..,..o..TT", "TT....,.....TT", "TTTTTT,TTTTTTT"], pos: {"manzana": [10, 16], "gallinas": [2, 5, 4, 4], "lola": [7, 12], "north": [6, 0], "south": [6, 23], "postN": [5, 2], "postS": [7, 21]} },
   playa: { rows: ["TTTTTTTTTT,TTTTTTTTTTTTTTTTTTTTTTT", "T..o......,......o........o......T", "T.o...o...,..o........o.......o..T", "T&s&s&&s&s,&s&s&&s&s&&s&1&&s&s&&sT", "Ts1sssss1s,sss8ssssss&ssssssss1ssT", "Tssssssssssssssssssssssssss&sssssT", "Tssss&sssssssssssssssss2sssssssssT", "Tssssssssss&ssssssssssssssss2ssssT", "Tsss1ssssssss2ssss6sssssssssssss1T", "Tsssssssssssssssss7ssssssssssssssT", "Tss&ssssssssssssssssssssss00s0ss0T", "T1ssssss2ssssssssssssssss000000s0T", "Tssssssssssssss3sssssssss0---00ssT", "T0ssssssssssssssssssssss00----000T", "T00ssssssssssssssssssssss00s000ssT", "w9999dd99999999999999999999999999w", "w----dd--------------------------w", "w----dd--------------------------w", "wwwwwddwwwwwwwwwwwwwwwwwwwwwwwwwww", "wwwwwddwwwwwwwwwwwwwwwwwwwwwwwwwww", "wwwwddddwwwwwwwwwwwwwwwwwwwwwwwwww", "wwwwdddd45wwwwwwwwwwwwwwwwwwwwwwww", "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww", "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww"], pos: {"in": [10, 1], "north": [10, 0], "post": [11, 2], "bus": [8, 2], "busIn": [8, 3], "lola": [12, 6], "nico": [21, 5], "paco": [6, 19], "marina": [19, 9], "nieves": [15, 4], "tere": [16, 12], "dog": [11, 13], "dog2": [26, 6], "splash": [20, 15], "net": [5, 21], "nest": [22, 13], "castle": [15, 12], "hermit": [23, 11], "charco": [26, 12, 4, 2], "rocas": [22, 8, 11, 7], "arena": [3, 5, 26, 9], "orilla": [10, 14, 22, 3], "mar": [12, 19, 20, 4], "agua": [1, 16, 32, 7], "bajo": [10, 16, 20, 2], "hide1": [13, 8], "hide2": [15, 12], "hide3": [26, 10], "hide4": [30, 4], "hide5": [8, 21], "hide6": [23, 6]} },
-  bosque: { rows: ["TTTTTTTTTTTTTTTTTTTTTT", "T....................T", "T.TT.....f..f.....TT.T", "T.T...T........T...T.T", "T...f...........o....T", "T......o.........f...T", "T....................T", "T....,,,,,,,,,,,.www.T", "T...o.....,......www.T", "T.........,..o.......T", "T.T..T....,.....T..T.T", "T..T..f...,...f...T..T", "T.........,..........T", "TTTTTTTTTT,TTTTTTTTTTT"], pos: {"in": [10, 12], "south": [10, 13], "post": [11, 11], "bus": [12, 8], "busIn": [12, 7], "dog": [6, 6], "lola": [8, 9], "nico": [14, 6], "conejos": [7, 3, 8, 3], "rana": [17, 7, 3, 2], "hide1": [15, 3], "hide2": [4, 4], "hide3": [17, 5]} },
+  bosque: { rows: ["TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT", "T#####||###############################T", "T#####||###############################T", "T...wwwwww................r###########.T", "T..wwwwwwww....o.....%.o.o.r####@####..T", "T..wwwwwwww.o.....,,,,,,,,,,,,,,,...r..T", "T..wwwwwwww...(...,................f.ffT", "T..wwwwwwwwo..)...,%o(.((..f..o...%f.((T", "T.wwwwwwwww..%..o.,..).))..f.....ff.f))T", "Twwwwwwwwwwwo.....,....................T", "TwwwwwwwwwwwwwwwwwBwwwwwwwwwwww:wwwwwwwT", "TwwwwwwwwwwwwwwwwwBwwwwwwwwwwww:wwwwwwwT", "Tf(.........f.....,....................T", "T.)RRRRRR..(.(....,....(...(f....((..(fT", "TffRRRRRR.().)..%o,..o.)...).....))f.).T", "T.f[[[][[.)..o.o..,...%...%ff((((f(f.(fT", "Tf....,..o........,..o....f..)))).)(().T", "T.....,,,,,,,,,,,,,.....(.f.....ff.))..T", "Tf..%.o.....(.o...,.o.o.)........ff..(.T", "T(*.f(...o..)..o..,,,,,,,,,,,,_......).T", "T)f(*)....*...%.o.,.....o........f(ff..T", "Tf()...*...%......,.%...f.........)(..(T", "T.)ff(..%f.ff(.(..,.(f(......%.(f..)..)T", "T.f*()...ff.().)o.,.).)f......f)....ff.T", "T(..)f...ff.)(..f.,.o.f(...f(..(f.f..f(T", "T)ff...f(..f.)....,...f).o..)..)...((.)T", "T.ff...f).f(ff....,...f.f.fff......)).fT", "TTf(ff....f)f.(...,.......(.f..f..f(..TT", "TTT)..........)...,.......)........).TTT", "TTTTTTTTTTTTTTTTTT,TTTTTTTTTTTTTTTTTTTTT"], pos: {"in": [18, 28], "south": [18, 29], "post": [19, 27], "bus": [16, 26], "busIn": [16, 27], "lola": [20, 25], "nico": [25, 23], "elena": [20, 13], "lupe": [8, 17], "dog": [30, 19], "rio": [25, 12], "rioFar": [25, 8], "rastro": [27, 22], "cub": [18, 16], "cave": [32, 4], "caveFront": [32, 5], "cabinDoor": [6, 15], "log": [30, 19], "oak": [13, 14], "sorter": [21, 20], "prados": [11, 3, 13, 6], "conejos": [19, 6, 7, 3], "rana": [4, 4, 6, 4], "claro": [13, 14, 11, 7], "zorros": [25, 18, 9, 7], "orilla": [19, 12, 17, 2], "moras": [2, 18, 9, 6], "arboles": [10, 12, 26, 14], "norte": [19, 3, 8, 5], "owl": [24, 8, 1, 1], "hide1": [13, 14], "hide2": [30, 19], "hide3": [7, 21], "hide4": [27, 4], "hide5": [24, 18], "hide6": [10, 20]} },
+  bosque_cueva: { rows: ["}}}}}}}}}}}}}}}}", "}}}}}}}}}}}}}}}}", "}}}{{{{{%{{{{}}}", "}{{{{%{{{{{{{{{}", "}{{{{{{{{{{www{}", "}{{{{{{{{{{www{}", "}{{{{{{{{{{{{{{}", "}{{%{{{{{{{{%{{}", "}}{{{{{{{{{{{{}}", "}}}}}}}}{}}}}}}}"], pos: {"door": [8, 9], "osa": [3, 3, 3, 2], "luces": [2, 2, 12, 6], "hide1": [13, 3]} },
+  bosque_cabana: { rows: ["IIIIIIIII", "InniiiviI", "IiiiiiiiI", "IiittiiiI", "IiiiiiijI", "IkiiiiijI", "IIIIiIIII"], pos: {"door": [4, 6], "table": [3, 3], "lupe": [5, 2]} },
   juegos: { rows: ["TTTTTTTTTTTTTTTTTTTTTT", "T....................T", "T.o..........FFFFFF..T", "T...,,,J,,,..F....F..T", "T.........,..F....F..T", "T....o....,..F....F..T", "T.........,..........T", "T.........,,,,,,,,,,,,", "T..ssss...,..........T", "T..ssss...,.J......o.T", "T..ssss...,..........T", "T.P.....o.,.....o..P.T", "T....................T", "TTTTTTTTTTTTTTTTTTTTTT"], pos: {"in": [20, 7], "east": [21, 7], "post": [19, 6], "bus": [12, 5], "busIn": [11, 5], "dog": [4, 9], "lola": [14, 8], "nico": [8, 6], "conejos": [14, 3, 4, 3], "hide1": [2, 11], "hide2": [19, 11], "hide3": [12, 9]} },
   abuelos: { rows: ["TTTTTTTTTT,TTTTTTTTTTT", "T.........,..........T", "T.o...RRRRRRR.FFFFFF.T", "T..f..RRRRRRR.F....F.T", "T.....WNWNWNW.F....F.T", "T.........,...F....F.T", "T.o.......,...FF.FFF.T", "T..o......,..........T", "T.........,..........T", "T....,,,,,,,,,,,,.o..T", "T.........,..........T", "T...o.....,.....o.P..T", "T.........,..........T", "TTTTTTTTTTTTTTTTTTTTTT"], pos: {"in": [10, 1], "north": [10, 0], "post": [11, 6], "bus": [12, 10], "busIn": [12, 9], "dog": [4, 9], "lola": [8, 8], "nico": [15, 10], "manzana": [3, 4], "gallinas": [15, 3, 4, 3], "hide1": [3, 3], "hide2": [18, 11], "hide3": [2, 6]} },
   montana: { rows: ["MMMMMMMMMMMMMMMMMMMMMM", "MMMMMMMMMMMMMMMMMMMMMM", "MMMMMMMMMMMMMMMMMMMMMM", "MhhhhhhhhhhhhhhhhhhhhM", "MhhhhhhhhhhhhhhhhhhhhM", "M.........,..........M", "M...r...o.,.......r..M", "M.........,..o.......M", "M.........,..........M", ",,,,,,,,,,,..........M", "M..............r.....M", "M..o..r..........o...M", "M....................M", "MMMMMMMMMMMMMMMMMMMMMM"], pos: {"in": [1, 9], "west": [0, 9], "post": [2, 8], "bus": [7, 10], "busIn": [7, 9], "dog": [12, 4], "lola": [12, 8], "nico": [16, 8], "cabras": [12, 5, 7, 3], "hide1": [4, 6], "hide2": [15, 10], "hide3": [18, 6]} },
@@ -17573,6 +18009,27 @@ G.MAPDATA = {
       if (G.carry && G.carry.bump) G.carry.bump('dog');
       G.st.autosave(); yield 20; return;
     }
+    if (sp.act === 'trail') { // he follows a trail of paw prints (sp.path: tiles), nose down, and finds something at its end
+      G.pet.sound('bark'); K.puff('ex', n.x * T + 12, n.y * T - 4, { life: 30 });
+      yield* K.walk(f, n, sx, sy, 4);
+      for (const [x, y] of sp.path || []) { yield* G.pet.play('sniff'); K.puff('q', n.x * T + 12, n.y * T - 6, { life: 20 }); yield* f.walkNpc(n, K.path(f, n, x, y), 3); }
+      const [ex, ey] = (sp.path && sp.path.length) ? sp.path[sp.path.length - 1] : sp.at;
+      K.puff('ex', ex * T + 12, ey * T - 8, { life: 30 }); yield* G.pet.play('jump');
+      return yield* found(f, sp, n, ex, ey);
+    }
+    if (sp.act === 'swim') { // a stick thrown across the water (sp.at: the bank, sp.to: the far side): he swims over and brings it back
+      const [tx, ty] = sp.to, dx = Math.sign(tx - sx), dy = Math.sign(ty - sy);
+      yield* K.walk(f, n, sx, sy, 4); n.dir = dy < 0 ? 'up' : dy > 0 ? 'down' : dx < 0 ? 'left' : 'right';
+      Z.stick = { from: [f.player.x, f.player.y], to: [tx, ty], t: 0 }; G.audio.sfx('swing');
+      for (let k = 0; k <= 30; k++) { Z.stick.t = k / 30; yield 1; }
+      G.pet.sound('bark'); yield* G.pet.play('jump');
+      const steps = Math.abs(tx - sx) + Math.abs(ty - sy), dir = dy < 0 ? 'u' : dy > 0 ? 'd' : dx < 0 ? 'l' : 'r', back = { u: 'd', d: 'u', l: 'r', r: 'l' }[dir];
+      const splash = () => { for (let i = 0; i < 6; i++) K.puff('drop', n.x * T + 12 + (Math.random() - 0.5) * 14, n.y * T + 12, { vy: -1.2 - Math.random(), vx: (Math.random() - 0.5) * 1.4, g: 0.12, life: 30 }); G.audio.sfx('swing'); };
+      for (let i = 0; i < steps; i++) { splash(); yield* f.walkNpc(n, dir, 2); }
+      Z.stick = null; G.pet.sound('bark'); K.puff('ex', n.x * T + 12, n.y * T - 6, { life: 30 });
+      for (let i = 0; i < steps; i++) { splash(); yield* f.walkNpc(n, back, 2); }
+      return yield* found(f, sp, n, sx, sy);
+    }
     const side = [[sx - 1, sy], [sx + 1, sy], [sx, sy + 1], [sx, sy - 1]].find(([x, y]) => !f.blocked(x, y, n) && !f.exitAt(x, y)) || [sx, sy + 1];
     G.pet.sound('bark'); K.puff('ex', n.x * T + 12, n.y * T - 4, { life: 30 });
     yield* K.walk(f, n, side[0], side[1], 4);
@@ -17585,9 +18042,14 @@ G.MAPDATA = {
       yield* G.pet.play('sniff');
       for (let k = 0; k < 3; k++) { for (let i = 0; i < 5; i++) K.puff('crumb', wx + (Math.random() - 0.5) * 8, wy - 2, { vy: -1.4 - Math.random(), vx: (Math.random() - 0.5) * 2, g: 0.15, life: 30 }); G.pet.sound('crunch'); yield 14; }
     }
+    yield* found(f, sp, n, sx, sy);
+  }
+  // the end of a dog's spot: saved as done; what he found lies at (x, y) to pick up; a bark and a heart
+  function* found(f, sp, n, x, y) {
+    const K = G.chapters.K, wx = x * T + 12, wy = y * T + 14;
     st().dog[sp.id] = { d: day(), t: clock() };
     if (sp.gives && G.carry && G.carry.state) { // he found something: it lies there to pick up
-      const g = G.carry.state().ground; g.push({ id: sp.gives, col: sp.col || null, map: f.mapId, x: sx, y: sy });
+      const g = G.carry.state().ground; g.push({ id: sp.gives, col: sp.col || null, map: f.mapId, x, y });
       G.audio.sfx('chime'); G.fx.burst(wx - Math.round(f.cam.x), wy - 8 - Math.round(f.cam.y));
     }
     G.pet.sound('bark'); K.heart(f, n); if (G.hearts) G.hearts.add('canelo', 1, 'care');
@@ -17595,6 +18057,17 @@ G.MAPDATA = {
     G.st.autosave();
     yield 20;
   }
+
+  // ---------- a zone's word: met here, or brought back if it was met elsewhere (any zone may be the first) ----------
+  // not met: its one-unknown puzzle (G.intro.show: held up, then "which word is this?"); met: a question about it.
+  // (La playa has its own copy, G.playa.meetW; El bosque and later zones use this one.)
+  Z.meetW = function* (id, o = {}) {
+    const K = G.chapters.K;
+    if (!met(id)) { yield* G.intro.show(id, Object.assign({ how: 'show' }, o)); return true; }
+    yield* K.sayShow(o.who, o.showPic || o.show || id, K.T(o.prompt || '¡[' + id + ']!', o.en || ''));
+    yield* G.review.ask(id, { who: o.who });
+    return false;
+  };
 
   // ---------- exits at a map's edge ----------
   Z.edge = (x, y, to, tx, ty, dir) => ({ x, y, to, tx, ty, dir, sfx: 'step', edge: true });
@@ -17703,6 +18176,7 @@ G.MAPDATA = {
       else if (sp.act === 'sniff') { ctx.fillStyle = '#5a3818'; ctx.fillRect(x + 3, y + 12, 18, 6); ctx.fillStyle = '#8a5a2c'; ctx.fillRect(x + 4, y + 13, 16, 3); ctx.fillStyle = '#c89a60'; ctx.fillRect(x + 18, y + 13, 3, 4); }
     }
   };
+  Z.stick = null; // a stick flying across the water for the dog (dog-spot act 'swim'): {from, to (tiles), t: 0..1}
   Z.drawTop = function (f, ctx) {
     if (!G.state) return;
     const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
@@ -17711,6 +18185,7 @@ G.MAPDATA = {
     if (z && z.bus && z.bus.map === f.mapId) busSign(ctx, z.bus.at[0] * T - cx, z.bus.at[1] * T - cy, f.t);
     if (dogHere(f) && !f.locked && G.top() === f) for (const sp of f.def.dogSpots || []) if (Z.dogReady(sp)) G.drawAlert(ctx, 'huella', sp.at[0] * T - cx, sp.at[1] * T - cy + 6, f.t);
     drawBus(ctx, f);
+    const sk = Z.stick; if (sk && G.drawIcon16) { const u = sk.t, x = sk.from[0] + (sk.to[0] - sk.from[0]) * u, y = sk.from[1] + (sk.to[1] - sk.from[1]) * u; G.drawIcon16(ctx, 'palo', Math.round(x * T + 4 - cx), Math.round(y * T + 2 - cy - Math.sin(u * Math.PI) * 30)); }
   };
 
   // ---------- the guide's suggestion in this zone (guide.js) ----------
@@ -18638,20 +19113,43 @@ G.MAPDATA = {
 
 </script>
 <script>/* content/es/zone-bosque.js */
-// ===== El bosque: its path from Villa Sol and its first map (a PLACEHOLDER: docs/WORLD_PLAN.md) =====
-// The framework step (2026-10-17) built the way there and a small first place: the zone's signpost, its bus stop, the
-// dog's thing to do, Lola (the friend who travels) and Nico's hiding places. A later step replaces this file's
-// G.maps.bosque with the whole zone (woodland animals and big / small: el oso, el zorro, la ardilla, el búho, el ciervo, el erizo, la hoja, grande, pequeño...), following docs/WORLD_PLAN.md
-// ("How to build a zone"). Keep the zone id, the path map and the bus stop: saves remember where the child has been.
+// ===== El bosque: the zone north of Villa Sol (docs/WORLD_PLAN.md) — woodland animals, big and small =====
+// Its path from Villa Sol (the trees get thicker, a pond with a frog, rabbits) and one big forest map: a rock cliff
+// along the top with a waterfall into a pond, a meadow (deer, rabbits), the bears' cave in a rock outcrop, a river
+// across the middle with a little bridge and stepping stones, then the south woods: a clearing ringed by tall trees,
+// Doña Lupe's log cabin with her blackberry bushes, a hollow log, groves to wander in. Two more maps: the cave inside
+// (dark, glowing mushrooms, fireflies, mama bear asleep) and Lupe's cabin inside. At night the forest goes dark blue,
+// fireflies come out in the clearing and an owl sits in a tall tree.
+// Everything here only uses universal words and the forest's own words, each met here in a one-unknown puzzle and used
+// again soon after (G.zones.meetW: a word not met yet is introduced, a word met elsewhere comes back as a question), so
+// the forest can be the very first place a child explores.
+//   The album (8): la ardilla (runs up the trees), el venado (bounds away), el zorro, el mapache, el erizo, el oso
+//     (rare: asleep in the cave), el búho (rare: at night), la luciérnaga (in the cave; at night in the clearing).
+//     Tapping one whose word isn't met yet: Lola calls out its name (a one-unknown puzzle).
+//   The story (its quest line, 'bosque'): 1 El osito perdido (oso, pequeño, grande, cueva: a lost bear cub, the dog
+//     follows the paw prints to the cave, mama bear comes out), 2 Las bellotas de la ardilla (ardilla, bellota, hoja:
+//     find the squirrel's acorns under the leaf piles; a hedgehog pops out of one), 3 Los binoculares de Elena (tronco,
+//     mapache, venado, zorro: a raccoon took them into the hollow log; then look far through them).
+//   Side quests (G.state.bosque): Lola's leaves (three colours, ¡todas!), Doña Lupe's blackberry pie (la canasta: pick
+//     four bushes, then the pie; every day), ¿grande o pequeño? (Elena's mushroom game, after chapter 1), fireflies in
+//     Lola's jar at night. The dog sniffs the hollow log, follows a trail of paw prints, and swims across the river for
+//     a stick. Nico's hide-and-seek has six forest hiding places. Two notebook page puzzles.
 'use strict';
 (function () {
-  const Z = G.zones, K = G.mapKit, MD = G.MAPDATA;
+  const Z = G.zones, K = G.mapKit, MD = G.MAPDATA, CH = G.chapters, CK = CH.K, T = CK.T, TL = G.TILE, AN = G.animals;
   const P = (m, tag) => MD[m].pos[tag];
+  const W = id => G.data.words[id];
+  const met = id => !!(G.words && G.words.met(id));
+  const say = CK.say, sayShow = CK.sayShow, tell = CK.tell, ask = CK.ask;
+  const tile = (x, y) => ({ x: x * TL + 12, y: y * TL });
+  const day = () => (G.words ? G.words.day() : 0);
+  const meetW = (id, o) => Z.meetW(id, o);
+  const night = () => !!(G.day && G.day.over && G.day.over());
 
   // ---------- the path from Villa Sol: the trees get thicker, a pond with a frog, rabbits, a fallen branch ----------
   G.maps.camino_bosque = {
     name: 'El camino al bosque', icon: 'bosque', rows: MD.camino_bosque.rows, music: 'field',
-    exits: [Z.edge(6, 25, 'villa', 10, 1, 'down'), Z.edge(6, 0, 'bosque', 10, 12, 'up')],
+    exits: [Z.edge(6, 25, 'villa', 10, 1, 'down'), Z.edge(6, 0, 'bosque', 18, 28, 'up')],
     posts: [{ at: P('camino_bosque', 'postS'), zone: 'villa', dir: 'down' }, { at: P('camino_bosque', 'postN'), zone: 'bosque', dir: 'up' }],
     ambient: { birds: 4, butterflies: 3 },
     animals: [{ kind: 'rana', area: 'rana' }, { kind: 'conejo', area: 'conejos' }],
@@ -18659,33 +19157,697 @@ G.MAPDATA = {
     npcs: [K.canelo(6, 23)],
   };
 
-  // ---------- El bosque: the first map ----------
-  G.maps.bosque = {
-    name: 'El bosque', icon: 'bosque', rows: MD.bosque.rows, music: 'castle',
-    exits: [Z.edge(10, 13, 'camino_bosque', 6, 1, 'down')],
-    posts: [{ at: P('bosque', 'post'), zone: 'bosque' }],
-    dogSpots: [{ id: 'bosque_tronco', at: P('bosque', 'dog'), act: 'sniff', gives: 'palo', every: 120 }],
-    ambient: { birds: 3, butterflies: 3 },
-    animals: [{ kind: 'conejo', n: 2, area: 'conejos' }, { kind: 'rana', area: 'rana' }],
-    things: {},
-    npcs: [K.canelo(10, 11), Z.lola(...P('bosque', 'lola'), 'bosque'), Z.nico(...P('bosque', 'nico'))],
+  // =====================================================================
+  //  The animals (src/animals.js addKind: a generic move each, pixel frames facing right, a cry)
+  // =====================================================================
+  const tone = (...a) => AN.tone(...a), noise = (...a) => AN.noise(...a);
+  // frames of one kind, padded to one size (feet on the bottom row)
+  const pad = spr => {
+    const ks = Object.keys(spr).filter(k => k !== 'pal'), w = Math.max(...ks.map(k => Math.max(...spr[k].map(r => r.length)))), h = Math.max(...ks.map(k => spr[k].length));
+    for (const k of ks) spr[k] = Array(h - spr[k].length).fill('.'.repeat(w)).concat(spr[k].map(r => r.padEnd(w, '.')));
+    return spr;
+  };
+  AN.addKind('ardilla', { word: 'ardilla', cry: '¡Chic, chic!', move: 'climb', speed: 0.9, shadow: 6, high: 26,
+    sfx: () => { for (const at of [0, 0.08, 0.16, 0.34, 0.42]) tone('square', 2400, 1900, 0.04, 0.03, at, { filter: 'bandpass', ff: 2600, q: 3 }); },
+    spr: pad({ pal: { o: '#c0662a', l: '#e08a40', c: '#f8e0b8', e: '#101010', d: '#7a3a14' },
+      stand: ['..lll.......', '.llll....o.o', 'lll.l....ooo', 'll...l..oeoo', 'll...l.ooooc', '.l...looooo.', '..l.loocco..', '...lloocco..', '....looooo..', '.....d..dd..'],
+      walk: ['............', '........o.o.', 'llll....ooo.', 'lllll..oeooo', '.lllloooooc.', '...looooooo.', '...oooccoo..', '...oo....oo.', '..d.......d.', '............'],
+      climb: ['....o.o.....', '....ooo.....', '....oeo.....', '...ooooo....', '..doooood...', '...ooooo....', '...ooooo....', '..dlooood...', '..ll........', '.ll.........'],
+      climb2: ['....o.o.....', '....ooo.....', '....oeo.....', '..dooooo....', '...oooood...', '...ooooo....', '...ooooo....', '...looooo...', '..ll..d.....', '.ll.........'] }) });
+  AN.addKind('venado', { word: 'venado', cry: null, move: 'shy', speed: 0.3, shadow: 12,
+    sfx: () => { tone('sine', 900, 1300, 0.12, 0.06); tone('sine', 1100, 700, 0.18, 0.05, 0.14); },
+    spr: pad({ pal: { b: '#b87838', l: '#d89858', w: '#f8e8c8', k: '#4a2a10', a: '#7a5028', e: '#101010' },
+      stand: ['..........a.a..', '...........a...', '.........wbbb..', '.........bbebk.', '..........bbb..', '.........bb....', '.w.bbbbbbbb....', 'wwbbwbbwbbb....', '..bbbbbbbbl....', '..b.b....b.b...', '..b.b....b.b...', '..k.k....k.k...'],
+      walk: ['..........a.a..', '...........a...', '.........wbbb..', '.........bbebk.', '..........bbb..', '.........bb....', '.w.bbbbbbbb....', 'wwbbwbbwbbb....', '..bbbbbbbbl....', '..b..b..b..b...', '.b...b..b...b..', '.k...k..k...k..'],
+      graze: ['...............', '...............', '...............', '...............', '...............', '...............', '.w.bbbbbbbb....', 'wwbbwbbwbbbb.a.', '..bbbbbbbbbbbaa', '..b.b....b.bbeb', '..b.b....b.b.bk', '..k.k....k.k...'],
+      jump: ['...........a.a.', '............a..', '..........wbbb.', '..........bbebk', '.w........bbb..', 'ww.bbbbbbbbb...', '..bbwbbwbbbb...', '..bbbbbbbbl....', '.bb.......bb...', 'bk.........bb..', '............k..', '...............'] }) });
+  AN.addKind('zorro', { word: 'zorro', cry: '¡Auuu!', move: 'walk', speed: 0.55, shadow: 10,
+    sfx: () => { tone('sawtooth', 700, 1100, 0.2, 0.05, 0, { filter: 'bandpass', ff: 1200, q: 3 }); tone('sawtooth', 1100, 800, 0.25, 0.04, 0.2, { filter: 'bandpass', ff: 1200, q: 3 }); },
+    spr: pad({ pal: { o: '#e06a20', w: '#fff4e8', k: '#302018', e: '#101010', t: '#ffffff' },
+      stand: ['...........o.o.', '...........ooo.', '..ooo.....ooeok', '.tooooooooooww.', 'ttoooooooooow..', '..oowwwwooo....', '...k.k...k.k...', '...k.k...k.k...'],
+      walk: ['...........o.o.', '...........ooo.', '..ooo.....ooeok', '.tooooooooooww.', 'ttoooooooooow..', '..oowwwwooo....', '..k...k.k...k..', '.k.....k.....k.'],
+      react: ['.........o.o...', '.........ooo...', '........ooeok..', '........ooww...', '.......ooow....', '..tt..ooooo....', '.ttooooooow....', '..ooooooook....'] }) });
+  AN.addKind('mapache', { word: 'mapache', cry: '¡Chirr!', move: 'walk', speed: 0.45, shadow: 10,
+    sfx: () => { for (const at of [0, 0.1, 0.2]) tone('square', 1500, 1200, 0.06, 0.03, at, { filter: 'lowpass', ff: 2000 }); },
+    spr: pad({ pal: { g: '#8a8a92', d: '#5a5a62', k: '#202028', w: '#f4f0ea', e: '#ffffff' },
+      stand: ['..........d.d.', '..........ggg.', '.........gkekk', 'kgkgk...gwwggw', 'gkgkggggggggk.', '.gggggggggg...', '..dd.d...d.dd.'],
+      walk: ['..........d.d.', '..........ggg.', '.........gkekk', 'kgkgk...gwwggw', 'gkgkggggggggk.', '.gggggggggg...', '.d..d.....d..d'],
+      react: ['......d.d.....', '......ggg.....', '.....kekkg....', '......wwg.....', '.....ggggg.w..', '...kggggggww..', '..kgkgggg.....', '.kgk.gggg.....', '.....d..d.....'] }) });
+  AN.addKind('erizo', { word: 'erizo', cry: null, move: 'crawl', speed: 0.18, shadow: 9,
+    sfx: () => { for (const at of [0, 0.07, 0.14]) noise(5200, 0.03, 0.08, at); },
+    spr: pad({ pal: { s: '#6a4826', d: '#4a3018', l: '#c8a070', f: '#e8c8a0', e: '#101010' },
+      walk: ['...ddd.....', '.ddsdsd....', 'dsdsdsdsf..', 'dsssssssffe', 'sssssssfff.', '.f..f..f...'],
+      walk2: ['...ddd.....', '.ddsdsd....', 'dsdsdsdsf..', 'dsssssssffe', 'sssssssfff.', '..f..f...f.'],
+      hide: ['...........', '..ddd......', '.dsdsd.....', 'dsdsdsd....', 'dsssssd....', '.ddddd.....'] }) });
+  AN.addKind('oso', { word: 'oso', cry: '¡Grrr... zzz!', move: 'still', shadow: 40, scale: 2,
+    sfx: () => { tone('sawtooth', 110, 80, 0.5, 0.12, 0, { filter: 'lowpass', ff: 500 }); },
+    spr: pad({ pal: { b: '#8a5428', d: '#5a3418', l: '#b07840', m: '#e8c8a0', k: '#101010' },
+      stand: ['...dd.dd...............', '..dbbbbbd..............', '.dbbbbbbbd.bbbbbbb.....', 'dbkbbbbbbbbbbbbbbbbbb..', 'bmmbbbbbbbbbbbbbbbbbbb.', 'bmkmbbbbbbblbbbbbbbbbbb', '.mmbbbbbbblllbbbbbbbbbb', '..bbbbbbbbllbbbbbbbbbbd', '...dbbd...bbbbbbbbbbbd.', '..........dd.....dd....'],
+      alt: ['...dd.dd...............', '..dbbbbbd..bbbbbb......', '.dbbbbbbbdbbbbbbbbb....', 'dbkbbbbbbbbbbbbbbbbbbb.', 'bmmbbbbbbbbbbbbbbbbbbbb', 'bmkmbbbbbbblbbbbbbbbbbb', '.mmbbbbbbblllbbbbbbbbbb', '..bbbbbbbbllbbbbbbbbbbd', '...dbbd...bbbbbbbbbbbd.', '..........dd.....dd....'] }) });
+  AN.addKind('buho', { word: 'buho', cry: '¡Uh, uh!', move: 'still', shadow: 0,
+    sfx: () => { tone('sine', 380, 340, 0.3, 0.12, 0); tone('sine', 380, 330, 0.4, 0.12, 0.42); },
+    spr: pad({ pal: { b: '#9a6a38', d: '#6a4420', c: '#e8d0a0', w: '#fff4d0', y: '#f8b020', e: '#101010', o: '#e89020' },
+      stand: ['d.....d', 'dbbbbbd', 'wybbbyw', 'yebobey', 'wbbobbw', 'bcccccb', 'bcbcbcb', '.ccccc.', '..o.o..'],
+      alt: ['d.....d', 'dbbbbbd', 'bdbbbdb', 'bbbobbb', 'bbbobbb', 'bcccccb', 'bcbcbcb', '.ccccc.', '..o.o..'] }) });
+  AN.addKind('luciernaga', { word: 'luciernaga', cry: null, move: 'flit', speed: 0.25, shadow: 0, glow: 'rgba(250,245,140,0.9)',
+    sfx: () => { tone('sine', 2200, 3200, 0.12, 0.04); tone('sine', 2800, 3600, 0.1, 0.03, 0.1); },
+    spr: pad({ pal: { k: '#302830', w: '#d8f0ff', y: '#f8f080', Y: '#fffcd0' },
+      stand: ['w.w..', '.kk..', 'wkkw.', '.yY..', '.yy..'],
+      alt: ['.....', 'wkkw.', '.kk..', '.yY..', '.Yy..'] }) });
+  const KINDS = ['ardilla', 'venado', 'zorro', 'mapache', 'erizo', 'oso', 'buho', 'luciernaga'];
+  const EN = { ardilla: 'A squirrel!', venado: 'A deer!', zorro: 'A fox!', mapache: 'A raccoon!', erizo: 'A hedgehog!', oso: 'A bear!', buho: 'An owl!', luciernaga: 'A firefly!' };
+
+  // =====================================================================
+  //  Saved state of the forest's side quests: G.state.bosque
+  // =====================================================================
+  const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+  function st() {
+    const s = G.state; if (!isObj(s.bosque)) s.bosque = {};
+    const b = s.bosque; if (!isObj(b.leaves)) b.leaves = {}; if (!isObj(b.pie)) b.pie = {}; if (!isObj(b.sort)) b.sort = {}; if (!isObj(b.jar)) b.jar = {};
+    return b;
+  }
+  const BQ = G.bosque = { state: () => (G.state ? st() : null) };
+  const held = () => (G.carry ? G.carry.held() : null);
+  const bag = () => G.errands.bag;
+  const othersFor = (id, prefer) => prefer.filter(k => k !== id && met(k)).concat(G.intro.known(id, 3)).filter((k, i, a) => a.indexOf(k) === i && k !== id).slice(0, 2);
+  // a known word's quick question, picture cards (the mic is on): [answer, ...others] among the ones met
+  const quiz = (who, prompt, en, answer, others, o) => ask(who, prompt, en, answer, others.filter(k => k !== answer && met(k)).slice(0, 2), o || {});
+  const npcAt = (f, id) => f.npcs.find(n => n.id === id && !n.hidden) || null;
+  const cub = { icon: 'oso', n: 's' };
+  BQ.KINDS = KINDS;
+
+  // =====================================================================
+  //  Tapping an animal whose word isn't met yet: Lola calls out its name (a one-unknown puzzle)
+  // =====================================================================
+  const tapped0 = AN.tapped;
+  AN.tapped = function (f, a) {
+    const r = tapped0.call(this, f, a);
+    if (f && Z.of(f.mapId) === 'bosque' && KINDS.includes(a.kind) && !met(a.kind) && !f.locked && G.top() === f && !CH.running()) {
+      CH.scene(f, (function* () {
+        yield 30;
+        if (met(a.kind)) return;
+        CH.point(a.x, a.y - 14);
+        try { yield* G.intro.show(a.kind, { who: 'lola', prompt: '¡Mira! ¡[' + a.kind + ']!', en: 'Look! ' + EN[a.kind], known: othersFor(a.kind, KINDS) }); } finally { CH.point(null); }
+      })());
+    }
+    if (f && Z.of(f.mapId) === 'bosque' && a.kind === 'luciernaga' && jarOn()) jarCatch(f, a);
+    return r;
   };
 
-  // things to pick up (carry.js) and Nico's hiding places here (seek.js: one game per zone)
-  G.carry.SOURCES.push(...[{ id: 'palo_cbosque', map: 'camino_bosque', at: P('camino_bosque', 'palo'), item: 'palo', every: 90 }], ...[]);
-  G.seek.SPOTS.push(...[
-    { id: 'bosque1', map: 'bosque', at: P('bosque', 'hide1'), how: 'over', cut: 20, dx: 0, kinds: ['gato', 'conejo'], place: 'bosque' },
-    { id: 'bosque2', map: 'bosque', at: P('bosque', 'hide2'), how: 'over', cut: 9, dx: 0, kinds: ['conejo', 'gato', 'rana'], place: 'bosque' },
-    { id: 'bosque3', map: 'bosque', at: P('bosque', 'hide3'), how: 'over', cut: 9, dx: 0, kinds: ['conejo', 'gallina', 'pato'], place: 'bosque' },
-  ]);
+  // =====================================================================
+  //  The people: Elena the ranger, Doña Lupe; Lola and Nico as everywhere
+  // =====================================================================
+  const sideAlert = {};
+  // a forest person's talk: the story first, then their side quest, then the town's (presents, favours...), then a line
+  function person(id, x, y, dir, side, line, o = {}) {
+    return Object.assign({ id, npc: id, x, y, dir, fixed: !!o.fixed, wander: o.wander || 0,
+      alert: () => CH.alert(id) || (G.state && sideAlert[id] ? sideAlert[id]() : null) || (G.favores && G.favores.alert(id)) || null,
+      talk: function* (f) {
+        if (yield* CH.talk(id, f)) return;
+        if (side && (yield* side(f))) return;
+        if (G.errands && (yield* G.errands.talk(id, f))) return;
+        yield* line(f);
+      } }, o.extra || {});
+  }
+  function* elenaLine() {
+    if (CH.done('bosque3')) yield* sayShow('elena', { icon: 'binoculares' }, T('¡Mis binoculares! ¡[gracias:Gracias], {name}!', 'My binoculars! Thank you, {name}!'));
+    else if (met('elbosque')) yield* sayShow('elena', 'elbosque', T('¡Mi [elbosque]!', 'My forest! I look after it.'));
+    else yield* say('elena', T('¡Hola, {name}!', 'Hello, {name}!'));
+  }
+  function* lupeLine() {
+    if (met('mora')) yield* sayShow('lupe', 'mora', T('¡Mmm! ¡[mora:Moras]!', 'Mmm! Blackberries!'));
+    else yield* say('lupe', T('¡Hola, {name}!', 'Hello, {name}!'));
+  }
 
+  // ---------- Lola: her leaves (three colours); her first talk here meets el bosque and shows the dog's spot ----------
+  const LEAVES = ['verde', 'amarillo', 'rojo'];
+  const leafPic = col => ({ icon: 'hoja', col: W(col).col });
+  BQ.LEAVES = LEAVES;
+  BQ.leavesHave = () => LEAVES.filter(c => st().leaves[c]);
+  BQ.leavesDone = () => LEAVES.every(c => st().leaves[c]);
+  const lola = Z.lola(...P('bosque', 'lola'), 'bosque');
+  const lolaTalk0 = lola.talk, lolaAlert0 = lola.alert;
+  const leafHeld = () => { const h = held(); return h && h.id === 'hoja' && LEAVES.includes(h.col) ? h : null; };
+  lola.alert = () => {
+    const a = CH.alert('lola'); if (a) return a;
+    if (jarAsk()) return { icon: 'frasco' };
+    if (jarOn() && jarFull()) return { icon: 'frasco' };
+    const h = leafHeld(); if (h && !st().leaves[h.col]) return leafPic(h.col);
+    return lolaAlert0();
+  };
+  lola.talk = function* (f) {
+    if (G.state && !CH.alert('lola')) {
+      const h = leafHeld(); if (h) { yield* leafIn(f, h); return; }
+      if (jarAsk() || (jarOn() && jarFull())) { yield* jarTalk(f); return; }
+    }
+    yield* lolaTalk0(f);
+  };
+  function* leafIn(f, h) {
+    if (st().leaves[h.col]) { yield* sayShow('lola', { list: BQ.leavesHave().map(leafPic) }, T('¡Ya la tengo! ¡Otra!', 'I have that one already! Find another colour.')); return; }
+    bag().take('hoja', { col: h.col, q: null }); st().leaves[h.col] = 1; G.audio.jingle('item'); G.st.autosave();
+    const n = BQ.leavesHave().length, nums = ['uno', 'dos', 'tres'];
+    yield* sayShow('lola', { list: BQ.leavesHave().map(leafPic) }, T('¡Una [hoja]! ¡[gracias:Gracias]!', 'A leaf! Thank you! (' + n + ' of 3 colours)'));
+    if (met(nums[n - 1])) yield* quiz('lola', '¿Cuántas?', 'How many leaves has she got now?', nums[n - 1], nums.filter((k, i) => i !== n - 1), { show: { icon: 'hoja', count: n } });
+    if (BQ.leavesDone()) {
+      CK.confetti(); G.audio.jingle('promote');
+      yield* sayShow('lola', { list: LEAVES.map(leafPic) }, T('¡Todas! ¡Qué bonitas!', 'All three colours! How pretty! Thank you, {name}!'));
+      yield* quiz('lola', '¿Qué es?', 'And what are they?', 'hoja', ['mora', 'hongo', 'bellota']);
+    } else yield* sayShow('lola', { list: LEAVES.filter(c => !st().leaves[c]).map(leafPic) }, T('¡Más, {name}!', 'More! Find the colours I don\'t have yet!'));
+  }
+  // Lola's extra lines here (zones.js calls them after her hello and the forest's picture)
+  function* lolaHere(f) {
+    if (!met('elbosque')) yield* G.intro.show('elbosque', { who: 'lola', prompt: '¡El [elbosque]!', en: 'The forest!', known: othersFor('elbosque', ['arbol', 'flor', 'agua']) });
+    const sp = (f.def.dogSpots || []).find(s => Z.dogReady(s));
+    if (sp && G.pet && G.pet.mine()) {
+      CH.point(sp.at[0] * TL + 12, sp.at[1] * TL);
+      try { yield* sayShow('lola', { icon: 'huella' }, T('¡Mira, {dog}!', 'Look! {dog} can play over there: tap the paw prints!')); } finally { CH.point(null); }
+    }
+    if (!BQ.leavesDone()) { // her collection: leaves of three colours
+      if (!met('hoja')) yield* G.intro.show('hoja', { who: 'lola', prompt: '¡Mira! ¡Una [hoja]!', en: 'Look! A leaf!', show: leafPic('rojo'), known: othersFor('hoja', ['elbosque', 'arbol', 'flor']) });
+      yield* sayShow('lola', { list: LEAVES.map(leafPic) }, T('¿Me ayudas? ¡[hoja:Hojas]!', 'Will you help me? I collect leaves: one of each colour! Pick them up and bring them to me.'));
+      st().asked = { d: day() }; G.st.autosave();
+    }
+  }
+
+  // ---------- fireflies at night: Lola's jar (catch five, count them, let them go) ----------
+  const jar = () => { const j = st().jar; if (j.d !== day()) { j.d = day(); j.n = 0; j.on = false; j.done = false; } return j; };
+  const jarAsk = () => night() && !jar().on && !jar().done;
+  const jarOn = () => !!G.state && night() && jar().on && !jar().done;
+  const jarFull = () => jar().n >= 5;
+  BQ.jar = jar;
+  function* jarTalk(f) {
+    const j = jar();
+    if (!j.on) {
+      yield* sayShow('lola', { icon: 'frasco' }, T('¡Shhh! ¡Mira!', 'Shhh! Look! The fireflies are out!'));
+      yield* meetW('luciernaga', { who: 'lola', prompt: '¡[luciernaga:Luciérnagas]!', en: 'Fireflies!', known: othersFor('luciernaga', KINDS) });
+      j.on = true; j.n = 0; G.st.autosave();
+      yield* sayShow('lola', { icon: 'frasco' }, T('¡Cinco, {name}!', 'Catch five! Tap the fireflies and they fly into my jar.'));
+      return;
+    }
+    // full: count them, let them go
+    if (met('cinco')) yield* quiz('lola', '¿Cuántas?', 'How many fireflies are in the jar?', 'cinco', ['cuatro', 'seis', 'tres'], { show: { icon: 'luciernaga', count: 5 } });
+    yield* sayShow('lola', { icon: 'frasco' }, T('¡[adios:Adiós], [luciernaga:luciérnagas]!', 'Off you go, fireflies! (she opens the jar)'));
+    j.done = true; j.on = false; BQ.freed = G.frame; G.audio.jingle('promote'); CK.confetti(); G.st.autosave();
+  }
+  function jarCatch(f, a) {
+    const j = jar(); if (j.n >= 5) return;
+    j.n++; G.audio.sfx('chime'); G.st.autosave();
+    BQ.fly = { x: a.x, y: a.y - a.z - 4, t: G.frame };
+    const [hx, hy] = P('bosque', 'lola'); void hx; void hy;
+    const i = f.zoo.list.indexOf(a); if (i >= 0 && f.zoo.list.filter(b => b.kind === 'luciernaga').length > 1) f.zoo.list.splice(i, 1);
+  }
+
+  // =====================================================================
+  //  Side quests: places on the map (Lupe's blackberry bushes, Elena's mushrooms)
+  // =====================================================================
+  const BUSHES = [[2, 19], [4, 20], [7, 21], [10, 20], [3, 23]];
+  const SORT_AT = P('bosque', 'sorter');
+  // Elena's mushroom game: four mushrooms by her basket, two big and two little ones
+  const SHROOMS = [{ at: [SORT_AT[0] - 1, SORT_AT[1]], big: true }, { at: [SORT_AT[0] + 1, SORT_AT[1]], big: false }, { at: [SORT_AT[0], SORT_AT[1] + 1], big: false }, { at: [SORT_AT[0] + 2, SORT_AT[1] + 1], big: true }];
+  // Lupe's pie today: {d, n: bushes picked (0..4), got: {i: true}, baked}; the basket in your hands
+  const pie = () => { const p = st().pie; if (p.d !== day()) { p.d = day(); p.n = 0; p.got = {}; p.baked = false; p.on = false; } return p; };
+  const basket = () => bag().list().find(it => it.id === 'canastamoras' && it.q === 'pay') || null;
+  const sort = () => { const s = st().sort; if (s.d !== day()) { s.d = day(); s.round = 0; s.on = false; s.done = false; s.gone = {}; } return s; };
+  const sortOpen = () => CH.done('bosque1');
+  const SIDE = [
+    ...BUSHES.map((at, i) => ({ id: 'bush' + i, at, on: () => !!basket() && !pie().got[i] && pie().n < 4, icon: () => 'mora', run: f => pickBush(f, i) })),
+    ...SHROOMS.map((m, i) => ({ id: 'shroom' + i, at: m.at, on: () => sortOpen() && sort().on && !sort().gone[i], icon: () => null, run: f => shroomTry(f, i) })),
+  ];
+  BQ.SIDE = SIDE; BQ.BUSHES = BUSHES; BQ.SHROOMS = SHROOMS; BQ.pie = pie; BQ.sort = sort;
+  const sideAt = (f, x, y) => (f && f.mapId === 'bosque' && G.state ? SIDE.find(s => s.at[0] === x && s.at[1] === y && s.on()) || null : null);
+  BQ.sideAt = sideAt;
+
+  // ---------- Doña Lupe's blackberry pie: la canasta, pick four bushes, then she bakes it ----------
+  sideAlert.lupe = () => {
+    const p = pie(), b = basket();
+    if (b) return p.n >= 4 ? { icon: 'canastamoras' } : null;
+    if (!p.baked) return { icon: 'pay' };
+    return null;
+  };
+  function* lupeSide(f) {
+    const p = pie(), b = basket();
+    if (b && p.n >= 4) { yield* bake(f); return true; }
+    if (b) { yield* sayShow('lupe', 'mora', T('¡Más [mora:moras]!', 'More blackberries, please! (tap the bushes)')); return true; }
+    if (p.baked) return false;
+    yield* say('lupe', T('¡Hola, {name}! Soy Doña Lupe.', 'Hello, {name}! I\'m Doña Lupe. I bake pies!'));
+    yield* sayShow('lupe', { icon: 'pay' }, T('¡Un pay! ¿Me ayudas?', 'A pie! Will you help me?'));
+    if (!met('mora')) yield* G.intro.show('mora', { who: 'lupe', prompt: '¡Con [mora:moras]!', en: 'With blackberries!', known: othersFor('mora', ['bellota', 'hoja', 'hongo', 'manzana']) });
+    else yield* quiz('lupe', '¿Qué es?', 'What goes in the pie?', 'mora', ['bellota', 'hongo', 'hoja', 'manzana'], { show: 'mora' });
+    bag().add('canastamoras', { q: 'pay' }); p.on = true; G.st.autosave();
+    const at = BUSHES.find((b, i) => !p.got[i]); if (at) CH.point(at[0] * TL + 12, at[1] * TL);
+    try { yield* sayShow('lupe', { icon: 'mora', count: 4 }, T('¡[mora:Moras], [porfavor:por favor]!', 'Blackberries, please! Four bushes: tap them.')); } finally { CH.point(null); }
+    return true;
+  }
+  function* pickBush(f, i) {
+    const p = pie(); if (p.got[i] || p.n >= 4) return;
+    const [x, y] = BUSHES[i];
+    G.audio.sfx('pop'); for (let k = 0; k < 6; k++) CK.puff('crumb', x * TL + 12 + (Math.random() - 0.5) * 14, y * TL + 8, { vy: -1.2 - Math.random(), vx: (Math.random() - 0.5) * 2, g: 0.15, life: 26 });
+    CK.sparkle(f, x, y, 3); p.got[i] = true; p.n++; G.st.autosave();
+    yield 16;
+    G.world.name('mora', x * TL + 12, y * TL - 6, { grow: 'carry' });
+    const nums = ['uno', 'dos', 'tres', 'cuatro'];
+    if (p.n === 2 && met('dos')) yield* quiz('lupe', '¿Cuántas?', 'How many bushes have you picked?', 'dos', ['tres', 'uno'], { show: { icon: 'mora', count: 2 } });
+    if (p.n >= 4) {
+      const n = npcAt(f, 'lupe'); if (n) CH.pointNpc(n);
+      try { yield* sayShow('lupe', { icon: 'canastamoras' }, T('¡' + (met('cuatro') ? '[cuatro:Cuatro]' : 'Cuatro') + '! ¡Al pay!', 'Four! Now bring the basket to Doña Lupe.')); } finally { CH.point(null); }
+    }
+    void nums;
+  }
+  function* bake(f) {
+    const p = pie();
+    bag().take('canastamoras', { q: 'pay' }); G.st.autosave();
+    yield* sayShow('lupe', { icon: 'canastamoras' }, T('¡Mmm! ¡[mora:Moras]! ¡[gracias:Gracias]!', 'Mmm! Blackberries! Thank you!'));
+    if (met('cuatro')) yield* quiz('lupe', '¿Cuántas?', 'How many bushes did you pick?', 'cuatro', ['tres', 'cinco'], { show: { icon: 'mora', count: 4 } });
+    const [dx, dy] = P('bosque', 'cabinDoor');
+    for (let k = 0; k < 3; k++) { G.audio.sfx('select'); for (let i = 0; i < 4; i++) CK.puff('dust', dx * TL + 12 + (Math.random() - 0.5) * 30, dy * TL - 20, { vy: -0.6, life: 40 }); yield 20; }
+    p.baked = true; st().pies = (st().pies | 0) + 1; G.audio.jingle('promote'); CK.confetti();
+    bag().add('pay');
+    yield* sayShow('lupe', { icon: 'pay' }, T('¡Un pay! ¡Para ti!', 'A blackberry pie! For you! (share it: {dog} loves pie)'));
+    G.st.autosave();
+  }
+  if (G.carry) Object.assign(G.carry.DOG, { pay: 'eat', mora: 'eat', bellota: 'sniff' });
+
+  // ---------- ¿grande o pequeño? Elena's mushroom game (after chapter 1: grande, pequeño) ----------
+  const ROUNDS = [true, false, false, true]; // big, small, small, big
+  sideAlert.elena = () => {
+    if (!sortOpen()) return null;
+    const s = sort(); if (s.done) return null;
+    return s.on ? null : { icon: 'hongo' };
+  };
+  function* elenaSide(f) {
+    if (!sortOpen()) return false;
+    const s = sort(); if (s.done) return false;
+    if (s.on) { yield* sayShow('elena', { icon: 'hongo', n: ROUNDS[s.round] ? 'b' : 's' }, T(ROUNDS[s.round] ? '¡El [hongo] [grande]!' : '¡El [hongo] [pequeno:pequeño]!', ROUNDS[s.round] ? 'The big mushroom! Tap it.' : 'The little mushroom! Tap it.')); return true; }
+    yield* sayShow('elena', { icon: 'hongo' }, T('¡{name}! ¡Un juego!', '{name}! A game! Mushrooms, big and small.'));
+    if (!met('hongo')) yield* G.intro.show('hongo', { who: 'elena', prompt: '¡Un [hongo]!', en: 'A mushroom!', known: othersFor('hongo', ['oso', 'cueva', 'arbol', 'flor']) });
+    s.on = true; s.round = 0; s.gone = {}; G.st.autosave();
+    CH.point(SORT_AT[0] * TL + 24, SORT_AT[1] * TL + 12);
+    try { yield* sayShow('elena', { icon: 'hongo', n: 'b' }, T('¡El [hongo] [grande]!', 'The big mushroom! Tap it.')); } finally { CH.point(null); }
+    return true;
+  }
+  function* shroomTry(f, i) {
+    const s = sort(), m = SHROOMS[i], want = ROUNDS[s.round];
+    G.audio.sfx('select');
+    if (m.big !== want) { BQ.wob = { i, t: 24 }; G.audio.sfx('boop'); yield 10; yield* sayShow('elena', { icon: 'hongo', n: want ? 'b' : 's' }, T(want ? '¡No! ¡El [grande]!' : '¡No! ¡El [pequeno:pequeño]!', want ? 'No! The BIG one!' : 'No! The LITTLE one!')); return; }
+    s.gone[i] = G.frame; CK.sparkle(f, m.at[0], m.at[1], 4); G.audio.sfx('chime'); G.st.autosave();
+    yield 14;
+    yield* quiz('elena', '¿Cómo es?', 'Is it big or small? (say it!)', want ? 'grande' : 'pequeno', [want ? 'pequeno' : 'grande'], { show: { icon: 'hongo', n: want ? 'b' : 's' } });
+    s.round++;
+    if (s.round >= ROUNDS.length) {
+      s.done = true; s.on = false; st().sorted = (st().sorted | 0) + 1; G.audio.jingle('promote'); CK.confetti(); G.st.autosave();
+      yield* sayShow('elena', { list: [{ icon: 'hongo', n: 'b' }, { icon: 'hongo', n: 's' }, { icon: 'hongo', n: 's' }, { icon: 'hongo', n: 'b' }] }, T('¡Muy bien, {name}!', 'Well done, {name}! Big and small. Come and play again tomorrow!'));
+      return;
+    }
+    yield* sayShow('elena', { icon: 'hongo', n: ROUNDS[s.round] ? 'b' : 's' }, T(ROUNDS[s.round] ? '¡Ahora el [grande]!' : '¡Ahora el [pequeno:pequeño]!', ROUNDS[s.round] ? 'Now the big one!' : 'Now the little one!'));
+  }
+
+  // ---------- the map's side places: taps, the guide, pictures (zones.js hooks, only in the forest) ----------
+  const zSearch = Z.search, zSpecial = Z.special, zBlocks = Z.blocks, zGoal = Z.goal, zUnder = Z.drawUnder, zTop = Z.drawTop, zTask = Z.task;
+  Z.search = (f, x, y) => { const s = sideAt(f, x, y); if (s) return s.run(f); if (f && f.mapId === 'bosque' && CH.spotAt(f, x, y)) return null; return zSearch(f, x, y); }; // (a story place wins over the dog's spot on the same tile: the hollow log)
+  Z.special = (f, x, y) => !!sideAt(f, x, y) || zSpecial(f, x, y);
+  Z.blocks = (f, x, y) => zBlocks(f, x, y) || (f.mapId === 'bosque' && G.state && sortOpen() && sort().on && SHROOMS.some((m, i) => m.at[0] === x && m.at[1] === y && !sort().gone[i]));
+  const pt = (at, lift, icon) => ({ x: at[0] * TL + 12, y: at[1] * TL + 12, lift, icon });
+  Z.task = function (f) { // things going on: the basket in your hands, Elena's mushrooms, the fireflies for the jar
+    if (f && f.mapId === 'bosque' && G.state) {
+      const b = basket(), p = pie();
+      if (b && p.n < 4) { const near = BUSHES.map((at, i) => ({ at, i })).filter(o => !p.got[o.i]); if (near.length) return { why: 'bosque: pick blackberries', pts: [pt(near[0].at, 30, 'mora')] }; }
+      if (b && p.n >= 4) { const n = npcAt(f, 'lupe'); if (n) return { why: 'bosque: the basket to Lupe', pts: [{ x: n.x * TL + 12, y: n.y * TL + 12, lift: 44, npc: n }] }; }
+      if (sortOpen() && sort().on) return { why: 'bosque: big or small', choice: true, pts: SHROOMS.filter((m, i) => !sort().gone[i]).map(m => pt(m.at, 18)) };
+      if (jarOn() && !jarFull()) { const a = AN.find('luciernaga', f); if (a) return { why: 'bosque: fireflies', pts: [{ x: a.x, y: a.y - 10, lift: 24, icon: 'frasco' }] }; }
+      if (jarOn() && jarFull()) { const n = npcAt(f, 'lola'); if (n) return { why: 'bosque: the jar to Lola', pts: [{ x: n.x * TL + 12, y: n.y * TL + 12, lift: 44, npc: n }] }; }
+    }
+    return zTask(f);
+  };
+  Z.goal = function (f) { // suggestions: a leaf Lola is missing
+    if (f && f.mapId === 'bosque' && G.state) {
+      if (st().asked && st().asked.d === day() && !BQ.leavesDone() && !held()) {
+        const pl = f.player, srcs = G.carry.SOURCES.filter(s => s.map === 'bosque' && s.item === 'hoja' && !st().leaves[s.col] && G.carry.avail(s.id))
+          .sort((a, b) => Math.abs(a.at[0] - pl.x) + Math.abs(a.at[1] - pl.y) - Math.abs(b.at[0] - pl.x) - Math.abs(b.at[1] - pl.y));
+        if (srcs.length) return { why: 'bosque: a leaf for Lola', pts: [pt(srcs[0].at, 20, leafPic(srcs[0].col))] };
+      }
+    }
+    return zGoal(f);
+  };
+  // little sprites drawn by the zone (the bear cub, the squirrel on its oak, leaf piles...): rows of letters, cached
+  const OL = '#1a1420';
+  function spr(id, rs, pal, flip) {
+    const w = Math.max(...rs.map(r => r.length)), h = rs.length;
+    return G.cached('bq|' + id + (flip ? '|f' : ''), w + 2, h + 2, ctx => {
+      const at = (x, y) => { if (x < 0 || y < 0 || x >= w || y >= h) return null; const c = (rs[y][flip ? w - 1 - x : x] || '.'); return c === '.' ? null : c; };
+      ctx.fillStyle = OL;
+      for (let y = -1; y <= h; y++) for (let x = -1; x <= w; x++) if (!at(x, y) && (at(x - 1, y) || at(x + 1, y) || at(x, y - 1) || at(x, y + 1))) ctx.fillRect(x + 1, y + 1, 1, 1);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const c = at(x, y); if (c && pal[c]) { ctx.fillStyle = pal[c]; ctx.fillRect(x + 1, y + 1, 1, 1); } }
+    });
+  }
+  const CUB_PAL = { b: '#b87838', d: '#7a4a20', m: '#f0d8b0', k: '#101010', t: '#68c0ff' };
+  const CUB = { sit: ['.d..d...', '.bbbb...', 'bkbbkb..', 'bbmmbb..', '.bkkb...', 'bbbbbb..', 'bbbbbbb.', '.dd.dd..'],
+    cry: ['.d..d...', '.bbbb...', 'bkbbkb..', 'tbmmbt..', '.bkkb...', 'bbbbbb..', 'bbbbbbb.', '.dd.dd..'],
+    walk: ['........', '..d..d..', '..bbbb..', '.bbkbbk.', 'bbbbbmm.', 'bbbbbbk.', '.d.d.d..', 'd.....d.'] };
+  const LEAFPILE = ['....l..o....', '..ooolly.o..', '.lyoorrooll.', 'ooylloyrrool', 'lrrooolloyyo', '.oollrrooo..'];
+  const LEAF_PAL = { o: '#e08a30', l: '#c86020', y: '#f0c040', r: '#c83a28' };
+  function shroomAt(ctx, x, y, big, wob) {
+    G.drawIcon16(ctx, { icon: 'hongo', n: big ? 'b' : 's' }, x + 4 + wob, y + 6 - (big ? 4 : 0), big ? 1.25 : 1);
+  }
+  Z.drawUnder = function (f, ctx) {
+    zUnder(f, ctx);
+    if (!G.state) return;
+    const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
+    if (f.mapId === 'bosque') {
+      // Elena's mushrooms
+      if (sortOpen() && sort().on) {
+        const w = BQ.wob; if (w && w.t > 0) w.t--;
+        SHROOMS.forEach((m, i) => { const g = sort().gone[i]; if (g && G.frame - g > 20) return; const k = g ? (G.frame - g) / 20 : 0; shroomAt(ctx, m.at[0] * TL - cx, m.at[1] * TL - cy - Math.round(k * 20), m.big, w && w.i === i && w.t > 0 ? Math.round(Math.sin(w.t) * 2) : 0); });
+      }
+      // the dog's trail: paw prints to sniff along
+      const tr = (f.def.dogSpots || []).find(s => s.id === 'bosque_rastro');
+      if (tr && Z.dogReady(tr)) for (const [x, y] of [tr.at, ...tr.path]) { ctx.globalAlpha = 0.6; G.drawIcon16(ctx, 'huella', x * TL - cx + 6, y * TL - cy + 8, 0.75); ctx.globalAlpha = 1; }
+    }
+    if (f.mapId === 'bosque_cueva' && CH.done('bosque1')) { // the cub asleep beside its mother
+      const [ox, oy] = P('bosque_cueva', 'osa'), img = spr('cubsit', CUB.sit, CUB_PAL);
+      ctx.drawImage(img, ox * TL + 60 - cx, oy * TL + 34 - cy);
+      if ((G.frame >> 5) % 3 === 0) G.text(ctx, 'z', ox * TL + 70 - cx, oy * TL + 18 - cy - ((G.frame >> 2) & 7), '#c8d8ff', null);
+    }
+  };
+  Z.drawTop = function (f, ctx) {
+    zTop(f, ctx);
+    if (!G.state) return;
+    const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
+    // night in the forest: a deep blue dusk over everything (the fireflies glow through it); the cave is always dark
+    const dark = f.mapId === 'bosque_cueva' ? 0.62 : f.mapId === 'bosque' ? (G.day ? G.day.glow() : 0) * 0.68 : 0;
+    if (dark > 0) {
+      ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = dark; ctx.fillStyle = f.mapId === 'bosque_cueva' ? '#302848' : '#283868'; ctx.fillRect(0, 0, G.W, G.H); ctx.restore();
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      const lights = (f.zoo ? f.zoo.list : []).filter(a => (AN.KINDS[a.kind] || {}).glow).map(a => [a.x - cx, a.y - a.z - 3 - cy, 24]);
+      lights.push([f.player.x * TL + 12 + (f.player.ox || 0) - cx, f.player.y * TL + 12 + (f.player.oy || 0) - cy, 34]);
+      if (f.mapId === 'bosque_cueva') for (let y = 0; y < f.map.h; y++) for (let x = 0; x < f.map.w; x++) if (f.map.get(x, y) === '%') lights.push([x * TL + 12 - cx, y * TL + 14 - cy, 22]);
+      for (const [x, y, r] of lights) { const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(255,240,170,' + (0.45 * dark) + ')'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(x - r, y - r, 2 * r, 2 * r); }
+      ctx.restore();
+    }
+    if (f.mapId === 'bosque') {
+      // a firefly flying into Lola's jar; the jar's lights let go
+      const fl = BQ.fly; if (fl && G.frame - fl.t < 30) { const n = npcAt(f, 'lola'); if (n) { const k = (G.frame - fl.t) / 30, x = fl.x + (n.x * TL + 12 - fl.x) * k, y = fl.y + (n.y * TL - 4 - fl.y) * k - Math.sin(k * Math.PI) * 20; ctx.fillStyle = '#fffcb0'; ctx.fillRect(Math.round(x - cx) - 1, Math.round(y - cy) - 1, 3, 3); } }
+      if (BQ.freed && G.frame - BQ.freed < 150) { const n = npcAt(f, 'lola'); if (n) for (let i = 0; i < 5; i++) { const k = (G.frame - BQ.freed) / 150, a = i * 1.26 + k * 3; ctx.fillStyle = (G.frame + i * 3) & 4 ? '#fffcb0' : '#f8f080'; ctx.fillRect(Math.round(n.x * TL + 12 + Math.cos(a) * k * 50 - cx), Math.round(n.y * TL - 10 - k * 70 + Math.sin(a) * 8 - cy), 2, 2); } }
+      if (jarOn() && G.top() === f) { const n = npcAt(f, 'lola'); if (n) { G.drawIcon16(ctx, 'frasco', n.x * TL + 18 - cx, n.y * TL - 2 - cy); G.text(ctx, String(jar().n), n.x * TL + 34 - cx, n.y * TL - cy, '#fffcb0', '#203048'); } }
+      if (!f.locked && G.top() === f) for (const s of SIDE) { if (!s.on()) continue; const ic = s.icon(); if (ic) G.drawAlert(ctx, ic, s.at[0] * TL - cx, s.at[1] * TL - cy + 4, f.t); }
+    }
+  };
+  // a new ghost-hand demo (src/demo.js): the first time you hold Lupe's empty basket, the hand taps a bush
+  (Z.demos || (Z.demos = [])).push({ kind: 'pickberry', find: f => (f.mapId === 'bosque' && basket() && pie().n < 4 ? BUSHES.find((b, i) => !pie().got[i]) || null : null) });
+
+  // =====================================================================
+  //  The maps
+  // =====================================================================
+  const CAVE = P('bosque', 'cave'), CAVE_FRONT = P('bosque', 'caveFront'), CABIN = P('bosque', 'cabinDoor');
+  const RASTRO = P('bosque', 'rastro');
+  G.maps.bosque = {
+    name: 'El bosque', icon: 'bosque', rows: MD.bosque.rows, music: 'castle',
+    exits: [
+      Z.edge(18, 29, 'camino_bosque', 6, 1, 'down'),
+      { x: CAVE[0], y: CAVE[1], to: 'bosque_cueva', tx: P('bosque_cueva', 'door')[0], ty: P('bosque_cueva', 'door')[1] - 1, dir: 'up', sfx: 'step' },
+      { x: CABIN[0], y: CABIN[1], to: 'bosque_cabana', tx: P('bosque_cabana', 'door')[0], ty: P('bosque_cabana', 'door')[1] - 1, dir: 'up' },
+    ],
+    posts: [{ at: P('bosque', 'post'), zone: 'bosque' }],
+    // the dog's things to do: sniff the hollow log, follow a trail of paw prints, swim across the river for a stick
+    dogSpots: [
+      { id: 'bosque_tronco', at: P('bosque', 'log'), act: 'sniff', gives: 'palo', every: 120 },
+      { id: 'bosque_rastro', at: RASTRO, act: 'trail', path: [[RASTRO[0] + 1, RASTRO[1] - 1], [RASTRO[0] + 2, RASTRO[1] - 1], [RASTRO[0] + 3, RASTRO[1] - 2], [RASTRO[0] + 5, RASTRO[1] - 2]], gives: 'bellota', every: 150 },
+      { id: 'bosque_rio', at: P('bosque', 'rio'), to: P('bosque', 'rioFar'), act: 'swim', gives: 'palo', every: 90 },
+    ],
+    pages: K.pages('bosque'),
+    ambient: { birds: 4, butterflies: 3 },
+    animals: [
+      { kind: 'ardilla', n: 2, area: 'claro' }, { kind: 'ardilla', n: 1, area: 'zorros' },
+      { kind: 'venado', n: 2, area: 'prados' }, { kind: 'conejo', n: 2, area: 'conejos' }, { kind: 'rana', area: 'rana' },
+      { kind: 'zorro', n: 1, area: 'zorros' },
+      { kind: 'mapache', n: 1, area: 'orilla' },
+      { kind: 'erizo', n: 2, area: 'moras' },
+      { kind: 'buho', area: 'owl', perch: 1, when: 'noche' },                 // rare: at night, up in a tall tree
+      { kind: 'luciernaga', n: 7, area: 'claro', when: 'noche' },            // at night the clearing fills with fireflies
+    ],
+    // tap anything (world.js): the trees, mushrooms, the blackberry bushes, the log, the cave, the cabin, the water
+    things: { tiles: { '(': 'arbol', ')': 'arbol', '%': 'hongo', '*': 'mora', '_': 'tronco', '@': 'cueva', '|': 'agua', '[': 'casa', ']': null, '#': null, ':': null } },
+    npcs: [
+      K.canelo(18, 26), lola, Z.nico(...P('bosque', 'nico')),
+      person('elena', ...P('bosque', 'elena'), 'down', elenaSide, elenaLine, { fixed: true }),
+      person('lupe', ...P('bosque', 'lupe'), 'down', lupeSide, lupeLine, { wander: 1 }),
+    ],
+  };
+  G.maps.bosque_cueva = {
+    name: 'La cueva', icon: 'cueva', rows: MD.bosque_cueva.rows, music: 'castle',
+    exits: [{ x: P('bosque_cueva', 'door')[0], y: P('bosque_cueva', 'door')[1], to: 'bosque', tx: CAVE_FRONT[0], ty: CAVE_FRONT[1], dir: 'down', sfx: 'step' }],
+    animals: [{ kind: 'oso', area: 'osa', on: '{' }, { kind: 'luciernaga', n: 4, area: 'luces', on: '{%' }],
+    things: { tiles: { '%': 'hongo', '}': 'cueva', w: 'agua' } },
+    npcs: [K.canelo(8, 7)],
+  };
+  G.maps.bosque_cabana = {
+    name: 'La casa de Doña Lupe', icon: 'casa', rows: MD.bosque_cabana.rows, music: 'headquarters',
+    exits: [{ x: P('bosque_cabana', 'door')[0], y: P('bosque_cabana', 'door')[1], to: 'bosque', tx: CABIN[0], ty: CABIN[1] + 1, dir: 'down' }],
+    things: { tiles: { j: 'cama', t: null } },
+    poke: (f, x, y) => { if (f.map.get(x, y) !== 'v') return false; G.audio.sfx('select'); CK.puff('dust', x * TL + 12, y * TL, { vy: -0.6, life: 40 }); return true; }, // her oven: warm
+    npcs: [K.canelo(4, 4)],
+  };
+  // the pie cooling on Lupe's table once it's baked today
+  { const u0 = Z.drawUnder; Z.drawUnder = function (f, ctx) { u0(f, ctx); if (f.mapId === 'bosque_cabana' && G.state && pie().baked) { const [x, y] = P('bosque_cabana', 'table'); G.drawIcon16(ctx, 'pay', x * TL + 16 - Math.round(f.cam.x), y * TL + 2 - Math.round(f.cam.y)); } }; }
+
+  // ---------- things to pick up: Lola's leaves, acorns under the oak, sticks ----------
+  G.carry.SOURCES.push(
+    { id: 'palo_cbosque', map: 'camino_bosque', at: P('camino_bosque', 'palo'), item: 'palo', every: 90 },
+    { id: 'palo_bosque', map: 'bosque', at: [21, 26], item: 'palo', every: 90 },
+    { id: 'hoja_verde', map: 'bosque', at: [11, 6], item: 'hoja', col: 'verde', every: 200 },
+    { id: 'hoja_amarillo', map: 'bosque', at: [27, 17], item: 'hoja', col: 'amarillo', every: 200 },
+    { id: 'hoja_rojo', map: 'bosque', at: [9, 24], item: 'hoja', col: 'rojo', every: 200 },
+    { id: 'bellota_roble', map: 'bosque', at: [14, 16], item: 'bellota', every: 150, when: () => CH.done('bosque2') },
+  );
+  // ---------- Nico's hiding places in the forest (seek.js) ----------
+  G.seek.SPOTS.push(
+    { id: 'bosque1', map: 'bosque', at: P('bosque', 'hide1'), how: 'over', cut: 16, dx: 0, kinds: ['ardilla', 'conejo', 'zorro'], place: 'arbol' },     // behind the squirrel's oak
+    { id: 'bosque2', map: 'bosque', at: P('bosque', 'hide2'), how: 'over', cut: 9, dx: 0, kinds: ['mapache', 'erizo', 'conejo'], place: 'tronco' },     // behind the hollow log
+    { id: 'bosque3', map: 'bosque', at: P('bosque', 'hide3'), how: 'over', cut: 10, dx: 0, kinds: ['erizo', 'conejo', 'ardilla'], place: 'mora' },      // in a blackberry bush
+    { id: 'bosque4', map: 'bosque', at: P('bosque', 'hide4'), how: 'over', cut: 10, dx: 0, kinds: ['zorro', 'mapache', 'conejo'], place: 'cueva' },     // behind a boulder by the cave
+    { id: 'bosque5', map: 'bosque', at: P('bosque', 'hide5'), how: 'over', cut: 16, dx: 0, kinds: ['ardilla', 'venado', 'zorro'], place: 'arbol' },     // behind a tall tree
+    { id: 'bosque6', map: 'bosque', at: P('bosque', 'hide6'), how: 'over', cut: 10, dx: 0, kinds: ['erizo', 'conejo', 'mapache'], place: 'mora' },      // in another blackberry bush
+  );
+  G.seek.KINDS.push('ardilla', 'zorro', 'mapache', 'erizo', 'venado');
+  Object.assign(G.seek.PEEK, { ardilla: [3, 5], zorro: [3, 5], mapache: [3, 5], erizo: [3, 4], venado: [4, 7] });
+  // ---------- favours (favores.js, from Villa Sol's chapter 7 on): the forest's people ask about its words ----------
+  const been = () => Z.visited('bosque');
+  G.favores.OFFERS.push(['elena', 'thing', ['oso', 'ardilla', 'venado', 'zorro', 'mapache', 'cueva'], been], ['lupe', 'thing', ['mora', 'hongo', 'bellota', 'hoja'], been]);
+  Object.assign(G.favores.THINGS, { elena: ['oso', 'ardilla', 'venado', 'zorro', 'mapache', 'cueva'], lupe: ['mora', 'hongo', 'bellota', 'hoja'] });
+
+  // =====================================================================
+  //  The story: the forest's quest line (G.chapters, line 'bosque')
+  // =====================================================================
+  CH.add({ id: 'bosque1', line: 'bosque', title: 'El osito perdido', en: 'The lost bear cub: follow the paw prints home', giver: 'elena', words: ['oso', 'pequeno', 'cueva', 'grande'], icon: 'oso', col: '#8a5428', goal: [['oso', 2]] });
+  CH.add({ id: 'bosque2', line: 'bosque', title: 'Las bellotas de la ardilla', en: 'The squirrel\'s acorns: look under the leaves', giver: 'lupe', words: ['ardilla', 'bellota', 'hoja', 'erizo'], icon: 'bellota', col: '#c0662a', goal: [['bellota', 3]] });
+  CH.add({ id: 'bosque3', line: 'bosque', title: 'Los binoculares de Elena', en: 'Elena\'s binoculars: a raccoon took them; then look far away', giver: 'elena', words: ['tronco', 'mapache', 'venado', 'zorro'], icon: 'binoculares', col: '#4a7a38', goal: [['binoculares', 1]] });
+
+  // the cub (drawn by the chapter): crying in the clearing, then following you (your trail), then home at the cave
+  const CUB_AT = P('bosque', 'cub');
+  const trailPt = (f, k) => { const tr = (f.zoo && f.zoo.trail) || []; return tr[Math.max(0, tr.length - 1 - k)] || [f.player.x * TL + 12, f.player.y * TL + 20]; };
+  // ---------- 1 · El osito perdido: el oso, pequeño, la cueva, grande ----------
+  CH.script('bosque1', [
+    { who: 'elena', run: function* (f, c) { // a little bear, crying: where is its mother?
+      yield* say('elena', T('¡Hola, {name}! Soy Elena.', 'Hi, {name}! I\'m Elena, the forest ranger.'));
+      c.data.cub = 1; AN.tone('sine', 700, 500, 0.3, 0.06); AN.tone('sine', 650, 450, 0.3, 0.05, 0.4);
+      CH.point(CUB_AT[0] * TL + 12, CUB_AT[1] * TL);
+      try {
+        yield* sayShow('elena', null, T('¡Shhh! ¿Oyes?', 'Shhh! Do you hear that? Someone is crying...'));
+        yield* meetW('oso', { who: 'elena', prompt: '¡Mira! ¡Un [oso]!', en: 'Look! A bear!', show: cub, known: othersFor('oso', ['arbol', 'flor', 'perro', 'gato']) });
+        yield* meetW('pequeno', { who: 'elena', prompt: 'Un [oso] [pequeno:pequeño]...', en: 'A small bear... a little cub!', show: 'pequeno', known: othersFor('pequeno', ['oso', 'arbol', 'feliz']) });
+      } finally { CH.point(null); }
+      yield* sayShow('elena', cub, T('¿Y su mamá?', 'Where is its mother? Go and see the little bear.'));
+    } },
+    { spot: { map: 'bosque', at: CUB_AT, icon: cub }, run: function* (f, c) { // it hugs you; big paw prints to the cave
+      c.data.cub = 2; G.audio.sfx('select'); for (let k = 0; k < 3; k++) CK.puff('heart', CUB_AT[0] * TL + 8 + k * 5, CUB_AT[1] * TL, { life: 50, vy: -0.4 });
+      yield 30;
+      c.data.tracks = 1; G.audio.sfx('chime');
+      yield* sayShow('elena', { icon: 'huella' }, T('¡Huellas! ¡Grandes!', 'Paw prints! Big ones! They go over the bridge...'));
+      const n = G.pet && G.pet.mine() ? CK.dog(f) : null;
+      if (n) { // the dog sniffs the trail and runs ahead to the cave
+        CK.bark(f, n); yield* G.pet.play('sniff');
+        yield* sayShow('elena', { icon: 'perro' }, T('¡{dog}! ¡[busca:Busca]!', '{dog}! Find them! (he follows the prints)'));
+        yield* CK.walk(f, n, CAVE_FRONT[0] + 1, CAVE_FRONT[1], 5); n.dir = 'up'; CK.bark(f, n);
+      }
+      c.data.cub = 3; // (it follows you now)
+      const e = npcAt(f, 'elena'); if (e) yield* CK.walk(f, e, CAVE_FRONT[0] - 2, CAVE_FRONT[1], 4);
+    } },
+    { spot: { map: 'bosque', at: CAVE_FRONT, icon: 'huella' }, run: function* (f, c) { // the cave; mama bear comes out
+      c.data.cub = 4; c.data.tracks = 0;
+      yield* meetW('cueva', { who: 'elena', prompt: '¡Una [cueva]!', en: 'A cave! The prints go in...', show: 'cueva', known: othersFor('cueva', ['oso', 'pequeno', 'arbol', 'casa']) });
+      AN.cry('oso'); G.fx.shake = 6; yield 20;
+      c.data.mama = G.frame; AN.cry('oso');
+      yield 50;
+      yield* G.intro.watch('grande', { who: 'elena', prompt: '¡Mamá [oso]! ¡[grande]!', en: 'Mama bear! She is BIG!', act: function* () { c.data.tall = G.frame; AN.cry('oso'); G.fx.shake = 8; yield 50; c.data.tall = 0; },
+        ask: 'Mamá [oso] es...', askEn: 'Mama bear is... (big or small?)', known: othersFor('grande', ['pequeno', 'oso', 'feliz']) });
+      c.data.hug = G.frame; G.audio.jingle('item');
+      yield 50;
+      yield* quiz('elena', '¿Y el osito?', 'And the little cub? How is it?', 'pequeno', ['grande', 'oso'], { show: cub });
+      yield* quiz('elena', '¿Y su mamá?', 'And its mother?', 'grande', ['pequeno', 'oso'], { show: 'oso' });
+      c.data.home = G.frame; yield 60;
+      CK.confetti(); G.audio.jingle('promote');
+      yield* sayShow('elena', 'cueva', T('¡A su [cueva]! ¡[gracias:Gracias], {name}!', 'Home to their cave! Thank you, {name}! (they sleep in there: tiptoe in and see)'));
+    } },
+  ], {
+    stage(f, c) { if (f.mapId === 'bosque' && (c.data.cub | 0) < 3) { const n = npcAt(f, 'elena'); if (n && !n.busy) CK.place(f, 'elena', ...P('bosque', 'elena'), 'down'); } },
+    draw(f, ctx, c) {
+      if (f.mapId !== 'bosque' || CH.done('bosque1') || !c.data.cub) return;
+      const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y), t = G.frame;
+      if (c.data.tracks) { const pts = [[18, 15], [18, 13], [18, 11], [18, 9], [18, 7], [20, 5], [23, 5], [26, 5], [29, 5], [32, 5]]; pts.forEach(([x, y], i) => G.drawIcon16(ctx, 'huella', x * TL + (i & 1 ? 10 : 2) - cx, y * TL + 6 - cy, 0.75)); }
+      // mama bear at the cave's mouth: she comes out, stands up tall, hugs the cub, then they go in
+      if (c.data.mama) {
+        const k = Math.min(1, (t - c.data.mama) / 40), out = c.data.home ? Math.max(0, 1 - (t - c.data.home) / 50) : k;
+        const tall = c.data.tall ? Math.min(1, (t - c.data.tall) / 12) : 0, sc = 2 + tall * 0.6;
+        const img = AN.frame({ kind: 'oso', st: 'idle', react: 0, flip: false, age: t, t: 0 }), w = img.width * sc, h = img.height * sc;
+        ctx.globalAlpha = out; ctx.drawImage(img, Math.round(CAVE[0] * TL + 12 - w / 2 - cx), Math.round(CAVE[1] * TL + 4 + out * 22 - h - cy), w, h); ctx.globalAlpha = 1;
+      }
+      // the cub
+      let x, y, fr = 'sit', flip = false;
+      if (c.data.cub <= 2) { x = CUB_AT[0] * TL + 12; y = CUB_AT[1] * TL + 20; fr = c.data.cub === 1 && (t >> 4) & 1 ? 'cry' : 'sit'; }
+      else if (c.data.cub === 3) { const p = trailPt(f, 18); x = p[0]; y = p[1]; fr = (t >> 3) & 1 ? 'walk' : 'sit'; flip = x > f.player.x * TL + 12; c.data.at = [x, y]; }
+      else { const p0 = c.data.at || [CAVE_FRONT[0] * TL + 12, CAVE_FRONT[1] * TL + 20], k = c.data.hug ? Math.min(1, (t - c.data.hug) / 40) : 0, out = c.data.home ? Math.max(0, 1 - (t - c.data.home) / 50) : 1; x = p0[0] + (CAVE[0] * TL + 20 - p0[0]) * k; y = p0[1] + (CAVE[1] * TL + 26 - p0[1]) * k; fr = 'walk'; ctx.globalAlpha = out; }
+      const img = spr('cub' + fr, CUB[fr], CUB_PAL, flip);
+      ctx.drawImage(img, Math.round(x - img.width / 2 - cx), Math.round(y - img.height - cy)); ctx.globalAlpha = 1;
+      if (c.data.cub === 1 && (t >> 5) & 1) G.text(ctx, '?', Math.round(x - cx) + 4, Math.round(y - 22 - cy), '#ffffff', '#203048');
+    },
+  });
+
+  // ---------- 2 · Las bellotas de la ardilla: la ardilla, la bellota, la hoja (and a hedgehog in a leaf pile) ----------
+  const OAK = P('bosque', 'oak');
+  const PILES = [[15, 17], [17, 21], [21, 17], [11, 16], [22, 21]];
+  const PILE_HAS = ['bellota', 'erizo', 'bellota', 'nada', 'bellota'];
+  const sqPos = c => { const up = c.data.down ? Math.max(0, 1 - (G.frame - c.data.down) / 30) : 1; return [OAK[0] * TL + 12, OAK[1] * TL + 20 - 26 * up]; };
+  CH.script('bosque2', [
+    { who: 'lupe', run: function* (f, c) { // the squirrel's acorns are lost
+      yield* say('lupe', T('¡Hola, {name}! Soy Doña Lupe.', 'Hello, {name}! I\'m Doña Lupe. I live in the log cabin.'));
+      c.data.sq = 1; AN.cry('ardilla');
+      CH.point(OAK[0] * TL + 12, OAK[1] * TL - 10);
+      try {
+        yield* meetW('ardilla', { who: 'lupe', prompt: '¡Mira! ¡La [ardilla]!', en: 'Look! The squirrel! It is upset...', known: othersFor('ardilla', ['oso', 'pequeno', 'arbol', 'conejo']) });
+        yield* meetW('bellota', { who: 'lupe', prompt: '¿Y sus [bellota:bellotas]?', en: 'Where are its acorns? They are lost!', show: 'bellota', known: othersFor('bellota', ['ardilla', 'arbol', 'manzana', 'flor']) });
+      } finally { CH.point(null); }
+      c.data.piles = 1;
+      yield* sayShow('lupe', { icon: 'bellota', count: 3 }, T('¡Tres! ¡Bajo las... !', 'Three acorns! Look under the piles of leaves in the clearing.'));
+    } },
+    { spots: PILES.map((at, i) => ({ map: 'bosque', at, quiet: true, off: c => !!(c.data.done || {})[i] })), hint: (f, c) => PILES.filter((p, i) => !(c.data.done || {})[i]).map(([x, y]) => ({ x: x * TL + 12, y: y * TL + 12, spot: 'pile' })),
+      run: function* (f, c, i) {
+        const dn = c.data.done || (c.data.done = {}); if (dn[i]) return false;
+        dn[i] = G.frame; const [x, y] = PILES[i];
+        G.audio.sfx('swing'); for (let k = 0; k < 10; k++) CK.puff('crumb', x * TL + 12 + (Math.random() - 0.5) * 18, y * TL + 12, { vy: -1.4 - Math.random(), vx: (Math.random() - 0.5) * 2.4, g: 0.1, life: 36 });
+        yield 14;
+        if (!c.data.hoja) { c.data.hoja = 1; yield* meetW('hoja', { who: 'lupe', prompt: '¡[hoja:Hojas]!', en: 'Leaves! Lots of leaves!', show: leafPic('rojo'), known: othersFor('hoja', ['bellota', 'ardilla', 'arbol', 'flor']) }); }
+        const what = PILE_HAS[i];
+        if (what === 'bellota') {
+          c.data.found = (c.data.found | 0) + 1; c.data.fly = { from: [x, y], t: G.frame }; G.audio.jingle('item'); CK.sparkle(f, x, y, 4);
+          yield 30;
+          const nums = ['uno', 'dos', 'tres'], n = c.data.found;
+          if (met(nums[n - 1])) yield* quiz('lupe', '¿Cuántas?', 'How many acorns has the squirrel got back?', nums[n - 1], nums.filter((k, j) => j !== n - 1), { show: { icon: 'bellota', count: n } });
+          else yield* sayShow('lupe', { icon: 'bellota', count: n }, T('¡Una [bellota]!', 'An acorn! The squirrel catches it.'));
+        } else if (what === 'erizo') {
+          c.data.hog = { at: [x, y], t: G.frame }; AN.cry('erizo');
+          yield* meetW('erizo', { who: 'lupe', prompt: '¡Ay! ¡Un [erizo]!', en: 'Oh! A hedgehog! It was sleeping in the leaves.', known: othersFor('erizo', ['ardilla', 'oso', 'conejo', 'hoja']) });
+        } else yield* sayShow('lupe', leafPic('amarillo'), T('¡Nada! ¡[hoja:Hojas]!', 'Nothing! Only leaves. Try another pile.'));
+        return (c.data.found | 0) >= 3 ? undefined : false;
+      } },
+    { auto: 'bosque', run: function* (f, c) { // the squirrel comes down, happy, and gives you one
+      c.data.down = G.frame; AN.cry('ardilla'); yield 40;
+      for (let k = 0; k < 3; k++) CK.puff('heart', OAK[0] * TL + 8 + k * 5, OAK[1] * TL, { life: 50, vy: -0.4 });
+      yield* quiz('lupe', '¿Qué es?', 'Who got its acorns back?', 'ardilla', ['erizo', 'oso', 'conejo']);
+      bag().add('bellota'); G.audio.sfx('chime');
+      yield* sayShow('lupe', 'bellota', T('¡Una [bellota]... ¡para ti!', 'And one acorn... for you! Thank you, {name}!'));
+      c.data.up = G.frame; CK.confetti();
+    } },
+  ], {
+    stage(f) { if (f.mapId === 'bosque') { const n = npcAt(f, 'lupe'); if (n && !n.busy) CK.place(f, 'lupe', ...P('bosque', 'lupe'), 'down'); } },
+    draw(f, ctx, c) {
+      if (f.mapId !== 'bosque' || CH.done('bosque2')) return;
+      const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y), t = G.frame;
+      if (c.data.piles) PILES.forEach(([x, y], i) => { const d = (c.data.done || {})[i]; if (d && t - d > 20) return; const img = spr('pile', LEAFPILE, LEAF_PAL); ctx.globalAlpha = d ? 1 - (t - d) / 20 : 1; ctx.drawImage(img, x * TL + 5 - cx, y * TL + 14 - cy); ctx.globalAlpha = 1; });
+      const h = c.data.hog; if (h && t - h.t < 160) { const img = AN.frame({ kind: 'erizo', st: t - h.t < 60 ? 'hide' : 'walk', react: 0, flip: false, age: t, t: 0 }); ctx.drawImage(img, Math.round(h.at[0] * TL + 6 + Math.max(0, t - h.t - 60) * 0.4 - cx), h.at[1] * TL + 12 - cy); }
+    },
+    drawTop(f, ctx, c) {
+      if (f.mapId !== 'bosque' || CH.done('bosque2') || !c.data.sq) return;
+      const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y), t = G.frame;
+      const [sx, sy] = sqPos(c), img = AN.frame({ kind: 'ardilla', st: c.data.down ? 'walk' : 'up', react: 0, flip: false, age: t, t: 0, z: 0 });
+      ctx.drawImage(img, Math.round(sx - img.width / 2 - cx + ((t >> 3) & 1 && !c.data.down ? 1 : 0)), Math.round(sy - img.height - cy));
+      const fl = c.data.fly; if (fl && t - fl.t < 30) { const k = (t - fl.t) / 30, x = fl.from[0] * TL + 12 + (sx - fl.from[0] * TL - 12) * k, y = fl.from[1] * TL + 8 + (sy - 10 - fl.from[1] * TL - 8) * k - Math.sin(k * Math.PI) * 30; G.drawIcon16(ctx, 'bellota', Math.round(x - 8 - cx), Math.round(y - 8 - cy)); }
+    },
+  });
+
+  // ---------- 3 · Los binoculares de Elena: el tronco, el mapache, el venado, el zorro ----------
+  const LOG = P('bosque', 'log');
+  // looking through the binoculars: two round windows on black, something far away in them (its picture), bobbing
+  class Binoculars {
+    constructor(w, pic, bg) { this.w = w; this.pic = pic; this.bg = bg; this.t = 0; this.transparent = false; }
+    onEnter() { G.audio.sfx('ok'); }
+    update() { this.t++; if (this.t === 30 && AN.KINDS[this.pic]) AN.cry(this.pic); if (this.t > 150 || (this.t > 40 && G.input.tap())) { G.pop(); this.w.resolve(); } }
+    draw(ctx) {
+      ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, G.W, G.H);
+      const r = 62, cx = G.W / 2, cy = G.H / 2, k = Math.min(1, this.t / 20);
+      ctx.fillStyle = '#202028'; ctx.beginPath(); ctx.arc(cx - 48, cy, r * k + 3, 0, Math.PI * 2); ctx.arc(cx + 48, cy, r * k + 3, 0, Math.PI * 2); ctx.fill(); // (the rims, under the view: no line across it)
+      ctx.save(); ctx.beginPath(); ctx.arc(cx - 48, cy, r * k, 0, Math.PI * 2); ctx.moveTo(cx + 48 + r * k, cy); ctx.arc(cx + 48, cy, r * k, 0, Math.PI * 2); ctx.clip();
+      ctx.fillStyle = '#a8e0f8'; ctx.fillRect(0, 0, G.W, G.H); ctx.fillStyle = this.bg; ctx.fillRect(0, cy + 6, G.W, G.H);
+      ctx.fillStyle = '#2b6a26'; for (let i = 0; i < 9; i++) { const x = i * 40 - 10; ctx.beginPath(); ctx.moveTo(x, cy + 8); ctx.lineTo(x + 18, cy - 40); ctx.lineTo(x + 36, cy + 8); ctx.fill(); }
+      const bob = Math.round(Math.sin(this.t / 10) * 3), sway = Math.round(Math.sin(this.t / 23) * 6);
+      G.drawIcon16(ctx, this.pic, cx - 40 + sway, cy - 36 + bob, 5);
+      ctx.restore();
+    }
+  }
+  BQ.binoculars = (pic, bg) => { const w = new G.Wait(); G.push(new Binoculars(w, pic, bg || '#6cb83c')); return w; };
+  CH.script('bosque3', [
+    { who: 'elena', run: function* (f, c) { // ¿y mis binoculares?
+      yield* sayShow('elena', { icon: 'binoculares' }, T('¡Ay! ¿Y mis binoculares?', 'Oh no! Where are my binoculars? I left them here...'));
+      c.data.prints = 1;
+      CH.point(LOG[0] * TL + 12, LOG[1] * TL);
+      try { yield* sayShow('elena', { icon: 'huella' }, T('¡Huellas! ¡Mira!', 'Little paw prints... they go to the hollow log!')); } finally { CH.point(null); }
+    } },
+    { spot: { map: 'bosque', at: LOG, icon: { icon: 'binoculares' } }, run: function* (f, c) { // the hollow log: a raccoon with the binoculars
+      G.audio.sfx('select'); f.wig = { x: LOG[0], y: LOG[1], t: 18 };
+      yield* meetW('tronco', { who: 'elena', prompt: '¡Un [tronco]!', en: 'A hollow log! Something is in there...', show: 'tronco', known: othersFor('tronco', ['arbol', 'cueva', 'hoja', 'bellota']) });
+      c.data.peek = G.frame; AN.cry('mapache'); yield 30;
+      yield* meetW('mapache', { who: 'elena', prompt: '¡Un [mapache]!', en: 'A raccoon! It has my binoculars!', known: othersFor('mapache', ['ardilla', 'oso', 'erizo', 'gato']) });
+      const n = G.pet && G.pet.mine() ? CK.dog(f) : null; if (n) { CK.bark(f, n); yield* G.pet.play('jump'); CK.bark(f, n); }
+      c.data.run = G.frame; AN.cry('mapache'); yield 40;
+      c.data.prints = 0; bag().add('binoculares', { q: 'bosque3' }); G.audio.jingle('item');
+      yield* sayShow('elena', { icon: 'binoculares' }, T('¡Mis binoculares!', 'The raccoon dropped them and ran off! Bring them to Elena.'));
+    } },
+    { who: 'elena', bubble: { icon: 'binoculares' }, run: function* (f, c) { // look far away: a deer, a fox
+      bag().take('binoculares', { q: 'bosque3' }); G.audio.jingle('item');
+      yield* say('elena', T('¡[gracias:Gracias], {name}! ¡Mira!', 'Thank you, {name}! Here, have a look!'));
+      yield BQ.binoculars('venado', '#6cb83c');
+      yield* meetW('venado', { who: 'elena', prompt: '¡Un [venado]!', en: 'A deer! Far away in the meadow.', known: othersFor('venado', ['mapache', 'ardilla', 'oso', 'caballo']) });
+      yield BQ.binoculars('zorro', '#4f9c30');
+      yield* meetW('zorro', { who: 'elena', prompt: '¡Y un [zorro]!', en: 'And a fox! By the river.', known: othersFor('zorro', ['venado', 'mapache', 'ardilla', 'perro']) });
+      yield* ask('elena', '¿Y el [venado]?', 'Which one was the deer?', 'venado', ['zorro', 'mapache'].filter(met), { pic: true });
+      CK.confetti(); G.audio.jingle('promote');
+      yield* sayShow('elena', 'elbosque', T(met('elbosque') ? '¡Mi [elbosque]! ¡Muy bien!' : '¡Muy bien, {name}!', 'Well done! Go and find them all: the deer in the meadow, the fox by the log.'));
+    } },
+  ], {
+    stage(f) { if (f.mapId === 'bosque') { const n = npcAt(f, 'elena'); if (n && !n.busy) CK.place(f, 'elena', ...P('bosque', 'elena'), 'down'); } },
+    draw(f, ctx, c) {
+      if (f.mapId !== 'bosque' || CH.done('bosque3')) return;
+      const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y), t = G.frame;
+      if (c.data.prints) for (const [x, y, i] of [[20, 14, 0], [22, 16, 1], [24, 18, 0], [27, 19, 1]]) G.drawIcon16(ctx, 'huella', x * TL + (i ? 10 : 2) - cx, y * TL + 8 - cy, 0.6);
+      if (c.data.peek && !(c.data.run && t - c.data.run > 60)) {
+        const run = c.data.run ? (t - c.data.run) * 1.6 : 0, img = AN.frame({ kind: 'mapache', st: c.data.run ? 'walk' : 'idle', react: c.data.run ? 0 : 1, flip: false, age: t, t: 0 });
+        ctx.drawImage(img, Math.round(LOG[0] * TL + 16 + run - cx), Math.round(LOG[1] * TL + 20 - img.height - cy));
+        if (!c.data.run) G.drawIcon16(ctx, 'binoculares', LOG[0] * TL + 26 - cx, LOG[1] * TL - 6 - cy, 0.75);
+      }
+    },
+  });
+
+  // =====================================================================
+  //  The zone
+  // =====================================================================
   const bus = P('bosque', 'bus'), busIn = P('bosque', 'busIn');
   Z.add({
     id: 'bosque', name: 'El bosque', en: 'the forest', icon: 'bosque', music: 'castle', pos: [160, 34],
-    maps: ['bosque'], path: 'camino_bosque',
+    maps: ['bosque', 'bosque_cueva', 'bosque_cabana'], path: 'camino_bosque',
     bus: { map: 'bosque', at: bus }, entry: { map: 'bosque', x: busIn[0], y: busIn[1], dir: 'down' },
-    animals: [],   // (the zone's own animals, its album page: added with the zone, docs/WORLD_PLAN.md)
-    planned: 7,    // (album entries still to come: shown as numbered "?" until the zone is built)
+    animals: KINDS, // the album page, in order
+    habitat: { ardilla: 'arbol', venado: 'flor', zorro: 'tronco', mapache: 'agua', erizo: 'hoja', oso: 'mora', buho: 'arbol', luciernaga: 'cueva' },
+    rare: { oso: 'cueva', buho: 'noche' },
+    planned: 0,
+    lola: lolaHere,
   });
 })();
 
