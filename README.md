@@ -1,6 +1,6 @@
 # Club de Español
 
-A 16-bit-style educational game for kids aged about 7 to 12 who are learning Spanish. There is no combat. You explore the sunny town of **Villa Sol**, talk with the townsfolk in Spanish and run errands for them. Every new word you meet becomes a picture card that grows (a seed, a sprout, a flower) as you use it; later a notebook organizes them.
+A 16-bit-style educational game for kids aged about 7 to 12 who are learning Spanish. There is no combat. You explore an open world (no locks, no bosses): the sunny town of **Villa Sol** in the middle, and around it **La playa**, **El bosque**, **El parque de juegos**, **La casa de los abuelos** and **La montaña**, reached on foot along paths or by bus. You talk with the people you meet in Spanish, help them, find animals for your album, and play with your dog (you name him). Every new word you meet becomes a picture card that grows (a seed, a sprout, a flower) as you use it; later a notebook organizes them.
 
 It uses the same hand-drawn-in-code engine as *Embers of Aldmere*: pixel tiles, chibi map sprites, anime portraits and the FM-synth music.
 
@@ -47,12 +47,29 @@ On phones and tablets, just tap: tap a spot to walk there, tap people to talk to
 - **A hand shows where to tap.** No controls screen: if a child does nothing for a few seconds, a little hand taps where to go next (the puppy's hiding place, the door, the nearest person with a bubble, a line waiting to go on). Any touch or key hides it. On a keyboard, a strip shows Z / X / C once after chapter 1.
 - **The end of the day.** After about 18 minutes of play the sun sets over Villa Sol and a moon bubble floats over home. Going home then: Mamá says *¡Buenas noches!*, a *Hoy* card shows the cards that grew today, night falls, and a new morning starts with *¡Buenos días!* Nothing is forced; staying out to play is fine.
 
-## The story in chapters (plan: `docs/CURRICULUM.md`)
+## The open world (`docs/WORLD_PLAN.md`, `src/zones.js`)
+- **The opener**: Mamá says *hola*, a puppy bursts in and you **name him** (his name is already typed: *Canelo*; keep
+  it with one tap, roll the dice, or type one). Then two big pictures: **play with the puppy** (chapter 1) or **go
+  explore** (the world is open; his games wait at home with Mamá). His name is used everywhere.
+- **Five places around Villa Sol**, each down a road from an edge of town (a signpost shows its picture) along a short
+  path with animals and things to pick up. Any of them can be visited first. Arriving somewhere new is a little party
+  (*¡Nuevo lugar!*). (Step 1 built the paths and a small first place in each zone: its signpost, its bus stop, the dog's
+  thing to do, Lola, Nico's hiding places; each zone is filled in by its own step.)
+- **The bus**: every place has a bus stop. Tap it: the world map opens (the places you've been to in colour, the others
+  as "?"); tap a place and the bus comes, you hop on with your dog, and it drops you there. The map in the kid menu
+  works too (the bus comes to you). Tapping a "?" shows footprints and the arrow suggests the way on foot.
+- **Friends in every place**: Lola, the friend who travels; Nico's hide-and-seek (a game in every place); your dog
+  always has something to do (dig in the sand, splash in the waves, sniff a log, roll in the snow).
+- **The album is a Pokédex**: a page per place, numbered animals, silhouettes with a picture of where they live, rare
+  ones that only come out at night or in the morning, *¡Completo!* per place, and *¡Nuevo animal!* the first time.
+- **No daily word limit**: nothing waits on a word count; good teaching lives inside each activity.
+
+## The story of Villa Sol in chapters (plan: `docs/CURRICULUM.md`)
 The game is one story in 21 short chapters, played in order over about three weeks of 15-minute sessions. Each brings
 0-5 new words, each met in a little puzzle with one unknown and used again within a few minutes; most of every later
-chapter is older words coming back in the things people need. A new chapter opens when the last is done and the day
-still has room for new words (about 6 a day; a review day when many words are still new); otherwise its giver shows a
-sun coming up: *¡Mañana!* Misiones (grown-ups menu) shows the chapter going on with its steps, or the next. When a new word hasn't come
+chapter is older words coming back in the things people need. A new chapter opens when the last is done (no daily word
+limit any more; morning and evening chapters wait for their time of day, their giver asleep under a moon meanwhile).
+It is Villa Sol's quest line: never required to leave town or to explore; every zone can have its own line. Misiones (grown-ups menu) shows the chapter going on with its steps, or the next. When a new word hasn't come
 back by itself a minute later, Canelo shows a "?": tap him and say or pick it.
 1. **¡Un perro!** Mamá says *hola*; a puppy bursts through the door, hides under the table, barks *guau*, and comes when you say *¡ven!*: Canelo is yours.
 2. **El gato de la cerca.** Canelo chases a butterfly to the park; Nico, his cat (*gato*, *miau*) and a sound game.
@@ -102,6 +119,7 @@ chapters.
 - **Learning:** `src/data.js` (errands, characters; the Spanish from `content/es`), `src/icons.js` (word pictures), `src/words.js` (the word model: stages, Leitner boxes over sessions and days, the review engine `G.review`, the new-word budget `G.budget`), `src/intro.js` (meeting words: `G.intro.show / watch / listen / find`, review questions, page puzzles), `src/learn.js` (questions whose cards adapt to how well the answer is known, the gold-word card, errand cards, badges), `src/state.js` (save slots and autosave; the older word helpers wrap the model). Picture-words in dialogue are drawn by the rich text in `src/ui.js`.
 - **Game:** `src/field.js` (exploring), `src/ambient.js` (the living town: birds, butterflies, a cat, Canelo tagging along, people who look at you, Tomás's mail round), `src/animals.js` (Round B animals and the album records), `src/world.js` (tap anything, the word bubble, say it back), `src/pet.js` (Canelo: tricks, care, the pet menu, his bed), `src/hearts.js` (hearts, voice greetings, stickers and photos), `src/album.js` (the animal album and the Amigos page), `src/errands.js` (the bag, presents, shops, side jobs and flowers), `src/carry.js` (picking things up, carrying, giving them to Canelo and friends, and the day's play the guide points at), `src/favores.js` (review in the world: favores, the palabra del día, Inés's pages), `src/seek.js` (Nico's hide-and-seek), `src/menus.js` (Cuaderno, Misiones, Animales, the grown-ups menu), `src/maps.js` (townsfolk and errands), `src/story.js` (opening, party, diploma), `src/main.js` (title, save slots)
 - **Speaking:** `src/speech.js` listens for a Spanish word with the browser's speech recognition and scores what it heard (`G.speech.listen`, `G.speech.match`, and `G.speech.gestureTap`, which starts the mic inside the real tap as iOS Safari requires); `src/mic.js` is the kids' mic button and the speaking stars (`G.MicBtn`, `G.mic`), used by the questions and the new-word card in `src/learn.js`; `src/mictest.js` is the grown-ups' microphone test (`G.micTest()`), which shows what the device heard and logs whether the game's voice still works after the mic. On iPad it needs Safari with Dictation turned on (*Settings → General → Keyboard → Enable Dictation*). The save keeps how many times each word was said (`words[id].said`; older saves just start at 0).
+- **The open world:** `src/zones.js` (zones, map edges and routes, signposts, the bus and bus stops, the world map, the dog's spots, Lola and Nico for any zone, the opener's choice), `content/es/zone-villa.js` (Villa Sol's roads out, its bus stop, its album page) and one file per zone, `content/es/zone-<id>.js` (its path map and its maps; placeholders until each zone's step); the plan and the pattern for a zone: `docs/WORLD_PLAN.md`; `tools/test-world.js` tests it
 - **Maps:** `tools/mapgen.py` generates `src/mapdata.js`
 - **Hints and the day:** `src/guide.js` (the arrow to the next goal, Canelo trotting that way; `tools/test-guide.js`, and `tools/audit-intuitive.js` with `tools/naivebot.js`: the kid's-eye audit), `src/hint.js` (the tapping hand, the key strip), `src/day.js` (the session clock, the sunset, the evening at home and the *Hoy* card); `tools/test-hints-day.js` tests both
 - **Build:** `python3 tools/build.py` rebuilds the single-file `dist/` version and stamps each script in `index.html` with a hash of its contents (`src/x.js?v=…`), so a plain refresh of the play link always gets the newest game. Run it after every change in `src/`.

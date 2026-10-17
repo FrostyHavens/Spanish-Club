@@ -98,8 +98,8 @@ async function story(browser) {
     check('story: chapters done: ' + ids.join(' '), ids.length >= (until ? 1 : 21 - FROM), JSON.stringify(r.q));
     const wrong = ids.filter(id => (r.metIn[id] || []).slice().sort().join() !== CH_WORDS[id].slice().sort().join());
     check('story: each chapter met exactly its own new words', !wrong.length, wrong.map(id => id + ': ' + (r.metIn[id] || []).join(',') + ' (want ' + CH_WORDS[id].join(',') + ')').join('; ') + ' | other: ' + JSON.stringify(r.metIn.none || []));
-    const over = Object.entries(r.starts).filter(([id, s]) => s.today + s.n > 6 || s.date + s.n > 8 || (s.n && s.stage1 >= 10));
-    check('story: every chapter started within the budget', !over.length, JSON.stringify(over));
+    // (no daily word limit any more, 2026-10-17: chapters open as soon as the one before is done; the counts are only logged)
+    console.log('    new words when each chapter started: ' + Object.entries(r.starts).map(([id, s]) => id + ':' + (s.today + s.n)).join(' '));
     check('story: no card ever showed an unmet word', !r.cards.length, r.cards.slice(0, 8).join('; '));
     check('story: the older errands never opened', !r.old && !r.offered.length, r.offered.join());
     if (!until) {

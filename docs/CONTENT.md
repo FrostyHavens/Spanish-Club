@@ -7,6 +7,22 @@ the words, topics, number lists, notebook pages and where their puzzles sit (`pa
 chapters 1-10 is `content/es/story-c01-c10.js`, of 11-21 `content/es/story-c11-c21.js`. Pictures stay in `src/icons.js`. `index.html` loads `content/es/words.js`
 before `src/data.js`, and the story files after `src/chapters.js`. The plan for all 21 chapters is `docs/CURRICULUM.md`.
 
+## A zone of the open world (`docs/WORLD_PLAN.md`)
+Villa Sol is the middle of a world of zones (La playa, El bosque, El parque de juegos, La casa de los abuelos, La
+montaña), each reached on foot by a path map from an edge of town, or by bus once visited. A zone is ONE content file,
+`content/es/zone-<id>.js` (loaded by `index.html` after `src/zones.js`), plus its maps in `tools/mapgen.py`, its words
+in `content/es/words.js` (pictures in `src/icons.js`) and its animals (`G.animals.addKind`). The file registers its maps
+(`G.maps.<id>`: exits with `G.zones.edge(...)`, `posts`, `dogSpots`, `animals`, `npcs` with `G.zones.lola`,
+`G.zones.nico`, `G.mapKit.canelo`), its things to pick up (`G.carry.SOURCES`), its hiding places (`G.seek.SPOTS`), its
+favours (`G.favores.OFFERS`), its zone (`G.zones.add({ id, name, icon, music, pos, maps, path, bus, entry, animals,
+habitat, rare })`) and its story as its own quest line (`G.chapters.add({ id, line: '<zone>', ... })` and
+`G.chapters.script(...)`: never waiting for Villa Sol's chapters). The full pattern, step by step, with the rules (any
+zone can be visited first: only universal words or the zone's own, introduced there), is "How to build a zone" in
+`docs/WORLD_PLAN.md`. The five zone files are placeholders until their step: keep their ids, path maps and bus stops.
+
+The dog's name: write `{dog}` (like `{name}`) wherever the dog is named in a line, a prompt or an English help line; the
+child names him in the opener (`G.dogName()`, default *Canelo*). Never write *Canelo* in a string.
+
 ## A new word
 1. Add it to `C.words` in `content/es/words.js`:
    ```js
@@ -103,7 +119,9 @@ yield* G.review.ask('perro', { who: 'luna' });         // a review question for 
 **Speaking.** Every `G.ask` question whose answer is a `{ word }` gets the kids' mic button automatically (when the grown-ups' *Speaking (mic)* switch is on and the browser can listen). What the child says is matched against every choice: its `label` if it has one, plus every form in the word's `es` (`'rojo / roja'`, with or without the article). So keep the choices of one question sounding different from each other (*tres* / *dos* is fine; two words that differ by one sound in a short word are not). Add `noMic: true` to a question to leave the mic off, e.g. when the answer is a picture with no word to say. Plain `G.choose` menus (no `answer`) never get a mic.
 
 ## Rules for new words
-- New words come with chapters: at most 6 a day (8 a calendar date), listed in the chapter's `words` so the gate can count them before it opens. Outside a chapter, check `G.budget.canIntro(n)` and defer when it's false (the person says *¡Mañana!*). Fixed phrases (*dame la pata*) count as one word.
+- New words come with chapters and zone activities, listed in the chapter's `words`. **There is no daily word limit any
+  more** (2026-10-17, the open world: nothing waits on a word count; `G.budget.canIntro` is always true): pace inside the
+  activity instead, at most 3-5 new words in one errand, one unknown per puzzle. Fixed phrases (*dame la pata*) count as one word.
 - A side job, a shop or a greeting only asks words that are met: give it a chapter to wait for (`chDone('c6')` in errands.js), and keep unmet words out of its choices (`q()` in errands.js drops them).
 - Every new word arrives as a one-unknown puzzle (`G.intro.*`) and is used for real 1-3 minutes later: `G.review.due()` lists just-met words first, so the next person can ask one (`G.review.ask`). If nothing in the story uses it by then, Canelo gets a "?" bubble a minute after it was met: tapping him asks it (`G.chapters.nudge()`), so a chapter only needs its own second use when the story calls for one.
 - At most one unknown word per line or question; everything else known, a picture, or acted out.
@@ -129,8 +147,9 @@ opens tomorrow. Inside a run, write with the helpers in `G.chapters.K` (`say`, `
 `walk`, `place`, `bark`, `heart`, `confetti`...) and introduce every new word with `G.intro.*` (below). The header of
 `src/chapters.js` lists every trigger and option; `content/es/story-c01-c10.js` has ten worked examples.
 
-**Gating** (`G.chapters.gate(id)`): the chapter before must be done; its new words must fit today's budget (6 a day, 8
-a calendar date, and at most 5 inside 5 minutes of play: otherwise it opens a few minutes later); no new chapter while 10 or more words are still only met (a review day: Luna, or Mamá before chapter 8, shows a notebook bubble and asks the oldest of them, `G.chapters.review`); `when: 'morning'` chapters
+**Gating** (`G.chapters.gate(id)`): the chapter before (in its line) must be done; there is no word budget any more
+(with 10 or more words still only met, Luna, or Mamá before chapter 8, offers a review with a notebook bubble,
+`G.chapters.review`, but nothing waits for it); `when: 'morning'` chapters
 open only as the first chapter of a session, `when: 'evening'` ones only in the evening at home (day.js runs their
 `evening: 'dusk' | 'dawn'` beats). A chapter that has started can always be finished. All 21 chapters are written
 (`content/es/story-c01-c10.js`, `content/es/story-c11-c21.js`); a new one goes in the table in `content/es/words.js`

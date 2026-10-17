@@ -2,6 +2,60 @@
 
 A running record of what changed in Club de Español and why. Newest first.
 
+## 2026-10-17 — The open world, step 1: the framework (zones, paths, the bus, the world map, the dog's name)
+The 7-year-old loved variety and choice and wants to explore and meet people and animals; the parent decided: an open
+world, Pokémon-style but friendly (no locks, no bosses), the child names the dog, the dog tutorial can be skipped, no
+daily word limit, walkable paths AND a bus, exploration first with recurring characters, and the album as a real
+Pokédex. The plan for the five zones and the pattern each zone step follows: `docs/WORLD_PLAN.md`.
+- **The opener** (`CH.opener`, content/es/story-c01-c10.js): Mamá's *hola*, a puppy bursts in, laps the room and sits
+  at your feet; Mamá asks *¿Cómo se llama?* and the name screen comes up with his picture and *Canelo* already typed
+  (one tap on ✓ keeps it; a dice picks another dog's name; any name can be typed: `src/creator.js`, dog mode). Then two
+  big pictures (`G.playOrExplore`, src/zones.js): the puppy with his ball (*¡A jugar con Chispa!*: chapter 1 right away)
+  or a path into the hills (*¡A explorar!*: the door is open, he comes along; his games wait as Mamá's puppy bubble,
+  the very last thing the guide suggests). The voice asks it; no reading needed.
+- **{dog}** everywhere: `G.fill` fills `{dog}` like `{name}` (`G.dogName()`, saved as `G.state.dogName`); every
+  "Canelo" in a string became `{dog}` (dialogue, prompts, English help, chapter titles, the notebook page, the pet menu,
+  the Amigos page). `G.nameOf('canelo')` is his name.
+- **No word budget**: `G.chapters.gate` lost 'budget', 'soon' and 'busy' (a review day is only an offer now);
+  `G.budget.canIntro` is always true. Morning / evening chapters stay (they're the story's time of day).
+- **Zones** (`src/zones.js`): a registry (`G.zones.add`), visits with a "¡Nuevo lugar!" card (the zone's picture pops in
+  with confetti, its name said, a little bus drives in: you can come back by bus), map-edge exits (`G.zones.edge`) and
+  routes over every map's exits (`G.zones.route`), signposts with the zone's picture, a bus stop in every zone, the bus
+  ride (it drives in along your row, you and the dog hop on, it drives off; it drops you at the zone's stop), the dog's
+  spots (dig, splash, sniff, roll: he may leave something to pick up), Lola (the friend who travels: at every zone's
+  first map) and Nico's hide-and-seek for any zone, rare-animal times.
+- **The world map** (`G.worldMap`, from any bus stop and from the kid menu's new map picture): Villa Sol in the middle,
+  the zones as big pictures on paths; visited ones in colour with their name and album count (tap: the bus takes you;
+  from the menu it comes to you), the others dark "?" silhouettes (tap: footprints run along the path and the guide's
+  arrow suggests the way on foot); your face shows where you are.
+- **Maps** (`tools/mapgen.py`): Villa Sol has five openings (west, north, east, south, south-west) with signposts and a bus
+  stop by the plaza road; five path maps (a meadow, a forest track, hills, sand and a lagoon, wheat fields) with animals,
+  a stick or an apple tree and signposts; five placeholder zone maps (sand and sea, a clearing, a sandbox and benches,
+  the grandparents' garden, a meadow under the peaks), each with its signpost, bus stop, the dog's spot, Lola, Nico and
+  hiding places (`content/es/zone-<id>.js`; Villa Sol's entry in `content/es/zone-villa.js`).
+- **Quest lines** (`src/chapters.js`): chapters have a `line` (a zone; Villa Sol's 21 are 'villa'); each line has its
+  own chapter going on, and none waits for another (`G.chapters.add`, `.current(line)`, `.next(line)`, `.lines()`,
+  `.lineHere()`). Villa Sol's story is its quest line, never required to leave town.
+- **The guide** suggests what's NEAR (the zone you're in, or the path): someone or something on another map counts
+  only in the same zone, the way found over every map's exits; a chapter not started yet comes after the things going
+  on here; places not visited yet come before the day's play (a road out with the zone's picture); a place asked for on
+  the world map comes early. In a zone: Lola's bubble, the dog's spot, Nico, things to pick up.
+- **The album is a Pokédex** (`src/album.js`): a tab per zone (its picture and count; gold when complete) and Amigos;
+  numbered entries in world order; silhouettes with a little picture of where they live; rare ones marked; numbered "?"
+  for animals a zone will have; "¡Completo!" with confetti per zone; and "¡Nuevo animal!" over the game (never blocking
+  it) the first time an animal is met: its number, picture, cry and name, then it flips into the corner.
+- **Generalized for zones**: hide-and-seek is one game per zone (`src/seek.js`: Villa Sol's unchanged), favours are
+  data-driven per map (`G.favores.OFFERS`, `PLACES` with `on`, an offer's condition), `G.animals.addKind` for a zone's
+  animals (a default walk, frames, a cry) and rare spawns (`when`, `chance`), `G.mapKit` (talker, Canelo on any map).
+- **Demos** (`src/demo.js`): `bus` (the hand taps the bus stop, once two places are visited), `worldmap` (it taps a
+  place), `dogspot` (it taps the paw prints).
+- Tests: `tools/test-world.js` (new: naming the dog and `{dog}`, the skip path, no budget, every path walkable both
+  ways, a walk by keys into a zone and "¡Nuevo lugar!", the bus and the world map ("?" places, the bus from the menu),
+  the dog's spot, Lola, Nico's game in a zone, a zone's quest line beside Villa Sol's, the album by zone, save and
+  load). Existing tests follow: the kid menu has the map; the guide test expects exploring before the day's play and
+  chapter 5 opening on a 12-word day; the harness plays the dog's name, the choice ("play" unless `g.explore`), the new
+  place card and the world map.
+
 ## 2026-10-11 — Word cards that grow, the book later, picture + word always, a ghost hand (step 3 of the second playtest)
 The parent (`docs/PLAYTEST_NOTES.md`): bonus stars mean nothing to a child; show progress on the word itself (say it a few
 times and see its card pop up and grow); the notebook comes too soon (early on just cards, the book later as an

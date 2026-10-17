@@ -141,7 +141,7 @@ async function deckAndBook(browser) {
     // the corner button is the deck: tap it, the kid menu's first picture is the cards
     await g.tap(320 - 16, 16);
     await g.until(() => G.top().constructor.name === 'FieldMenu', null, 'the kid menu');
-    check('deck: before the book, the kid menu is the cards and the album', await g.ev(() => G.top().tiles().join() === 'cards,album'));
+    check('deck: before the book, the kid menu is the cards and the album', await g.ev(() => G.top().tiles().join() === 'cards,album,map'));
     await g.frames(6); await still(g, 'kid_menu');
     await g.tapRect(await g.ev(() => G.top().rect('cards')));
     await g.until(() => G.top().constructor.name === 'Deck' && G.top().t > 14, null, 'the deck');
@@ -167,7 +167,7 @@ async function deckAndBook(browser) {
     await g.until(() => !G.cards.party(), null, 'the celebration to end', 10000);
     await g.tap(320 - 16, 16);
     await g.until(() => G.top().constructor.name === 'FieldMenu', null, 'the kid menu');
-    check('book: then the kid menu has the cards, the book and the album', await g.ev(() => G.top().tiles().join() === 'cards,book,album'));
+    check('book: then the kid menu has the cards, the book and the album', await g.ev(() => G.top().tiles().join() === 'cards,book,album,map'));
     await g.frames(6); await still(g, 'kid_menu_book');
     await g.tapRect(await g.ev(() => G.top().rect('book')));
     await g.until(() => G.top().constructor.name === 'Notebook', null, 'the notebook');

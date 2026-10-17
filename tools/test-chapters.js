@@ -110,7 +110,7 @@ async function day1(browser) {
     // tomorrow: Mamá's sun bubble; the hand passes it by
     await g.ev(() => G.goto('casa', 4, 4, 'up')); await g.fieldIdle('casa'); await g.frames(10);
     const why = await g.ev(() => G.chapters.gate('c3'));
-    check('day1: chapter 3 waits (a morning chapter, and the budget is spent)', why === 'morning' || why === 'budget', why);
+    check('day1: chapter 3 waits (a morning chapter)', why === 'morning', why);
     check('day1: Mamá is asleep under a moon ("z z": her chapter opens after the night)', await g.ev(() => { const a = G.field.npc('mama').alert(); return !!a && a.icon === 'dormir' && a.sleep && a.wait; }));
     await g.shot('c3_tomorrow_bubble');
     await g.tapTile(3, 2); await g.until(() => G.top().constructor.name === 'TextBox', null, 'Mamá');
@@ -168,11 +168,11 @@ async function chapters(browser) {
     const r = await g.ev(() => ({ q: G.state.quests, met: G.words.list(1), starts: window.__starts, day: G.words.day() }));
     check('chapters: chapters 1-10 all done', Object.keys(r.q).filter(k => /^c\d+$/.test(k) && r.q[k] === 'done').length === 10, JSON.stringify(r.q));
     check('chapters: the words met are exactly the 34 words of chapters 1-10', r.met.slice().sort().join() === ALL10.slice().sort().join(), r.met.filter(w => !ALL10.includes(w)).join() + ' / missing ' + ALL10.filter(w => !r.met.includes(w)).join());
-    const over = Object.entries(r.starts).filter(([id, s]) => s.today + s.n > 6 || s.date + s.n > 8 || s.stage1 >= 10);
-    check('chapters: every chapter started within the budget (<= 6 new words a day, 8 a date, < 10 words only met)', !over.length, JSON.stringify(over));
+    // (no daily word limit any more, 2026-10-17: a chapter opens as soon as the one before is done; logged only)
+    console.log('    new words when each chapter started: ' + Object.entries(r.starts).map(([id, s]) => id + ':' + (s.today + s.n)).join(' '));
     const mornings = ['c3', 'c7', 'c8'].filter(id => r.starts[id] && r.starts[id].lastDone === r.starts[id].sess);
     check('chapters: the morning chapters opened first thing in a session', !mornings.length, JSON.stringify(mornings.map(id => [id, r.starts[id]])));
-    check('chapters: they took several days (about 6, one or two chapters a day)', r.day >= 5 && r.day <= 12, 'day ' + r.day);
+    check('chapters: they took a few days (the morning and evening chapters wait for their time; no word limit)', r.day >= 3 && r.day <= 12, 'day ' + r.day);
     check('chapters: after chapter 8 the sunset came within ~5 minutes for chapter 9', sunsetAfterC8 && sunsetAfterC8.at - sunsetAfterC8.now <= 320, JSON.stringify(sunsetAfterC8));
     check('chapters: some answers were said out loud', spoke > 3, String(spoke));
     const cards = await g.ev(() => window.__unmetCards);
@@ -205,20 +205,13 @@ async function budget(browser) {
     await g.fieldIdle('casa');
     check('budget: the same session: chapter 3 waits (morning)', await g.ev(() => G.chapters.gate('c3') === 'morning'));
     await g.ev(() => { G.words.newSession('load'); });
-    check('budget: a new session on the same date: 6 met today, so 3 more would be 9: it waits (budget)', await g.ev(() => G.chapters.gate('c3') === 'budget'));
-    await g.ev(() => { G.debug.dayShift = (G.debug.dayShift || 0) + 1; G.words.newSession('load'); });
-    check('budget: the next day: chapter 3 opens (Mamá has its picture, a sun)', await g.ev(() => { const a = G.field.npc('mama').alert(); return !G.chapters.gate('c3') && !!a && a.icon === 'sol' && !a.wait; }));
-    // 10 words only met: a review day
+    await g.ev(() => { G.words.newSession('load'); });
+    check('budget: a new session on the same date: no daily word limit any more: chapter 3 opens', await g.ev(() => G.chapters.gate('c3') === null));
+    check('budget: Mamá has its picture (a sun)', await g.ev(() => { const a = G.field.npc('mama').alert(); return !!a && a.icon === 'sol' && !a.wait; }));
+    // 10 words only met: no "busy" day any more (the review is only an offer); the story goes on
     await g.ev(() => { for (const id of ['hueso', 'sientate', 'si', 'no', 'manzana', 'pelota', 'rojo', 'pan', 'pato', 'cuac']) G.words.meet(id, 'test'); });
-    check('budget: 10+ words only met (stage 1): no new chapter today ("busy")', await g.ev(() => G.chapters.gate('c3') === 'busy' || G.chapters.gate('c3') === 'budget'));
-    await g.ev(() => { G.debug.dayShift++; G.words.newSession('load'); });
-    check('budget: the next day too, until they are used ("busy")', await g.ev(() => G.chapters.gate('c3') === 'busy'));
-    check('budget: a review day: Mamá has a notebook bubble (Luna\'s, once her school is met)', await g.ev(() => G.chapters.needsReview() && G.field.npc('mama').alert() === 'pagina'));
-    await g.tapTile(...await g.ev(() => { const n = G.field.npc('mama'); return [n.x, n.y]; }));
-    await g.until(() => G.top() !== G.field, null, 'Mamá\'s review');
-    await g.shot('review_day');
-    await settle(g, 'the review');
-    check('budget: she asks the oldest words only met; used, they move on and chapter 3 opens again', await g.ev(() => G.chapters.stage1() < 10 && !G.chapters.gate('c3')), await g.ev(() => G.chapters.stage1() + ' ' + G.chapters.gate('c3')));
+    check('budget: 10+ words only met (stage 1): chapter 3 still opens (no "busy")', await g.ev(() => G.chapters.gate('c3') === null && G.chapters.needsReview()));
+    await g.shot('no_budget');
     // a started chapter can always be finished, whatever the budget
     await g.ev(() => { G.chapters.start('c3'); for (const id of ['cama', 'agua', 'escuela', 'bien', 'banco', 'fuente']) G.words.meet(id, 'test'); });
     check('budget: a started chapter goes on (its beats are live)', await g.ev(() => G.chapters.active('c3') && !!G.chapters.live() && G.chapters.live().id === 'c3'));

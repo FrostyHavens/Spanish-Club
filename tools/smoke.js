@@ -121,7 +121,7 @@ async function touchRun(browser) {
     check('ipad: the menu button opens the menu and doesn\'t walk', await g.ev(b => !G.field.route && G.field.player.x === b[0] && G.field.player.y === b[1], before));
     await g.frames(4); await g.shot('menu');
     const tapIcon = async k => g.tapRect(await g.ev(k => G.top().rect(k), k));
-    check('ipad: early on the kid menu is pictures, no words: the word cards and the album (no book yet, no Misiones)', await g.ev(() => G.top().tiles().join() === 'cards,album'));
+    check('ipad: early on the kid menu is pictures, no words: the word cards and the album (no book yet, no Misiones)', await g.ev(() => G.top().tiles().join() === 'cards,album,map'));
     await tapIcon('cards');
     await g.until(() => G.top().constructor.name === 'Deck' && G.top().t > 8, null, 'the deck of word cards');
     await g.ev(() => { window.__said = window.__speak.length; });
@@ -132,7 +132,7 @@ async function touchRun(browser) {
     await g.until(() => G.top().constructor.name === 'FieldMenu', null, 'back to the menu');
     await g.ev(() => { G.words.meet('uno', 'test'); G.state.flags.book = true; }); // (the book opens later, cards.js BOOK_AT; a second topic met: a second page)
     await g.frames(2);
-    check('ipad: once the book has opened it sits between the cards and the album', await g.ev(() => G.top().tiles().join() === 'cards,book,album'));
+    check('ipad: once the book has opened it sits between the cards and the album', await g.ev(() => G.top().tiles().join() === 'cards,book,album,map'));
     await tapIcon('book');
     await g.until(() => G.top().constructor.name === 'Notebook', null, 'the notebook');
     await g.tapBtn(await g.ev(() => G.top().nextXY()));

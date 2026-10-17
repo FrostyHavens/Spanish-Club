@@ -106,15 +106,18 @@ async function model(browser) {
 
     // the budget
     const b = await g.ev(() => {
-      const B = G.budget, W = G.words, o = { start: [B.recent(), B.session(), B.canIntro(1)] };
+      const B = G.budget, W = G.words; B.OPEN = false; // (the counting engine, as it was; the game runs with B.OPEN: no word limit)
+      const o = { start: [B.recent(), B.session(), B.canIntro(1)] };
       ['pan', 'leche', 'queso', 'huevo'].forEach(id => W.meet(id, 'test'));
       o.nine = [B.recent(), B.session(), B.left(), B.canIntro(1), B.canIntro(1, { hard: true })]; // 5 (above) + 4 = 9 met this session
       W.addTime(301); o.later = [B.recent(), B.session(), B.canIntro(1), B.pending()];
       W.newSession('load'); o.next = [B.session(), B.canIntro(5), B.canIntro(6)];
+      B.OPEN = true; o.open = B.canIntro(50);
       return o;
     });
     check('budget: words met in the last 5 minutes and this session; no more than 5 per 5 min, 6 a session (8 hard)', b.nine[0] === 9 && b.nine[1] === 9 && b.nine[2] === 0 && !b.nine[3] && !b.nine[4], JSON.stringify(b));
     check('budget: a new session starts a new count', b.next[0] === 0 && b.next[1] && b.next[2] === false, JSON.stringify(b));
+    check('budget: in the game there is no word limit (canIntro is always true)', b.open === true);
     check('model: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
 }

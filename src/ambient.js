@@ -106,7 +106,7 @@
   // per-person state, kept on the person (a fresh copy every time a map is entered)
   function meet(n) { if (!n.amb) n.amb = { dir0: n.dir, look: 0, back: 0, near: 0, hold: n.route ? 60 + ri(120) : 0, i: n.route ? 1 % n.route.length : 0, stuck: 0, hop: 0, idle: 0, sniff: 200 }; return n.amb; }
   function follow(n) { const m = meet(n); if (!m.follow) { m.follow = true; n.ghost = true; n.wander = 0; } }
-  const special = (f, x, y) => !!((f.def.pages || {})[key(x, y)] || (f.def.searches || {})[key(x, y)]); // a follower keeps off these
+  const special = (f, x, y) => !!((f.def.pages || {})[key(x, y)] || (f.def.searches || {})[key(x, y)] || (G.zones && G.zones.special(f, x, y))); // a follower keeps off these
   // a follower arriving on the map (out of a door) appears beside you
   function placeNear(f, n) { // the nearest free tile you could walk to; beside or behind you before in front
     const p = f.player, [fx, fy] = f.facing(), [bx, by] = G.DIRS[p.dir], seen = new Set([key(p.x, p.y)]), c = [];

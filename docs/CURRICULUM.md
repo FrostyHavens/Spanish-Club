@@ -1000,7 +1000,8 @@ Most are in `LEARNING_DESIGN.md`'s build step 1; these are the content-facing on
 ### 7.5 As built: chapters 1-10 (part 1)
 Chapters 1-10 are in the game (`src/chapters.js`, `content/es/story-c01-c10.js`; the words, pages and the chapter
 table in `content/es/words.js`). They follow §4 step by step; where the build differs:
-- **Gating** (§3.1 made concrete, `G.chapters.gate`): at most 6 new words a game day and 8 a calendar date, and at
+- **Gating** (2026-10-17: the open world removed the word-budget part of this gate: only the chapter before and the
+  morning / evening timing remain; `docs/WORLD_PLAN.md`. As built before that) (§3.1 made concrete, `G.chapters.gate`): at most 6 new words a game day and 8 a calendar date, and at
   most 5 inside 5 minutes of play (C2 waits a few minutes after a quick C1); no new
   chapter while 10 or more words are only met (a review day: Profesora Luna, or Mamá before C8, has a notebook
   bubble and asks the 5 oldest of them, so the story always goes on); C3, C7 and C8 (and C19) are *morning* chapters, opened

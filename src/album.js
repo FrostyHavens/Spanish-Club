@@ -145,7 +145,7 @@
         const id = ids[k], R = id && rec(id);
         ctx.fillStyle = sel ? '#f8e0a0' : R ? '#fffaf0' : '#d8ccb0'; ctx.fillRect(x, y, r.w, r.h);
         ctx.strokeStyle = sel ? '#c06000' : '#b09068'; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, r.w - 1, r.h - 1);
-        const num = number(id) || (G.album.zoneStart(this.zone) + k + 1);
+        const num = id ? number(id) : G.album.zoneStart(this.zone) + k + 1;
         G.text(ctx, String(num), x + 3, y + 3, R ? '#a07040' : '#9a8a70', null);
         if (!id) { G.bigText(ctx, '?', x + r.w / 2, y + 12, 2, '#b8a888', null); continue; } // (an animal this zone will have)
         const w = G.data.words[AN().KINDS[id].word], rare = z && z.rare && z.rare[id];

@@ -6,9 +6,18 @@ game did before). The short version of the audit: the old game showed 65 of its 
 spirit of *Tunic*: you start knowing almost nothing, meaning comes from pictures, actions and context, and every new
 word should feel like a small puzzle you solved, not a dictionary entry you were handed.
 
+> **2026-10-17, the open world: no daily word limit.** The parent asked for freedom to explore, so the new-word budget
+> no longer gates anything (no "6 a day / 8 a date", no "soon", no "busy" review days that hold the story back;
+> `G.budget.canIntro` is always true and `G.chapters.gate` only checks the chapter before and morning / evening). The
+> rules below still hold *inside* every activity: one unknown at a time, the new word used again within a minute or two
+> (Canelo's "?" does it by itself), 3-5 new words an errand, spaced review in the world. What changed is that a child
+> who plays a lot in one day now meets more words that day; the review engine and the cards adapt as before. The audit's
+> "most new words in 5 minutes" and "first session" targets are now design guidance for content, not enforced by a
+> gate (`docs/WORLD_PLAN.md`).
+
 ## Principles
 1. **Few things at once.** A new word only arrives when the child can use it right away. At most 3–5 new words per
-   errand, about 6 per 15-minute session, never more than 8. Fixed phrases (*dame la pata*, *buenos días*) count as
+   errand (no daily cap since the open world: the pacing lives in each activity). Fixed phrases (*dame la pata*, *buenos días*) count as
    one word.
 2. **Every new word is a puzzle with one unknown.** A word is introduced among things the child already knows, so
    they can work it out (by elimination, by watching, by trying) — then it is confirmed right away.

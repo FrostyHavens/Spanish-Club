@@ -54,6 +54,19 @@
   CH.VERSION = 3; // (2: chapters 1-10 then the older errands; 3: all 21 chapters)
 
   // ---------- the table and the scripts ----------
+  // Quest LINES (the open world, docs/WORLD_PLAN.md): every zone can have its own little story, a line of chapters
+  // played in order (def.line: a zone id; Villa Sol's 21 chapters are the line 'villa'). Lines never wait for each
+  // other: each has its own chapter going on or next. A zone file adds its chapters with G.chapters.add(def) and
+  // G.chapters.script(id, beats, opts), like Villa Sol's (content/es/words.js, content/es/story-*.js).
+  CH.lineOf = id => (CH.def(id) && CH.def(id).line) || 'villa';
+  CH.lines = () => { const L = []; for (const id of CH.ids()) { const l = CH.lineOf(id); if (!L.includes(l)) L.push(l); } return L.length ? L : ['villa']; };
+  CH.add = function (def) { // a zone's chapter: { id, line, title, en, giver, words, icon, col, goal, when }
+    const T = D().chapters || (D().chapters = []);
+    const k = T.findIndex(c => c.id === def.id); if (k >= 0) T[k] = def; else T.push(def);
+    def.n = T.filter(c => (c.line || 'villa') === (def.line || 'villa')).indexOf(def) + 1;
+    D().quests[def.id] = { name: def.title, en: def.en, giver: def.giver, goal: def.goal || [[def.icon, 1]], chapter: def.n, icon: def.icon, col: def.col };
+    return def;
+  };
   CH.ids = () => (D().chapters || []).map(c => c.id);
   CH.def = id => (D().chapters || []).find(c => c.id === id) || null;
   CH.script = function (id, beats, opts) { scripts[id] = { beats, o: opts || {} }; };
@@ -74,10 +87,11 @@
   CH.state = () => (G.state ? st() : null);
   CH.done = id => !!G.state && G.state.quests[id] === 'done';
   CH.active = id => !!G.state && G.state.quests[id] === 'active';
-  CH.current = () => (G.state ? CH.ids().find(CH.active) || null : null);
-  CH.next = function () {
-    if (!G.state || CH.current()) return null;
-    return CH.ids().find(id => !CH.done(id)) || null;
+  // the chapter going on in a line (Villa Sol's by default: "a chapter is going on" for the town's systems)
+  CH.current = (line = 'villa') => (G.state ? CH.ids().find(id => CH.lineOf(id) === line && CH.active(id)) || null : null);
+  CH.next = function (line = 'villa') {
+    if (!G.state || CH.current(line)) return null;
+    return CH.ids().find(id => CH.lineOf(id) === line && !CH.done(id)) || null;
   };
   CH.allWrittenDone = () => !!G.state && CH.writtenIds().every(CH.done);
   CH.data = id => { const d = st().data; if (!isObj(d[id])) d[id] = {}; return d[id]; };
@@ -96,8 +110,8 @@
     if (CH.done(id)) return 'done';
     if (CH.active(id)) return null;
     if (!scripts[id]) return 'unwritten';
-    const k = CH.ids().indexOf(id);
-    if (k > 0 && !CH.done(CH.ids()[k - 1])) return 'prev';
+    const same = CH.ids().filter(x => CH.lineOf(x) === CH.lineOf(id)), k = same.indexOf(id);
+    if (k > 0 && !CH.done(same[k - 1])) return 'prev';
     if (c.when === 'evening' && !o.evening) return 'evening';
     if (c.when === 'morning' && st().lastDoneSess === G.words.sess()) return 'morning';
     // (no new-word budget any more, 2026-10-17: the world is open and play is never blocked by a daily word count;
@@ -125,7 +139,7 @@
     yield G.badge(id);
     if (G.hearts && c.giver && G.hearts.WHO.includes(c.giver) && G.hearts.add(c.giver, 2, 'errand')) { yield 40; yield* G.hearts.milestones(c.giver); }
     const sc = scripts[id]; if (sc && sc.o.after) yield* sc.o.after(f, CH.ctx(id)); // (the last chapter: the diploma)
-    const nx = CH.next();
+    const nx = CH.next(CH.lineOf(id));
     if (nx && CH.def(nx).when === 'evening' && !CH.gate(nx, { evening: true }) && G.day && G.day.bring) G.day.bring(300); // (C9: the sunset comes sooner)
     restage(f);
     S.autosave();
@@ -146,13 +160,22 @@
     return true;
   }
   // the chapter (and beat) a trigger could run now: the active one, or the next one when it may open
-  function live(o = {}) {
-    const cur = CH.current();
-    if (cur) { const sc = scripts[cur]; return sc ? { id: cur, k: st().step[cur] | 0, b: CH.beat(cur), started: true } : null; }
-    const nx = CH.next(); if (!nx || !scripts[nx] || CH.gate(nx, o)) return null;
-    return { id: nx, k: 0, b: scripts[nx].beats[0], started: false };
+  function live1(o = {}, line = 'villa') {
+    const cur = CH.current(line);
+    if (cur) { const sc = scripts[cur]; return sc ? { id: cur, k: st().step[cur] | 0, b: CH.beat(cur), started: true, line } : null; }
+    const nx = CH.next(line); if (!nx || !scripts[nx] || CH.gate(nx, o)) return null;
+    return { id: nx, k: 0, b: scripts[nx].beats[0], started: false, line };
   }
+  // every line's live chapter (Villa Sol's first)
+  const lives = (o = {}) => CH.lines().map(l => live1(o, l)).filter(Boolean);
+  CH.lives = lives;
+  // the line of the zone you're in (its own story), or Villa Sol's
+  CH.lineHere = () => { const z = G.field && G.zones ? G.zones.of(G.field.mapId) : null; return z && CH.lines().includes(z) ? z : 'villa'; };
+  // live(o): the chapter of the line here (the guide, the hint hand); live(o, line) that line's
+  function live(o = {}, line) { return live1(o, line || CH.lineHere()); }
   CH.live = live;
+  // the first live chapter (of any line) whose beat passes test(L)
+  const find = (test, o) => lives(o).find(L => { try { return test(L); } catch (e) { console.error(e); return false; } }) || null;
   // a beat's auto may be a function of the chapter (c1: by itself after "play", or Mamá's bubble after "explore")
   CH.autoOf = L => { const a = L && L.b && L.b.auto; if (typeof a !== 'function') return a; try { return a(CH.ctx(L.id)); } catch (e) { console.error(e); return null; } };
   const when = (L) => { try { return !L.b.when || !!L.b.when(CH.ctx(L.id)); } catch (e) { console.error(e); return false; } };
@@ -208,12 +231,13 @@
   };
   CH.alert = function (who) {
     if (!G.state) return null;
-    const L = live();
-    if (L && L.b.who === who && when(L)) { const bb = L.b.bubble, v = typeof bb === 'function' ? bb(CH.ctx(L.id)) : bb != null ? bb : true; return v === true ? CH.emblem(L.id) : CH.bubbleOf(v); } // (no "!": the chapter's picture)
+    const L = find(L => L.b.who === who && when(L));
+    if (L) { const bb = L.b.bubble, v = typeof bb === 'function' ? bb(CH.ctx(L.id)) : bb != null ? bb : true; return v === true ? CH.emblem(L.id) : CH.bubbleOf(v); } // (no "!": the chapter's picture)
     if (who === 'canelo' && CH.nudge()) return 'pregunta';
     if (CH.needsReview() && who === CH.reviewer()) return 'pagina';
-    if (!CH.current()) {
-      const nx = CH.next(), c = nx && CH.def(nx), g = nx && CH.gate(nx);
+    for (const line of CH.lines()) {
+      if (CH.current(line)) continue;
+      const nx = CH.next(line), c = nx && CH.def(nx), g = nx && CH.gate(nx);
       if (c && g && c.giver === who && scripts[nx] && g !== 'prev' && g !== 'soon') return g === 'evening' ? { icon: 'noche', wait: true, night: true } : { icon: 'dormir', wait: true, sleep: true };
     }
     return null;
@@ -226,12 +250,13 @@
   // their part of a talk: true when it handled it
   CH.talk = function* (who, f) {
     if (!G.state) return false;
-    const L = live();
-    if (L && L.b.who === who && when(L)) return yield* play(L.id, f || G.field, L.k);
+    const L = find(L => L.b.who === who && when(L));
+    if (L) return yield* play(L.id, f || G.field, L.k);
     if (CH.needsReview() && who === CH.reviewer()) { yield* CH.review(who); return true; }
     if (who === 'canelo' && CH.nudge()) return yield* CH.nudgeRun(f || G.field, G.pet && G.pet.npc(f || G.field));
-    if (!CH.current()) {
-      const nx = CH.next(), c = nx && CH.def(nx), g = nx && CH.gate(nx);
+    for (const line of CH.lines()) {
+      if (CH.current(line)) continue;
+      const nx = CH.next(line), c = nx && CH.def(nx), g = nx && CH.gate(nx);
       if (c && g && c.giver === who && scripts[nx] && g !== 'prev' && g !== 'soon') { yield* tomorrow(who, g); return true; }
     }
     return false;
@@ -254,16 +279,19 @@
   const spotsOf = b => (b.spots || (b.spot ? [b.spot] : []));
   CH.spotAt = function (f, x, y) {
     if (!G.state || !f) return null;
-    const L = live(); if (!L || !when(L)) return null;
-    const i = spotsOf(L.b).findIndex(sp => sp.map === f.mapId && sp.at[0] === x && sp.at[1] === y && !(sp.off && sp.off(CH.ctx(L.id))));
-    return i >= 0 ? Object.assign({ i }, L) : null;
+    for (const L of lives()) {
+      if (!when(L)) continue;
+      const i = spotsOf(L.b).findIndex(sp => sp.map === f.mapId && sp.at[0] === x && sp.at[1] === y && !(sp.off && sp.off(CH.ctx(L.id))));
+      if (i >= 0) return Object.assign({ i }, L);
+    }
+    return null;
   };
   CH.runSpot = function* (f, L) { return yield* play(L.id, f, L.k, L.i); };
   // an animal (kind), 'cat' or 'canelo' tapped -> true when the chapter took it (it plays as a scene)
   CH.tapped = function (kind, f) {
     if (!G.state || !f || (!f.locked && G.top() !== f) || running) return false;
-    const L = live();
-    if (L && L.b.tap === kind && when(L)) {
+    const L = find(L => L.b.tap === kind && when(L));
+    if (L) {
       if (f.locked) f.tasks.add((function* () { while (f.locked) yield 1; scene(f, play(L.id, f, L.k)); })()); // (from a search: once it ends)
       else scene(f, play(L.id, f, L.k));
       return true;
@@ -272,14 +300,14 @@
   };
   // the chapter's own reaction to a tap that isn't its beat (opts.tap: a wrong animal in a listening game)
   CH.tapHook = function (kind, f) {
-    const L = live(), sc = L && scripts[L.id];
+    const L = find(L => !!(scripts[L.id] && scripts[L.id].o.tap)), sc = L && scripts[L.id];
     if (sc && sc.o.tap) { try { return !!sc.o.tap(kind, f, CH.ctx(L.id)); } catch (e) { console.error(e); } }
     return false;
   };
   // a way out of a map: a beat waiting at the door plays first, then you go out (false: it asked to stay)
   CH.door = function* (f) {
-    const L = live();
-    if (L && L.b.door === f.mapId && when(L)) { const k = st().step[L.id] | 0; yield* play(L.id, f, L.k); return CH.done(L.id) || (st().step[L.id] | 0) > k; }
+    const L = find(L => L.b.door === f.mapId && when(L));
+    if (L) { const k = st().step[L.id] | 0; yield* play(L.id, f, L.k); return CH.done(L.id) || (st().step[L.id] | 0) > k; }
     return true;
   };
   function scene(f, gen) {
@@ -294,8 +322,8 @@
     if (!G.state) return false;
     let ran = false;
     for (let guard = 0; guard < 20; guard++) {
-      const L = live({ evening: true });
-      if (!L || L.b.evening !== phase || !when(L)) break;
+      const L = find(L => L.b.evening === phase && when(L), { evening: true });
+      if (!L) break;
       yield* play(L.id, f, L.k); ran = true;
     }
     return ran;
@@ -305,24 +333,27 @@
   CH.update = function (f) {
     if (!G.state || !f) return;
     if (f.chStaged !== G.state) { f.chStaged = G.state; restage(f); }
-    const L = live();
+    const L = live(); // (the line here: its auto beats, and the arrival question)
     // an evening chapter waiting: the sunset comes soon
-    if (!L && !CH.current()) { const nx = CH.next(); if (nx && CH.def(nx).when === 'evening' && !CH.gate(nx, { evening: true }) && G.day && G.day.bring && !G.day.brought()) G.day.bring(180); }
+    if (!live({}, 'villa') && !CH.current()) { const nx = CH.next(); if (nx && CH.def(nx).when === 'evening' && !CH.gate(nx, { evening: true }) && G.day && G.day.bring && !G.day.brought()) G.day.bring(180); }
     if (f.locked || G.top() !== f || G.fade.a > 0 || f.player.moving || running) return;
     if (!CH.openerDone || !CH.openerDone()) { if (f.mapId === 'casa' && CH.opener && G.state.name) scene(f, CH.opener(f)); return; } // (a new game: the opener first)
+    const A = find(L => { const a = CH.autoOf(L); return !!a && (a === true || a === f.mapId) && when(L); });
+    if (A) { scene(f, play(A.id, f, A.k)); return; }
     const au = L && CH.autoOf(L);
-    if (au && (au === true || au === f.mapId) && when(L)) { scene(f, play(L.id, f, L.k)); return; }
     if (!L || au) placeAsk(f);
   };
   function restage(f) {
     f = f || G.field; if (!f || !G.state) return;
-    const id = CH.current() || CH.next(); const sc = id && scripts[id];
-    if (sc && sc.o.stage) { try { sc.o.stage(f, CH.ctx(id)); } catch (e) { console.error(e); } }
+    for (const line of CH.lines()) {
+      const id = CH.current(line) || CH.next(line); const sc = id && scripts[id];
+      if (sc && sc.o.stage) { try { sc.o.stage(f, CH.ctx(id)); } catch (e) { console.error(e); } }
+    }
   }
   CH.restage = restage;
-  CH.lost = function () { const id = CH.current(), sc = id && scripts[id]; return !!(sc && sc.o.lost && sc.o.lost(CH.ctx(id))); };
+  CH.lost = function () { return CH.lines().some(l => { const id = CH.current(l), sc = id && scripts[id]; return !!(sc && sc.o.lost && sc.o.lost(CH.ctx(id))); }); };
   // someone tags along with you for a while (opts.follows(who, c): Nico in his sound game, chapter 17)
-  CH.follows = function (who) { const id = CH.current(), sc = id && scripts[id]; try { return !!(sc && sc.o.follows && sc.o.follows(who, CH.ctx(id))); } catch (e) { return false; } };
+  CH.follows = function (who) { return CH.lines().some(l => { const id = CH.current(l), sc = id && scripts[id]; try { return !!(sc && sc.o.follows && sc.o.follows(who, CH.ctx(id))); } catch (e) { return false; } }); };
 
   // ---------- the arrival banner: entering a building whose word is met and due asks its name (a few times) ----------
   const PLACES = ['escuela', 'panaderia', 'biblioteca', 'casa', 'granja'];
@@ -363,22 +394,23 @@
   CH.waitsIn = function (m) {
     if (CH.needsReview() && m === (CH.reviewer() === 'luna' ? 'escuela' : 'casa')) return true;
     if (m === 'villa' && G.field && G.field.mapId !== 'villa' && !(G.pet && G.pet.npc(G.field)) && CH.nudge()) return true; // (Canelo waits outside with his "?")
-    const L = live(); if (!L || !when(L)) return false;
+    return lives().some(L => { if (!when(L)) return false;
     const b = L.b, def = G.maps[m];
     if (spotsOf(b).some(sp => sp.map === m)) return true;
     if (CH.autoOf(L) === m || b.door === m) return true;
     if (b.who && def && (def.npcs || []).some(n => n.id === b.who && (!n.cond || n.cond()))) return true;
-    return false;
+    return false; });
   };
 
   // ---------- drawing (field.js) ----------
   CH.draw = function (f, ctx, layer) {
     if (!G.state) return;
-    const id = CH.current() || CH.next(), sc = id && scripts[id];
-    if (sc) { const fn = layer === 'top' ? sc.o.drawTop : sc.o.draw; if (fn) { try { fn(f, ctx, CH.ctx(id)); } catch (e) { console.error(e); } } }
+    for (const line of CH.lines()) {
+      const id = CH.current(line) || CH.next(line), sc = id && scripts[id];
+      if (sc) { const fn = layer === 'top' ? sc.o.drawTop : sc.o.draw; if (fn) { try { fn(f, ctx, CH.ctx(id)); } catch (e) { console.error(e); } } }
+    }
     if (layer !== 'top') return;
-    const L = live();
-    if (L && when(L) && G.top() === f) for (const sp of spotsOf(L.b)) {
+    for (const L of lives()) if (when(L) && G.top() === f) for (const sp of spotsOf(L.b)) {
       if (sp.map !== f.mapId || sp.quiet || (sp.off && sp.off(CH.ctx(L.id)))) continue;
       const at = sp.at, ic = typeof sp.icon === 'function' ? sp.icon(CH.ctx(L.id)) : sp.icon;
       if (ic) G.drawAlert(ctx, ic, at[0] * T - Math.round(f.cam.x), at[1] * T - Math.round(f.cam.y) + 4, f.t);

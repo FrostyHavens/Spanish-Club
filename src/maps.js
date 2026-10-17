@@ -109,7 +109,7 @@
 
   // for the zones' content files (content/es/zone-*.js): the same talk, greeting and Canelo on any map
   G.mapKit = {
-    talker, hello, say, stepBack, met,
+    talker, hello, say, stepBack, met, pages: PAGES, // (pages(map): that map's page puzzles from content/es/words.js pagePlaces)
     // Canelo on a map: he follows you there once he's yours (ambient.js puts a follower beside you as you arrive)
     canelo: (x, y) => ({ id: 'canelo', npc: 'canelo', x, y, dir: 'down', wander: 2, follow: () => !!F().canelo,
       cond: () => !!(G.pet && G.pet.mine()) && !(G.errands && G.errands.lost()),

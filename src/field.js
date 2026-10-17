@@ -131,7 +131,7 @@
       const c = this.map.get(tx, ty);
       const story = (G.chapters && G.chapters.spotAt(this, tx, ty)) || G.intro.spotAt(this, tx, ty); // a puzzle's thing on a counter is the thing, not the person behind it
       let n = drawn(0) || talker(tx, ty) || (story ? null : drawn(1) || talker(tx, ty + 1)); // (a story's place wins over the head of someone standing below it: the bushes of chapter 5)
-      if (n && (n.ghost || n.id === 'canelo') && G.carry && G.carry.at(this, tx, ty)) n = null; // (Canelo standing on a thing to pick up: the thing)
+      if (n && (n.ghost || n.id === 'canelo') && ((G.carry && G.carry.at(this, tx, ty)) || (G.zones && G.zones.special(this, tx, ty)))) n = null; // (Canelo standing on a thing to pick up: the thing)
       if (!n && !story && COUNTER.includes(c)) n = DIR4.map(d => talker(tx + G.DIRS[d][0], ty + G.DIRS[d][1])).find(Boolean);
       if (n) return { npc: n, x: n.x, y: n.y };
       if (this.exitAt(tx, ty)) return { exit: true, x: tx, y: ty };
@@ -185,7 +185,7 @@
       const [fx, fy] = this.facing();
       const here = this.npcs.filter(o => o.x === fx && o.y === fy && !o.hidden); // (someone hidden, like a puppy under the table, isn't there to talk to)
       let n = (want && here.includes(want) ? want : null) || here.find(o => { try { const a = o.alert && o.alert(); return !!a && !a.wait; } catch (e) { return false; } }) || here[0];
-      if (n && n !== want && (n.ghost || n.id === 'canelo') && G.carry && G.carry.at(this, fx, fy)) n = null; // (Canelo on a thing you came to pick up)
+      if (n && n !== want && (n.ghost || n.id === 'canelo') && ((G.carry && G.carry.at(this, fx, fy)) || (G.zones && G.zones.special(this, fx, fy)))) n = null; // (Canelo on a thing you came to pick up)
       // talk across counters
       const story = (G.chapters && G.chapters.spotAt(this, fx, fy)) || G.intro.spotAt(this, fx, fy); // a puzzle's thing on a counter: search it
       if (!n && !story) { const t = this.map.get(fx, fy); if (t === 'e' || t === 't' || t === 'a' || t === 'Y') { const [dx, dy] = G.DIRS[this.player.dir]; n = this.npcs.find(o => o.x === fx + dx && o.y === fy + dy && !o.hidden); } }

@@ -113,6 +113,9 @@ async function noDeadEnd(browser) {
     await setup(g, { done: ['c1', 'c2'], words: W12, map: 'casa', x: 4, y: 4 });
     await g.ev(() => { G.state.ch.lastDoneSess = G.words.sess(); });
     await g.frames(10);
+    // (the open world: before the day's play, the guide suggests the places not visited yet; docs/WORLD_PLAN.md)
+    check('play: with places still to explore, the guide suggests a road out of town first', /^explore /.test(((await at(g)) || {}).why || ''), JSON.stringify(await at(g)));
+    await g.ev(() => G.zones.ids().forEach(G.zones.visit)); await g.frames(4);
     check('play: chapter 3 waits for the morning', await g.ev(() => G.chapters.gate('c3') === 'morning' && !G.chapters.live()));
     check('play: Mamá (its giver) sleeps under a moon: "z z" (no word to read)', await g.ev(() => { const a = G.field.npc('mama').alert(); return !!a && a.sleep && a.wait; }));
     let a = await at(g);
@@ -126,20 +129,20 @@ async function noDeadEnd(browser) {
     check('play: and then the arrow is on the day\'s play again', /^play:/.test(((await at(g)) || {}).why || ''));
     // in town: the arrow on a thing to pick up (and Canelo trots that way)
     await setup(g, { done: ['c1', 'c2'], words: W12, map: 'villa', x: 6, y: 20 });
-    await g.ev(() => { G.state.ch.lastDoneSess = G.words.sess(); });
+    await g.ev(() => { G.state.ch.lastDoneSess = G.words.sess(); G.zones.ids().forEach(G.zones.visit); });
     await g.frames(10);
     a = await at(g);
     const goal = await g.ev(() => G.carry.plan(G.field));
     check('play: in town, a play goal with a place: ' + goal.why, !!a && /^play:/.test(a.why) && !!(goal.map || goal.who || goal.dog), JSON.stringify([a, goal]));
     await canvasShot(g, path.join(OUT, 'guide_09_play.png'));
-    // today's new words used up (the budget): the next chapter's giver sleeps, the arrow on play
+    // many new words today: no daily word limit any more (2026-10-17): the next chapter still opens (Sofía's ball)
     const W4 = W12.concat(['buenosdias', 'hueso', 'sientate', 'si', 'no', 'manzana']);
-    await g.ev(W4 => { G.st.newGame(); G.state.name = 'Luz'; Object.assign(G.state.flags, { intro: true, canelo: true, petStart: true }); for (const id of ['c1', 'c2', 'c3', 'c4']) G.state.quests[id] = 'done'; for (const w of W4) { G.words.meet(w, 'test'); G.words.answerRight(w, { mode: 'text' }); } G.goto('villa', 17, 21, 'down'); }, W4);
+    await g.ev(W4 => { G.st.newGame(); G.state.name = 'Luz'; Object.assign(G.state.flags, { intro: true, canelo: true, petStart: true, opener: true }); for (const id of ['c1', 'c2', 'c3', 'c4']) G.state.quests[id] = 'done'; for (const w of W4) { G.words.meet(w, 'test'); G.words.answerRight(w, { mode: 'text' }); } G.zones.ids().forEach(G.zones.visit); G.goto('villa', 17, 21, 'down'); }, W4);
     await g.fieldIdle('villa'); await g.frames(10);
-    check('play: chapter 5 waits: today\'s new words are used up', await g.ev(() => G.chapters.gate('c5') === 'budget'));
-    check('play: Sofía (its giver) sleeps under a moon', await g.ev(() => { const a = G.field.npc('sofia').alert(); return !!a && a.sleep; }));
+    check('play: 12 new words today and chapter 5 still opens (no word budget)', await g.ev(() => G.chapters.gate('c5') === null));
+    check('play: Sofía (its giver) has the chapter\'s picture, not a moon', await g.ev(() => { const a = G.field.npc('sofia').alert(); return !!a && !a.sleep; }));
     a = await at(g);
-    check('play: a budget-gated day still has a goal (word-safe play)', !!a && /^play:/.test(a.why), JSON.stringify(a));
+    check('play: and the guide suggests it', !!a && /^c5:/.test(a.why), JSON.stringify(a));
     // sunset: the arrow goes home
     await g.ev(() => { G.debug.sunsetAt = G.sessionTime + 1; });
     await g.until(() => G.day.over(), null, 'the sunset');
@@ -173,7 +176,7 @@ async function menu(browser) {
     await g.tap(310, 16);
     await g.until(() => G.top().constructor.name === 'FieldMenu', null, 'the kid menu');
     await g.frames(8);
-    check('menu: the kid menu has no Misiones: the word cards and the album, pictures only (the book comes later)', await g.ev(() => G.top().tiles().join() === 'cards,album'));
+    check('menu: the kid menu has no Misiones: the word cards and the album, pictures only (the book comes later)', await g.ev(() => G.top().tiles().join() === 'cards,album,map'));
     await canvasShot(g, path.join(OUT, 'guide_06_kidmenu.png'));
     await g.ev(() => { G.grownUps(); });
     await g.until(() => G.top().constructor.name === 'GrownUps', null, 'the grown-ups menu');
@@ -199,7 +202,7 @@ async function naiveDay1(browser) {
       await g.frames(3);
       const goal = await nextTap(g), why = await g.ev(() => (G.guide.at ? G.guide.at.why : null));
       if (goal) check('naive: whenever there is something to do, the guide shows it (' + goal.why + ')', !!why, JSON.stringify(goal));
-      else if (await g.ev(() => !G.chapters.current())) { if (!why || !/^play:/.test(why)) noPlay++; else play++; } // (nothing in the story now: the day's play)
+      else if (await g.ev(() => !G.chapters.current())) { if (!why || !/^(play:|explore )/.test(why)) noPlay++; else play++; } // (nothing in the story now: the day's play)
       const r = await bot.free(goal ? 60 : 30);
       if (r.idleSec + r.wanderSec > 0.5) lost.push((goal ? goal.why : 'nothing') + ' [guide ' + why + ', ' + (await g.ev(() => G.field.mapId + ' ' + G.field.player.x + ',' + G.field.player.y)) + ']: ' + (r.idleSec + r.wanderSec).toFixed(1) + 's');
       if (!goal) lostFree += r.idleSec + r.wanderSec;
@@ -212,7 +215,7 @@ async function naiveDay1(browser) {
     }
     console.log('    time lost wandering or standing about: ' + (lost.join(', ') || 'none') + '; taps on cues: ' + bot.total.taps);
     check('naive: day 1, chapters 1 and 2 done by following only visible cues', await g.ev(() => G.chapters.done('c1') && G.chapters.done('c2')));
-    check('naive: between chapters there was always something to play (' + play + ' play goals followed)', noPlay === 0 && play > 0, play + ' / ' + noPlay);
+    check('naive: between chapters there was always something to play (' + play + ' play goals followed; no word budget now, so often no gap at all)', noPlay === 0, play + ' / ' + noPlay);
     check('naive: and next to no time with nothing to do (' + lostFree.toFixed(1) + ' s)', lostFree < 20, String(lostFree));
     check('naive: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }

@@ -71,7 +71,7 @@
   const kindsMet = (z = curZone()) => SK.KINDS.filter(k => G.words.met(k) && spotsIn(z).some(p => p.kinds.includes(k)));
   SK.ready = (z = curZone()) => !!z && !!G.state && !!G.state.flags.intro && !!G.pet && G.pet.mine() && kindsMet(z).length >= 2;
   SK.list = (z) => (G.state ? st(z).list : []);
-  const story = () => !!G.chapters && !!G.chapters.current(); // a chapter going on: the game waits
+  const story = () => !!G.chapters && !!G.chapters.current(curZone() || 'villa'); // a chapter going on in this zone's line: the game waits
   const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(G.rand() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   SK.today = function (z = curZone()) {
     if (!SK.ready(z)) return null;

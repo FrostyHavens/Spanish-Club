@@ -161,7 +161,7 @@
   const zoneGoal = f => (G.zones ? G.zones.goal(f) : null);
   const wantGoal = f => (G.zones && G.zones.want() ? G.zones.exploreGoal(f) : null);
   const exploreGoal = f => (G.zones ? G.zones.exploreGoal(f) : null);
-  const TIERS = [chapterGoal, sunsetGoal, favourGoal, seekGoal, reviewGoal, zoneGoal, wantGoal, chapterLater, exploreGoal, playGoal, puppyGoal];
+  const TIERS = [chapterGoal, sunsetGoal, favourGoal, seekGoal, wantGoal, reviewGoal, zoneGoal, chapterLater, exploreGoal, playGoal, puppyGoal];
 
   // on another map: the door that leads there (from town, its door; from a building, the way out)
   function viaDoor(f, g) {
