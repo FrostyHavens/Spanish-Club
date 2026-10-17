@@ -122,6 +122,18 @@
     lupe: { name: 'Doña Lupe',
       portrait: { body: 'human', skin: '#d8a880', hair: '#d8d8e0', hairStyle: 'braid', eyes: '#402818', head: 'bandana', headColor: '#8a4ab0', outfit: '#6a3a90', trim: '#f8f0e0', age: 'old', face: 'round', lashes: true, bg: '#6a3a7a' },
       map: { body: 'human', skin: '#d8a880', hair: '#d8d8e0', hairStyle: 'braid', head: 'bandana', headColor: '#8a4ab0', outfit: '#6a3a90', trim: '#f8f0e0', robe: true, eyes: '#402818' } },
+    // El parque de juegos (content/es/zone-juegos.js): Ana, a girl who loves to run and jump (her jump rope; Simón
+    // dice), Pablo, a boy with a kite and a cap (the swings, the ball), Don Chuy, the bubble man (a striped shirt, a
+    // straw hat, a big moustache; his cart of bubble wands, he feeds the pigeons)
+    ana: { name: 'Ana',
+      portrait: { body: 'halfling', skin: '#c88a60', hair: '#2a1810', hairStyle: 'ponytail', eyes: '#2a1808', outfit: '#f06848', trim: '#ffe070', age: 'young', face: 'round', lashes: true, bg: '#e08a38' },
+      map: { body: 'halfling', skin: '#c88a60', hair: '#2a1810', hairStyle: 'ponytail', outfit: '#f06848', trim: '#ffe070', eyes: '#2a1808' } },
+    pablo: { name: 'Pablo',
+      portrait: { body: 'halfling', skin: '#f0c8a0', hair: '#6a3a18', hairStyle: 'short', eyes: '#304878', head: 'bandana', headColor: '#38a858', outfit: '#3878d8', trim: '#f8f8f0', age: 'young', face: 'round', bg: '#3a8ac8' },
+      map: { body: 'halfling', skin: '#f0c8a0', hair: '#6a3a18', hairStyle: 'short', head: 'bandana', headColor: '#38a858', outfit: '#3878d8', trim: '#f8f8f0', eyes: '#304878' } },
+    chuy: { name: 'Don Chuy',
+      portrait: { body: 'human', skin: '#c89070', hair: '#302018', hairStyle: 'short', beard: '#302018', eyes: '#302010', head: 'hat', headColor: '#e8d088', outfit: '#58a8e8', trim: '#ffffff', age: 'adult', face: 'round', bg: '#58a0c8' },
+      map: { body: 'human', skin: '#c89070', hair: '#302018', hairStyle: 'short', beard: '#302018', head: 'hat', headColor: '#e8d088', outfit: '#58a8e8', trim: '#ffffff', eyes: '#302010' } },
     canelo: { name: 'Canelo',
       map: { body: 'wolf', outfit: '#b87038', trim: '#f0d8b0', eyes: '#201008' } },
   };

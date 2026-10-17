@@ -31,9 +31,12 @@
     mar: { name: 'En el mar', en: 'In the sea' },
     bosque: { name: 'El bosque', en: 'The forest' },
     fauna: { name: 'Animales del bosque', en: 'Forest animals' },
+    acciones: { name: '¡A jugar!', en: 'Let\'s play! (action words)' },
+    juegosparque: { name: 'El parque de juegos', en: 'The playground' },
+    bichos: { name: 'Bichos del parque', en: 'Park critters' },
   };
   // the notebook's page order: roughly the order the pages appear in the story
-  C.topicOrder = ['saludos', 'mascota', 'animales', 'sonidos', 'comida', 'colores', 'granja', 'pueblo', 'cosas', 'sentir', 'numeros', 'playa', 'mar', 'bosque', 'fauna'];
+  C.topicOrder = ['saludos', 'mascota', 'animales', 'sonidos', 'comida', 'colores', 'granja', 'pueblo', 'cosas', 'sentir', 'numeros', 'playa', 'mar', 'bosque', 'fauna', 'acciones', 'juegosparque', 'bichos'];
 
   C.words = {
     // ---- Saludos ----
@@ -158,6 +161,33 @@
     erizo: { es: 'el erizo', en: 'the hedgehog', topic: 'fauna', icon: 'erizo', pl: 'erizos', alt: 'erizito' },
     buho: { es: 'el búho', en: 'the owl', topic: 'fauna', icon: 'buho', pl: 'búhos', alt: 'tecolote / buhito' },
     luciernaga: { es: 'la luciérnaga', en: 'the firefly', topic: 'fauna', icon: 'luciernaga', pl: 'luciérnagas', alt: 'luciernaguita' },
+    // ---- ¡A jugar! (content/es/zone-juegos.js): action words, said to make someone DO it; Mexican Spanish ----
+    // (salta and gira are the dog's tricks, met in Villa Sol or here: the park meets whichever isn't met yet)
+    corre: { es: 'corre', en: 'run!', topic: 'acciones', icon: 'corre', alt: 'corran / córrele / correr / a correr' },
+    sube: { es: 'sube', en: 'go up! / climb!', topic: 'acciones', icon: 'sube', alt: 'súbete / sube sube / subir / arriba' },
+    baja: { es: 'baja', en: 'come down!', topic: 'acciones', icon: 'baja', alt: 'bájate / baja baja / bajar / abajo' },
+    empuja: { es: 'empuja', en: 'push!', topic: 'acciones', icon: 'empuja', alt: 'empújalo / empújame / empujar / dale' },
+    lanza: { es: 'lanza', en: 'throw!', topic: 'acciones', icon: 'lanza', alt: 'avienta / aviéntala / lánzala / tira / tírala' },
+    atrapa: { es: 'atrapa', en: 'catch!', topic: 'acciones', icon: 'atrapa', alt: 'atrápala / atrápalas / cáchala / agarra' },
+    baila: { es: 'baila', en: 'dance!', topic: 'acciones', icon: 'baila', alt: 'bailen / a bailar / bailar / bailando' },
+    rapido: { es: 'rápido', en: 'fast', topic: 'acciones', icon: 'rapido', alt: 'rápida / rapidito / muy rápido / más rápido' },
+    despacio: { es: 'despacio', en: 'slowly', topic: 'acciones', icon: 'despacio', alt: 'despacito / lento / lenta / lentito' },
+    // ---- El parque de juegos: the playground's things ----
+    columpio: { es: 'el columpio', en: 'the swing', topic: 'juegosparque', icon: 'columpio', pl: 'columpios', alt: 'columpios / columpiarse' },
+    resbaladilla: { es: 'la resbaladilla', en: 'the slide', topic: 'juegosparque', icon: 'resbaladilla', pl: 'resbaladillas', alt: 'resbaladero / tobogán / resbaladilla' },
+    subibaja: { es: 'el subibaja', en: 'the seesaw', topic: 'juegosparque', icon: 'subibaja', alt: 'sube y baja' },
+    papalote: { es: 'el papalote', en: 'the kite', topic: 'juegosparque', icon: 'papalote', pl: 'papalotes', alt: 'papalotes / cometa' },
+    burbujas: { es: 'las burbujas', en: 'the bubbles', topic: 'juegosparque', icon: 'burbujas', alt: 'burbuja / pompas / burbujitas' },
+    cuerda: { es: 'la cuerda', en: 'the jump rope', topic: 'juegosparque', icon: 'cuerda', alt: 'cuerda de saltar / reata / la cuerdita' },
+    // ---- Bichos del parque: the park's animals (the album) ----
+    paloma: { es: 'la paloma', en: 'the pigeon', topic: 'bichos', icon: 'paloma', pl: 'palomas', alt: 'palomita / palomas' },
+    catarina: { es: 'la catarina', en: 'the ladybug', topic: 'bichos', icon: 'catarina', pl: 'catarinas', alt: 'catarinita / mariquita' },
+    hormiga: { es: 'la hormiga', en: 'the ant', topic: 'bichos', icon: 'hormiga', pl: 'hormigas', alt: 'hormiguita / hormigas' },
+    abeja: { es: 'la abeja', en: 'the bee', topic: 'bichos', icon: 'abeja', pl: 'abejas', alt: 'abejita / abejas' },
+    lagartija: { es: 'la lagartija', en: 'the lizard', topic: 'bichos', icon: 'lagartija', pl: 'lagartijas', alt: 'lagartijita / lagarto' },
+    lombriz: { es: 'la lombriz', en: 'the worm', topic: 'bichos', icon: 'lombriz', pl: 'lombrices', alt: 'lombricita / gusano' },
+    grillo: { es: 'el grillo', en: 'the cricket', topic: 'bichos', icon: 'grillo', pl: 'grillos', alt: 'grillito' },
+    colibri: { es: 'el colibrí', en: 'the hummingbird', topic: 'bichos', icon: 'colibri', pl: 'colibríes', alt: 'colibríes / chuparrosa' },
   };
   C.numberWords = ['uno', 'dos', 'tres', 'cuatro', 'cinco'];
   C.numberWords10 = ['uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'];
@@ -179,6 +209,9 @@
     mar: { topic: 'mar', words: ['cangrejo', 'estrellamar', 'tortuga', 'gaviota', 'nadar', 'medusa', 'delfin', 'pulpo'] },
     bosque: { topic: 'bosque', words: ['elbosque', 'pequeno', 'grande', 'cueva', 'bellota', 'hoja', 'tronco', 'mora', 'hongo'] },
     fauna: { topic: 'fauna', words: ['oso', 'ardilla', 'mapache', 'venado', 'zorro', 'erizo', 'buho', 'luciernaga'] },
+    acciones: { topic: 'acciones', words: ['corre', 'baila', 'sube', 'baja', 'rapido', 'despacio', 'empuja', 'lanza', 'atrapa'] },
+    juegosparque: { topic: 'juegosparque', words: ['columpio', 'papalote', 'resbaladilla', 'subibaja', 'burbujas', 'cuerda'] },
+    bichos: { topic: 'bichos', words: ['paloma', 'catarina', 'hormiga', 'abeja', 'lagartija', 'lombriz', 'grillo', 'colibri'] },
   };
   C.pageOrder = C.topicOrder.slice();
   // where each page's puzzle sparkle sits (maps.js reads this): map -> 'x,y' -> page
@@ -191,6 +224,7 @@
     granja: { '6,2': 'sonidos' }, // (inside the barn: what do the animals say?)
     playa: { '21,7': 'playa', '12,10': 'mar' }, // (La playa: by the lifeguard's tower, and in the middle of the beach)
     bosque: { '16,15': 'bosque', '22,6': 'fauna' }, // (El bosque: in the clearing, and in the meadow by the cave path)
+    juegos: { '20,8': 'acciones', '27,4': 'juegosparque', '35,17': 'bichos' }, // (El parque de juegos: the playground, under the kite tree, the garden)
   };
 
   // ---------- the 21 chapters, in order (docs/CURRICULUM.md section 4) ----------

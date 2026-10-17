@@ -168,6 +168,10 @@
     '|': OBSTACLE('Waterfall', 'river'), '@': tt('Cave', 0, INF, INF, INF, INF, 'hills', { block: true }),
     ':': tt('Stepping Stones', 0, 1, 1, 1, 1, 'river'), '[': WALL('Log Cabin', 'town'), ']': tt('Door', 0, INF, INF, INF, INF, 'town', { block: true }),
     '{': tt('Cave Floor', 0, 1, 1, 1, 1, 'indoor'), '}': WALL('Cave Wall', 'indoor'),
+    // El parque de juegos (content/es/zone-juegos.js): the swings, the slide (ladder, chute), the climbing frame, the
+    // seesaw, the merry-go-round, a goal, Don Chuy's bubble cart
+    '!': OBSTACLE('Swings', 'grass'), '<': OBSTACLE('Slide', 'grass'), '>': OBSTACLE('Slide', 'grass'), '/': OBSTACLE('Climbing Frame', 'grass'),
+    '?': OBSTACLE('Seesaw', 'grass'), '^': OBSTACLE('Merry-go-round', 'grass'), ';': OBSTACLE('Goal', 'grass'), '$': OBSTACLE('Bubble Cart', 'grass'),
     ' ': WALL('Void', 'grass'),
   };
 
@@ -177,7 +181,7 @@
   // n[] order: N NE E SE S SW W NW
   const DX = [0, 1, 1, 1, 0, -1, -1, -1], DY = [-1, -1, 0, 1, 1, 1, 0, -1];
   const BASEMAP = { '.': '.', 'o': '.', 'y': '.', 'f': '.', 'h': '.', ',': ',', '=': '=', 'p': 'p', 's': 's', 'x': 'x', 'i': 'i', 'c': 'c', 'z': 'z', '&': 's', '{': '{' };
-  const OBJ = new Set('rFlkgPLYZteaujJOHEUmA1236780()%*_'.split('')); // (()%*_: the forest's trees, mushrooms, bushes, log) // (1236780: the beach's palms, umbrellas, castle, tower, cart, rocks)
+  const OBJ = new Set('rFlkgPLYZteaujJOHEUmA1236780()%*_!<>/?^;$'.split('')); // (!<>/?^;$: the playground's swings, slide, frame, seesaw, merry-go-round, goals, cart) // (()%*_: the forest's trees, mushrooms, bushes, log) // (1236780: the beach's palms, umbrellas, castle, tower, cart, rocks)
   const INDOOR_OBJ = new Set('teaujHEUmA'.split(''));
   const BASE_PREF = ['=', 'p', 'x', 'c', 'z', 'i', '{', ',', 's', '.'];
   const WATERISH = c => c === 'w' || c === '~' || c === 'b' || c === 'B' || c === '9' || c === 'd' || c === '4' || c === '5' || c === '-' || c === ':' || c === '|'; // (the beach's surf, pier, boat and clear shallows; the forest's stepping stones, waterfall)
@@ -1922,6 +1926,96 @@
   // =====================================================================
   // need: 's' (shadow only), 'n' (neighbour codes), 'g' (neighbour codes + ground classes), base: infers ground under object
   const REG = {};
+
+  // =====================================================================
+  //  El parque de juegos (content/es/zone-juegos.js): the playground's equipment. The moving parts (the swings' seats,
+  //  the seesaw's plank, the merry-go-round's wheel, the kids on them) are drawn by the zone; these are the frames.
+  // =====================================================================
+  const JC = { red: U('#e04040'), red2: U('#a82828'), red3: U('#f87868'), yel: U('#f8c830'), yel2: U('#d89a18'), yel3: U('#fff0a0'),
+    blu: U('#3870d8'), blu2: U('#2448a0'), blu3: U('#78a8f0'), grn: U('#38a858'), grn2: U('#247040'), grn3: U('#70d888'),
+    met: U('#a0a0b0'), met2: U('#686878'), wht: U('#fafaf4'), wht2: U('#c8c8d4'), pad: U('#c8b8a0'), pad2: U('#a89880'), pad3: U('#e0d4c0') };
+  const park = c => c === '!' || c === '<' || c === '>' || c === '/' || c === '?' || c === '^';
+  // a pole between two points, 2 px wide, lit on its left
+  function pole(b, x0, y0, x1, y1, c, c2) {
+    const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) * 2;
+    for (let i = 0; i <= n; i++) { const x = Math.round(x0 + (x1 - x0) * i / n), y = Math.round(y0 + (y1 - y0) * i / n); b.set(x, y, c2); b.set(x + 1, y, c); }
+  }
+  // the swing set ('!'): a red top bar across, A-frame legs at the ends of the row (the seats hang from it: the zone)
+  function swingTile(b, I) {
+    drawGround(b, I.base, I);
+    const L = I.n[6] !== '!', R = I.n[2] !== '!';
+    for (const x of [7, 16]) dropShadow(b, x + 1, 21, 3, 1.2, 0.75);
+    if (L) { pole(b, 2, 3, 0, 22, JC.red, JC.red2); pole(b, 3, 3, 6, 22, JC.red, JC.red2); b.hl(1, 5, 14, JC.red2); }
+    if (R) { pole(b, 20, 3, 17, 22, JC.red, JC.red2); pole(b, 21, 3, 23, 22, JC.red, JC.red2); b.hl(18, 22, 14, JC.red2); }
+    b.rect(L ? 1 : 0, 2, TS - (L ? 1 : 0) - (R ? 1 : 0), 3, JC.red); b.hl(L ? 1 : 0, R ? 22 : 23, 2, JC.red3); b.hl(L ? 1 : 0, R ? 22 : 23, 4, JC.red2);
+    for (const x of [7, 16]) { b.set(x, 5, JC.met2); b.set(x + 1, 5, JC.met2); } // the hooks
+  }
+  // the slide: '<' its ladder and the platform at the top, '>' the chute going down to the right
+  function slideLadder(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 14, 21, 9, 2, 0.7);
+    for (const x of [5, 13]) { b.rect(x, 7, 2, 15, JC.met); b.vl(x, 7, 21, JC.met2); }        // the ladder's rails
+    for (let y = 9; y < 21; y += 3) b.hl(6, 13, y, JC.met2);                                  // its rungs
+    b.rect(12, 5, 12, 4, JC.blu); b.hl(12, 23, 5, JC.blu3); b.hl(12, 23, 8, JC.blu2);         // the platform
+    b.rect(20, 9, 2, 13, JC.blu2); b.rect(14, 1, 2, 5, JC.yel2); b.rect(21, 1, 2, 5, JC.yel2); b.hl(14, 22, 1, JC.yel); // a little rail
+  }
+  function slideChute(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 12, 21, 11, 2, 0.7);
+    for (let x = 0; x < TS; x++) {
+      const top = 6 + Math.round(x * 0.62);
+      b.set(x, top - 2, JC.yel2); b.set(x, top - 1, JC.red);                                  // the side rail
+      for (let y = top; y < top + 5; y++) b.set(x, y, y === top ? JC.yel3 : y < top + 3 ? JC.yel : JC.yel2);
+      b.set(x, top + 5, JC.red2);
+    }
+    b.rect(1, 9, 2, 13, JC.blu2);                                                             // a leg under its top
+  }
+  // the climbing frame ('/'): a cube of bars, green and blue
+  function frameTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 12, 21, 11, 2, 0.7);
+    const L = I.n[6] !== '/', R = I.n[2] !== '/';
+    for (const x of [L ? 2 : -1, 11, R ? 21 : 24]) { if (x < 0 || x > 22) continue; b.rect(x, 3, 2, 19, JC.grn); b.vl(x, 3, 21, JC.grn3); }
+    for (const y of [3, 9, 15]) { b.rect(L ? 2 : 0, y, (R ? 23 : 24) - (L ? 2 : 0), 2, JC.blu); b.hl(L ? 2 : 0, R ? 22 : 23, y, JC.blu3); }
+    for (const x of [6, 16]) b.vl(x, 5, 14, JC.blu2); // the back bars, darker
+  }
+  // the seesaw ('?' x3): the middle one has its stand (the plank is drawn by the zone, tilting)
+  function seesawTile(b, I) {
+    drawGround(b, I.base, I);
+    const mid = I.n[6] === '?' && I.n[2] === '?';
+    if (mid) { dropShadow(b, 12, 20, 6, 2, 0.7); for (let y = 0; y < 9; y++) b.hl(12 - Math.round(y / 1.6), 11 + Math.round(y / 1.6), 12 + y, y === 0 ? JC.red3 : y < 7 ? JC.red : JC.red2); }
+    else { dropShadow(b, 12, 20, 7, 1.5, 0.82); for (const x of [8, 15]) b.rect(x, 18, 2, 3, JC.met2); } // a little rubber stop under each end
+  }
+  // the merry-go-round ('^' 2x2): its round pad, a quarter on each tile (the wheel turns: the zone)
+  function mgrTile(b, I) {
+    drawGround(b, I.base, I);
+    const cx = I.n[2] === '^' ? TS : 0, cy = I.n[4] === '^' ? TS : 0;
+    for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) {
+      const d = Math.hypot(x + 0.5 - cx, (y + 0.5 - cy) * 1.15);
+      if (d < 22) b.set(x, y, d > 20 ? JC.pad2 : ((x * 7 + y * 3) % 11 === 0 ? JC.pad2 : d < 4 ? JC.pad3 : JC.pad));
+    }
+  }
+  // a little goal ('; '): white posts and crossbar, a net
+  function goalTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 12, 21, 11, 2, 0.75);
+    for (let y = 7; y < 21; y++) for (let x = 4; x < 20; x++) if (((x + y) & 3) === 0 || ((x - y) & 3) === 0) b.set(x, y, JC.wht2);
+    b.rect(2, 4, 2, 18, JC.wht); b.rect(20, 4, 2, 18, JC.wht); b.rect(2, 4, 20, 2, JC.wht); b.hl(2, 21, 5, JC.wht2);
+    b.vl(3, 4, 21, JC.wht2); b.vl(21, 4, 21, JC.wht2);
+  }
+  // Don Chuy's bubble cart ('$'): a blue cart on wheels, a striped awning, wands and a few bubbles
+  function bubbleCart(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 13, 21, 10, 2, 0.62);
+    b.rect(3, 11, 18, 8, JC.blu); b.hl(3, 20, 11, JC.blu3); b.hl(3, 20, 18, JC.blu2);
+    for (const [x, c] of [[6, JC.yel], [10, JC.red], [14, JC.grn], [18, JC.yel]]) { b.vl(x, 7, 11, JC.met2); b.rect(x - 1, 5, 3, 3, c); b.set(x, 6, JC.wht); } // the wands
+    for (const x of [6, 17]) { b.rect(x - 1, 18, 3, 3, P.K0); b.set(x, 19, P.K3); }
+    b.vl(3, 1, 11, JC.met2); b.vl(20, 1, 11, JC.met2);
+    for (let y = 0; y < 4; y++) for (let x = 1; x < 23; x++) b.set(x, y, ((x >> 1) & 1) ? JC.blu3 : JC.wht);
+    b.hl(1, 22, 4, JC.blu2);
+    for (const [x, y] of [[22, 8], [1, 13]]) { b.set(x, y, JC.blu3); b.set(x + 1, y + 1, JC.wht); }
+  }
+
   function reg(codes, spec) { for (const c of codes) REG[c] = spec; }
   reg('.', { need: 's', fn: (b, I) => { grassTex(b, I.v); applyShadow(b, I.sh); } });
   reg('o', { need: 's', anim: 2, spd: 30, fn: (b, I) => { flowerTex(b, I.v, I.af); applyShadow(b, I.sh); } });
@@ -1997,6 +2091,14 @@
   reg(']', { need: 'n', fn: (b, I) => cabinTile(b, I, true) });
   reg('{', { need: 'g', fn: (b, I) => drawGround(b, '{', I) });
   reg('}', { need: 'n', fn: caveWall });
+  reg('!', { need: 'g', base: true, fn: swingTile });
+  reg('<', { need: 'g', base: true, fn: slideLadder });
+  reg('>', { need: 'g', base: true, fn: slideChute });
+  reg('/', { need: 'g', base: true, fn: frameTile });
+  reg('?', { need: 'g', base: true, fn: seesawTile });
+  reg('^', { need: 'g', base: true, fn: mgrTile });
+  reg(';', { need: 'g', base: true, fn: goalTile });
+  reg('$', { need: 'g', base: true, fn: bubbleCart });
   reg(' ', { need: '', fn: (b) => b.fill(P.X0) });
 
   const tileCache = new Map();
@@ -2047,6 +2149,7 @@
     'a': '#e6e2d8', 'u': '#74421e', 'j': '#d8d8e8', 'v': '#e05818', 'n': '#5c3418', 'c': '#a08c6c', ' ': '#000000',
     '9': '#e8f4ff', 'd': '#9c5e2a', '-': '#5cc8dc', '&': '#c8c070', '1': '#2e9a3a', '2': '#e83a30', '3': '#d8bc7c', '4': '#e83a30', '5': '#e83a30', '6': '#e83a30', '7': '#fafaf4', '8': '#3a7ae0', '0': '#5a5a6a',
     '(': '#2b6a26', ')': '#2b6a26', '%': '#e03a30', '*': '#4a2a70', '_': '#8a5a30', '#': '#6c6252', '|': '#e8f6ff', '@': '#0c0a10', ':': '#8e8e9a', '[': '#9a6634', ']': '#764a22', '{': '#3a3240', '}': '#1e1822',
+    '!': '#e04040', '<': '#3870d8', '>': '#f8c830', '/': '#38a858', '?': '#e04040', '^': '#c8b8a0', ';': '#fafaf4', '$': '#3870d8',
     'z': '#b08a50', 'V': '#5c3418', 'C': '#5c3418', 'H': '#e2be46', 'E': '#9c5e2a', 'U': '#3a72d2', 'm': '#b4b2b4', 'A': '#c8343c',
   };
   G.MINI_COLORS = MINI;

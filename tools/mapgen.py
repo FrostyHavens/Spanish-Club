@@ -405,15 +405,69 @@ out['bosque_cueva'] = m
 c = room(9, 7); c.put(1, 1, 'n'); c.put(2, 1, 'n'); c.put(6, 1, 'v'); c.rect(3, 3, 2, 1, 't'); c.put(7, 4, 'j'); c.put(7, 5, 'j'); c.put(1, 5, 'k')
 c.mark('table', 3, 3); c.mark('lupe', 5, 2)
 out['bosque_cabana'] = c
-# El parque de juegos: a sandbox (dig), benches, flower beds, a fence (the swings and the slide come later)
-m = entrance(22, 14, '.', 'T')
-m.hline(10, 21, 7, ','); m.vline(10, 3, 11, ','); m.hline(4, 10, 3, ',')
-m.rect(3, 8, 4, 3, 's'); m.rect(13, 2, 6, 1, 'F'); m.rect(13, 2, 1, 4, 'F'); m.rect(18, 2, 1, 4, 'F')
-for x, y in [(2, 2), (8, 11), (16, 11), (19, 9), (5, 5)]: m.put(x, y, 'o')
-m.put(12, 9, 'J'); m.put(7, 3, 'J'); m.put(2, 11, 'P'); m.put(19, 11, 'P')
-m.mark('in', 20, 7); m.mark('east', 21, 7); m.mark('post', 19, 6); m.mark('bus', 12, 5); m.mark('busIn', 11, 5)
-m.mark('dog', 4, 9); m.mark('lola', 14, 8); m.mark('nico', 8, 6); m.pos['conejos'] = [14, 3, 4, 3]
-m.mark('hide1', 2, 11); m.mark('hide2', 19, 11); m.mark('hide3', 12, 9)
+# El parque de juegos (the zone, docs/WORLD_PLAN.md): a park with a playground. The path comes in from Villa Sol on the
+# east edge (39, 13) along the main path, past the bus stop and Don Chuy's bubble cart; north of the path, the fenced
+# playground (swings, a slide, a climbing frame by a tall tree, a seesaw, a merry-go-round, a sandbox with a little
+# sandcastle); to the north-west the kite hill; to the south the little soccer field (two goals); south-west a pond
+# with ducks, rocks where lizards sun, and the dog's jumping course; south-east a garden with a fountain, benches and
+# flower beds (bees, ladybugs, a hummingbird in the morning, pigeons by the fountain).
+# Codes (src/tiles.js): ! swing set (seats drawn by the zone), < slide ladder, > slide chute, / climbing frame,
+# ? seesaw (its plank drawn by the zone), ^ merry-go-round (2x2: its pad; the wheel drawn by the zone), ; a goal,
+# $ Don Chuy's bubble cart.
+m = M(40, 28, '.')
+m.border('T', 1)
+for x in range(1, 39):
+    if x % 4 != 1: m.put(x, 1, 'f')
+for y in range(2, 27):
+    if y % 3 == 0: m.put(1, y, 'f'); m.put(38, y, 'f')
+for x in range(2, 38):
+    if x % 5 == 2: m.put(x, 26, 'f')
+# the kite hill (north-west): grass and flowers (the zone draws the hill's soft rise; Pablo flies his kite on top)
+for x, y in [(3, 3), (9, 2), (2, 6), (10, 5), (4, 7), (8, 7), (5, 2), (11, 3)]: m.put(x, y, 'o')
+# the main path: in from the east, west to the hill; up into the playground and down to the soccer field; to the pond
+m.hline(4, 39, 13, ','); m.vline(6, 8, 13, ','); m.vline(21, 10, 16, ','); m.vline(4, 13, 21, ','); m.hline(4, 9, 21, ',')
+m.vline(34, 13, 17, ',')
+# the playground: a fence with gates (south on the path, west to the hill, east)
+m.hline(14, 31, 10, 'F'); m.vline(14, 2, 10, 'F'); m.vline(31, 2, 10, 'F')
+for x, y in [(20, 10), (21, 10), (22, 10), (14, 6), (14, 7), (31, 6), (31, 7)]: m.put(x, y, ',' if x == 21 else '.')
+for x in (16, 17, 18): m.put(x, 3, '!')                    # the swings
+m.put(21, 3, '<'); m.put(22, 3, '>')                       # the slide: its ladder, its chute (you land on (23, 3))
+m.put(25, 3, '/'); m.put(26, 3, '/')                       # the climbing frame...
+m.put(27, 2, '('); m.put(27, 3, ')')                       # ...beside a tall tree (Pablo's kite gets stuck in it)
+for x in (16, 17, 18): m.put(x, 7, '?')                    # the seesaw
+m.rect(23, 6, 2, 2, '^')                                   # the merry-go-round
+m.rect(26, 6, 4, 3, 's'); m.put(29, 8, '3')                # the sandbox, a little sandcastle in it
+m.put(15, 9, 'J'); m.put(30, 2, 'P'); m.put(15, 2, 'P')
+# north of the path: Don Chuy's bubble cart, benches, lamps
+m.put(30, 11, '$'); m.put(17, 11, 'J'); m.put(25, 11, 'J')
+for x, y in [(12, 12), (28, 12), (33, 14), (9, 14)]: m.put(x, y, 'L')
+# the soccer field (la cancha: its lines are drawn by the zone), a goal at each end
+m.put(12, 20, ';'); m.put(28, 20, ';')
+# the pond (south-west), rocks where the lizards sun
+for y, (x0, x1) in {16: (3, 7), 17: (2, 8), 18: (2, 8), 19: (3, 7)}.items(): m.hline(x0, x1, y, 'w')
+for x, y in [(9, 16), (2, 15), (8, 20), (10, 18)]: m.put(x, y, 'r')
+# the garden (south-east): a fountain, benches, flower beds
+m.put(34, 19, 'l')
+m.rect(31, 22, 3, 2, 'o'); m.rect(36, 22, 2, 2, 'o'); m.rect(36, 16, 2, 2, 'o'); m.rect(31, 16, 2, 1, 'o')
+m.put(32, 18, 'J'); m.put(36, 19, 'J')
+for x, y in [(35, 24), (32, 25), (37, 20)]: m.put(x, y, 'o')
+# flowers about, tall trees and small ones (off the paths and the places)
+for x, y in [(12, 3), (11, 7), (3, 9), (8, 10), (13, 15), (29, 15), (24, 25), (17, 26), (10, 23), (16, 12), (26, 12), (5, 11), (35, 9), (36, 4)]:
+    if m.g[y][x] == '.': m.put(x, y, 'o')
+for x, y in [(34, 3), (37, 7), (11, 9), (2, 11), (30, 24), (14, 24), (25, 15), (37, 11)]:
+    m.put(x, y, '('); m.put(x, y + 1, ')')
+for x, y in [(33, 6), (36, 2), (10, 1), (12, 25), (19, 25), (27, 25), (3, 25), (9, 26), (11, 16), (29, 17), (36, 26), (24, 14), (16, 15)]:
+    if m.g[y][x] in '.o': m.put(x, y, 'f')
+m.put(3, 12, 'P'); m.put(33, 11, 'P')
+m.mark('in', 38, 13); m.mark('east', 39, 13); m.mark('post', 38, 12); m.mark('bus', 36, 12); m.mark('busIn', 36, 13)
+m.mark('lola', 34, 15); m.mark('nico', 24, 12); m.mark('ana', 20, 6); m.mark('pablo', 17, 4); m.mark('chuy', 29, 11)
+m.mark('hill', 6, 4); m.mark('kite', 27, 2); m.mark('frame', 25, 3); m.mark('slide', 21, 3); m.mark('land', 23, 3)
+m.mark('mgr', 23, 6); m.mark('cart', 30, 11)
+m.mark('dog', 27, 7); m.mark('agility', 3, 23); m.mark('agilityEnd', 10, 23); m.mark('palomasDog', 35, 21)
+m.pos['cancha'] = [13, 17, 15, 7]; m.pos['palomas'] = [31, 18, 7, 4]; m.pos['jardin'] = [31, 15, 7, 10]; m.pos['flores'] = [31, 16, 7, 8]
+m.pos['hormigas'] = [13, 11, 10, 2]; m.pos['rocas'] = [1, 14, 11, 8]; m.pos['arenero'] = [26, 6, 4, 3]; m.pos['pasto'] = [2, 2, 10, 7]
+m.pos['estanque'] = [2, 16, 7, 4]; m.pos['conejos'] = [2, 8, 9, 3]
+m.mark('hide1', 30, 11); m.mark('hide2', 21, 3); m.mark('hide3', 29, 8); m.mark('hide4', 32, 18); m.mark('hide5', 3, 12); m.mark('hide6', 11, 10)
 out['juegos'] = m
 # La casa de los abuelos: a garden with a fence, the cottage seen from its back (its door is round the front: a later
 # step adds the front and the inside), an apple tree, a hen run

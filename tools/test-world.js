@@ -182,7 +182,7 @@ async function zone(browser) {
     await g.until(() => !G.zones.dogReady(G.field.def.dogSpots[0]), null, 'the dog digging', 30000);
     await g.until(() => !G.field.locked, null, 'done digging');
     await g.shot('dug');
-    check('zone: the dog dug there and left a stick to pick up', await g.ev(() => G.carry.state().ground.some(it => it.map === 'juegos' && it.id === 'palo')));
+    check('zone: the dog dug there and left something to pick up', await g.ev(() => G.carry.state().ground.some(it => it.map === 'juegos' && (it.id === 'palo' || it.id === 'pelota'))));
     // Lola
     await g.ev(() => { const n = G.field.npc('lola'), p = G.field.player; p.x = n.x - 2; p.y = n.y; G.field.snapCam(); });
     await g.frames(4);
@@ -198,17 +198,19 @@ async function zone(browser) {
     check('zone: they hide in this zone\'s places, not in town', await g.ev(() => G.seek.list().length >= 2 && G.seek.list().every(h => G.zones.of(G.seek.SPOTS.find(s => s.id === h.spot).map) === 'juegos')));
     check('zone: Villa Sol\'s game is untouched', await g.ev(() => !G.state.seek.on));
     await g.frames(30); await g.shot('seek');
-    // a zone's own quest line never waits for Villa Sol's chapter going on
+    // a zone's own quest line never waits for Villa Sol's chapter going on (in a zone still to be built: La casa de los abuelos)
+    await g.ev(() => { G.seek.stop && G.seek.stop(); G.zones.visit('abuelos'); G.goto('abuelos', 6, 8, 'right'); });
+    await g.fieldIdle('abuelos');
     await g.ev(() => {
       G.state.quests.c1 = 'done'; G.chapters.start('c2'); // (a Villa Sol chapter going on)
-      G.chapters.add({ id: 'tjuegos1', line: 'juegos', title: 'Prueba', en: 'test', giver: 'lola', words: [], icon: 'juegos', col: '#e04040' });
-      G.chapters.script('tjuegos1', [{ who: 'lola', run: function* () { yield 10; } }, { who: 'lola', run: function* () { yield 10; } }]);
+      G.chapters.add({ id: 'tabuelos1', line: 'abuelos', title: 'Prueba', en: 'test', giver: 'lola', words: [], icon: 'abuelos', col: '#e04040' });
+      G.chapters.script('tabuelos1', [{ who: 'lola', run: function* () { yield 10; } }, { who: 'lola', run: function* () { yield 10; } }]);
     });
-    check('zone: a zone\'s chapter (its own line) is offered while a Villa Sol chapter is going on', await g.ev(() => G.chapters.current() === 'c2' && G.chapters.next('juegos') === 'tjuegos1' && !G.chapters.gate('tjuegos1') && !!G.field.npc('lola').alert()));
+    check('zone: a zone\'s chapter (its own line) is offered while a Villa Sol chapter is going on', await g.ev(() => G.chapters.current() === 'c2' && G.chapters.next('abuelos') === 'tabuelos1' && !G.chapters.gate('tabuelos1') && !!G.field.npc('lola').alert()));
     await g.tapTile(...await g.ev(() => { const n = G.field.npc('lola'); return [n.x, n.y]; }));
-    await g.until(() => G.chapters.active('tjuegos1') || G.chapters.done('tjuegos1'), null, 'the zone chapter');
+    await g.until(() => G.chapters.active('tabuelos1') || G.chapters.done('tabuelos1'), null, 'the zone chapter');
     await g.drive(() => G.top() === G.field && !G.field.locked, 'its first beat');
-    check('zone: both lines go on at once (Villa Sol\'s and the zone\'s)', await g.ev(() => G.chapters.current() === 'c2' && G.chapters.current('juegos') === 'tjuegos1' && G.chapters.lineHere() === 'juegos'));
+    check('zone: both lines go on at once (Villa Sol\'s and the zone\'s)', await g.ev(() => G.chapters.current() === 'c2' && G.chapters.current('abuelos') === 'tabuelos1' && G.chapters.lineHere() === 'abuelos'));
     check('zone: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
 }
@@ -227,9 +229,9 @@ async function album(browser) {
     await g.ev(() => G.album()); await g.until(() => G.top().constructor.name === 'Album', null, 'the album');
     await g.frames(10); await g.shot('album_villa');
     check('album: a tab per zone (and Amigos)', await g.ev(() => G.top().tabs().join() === 'villa,playa,bosque,juegos,abuelos,montana,amigos'));
-    await g.tapRect(await g.ev(() => G.top().tabRect(3)));
-    check('album: a zone\'s tab opens its page: numbered "?" entries for animals still to come', await g.ev(() => G.top().zone === 'juegos' && G.top().ids().length === 7 && G.top().ids().every(id => id === null)));
-    await g.frames(6); await g.shot('album_juegos');
+    await g.tapRect(await g.ev(() => G.top().tabRect(4)));
+    check('album: a zone\'s tab opens its page: numbered "?" entries for animals still to come', await g.ev(() => G.top().zone === 'abuelos' && G.top().ids().length === 7 && G.top().ids().every(id => id === null)));
+    await g.frames(6); await g.shot('album_abuelos');
     await g.tapRect(await g.ev(() => G.top().tabRect(1)));
     check('album: a built zone\'s tab (La playa): its animals as silhouettes with a hint', await g.ev(() => G.top().zone === 'playa' && G.top().ids().length === 7 && G.top().ids().every(Boolean)));
     // a zone complete: "¡Completo!"

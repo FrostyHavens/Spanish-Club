@@ -18,8 +18,9 @@
 // A map can carry (in its G.maps definition, read here):
 //   zone: id (zone maps) or path: id (the path map leading to that zone),
 //   posts: [{ at: [x, y], zone: 'playa', dir: 'left' }] (a signpost with the zone's picture and an arrow; tap: its name),
-//   dogSpots: [{ id, at: [x, y], act: 'dig' | 'splash' | 'sniff' | 'roll' | 'chase', gives: 'hueso' | 'palo' | ..., col, every: 'day' | s,
-//              kind (chase: the animal he runs at, e.g. 'gaviota': it flies off) }]
+//   dogSpots: [{ id, at: [x, y], act: 'dig' | 'splash' | 'sniff' | 'roll' | 'chase' | 'trail' | 'swim' | 'course', gives: 'hueso' | 'palo' | ..., col, every: 'day' | s,
+//              kind (chase: the animal he runs at, e.g. 'gaviota': it flies off), path (trail: tiles; course: [x, y, jump]
+//              tiles: he runs along and leaps where jump is set; the zone draws its hurdles), to (swim: the far bank) }]
 //     (the dog's thing to do there: a paw-print bubble; tap it: he runs over and digs, splashes, sniffs or rolls, and
 //      sometimes leaves something to pick up (carry.js). Every zone has one: the dog always has something to do)
 //   indoor: true (no bus driving in: a ride from the menu just fades)
@@ -162,6 +163,18 @@
       for (const [x, y] of sp.path || []) { yield* G.pet.play('sniff'); K.puff('q', n.x * T + 12, n.y * T - 6, { life: 20 }); yield* f.walkNpc(n, K.path(f, n, x, y), 3); }
       const [ex, ey] = (sp.path && sp.path.length) ? sp.path[sp.path.length - 1] : sp.at;
       K.puff('ex', ex * T + 12, ey * T - 8, { life: 30 }); yield* G.pet.play('jump');
+      return yield* found(f, sp, n, ex, ey);
+    }
+    if (sp.act === 'course') { // a jumping course (El parque de juegos): he runs along sp.path ([x, y, jump]) and leaps at each hurdle
+      G.pet.sound('bark'); K.puff('ex', n.x * T + 12, n.y * T - 4, { life: 30 });
+      yield* K.walk(f, n, sx, sy, 4); n.dir = 'right';
+      for (const [x, y, j] of sp.path || []) {
+        yield* K.walk(f, n, x, y, 4);
+        if (j) { G.pet.sound('bark'); Z.hurdle = { sp: sp.id, x, y, t: G.frame }; yield* G.pet.play('jump'); }
+      }
+      Z.hurdle = null;
+      const [ex, ey] = (sp.path && sp.path.length) ? sp.path[sp.path.length - 1] : sp.at;
+      yield* G.pet.play('spin');
       return yield* found(f, sp, n, ex, ey);
     }
     if (sp.act === 'swim') { // a stick thrown across the water (sp.at: the bank, sp.to: the far side): he swims over and brings it back

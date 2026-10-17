@@ -76,6 +76,7 @@
     cabra(p) { p.tri(2.5, 9, 3.5, 9, 1.5, 5, '#8a7a60'); p.tri(6.5, 9, 7.5, 9, 8.5, 5, '#8a7a60'); p.ell(5, 11, 2.8, 3.2, '#ece8e0'); p.ell(1, 10, 1.6, 0.8, '#ece8e0'); p.ell(9, 10, 1.6, 0.8, '#ece8e0'); p.rect(3, 10, 1, 1, '#302010'); p.rect(6, 10, 1, 1, '#302010'); p.ell(5, 13.2, 1.3, 0.9, '#d8a8a8'); p.tri(4, 14, 6, 14, 5, 16, '#d8d4cc'); },
   };
   const BROWN = '#c07838', BROWN2 = '#8a5022', CREAM = '#f0d8b0', INK = '#201010';
+  const KID = { H: '#5a3418', S: '#f0c8a0', R: '#e04040', B: '#3870d8', K: '#303040', W: '#ffffff' }; // (the park's action pictures: a kid doing it)
   // Canelo, the town's dog, sitting and facing left (sientate) or other poses
   function dogSit(p, ox = 0, oy = 0) {
     rows(p, ox, oy, [
@@ -495,6 +496,119 @@
       p.ell(8, 7, 2.2, 3.6, '#302830'); p.disc(8, 3, 1.8, '#e04030'); p.put(7, 3, '#101010'); p.put(9, 3, '#101010');
       p.put(6, 0, '#302830'); p.put(7, 1, '#302830'); p.put(10, 0, '#302830'); p.put(9, 1, '#302830');
       p.disc(8, 11.5, 2, '#f8e020'); p.put(8, 11, '#ffffff');
+    },
+    // ---- El parque de juegos (content/es/zone-juegos.js): action words (a kid doing it), the playground, its critters ----
+    corre(p) { // a kid running to the right, arms pumping, speed lines behind
+      rows(p, 0, 1, ['.........HHH....', '........HHHHH...', '........HSSSH...', '.........SSS..S.', '.......RRRRR.S..', '..WW..SRRRRRS...', '.....S..RRR.....', '.WWW.....RRR....', '.........BBBB...', '........BB..BB..', '..WW...BB....BB.', '......BB......K.', '.....KK.......K.'], KID);
+    },
+    sube(p) { // a kid climbing a ladder, seen from behind, a green arrow up
+      p.rect(2, 0, 1, 16, '#a86838'); p.rect(9, 0, 1, 16, '#a86838'); for (let y = 2; y < 16; y += 3) p.rect(3, y, 6, 1, '#c88850');
+      rows(p, 2, 3, ['.S.....S', '.SHHHHS.', '..HHHH..', '..RRRR..', '..RRRR..', '..BBBB..', '..B..B..', '.KK..KK.'], KID);
+      p.tri(11, 6, 16, 6, 13.5, 1, '#38b048'); p.rect(12.5, 6, 2, 6, '#38b048');
+    },
+    baja(p) { // a kid whooshing down a slide, arms up, a red arrow down
+      for (let x = 0; x < 13; x++) { const y = 3 + Math.round(x * 0.85); p.rect(x, y, 1, 3, '#f8c830'); p.put(x, y + 3, '#d89a18'); }
+      rows(p, 3, 1, ['S...S..', 'S.HH.S.', '.HHHHS.', '.HSSH..', '.RRRR..', 'RRRRBBB', '....BBK'], KID);
+      p.rect(13, 3, 2, 6, '#e04040'); p.tri(11, 9, 16, 9, 13.5, 14, '#e04040');
+    },
+    empuja(p) { // a kid leaning into a big box, pushing it, motion lines
+      p.rect(9, 5, 7, 9, '#c08040'); p.rect(9, 5, 7, 1, '#e0a860'); p.rect(12, 5, 1, 9, '#a06030'); p.rect(9, 9, 7, 1, '#a06030');
+      rows(p, 0, 3, ['..HHH....', '.HHHHH...', '.HSSSH...', '..SSS....', '.RRRRRSSS', 'RRRRRR...', '..RRR....', '..BBBB...', '.BB..BB..', 'KK....BB.', '.......KK'], KID);
+      p.put(15, 3, '#ffffff'); p.put(14, 2, '#ffffff');
+    },
+    lanza(p) { // a kid throwing a ball up and away, the ball flying off along a dotted arc
+      rows(p, 1, 3, ['S.........', 'SHHH......', '.HHHHH....', '.HSSSH....', '..SSS.....', '.RRRRRS...', 'RRRRR..S..', '..RRR.....', '..BBBB....', '.BB..BB...', 'KK....KK..'], KID);
+      for (const [x, y] of [[4, 1], [7, 0], [10, 1]]) p.put(x, y, '#ffffff');
+      p.disc(13, 4, 2.2, '#e04040'); p.put(12, 3, '#ffffff');
+    },
+    atrapa(p) { // a kid from the front, both arms up, a ball dropping into the hands
+      p.disc(8, 2.5, 2.2, '#e04040'); p.put(7, 2, '#ffffff'); p.put(4, 1, '#f8f080'); p.put(12, 1, '#f8f080');
+      rows(p, 3, 5, ['.S....S...', '.S.HH.S...', '..SHHHS...', '..HSSH....', '..RRRR....', '.RRRRRR...', '..RRRR....', '..BBBB....', '..B..B....', '.KK..KK...'], KID);
+    },
+    baila(p) { // a kid dancing: arms up in a V, one leg kicked out, music notes
+      rows(p, 3, 1, ['S.......S.', '.S.HHH.S..', '..SHHHHS..', '...HSSH...', '....SS....', '...RRRR...', '...RRRR...', '...RRRR...', '...BBBB...', '...B..BB..', '..BB...BB.', '..K.....KK', '.KK.......'], KID);
+      for (const [x, y] of [[1, 9], [14, 4]]) { p.rect(x, y, 1, 3, '#7a3ac0'); p.put(x - 1, y + 3, '#7a3ac0'); p.put(x, y + 3, '#7a3ac0'); p.put(x + 1, y, '#7a3ac0'); }
+    },
+    rapido(p) { // fast: a red race car whooshing, speed lines
+      p.rect(4, 7, 11, 4, '#e03030'); p.rect(7, 5, 5, 2, '#e03030'); p.rect(8, 5, 3, 2, '#88d0f8'); p.rect(4, 7, 11, 1, '#f86060'); p.rect(14, 8, 1, 2, '#f8e060');
+      p.disc(6.5, 11.5, 1.8, '#303040'); p.disc(12.5, 11.5, 1.8, '#303040'); p.put(6, 11, '#c0c0d0'); p.put(12, 11, '#c0c0d0');
+      for (const [x, y, w] of [[0, 6, 3], [0, 9, 3], [1, 12, 2]]) p.rect(x, y, w, 1, '#ffffff');
+    },
+    despacio(p) { // slowly: a snail with a long trail behind it
+      p.rect(0, 13, 6, 1, '#c8e0f0'); p.ell(10, 12.5, 5, 1.6, '#c8a878');
+      p.disc(10, 8.5, 3.8, '#c07838'); p.disc(10, 8.5, 2.4, '#e09850'); p.disc(10, 8.5, 1, '#a05828');
+      p.rect(14, 8, 1, 4, '#c8a878'); p.put(14, 7, '#c8a878'); p.put(15, 6, '#303040'); p.put(13, 6, '#303040');
+    },
+    columpio(p) { // a swing: the red frame, two chains, a blue seat
+      p.rect(0, 1, 16, 2, '#e04040'); p.tri(0, 15, 3, 15, 2, 2, '#e04040'); p.tri(13, 15, 16, 15, 14, 2, '#e04040');
+      p.rect(6, 3, 1, 9, '#a0a0b0'); p.rect(10, 3, 1, 9, '#a0a0b0');
+      p.rect(5, 12, 7, 2, '#3870d8'); p.rect(5, 12, 7, 1, '#78a8f0');
+    },
+    resbaladilla(p) { // a slide: a ladder up to the top, a yellow chute down to the right
+      p.rect(1, 3, 1, 13, '#a0a0b0'); p.rect(4, 3, 1, 13, '#a0a0b0'); for (let y = 5; y < 16; y += 3) p.rect(2, y, 2, 1, '#a0a0b0');
+      p.rect(1, 2, 6, 2, '#3870d8');
+      for (let x = 5; x < 16; x++) { const y = 3 + Math.round((x - 5) * 1.05); p.rect(x, y, 1, 2, '#f8c830'); p.put(x, y + 2, '#d89a18'); }
+    },
+    subibaja(p) { // a seesaw: a plank on a red stand, one end up, one end down
+      p.tri(5, 15, 11, 15, 8, 9, '#e04040');
+      for (let x = 0; x < 16; x++) { const y = 4 + Math.round(x * 0.62); p.rect(x, y, 1, 2, '#f8c830'); }
+      p.rect(1, 2, 1, 3, '#3870d8'); p.rect(14, 10, 1, 3, '#3870d8');
+    },
+    papalote(p) { // a kite: a diamond in four colours, a string, a tail of bows
+      p.tri(8, 0, 2, 6, 8, 6, '#e04040'); p.tri(8, 0, 14, 6, 8, 6, '#f8c830'); p.tri(2, 6, 8, 12, 8, 6, '#3870d8'); p.tri(14, 6, 8, 12, 8, 6, '#38a858');
+      for (const [x, y] of [[8, 13], [7, 14], [6, 15]]) p.put(x, y, '#806040');
+      p.rect(9, 13, 2, 1, '#e04040'); p.rect(4, 15, 2, 1, '#f8c830');
+    },
+    burbujas(p) { // bubbles: three see-through rainbow rings with a shine
+      for (const [x, y, r] of [[5, 10, 4.2], [11.5, 5, 3.4], [12, 12.5, 2.4]]) { p.disc(x, y, r, '#a8e0f8'); p.disc(x, y, r - 1, '#e0f6ff'); p.put(x - r * 0.4, y - r * 0.4, '#ffffff'); p.put(x + r * 0.5, y + r * 0.3, '#f8a8e0'); }
+    },
+    cuerda(p) { // a jump rope swinging over: a thin yellow rope from two wooden handles
+      for (let a = Math.PI; a < Math.PI * 2; a += 0.04) p.put(8 + Math.cos(a) * 6, 13 + Math.sin(a) * 11, '#f0b020');
+      p.tri(0, 15, 3, 15, 2, 11, '#a86838'); p.tri(13, 15, 16, 15, 14, 11, '#a86838'); p.put(1, 14, '#e04040'); p.put(14, 14, '#e04040');
+    },
+    paloma(p) { // a pigeon: grey, a shiny green-purple neck, dark bars on its wing, pink feet
+      p.ell(7.5, 9.5, 5.5, 3.6, '#a8acc0'); p.ell(12, 6, 2.4, 2.6, '#9098b0'); p.rect(10, 7, 3, 2, '#68a888'); p.put(11, 8, '#8868b0');
+      p.put(13, 5, '#f07020'); p.rect(14, 6, 2, 1, '#e8d0c0'); p.put(12, 5, '#101010');
+      p.rect(4, 8, 5, 1, '#606478'); p.rect(4, 10, 5, 1, '#606478'); p.tri(0, 8, 3, 9, 3, 11, '#707488');
+      p.rect(7, 13, 1, 2, '#f08090'); p.rect(9, 13, 1, 2, '#f08090');
+    },
+    catarina(p) { // a ladybug from above: a red shell with black dots, a black head
+      p.disc(8, 9, 6, '#e02828'); p.rect(7.5, 3, 1, 12, '#202020'); p.disc(8, 3.5, 2.6, '#202020');
+      for (const [x, y] of [[5, 7], [11, 7], [4.5, 11], [11.5, 11], [7, 13], [9, 13]]) p.disc(x, y, 1, '#202020');
+      p.put(7, 3, '#ffffff'); p.put(9, 3, '#ffffff'); p.put(5, 6, '#f87070'); p.put(6, 0, '#202020'); p.put(10, 0, '#202020');
+    },
+    hormiga(p) { // an ant: three round parts with gaps between, six thin legs, feelers
+      p.disc(3, 9, 2.3, '#4a2418'); p.disc(7.5, 9, 1.6, '#4a2418'); p.ell(12.5, 9.5, 3.2, 2.5, '#4a2418');
+      p.put(2, 8, '#a86048'); p.put(12, 8, '#a86048'); p.put(11, 8, '#a86048');
+      for (const [x, d] of [[6, -1], [8, 1], [10, 1]]) { p.put(x, 11, '#4a2418'); p.put(x + d, 12, '#4a2418'); p.put(x + d, 13, '#4a2418'); p.put(x, 7, '#4a2418'); p.put(x + d, 6, '#4a2418'); }
+      p.put(1, 6, '#4a2418'); p.put(0, 5, '#4a2418'); p.put(3, 6, '#4a2418'); p.put(3, 5, '#4a2418'); p.put(2, 9, '#ffffff');
+    },
+    abeja(p) { // a bee: yellow and black stripes, clear wings, a little stinger
+      p.ell(4.5, 4.5, 3, 2.5, '#e0f4ff'); p.ell(9.5, 4, 3, 2.5, '#e0f4ff');
+      p.ell(8, 10, 6, 4, '#f8c820'); for (const x of [6, 9, 12]) p.rect(x, 6, 1.6, 8, '#302020');
+      p.disc(2.5, 10, 2, '#302020'); p.put(2, 9, '#ffffff'); p.put(14.5, 10, '#302020'); p.put(15, 10, '#302020');
+    },
+    lagartija(p) { // a little lizard from above: a long tail curling, four splayed legs
+      p.ell(11, 5, 2.4, 2.2, '#78b040'); p.ell(8.5, 8.5, 2.2, 3.2, '#78b040');
+      for (const [x, y] of [[6.5, 11], [6, 12.5], [5, 13.5], [3.5, 14.2], [2, 14], [1, 13]]) p.disc(x, y, x > 4 ? 1.2 : 0.8, '#68a038');
+      p.rect(5, 6, 2, 1, '#68a038'); p.rect(4, 5, 1, 1, '#68a038'); p.rect(10, 9, 2, 1, '#68a038'); p.rect(12, 10, 1, 1, '#68a038');
+      p.rect(5, 10, 2, 1, '#68a038'); p.rect(10, 7, 2, 1, '#68a038'); p.put(12, 4, '#101010'); p.put(10, 4, '#101010'); p.put(8, 8, '#a8d870');
+    },
+    lombriz(p) { // a worm wriggling out of the earth
+      p.ell(8, 14, 7, 2, '#7a4a20'); p.ell(8, 13.5, 4, 1, '#4a2a10');
+      for (const [x, y] of [[7, 13], [6.5, 11.5], [7, 10], [8.5, 9], [9.5, 7.5], [9, 6], [7.5, 5]]) p.disc(x, y, 1.6, '#f08898');
+      for (const [x, y] of [[6, 11], [9, 8], [8, 6]]) p.put(x, y, '#d06878'); p.put(7, 4, '#101010');
+    },
+    grillo(p) { // a green cricket: a long body, a big bent jumping leg, long feelers
+      p.ell(8, 10, 5.5, 2.2, '#58a038'); p.ell(13, 9.5, 2, 2, '#68b848'); p.put(14, 9, '#101010');
+      p.tri(2, 10, 9, 10, 6, 5, '#3a7a28'); p.rect(2, 11, 1, 3, '#3a7a28'); p.rect(1, 13, 2, 1, '#3a7a28');
+      p.rect(10, 12, 1, 2, '#3a7a28'); p.rect(12, 12, 1, 2, '#3a7a28');
+      for (let i = 0; i < 7; i++) p.put(14 - i * 0.2, 8 - i, '#3a7a28'); for (let i = 0; i < 6; i++) p.put(15, 8 - i * 1.2, '#3a7a28');
+    },
+    colibri(p) { // a hummingbird hovering: a little green body, a red throat, a long needle beak, blurred wings up
+      p.ell(6, 4, 3.4, 3, '#d8f4ff'); p.ell(6, 4, 1.8, 1.6, '#ffffff');
+      p.ell(7, 9.5, 3, 2.4, '#38b068'); p.tri(2, 13, 5, 10, 5, 13, '#287048');
+      p.disc(10, 7.5, 2, '#48c880'); p.rect(9, 9, 2, 2, '#e02848'); p.put(10, 7, '#101010'); p.rect(12, 8, 4, 1, '#302020');
     },
     // things in the forest with no word of their own (a picture only)
     binoculares(p) { // Elena's binoculars: two black barrels, blue lenses, a strap

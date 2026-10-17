@@ -71,6 +71,9 @@
   //   hovers and wanders, bobbing up and down; tapped, it darts off). o.glow: a colour: a soft pulsing light around it
   //   (fireflies). The default 'walk' shows frame react (if it has one) for a moment when tapped (a fox sits, a
   //   raccoon stands up).
+  //   More from El parque de juegos (2026-10-17): 'march' (ants: one line per map entry; the first wanders, each one
+  //   after walks along the trail of the one before; tapped, the whole line scatters for a moment), 'hop' (a cricket:
+  //   sits and chirps (frame chirp), hops off in little arcs (frame hop), away from you when you come close).
   //   o.on: the tile codes it lives on (default the land: '.o,=pyz'; e.g. 's' sand, '-~w' water), o.water: drawn flat
   //   on the water / ground with the ducks (not sorted in with the people), o.shadow: its shadow's width in px.
   AN.addKind = function (id, o) {
@@ -448,6 +451,29 @@
       if (a.st === 'walk') { if (goToward(a, a.fast ? 1.2 : K.speed || 0.25)) { a.st = 'idle'; a.fast = 0; a.t = 20 + ri(60); } return; }
       if (--a.t <= 0) { [a.tx, a.ty] = pickGround(a); a.st = 'walk'; }
     },
+    march(f, a, K) { // ants (El parque de juegos): a line; the first wanders about, each one after walks where the one before was
+      const line = a.line || (a.line = f.zoo.list.filter(b => b.kind === a.kind && b.ground === a.ground)), i = line.indexOf(a);
+      const tr = a.trail || (a.trail = []); if (!tr.length || Math.hypot(tr[tr.length - 1][0] - a.x, tr[tr.length - 1][1] - a.y) >= 1) { tr.push([a.x, a.y]); if (tr.length > 40) tr.shift(); }
+      if (a.scat > 0) { a.scat--; if (goToward(a, 1.1)) { const [x, y] = pickGround(a); a.tx = x; a.ty = y; } a.st = 'walk'; return; } // (tapped: they scatter)
+      if (i > 0) { // follow: a few px behind the one before, along its trail
+        const lead = line[i - 1], lt = lead.trail || [], pt = lt[Math.max(0, lt.length - 7)];
+        if (pt && Math.hypot(pt[0] - a.x, pt[1] - a.y) > 0.6) { a.tx = pt[0]; a.ty = pt[1]; goToward(a, Math.min(1.2, (K.speed || 0.3) * 1.6)); a.st = 'walk'; } else a.st = 'idle';
+        return;
+      }
+      if (a.st === 'walk') { if (goToward(a, K.speed || 0.3)) { a.st = 'idle'; a.t = 20 + ri(50); } return; }
+      if (--a.t <= 0) { [a.tx, a.ty] = pickGround(a); a.st = 'walk'; }
+    },
+    hop(f, a, K) { // a cricket: sits and chirps; hops off in little arcs (away from you when you come close)
+      if (a.st === 'hop') {
+        const s = ++a.h / 16; a.x = a.hx0 + (a.tx - a.hx0) * Math.min(1, s); a.y = a.hy0 + (a.ty - a.hy0) * Math.min(1, s); a.z = Math.sin(Math.min(1, s) * Math.PI) * 7;
+        if (s >= 1) { a.z = 0; a.st = 'idle'; a.t = 50 + ri(140); }
+        return;
+      }
+      const go = (away) => { let [x, y] = pickGround(a); if (Math.hypot(x - a.x, y - a.y) > 40) { x = a.x + (x - a.x) * 40 / Math.hypot(x - a.x, y - a.y); y = a.y + (y - a.y) * 40 / Math.hypot(x - a.x, y - a.y); } if (away) { const px = f.player.x * T + 12; x = a.x + (a.x >= px ? 1 : -1) * (14 + rnd(10)); if (!onGround(a, x, a.y)) x = a.x - (x - a.x); y = a.y; } a.hx0 = a.x; a.hy0 = a.y; a.tx = x; a.ty = y; a.h = 0; a.st = 'hop'; a.flip = x < a.x; };
+      if (youNear(f, a, 26) && !a.react) { go(true); return; }
+      if (a.st === 'chirp') { if (--a.t <= 0) { a.st = 'idle'; a.t = 40 + ri(120); } return; }
+      if (--a.t <= 0) { if (ri(2)) { a.st = 'chirp'; a.t = 40; if (visible(f, a) && Math.random() < 0.5) AN.cry(a.kind); } else go(false); }
+    },
     crawl(f, a, K) { // plods slowly; its head in for a while when tapped
       if (a.st === 'hide') { if (--a.t <= 0) { a.st = 'idle'; a.t = 40; } return; }
       if (a.st === 'walk') { if (goToward(a, K.speed || 0.14)) { a.st = 'idle'; a.t = 80 + ri(160); } return; }
@@ -487,6 +513,8 @@
       else if (mv === 'drift' || mv === 'flit') { const [x, y] = pickGround(a); a.tx = x; a.ty = y; a.st = 'walk'; a.fast = 1; }
       else if (mv === 'climb') { if (a.st !== 'up' && a.st !== 'climb') a.wantTree = 1; } // (up the nearest tree)
       else if (mv === 'shy') { a.st = 'idle'; a.t = 50; }
+      else if (mv === 'march') { for (const b of a.line || [a]) { b.scat = 40 + ri(20); const [x, y] = pickGround(b); b.tx = x; b.ty = y; } } // (the whole line scatters)
+      else if (mv === 'hop') { a.react = 0; a.hx0 = a.x; a.hy0 = a.y; [a.tx, a.ty] = pickGround(a); a.h = 0; a.st = 'hop'; a.flip = a.tx < a.x; a.react = 40; }
       else if (mv === 'walk' || !mv) { a.st = 'idle'; a.t = Math.max(a.t, 50); }
     }
     f.zoo.fx.push({ k: 'heart', x: a.x + (a.flip ? -8 : 8), y: a.y - frameOf(a).height + 4, t: 0, life: 50 });
@@ -537,6 +565,8 @@
         else if (mv === 'climb') fr = a.st === 'climb' || a.st === 'down' ? ((a.age >> 2) & 1 ? 'climb' : 'climb2') : a.st === 'up' ? 'climb' : (a.st === 'walk' || a.st === 'totree') && (a.age >> 2) & 1 ? 'walk' : 'stand';
         else if (mv === 'shy') fr = a.st === 'run' ? (a.z > 3 ? 'jump' : 'walk') : R ? 'stand' : a.st === 'graze' ? 'graze' : a.st === 'walk' && (a.age >> 3) & 1 ? 'walk' : 'stand';
         else if (mv === 'flit') fr = (a.age >> 2) & 1 ? 'alt' : 'stand';
+        else if (mv === 'march') fr = a.st === 'walk' && (a.age >> 2) & 1 ? 'walk' : 'stand';
+        else if (mv === 'hop') fr = a.st === 'hop' ? 'hop' : a.st === 'chirp' && (a.t >> 2) & 1 ? 'chirp' : 'stand';
         else if (R && S.react) fr = 'react';
         else fr = a.st === 'walk' && S.walk && (a.age >> 3) & 1 ? 'walk' : S.stand ? 'stand' : Object.keys(S).find(k => k !== 'pal');
         if (!S[fr]) fr = S.stand ? 'stand' : Object.keys(S).find(k => k !== 'pal');
