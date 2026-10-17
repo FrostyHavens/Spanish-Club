@@ -278,7 +278,7 @@ async function notebook(browser) {
     await g.ev(() => { window.__sp = []; const o = G.speak; G.speak = t => { window.__sp.push(t); o(t); }; });
     await g.tapRect(await g.ev(() => G.top().cellRect(0)));
     await g.tapRect(await g.ev(() => G.top().cellRect(4))); // an empty frame (pez, unmet)
-    check('notebook: tap a met word to hear it; an unmet slot is empty and says nothing', await g.ev(() => window.__sp.join() === 'perro'));
+    check('notebook: tap a met word to hear it; an unmet slot is empty and says nothing', await g.ev(() => window.__sp.join() === 'perro'), await g.ev(() => JSON.stringify(window.__sp)));
     await g.tapBtn(await g.ev(() => G.top().closeXY()));
 
     // page puzzles: waiting for 4 KNOWN words (known before this session), then a puzzle on the map
