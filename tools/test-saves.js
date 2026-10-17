@@ -322,6 +322,9 @@ async function grownUpsField(browser) {
     await scene(g, 'QuestLog');
     await g.frames(4); await g.shot('grownups_misiones');
     await g.tap(160, 112);
+    await g.until(() => G.top().constructor.name === 'QuestLog' && G.top().page === 1, null, 'Story progress: the world page');
+    await g.frames(4); await g.shot('grownups_misiones_world');
+    await g.tap(160, 112);
     await scene(g, 'GrownUps');
     check('field: Misiones opens from the grown-ups menu', true);
     await tapRow(g, 'english');

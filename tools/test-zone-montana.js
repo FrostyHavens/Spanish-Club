@@ -259,7 +259,7 @@ async function weather(browser) {
     // Mateo: "¿Qué tiempo hace?"
     check('Mateo has his weather question in his bubble', await g.ev(() => { const a = G.field.npc('mateo').alert(); return a && a.icon === 'veleta'; }));
     await tapNpc(g, 'mateo', 0, 1);
-    await drv(g, () => G.top().constructor.name === 'Choice', '"¿Qué tiempo hace?"');
+    await drv(g, () => G.top().constructor.name === 'Choice' && /tiempo/.test(G.top().o.prompt || ''), '"¿Qué tiempo hace?" (after his greeting of the day)');
     check('Mateo: "¿Qué tiempo hace?" (the answer is the weather you see: viento)', await g.ev(() => G.top().o.answer != null && G.top().ch[G.top().o.answer].word === 'viento'));
     await drv(g, () => free() && G.montana.state().forecasts === 1, 'Mateo\'s question');
     check('weather: no console errors', !g.errors.length, g.errors.join('\n'));

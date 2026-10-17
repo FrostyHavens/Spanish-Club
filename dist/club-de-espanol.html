@@ -24173,6 +24173,15 @@ G.MAPDATA = {
     return { why, map: target, far: true, badge: { who: it.to } };
   };
 
+  // the guide (after the next chapter of the story here is suggested): Tomás with today's letter, here or in this place
+  P.offerGoal = function (f) {
+    if (!f || !P.canOffer()) return null;
+    const n = f.npcs.find(n => n.id === 'tomas' && n.spec && !n.hidden);
+    if (n) return { why: 'tomas: a letter', pts: [{ x: n.x * TL + (n.ox || 0) + 12, y: n.y * TL + (n.oy || 0) + 12, lift: 44, npc: n }] };
+    const m = P.where('tomas').find(m => Z.area(m) === Z.area(f.mapId));
+    return m ? { why: 'tomas: a letter', map: m, badge: { who: 'tomas' } } : null;
+  };
+
   // ---------- Tomás on his round: some days at a place's bus stop ----------
   // a free tile next to where the bus leaves you (not the stop, not an exit, not the entry itself)
   function nearEntry(z) {
@@ -24209,10 +24218,10 @@ G.MAPDATA = {
       const a = P.alertFor(id); if (a) return a;
       const b = a0 ? a0.apply(this, arguments) : null; if (b) return b;
       if (H.ZONE[id] && G.errands) { const e = G.errands.alert(id); if (e) return e; } // (a present they'd like: the zones' own bubbles don't ask errands.js)
-      return id === 'tomas' && P.canOffer() ? { icon: 'carta' } : null;
+      return id === 'tomas' && P.canOffer() ? { icon: 'carta', later: true } : null; // (later: the guide offers it after the story's next chapter, P.offerGoal)
     };
     def.talk = function* (f, n) {
-      if (G.state && H.WHO.includes(id)) { yield* H.greet(id); yield* H.milestones(id); } // (once a day: the town's own talk, maps.js, greets too, after this it's a no-op)
+      if (G.state && (H.ZONE[id] || id === 'tomas')) { yield* H.greet(id); yield* H.milestones(id); } // (the town's people greet in their own talk, maps.js: Tomás first here, before his letter; theirs is then a no-op)
       if (G.state && (yield* P.deliver(id, f)) && !CH.alert(id)) return;
       if (G.state && id === 'tomas' && !CH.alert('tomas') && !(G.favores && G.favores.alert('tomas')) && P.canOffer() && (yield* P.offer(f))) return;
       const lz = id === 'lola' && G.state && f ? Z.of(f.mapId) : null, first = lz && lz !== 'villa' && !lolaZ()[lz];
@@ -24375,7 +24384,8 @@ G.MAPDATA = {
 // puzzle; the next chapter's giver; a review day's teacher) > home at sunset > a favour going on or offered > Tomás's
 // letter in your hands (to whoever it's for; another place: the bus stop, src/connect.js) > a zone's task > Nico's
 // hide-and-seek (only the edge arrow: the peeking ears are the game; the arrow over one after a long wait) > Canelo's
-// "?", Luna's palabra del día, Inés's pages, a side job, anyone else with a bubble > the day's play (src/carry.js: what
+// "?", Luna's palabra del día, Inés's pages, a side job, anyone else with a bubble > (the next chapter, then Tomás's
+// letter of the day, exploring) > the day's play (src/carry.js: what
 // you hold to whoever would love it, or Canelo; empty-handed, today's next play: fetch, an apple for Luna, a flower for
 // Mamá, the bone, an egg for Rosa, bread for the ducks, a page puzzle... and a game of fetch is always there). So there
 // is never a dead end: between chapters, while today's new words are used up, before the evening chapter, the arrow
@@ -24501,7 +24511,7 @@ G.MAPDATA = {
     if (E && E.spots) { const sp = E.spots(f).filter(s => !s.quiet && !(s.nohint && s.nohint()))[0]; if (sp) return { why: 'job ' + sp.id, pts: [tileP(sp.at[0], sp.at[1], 42)] }; }
     // anyone else on this map with a bubble (a present they'd like...), the nearest
     const Lc = G.chapters && G.chapters.live(), later = Lc && !Lc.started && Lc.b && Lc.b.who; // (the next chapter's giver: a suggestion for later, chapterLater)
-    const p = f.player, ns = f.npcs.filter(n => n.spec && !n.hidden && alerting(n) && n.id !== later).sort((a, b) => Math.abs(a.x - p.x) + Math.abs(a.y - p.y) - Math.abs(b.x - p.x) - Math.abs(b.y - p.y));
+    const p = f.player, ns = f.npcs.filter(n => n.spec && !n.hidden && alerting(n) && !alerting(n).later && n.id !== later).sort((a, b) => Math.abs(a.x - p.x) + Math.abs(a.y - p.y) - Math.abs(b.x - p.x) - Math.abs(b.y - p.y));
     if (ns.length) return { why: 'bubble ' + ns[0].id, pts: [person(ns[0])] };
     if (E && E.waitsIn) for (const m in G.maps) if (m !== f.mapId && E.waitsIn(m)) return { why: 'job in ' + m, map: m, badge: { icon: G.maps[m].icon || 'pregunta' } };
     return null;
@@ -24530,7 +24540,8 @@ G.MAPDATA = {
   const exploreGoal = f => (G.zones ? G.zones.exploreGoal(f) : null);
   // Tomás's letter in your hands (connect.js): to whoever it's for; in another place, by the bus (or the way there)
   const postGoal = f => (G.post && G.post.goal ? G.post.goal(f) : null);
-  const TIERS = [chapterGoal, sunsetGoal, favourGoal, postGoal, zoneTask, seekGoal, wantGoal, reviewGoal, zoneGoal, chapterLater, exploreGoal, playGoal, puppyGoal];
+  const postOffer = f => (G.post && G.post.offerGoal ? G.post.offerGoal(f) : null); // (Tomás's letter of the day: after the story's next chapter)
+  const TIERS = [chapterGoal, sunsetGoal, favourGoal, postGoal, zoneTask, seekGoal, wantGoal, reviewGoal, zoneGoal, chapterLater, postOffer, exploreGoal, playGoal, puppyGoal];
 
   // on another map: the door that leads there (from town, its door; from a building, the way out)
   function viaDoor(f, g) {

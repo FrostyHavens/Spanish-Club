@@ -115,7 +115,7 @@ async function noDeadEnd(browser) {
     await g.frames(10);
     // (the open world: before the day's play, the guide suggests the places not visited yet; docs/WORLD_PLAN.md)
     check('play: with places still to explore, the guide suggests a road out of town first', /^explore /.test(((await at(g)) || {}).why || ''), JSON.stringify(await at(g)));
-    await g.ev(() => G.zones.ids().forEach(G.zones.visit)); await g.frames(4);
+    await g.ev(() => { G.zones.ids().forEach(G.zones.visit); G.state.post = { day: G.words.day(), n: 0, log: {} }; }); await g.frames(4); // (Tomás's letter of the day already delivered: connect.js)
     check('play: chapter 3 waits for the morning', await g.ev(() => G.chapters.gate('c3') === 'morning' && !G.chapters.live()));
     check('play: Mamá (its giver) sleeps under a moon: "z z" (no word to read)', await g.ev(() => { const a = G.field.npc('mama').alert(); return !!a && a.sleep && a.wait; }));
     let a = await at(g);

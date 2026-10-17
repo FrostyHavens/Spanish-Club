@@ -210,7 +210,7 @@ async function zone(browser) {
     });
     check('zone: a zone\'s chapter (its own line) is offered while a Villa Sol chapter is going on', await g.ev(() => G.chapters.current() === 'c2' && G.chapters.next('montana') === 'tmontana1' && !G.chapters.gate('tmontana1') && !!G.field.npc('lola').alert()));
     await g.tapTile(...await g.ev(() => { const n = G.field.npc('lola'); return [n.x, n.y]; }));
-    await g.until(() => G.chapters.active('tmontana1') || G.chapters.done('tmontana1'), null, 'the zone chapter');
+    await g.drive(() => G.chapters.active('tmontana1') || G.chapters.done('tmontana1'), 'the zone chapter (after Lola\'s greeting of the day)');
     await g.drive(() => G.top() === G.field && !G.field.locked, 'its first beat');
     check('zone: both lines go on at once (Villa Sol\'s and the zone\'s)', await g.ev(() => G.chapters.current() === 'c2' && G.chapters.current('montana') === 'tmontana1' && G.chapters.lineHere() === 'montana'));
     check('zone: no console errors', !g.errors.length, g.errors.join('\n'));
