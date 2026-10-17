@@ -50,25 +50,40 @@
   ];
   const spot = id => SK.SPOTS.find(s => s.id === id);
   // how much shows: lo (an ear, a comb, horns), hi (up to the eyes) in px from the top of the picture
-  const PEEK = { gato: [4, 8], conejo: [5, 9], gallina: [4, 7], cabra: [5, 8], pato: [4, 6], rana: [3, 4] };
+  const PEEK = SK.PEEK = { gato: [4, 8], conejo: [5, 9], gallina: [4, 7], cabra: [5, 8], pato: [4, 6], rana: [3, 4] };
 
-  // ---------- today's game ----------
-  const st = () => { const s = G.state; if (!s.seek || typeof s.seek !== 'object' || !Array.isArray(s.seek.list)) s.seek = { day: -1, list: [], on: false, done: false }; return s.seek; };
-  const kindsMet = () => SK.KINDS.filter(k => G.words.met(k));
-  SK.ready = () => !!G.state && !!G.state.flags.intro && !!G.pet && G.pet.mine() && kindsMet().length >= 2;
+  // ---------- today's game, one per zone (the open world: docs/WORLD_PLAN.md) ----------
+  // Villa Sol's game is G.state.seek itself (older saves keep theirs); another zone's is G.state.seek.z[zone]. The game
+  // played is the one of the zone you're in (G.zones.of(map)); a path between zones has none. A zone file adds its
+  // hiding places to SK.SPOTS (their map is in that zone) and its animals to SK.KINDS (and SK.PEEK[kind] = [lo, hi]).
+  const zoneOf = m => (G.zones ? G.zones.of(m) : 'villa');
+  const curZone = () => (G.field ? zoneOf(G.field.mapId) : 'villa');
+  SK.zone = curZone;
+  const blank = () => ({ day: -1, list: [], on: false, done: false });
+  const base = () => { const s = G.state; if (!s.seek || typeof s.seek !== 'object' || !Array.isArray(s.seek.list)) s.seek = blank(); return s.seek; };
+  const st = (z = curZone()) => {
+    const b = base(); if (!z || z === 'villa') return b;
+    if (!b.z || typeof b.z !== 'object') b.z = {};
+    if (!b.z[z] || !Array.isArray(b.z[z].list)) b.z[z] = blank();
+    return b.z[z];
+  };
+  const spotsIn = z => SK.SPOTS.filter(p => zoneOf(p.map) === z);
+  const kindsMet = (z = curZone()) => SK.KINDS.filter(k => G.words.met(k) && spotsIn(z).some(p => p.kinds.includes(k)));
+  SK.ready = (z = curZone()) => !!z && !!G.state && !!G.state.flags.intro && !!G.pet && G.pet.mine() && kindsMet(z).length >= 2;
+  SK.list = (z) => (G.state ? st(z).list : []);
   const story = () => !!G.chapters && !!G.chapters.current(); // a chapter going on: the game waits
   const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(G.rand() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-  SK.today = function () {
-    if (!SK.ready()) return null;
-    const s = st(), d = G.words.day();
+  SK.today = function (z = curZone()) {
+    if (!SK.ready(z)) return null;
+    const s = st(z), d = G.words.day(), ZS = spotsIn(z);
     if (s.day !== d) {
       const fav = G.favores ? G.favores.today().find(v => v.kind === 'find' && !v.done) : null; // (not the animal Nico's favour is about)
-      const kinds = shuffle(kindsMet().filter(k => !fav || fav.word !== k)).slice(0, 3), used = new Set(), list = [];
-      // one in the barn when one of them fits there, the others around town
-      const barn = kinds.find(k => SK.SPOTS.some(p => p.map === 'granja' && p.kinds.includes(k)));
+      const kinds = shuffle(kindsMet(z).filter(k => !fav || fav.word !== k)).slice(0, 3), used = new Set(), list = [];
+      // Villa Sol: one in the barn when one of them fits there, the others around town; another zone: anywhere in it
+      const barn = z === 'villa' ? kinds.find(k => ZS.some(p => p.map === 'granja' && p.kinds.includes(k))) : null;
       for (const k of barn ? [barn].concat(kinds.filter(x => x !== barn)) : kinds) {
-        const opts = shuffle(SK.SPOTS.filter(p => p.kinds.includes(k) && !used.has(p.id) && (k === barn && !list.length ? p.map === 'granja' : p.map === 'villa')));
-        const p = opts[0] || shuffle(SK.SPOTS.filter(p => p.kinds.includes(k) && !used.has(p.id)))[0];
+        const opts = shuffle(ZS.filter(p => p.kinds.includes(k) && !used.has(p.id) && (z !== 'villa' || (k === barn && !list.length ? p.map === 'granja' : p.map === 'villa'))));
+        const p = opts[0] || shuffle(ZS.filter(p => p.kinds.includes(k) && !used.has(p.id)))[0];
         if (!p) continue;
         used.add(p.id); list.push({ kind: k, spot: p.id, found: false });
       }
@@ -83,7 +98,8 @@
   const here = f => left().filter(h => spot(h.spot).map === f.mapId);
   // is this animal of the map (animals.js) away hiding? (the brown hen, the last duckling, the others of their kind)
   SK.hides = function (f, a) {
-    if (!f || f.mapId !== 'villa' || !SK.hiding(a.kind)) return false;
+    if (!f || !SK.hiding(a.kind)) return false;
+    if (f.mapId !== 'villa') return zoneOf(f.mapId) !== 'villa' && !a.baby && !a.perched; // (another zone: its own animals of that kind are away)
     if (a.kind === 'gallina') return !a.tint;
     if (a.kind === 'pato') return !!a.baby && !(f.zoo.list.some(o => o.baby && o.trail > a.trail));
     return !a.baby;
@@ -99,9 +115,9 @@
   SK.ROUNDS = 3;
   SK.again = () => { if (!SK.ready() || story()) return false; const s = SK.today(); return !!s && s.done && (s.round | 0) + 1 < SK.ROUNDS; };
   function rematch(s) {
-    const old = s.list.map(h => h.spot), used = new Set(old), list = [];
+    const old = s.list.map(h => h.spot), used = new Set(old), list = [], ZS = spotsIn(curZone());
     for (const k of shuffle(kindsMet()).slice(0, 3)) {
-      const p = shuffle(SK.SPOTS.filter(p => p.kinds.includes(k) && !used.has(p.id)))[0] || shuffle(SK.SPOTS.filter(p => p.kinds.includes(k) && !list.some(h => h.spot === p.id)))[0];
+      const p = shuffle(ZS.filter(p => p.kinds.includes(k) && !used.has(p.id)))[0] || shuffle(ZS.filter(p => p.kinds.includes(k) && !list.some(h => h.spot === p.id)))[0];
       if (!p) continue; used.add(p.id); list.push({ kind: k, spot: p.id, found: false });
     }
     if (list.length < 2) return false;
@@ -216,7 +232,7 @@
     const L = here(f), d = sp => Math.abs(sp.at[0] - n.x) + Math.abs(sp.at[1] - n.y);
     if (L.length) { const sp = L.map(h => spot(h.spot)).sort((a, b) => d(a) - d(b))[0]; return [sp.at[0] * T + 12, sp.at[1] * T + 14]; }
     const other = left().map(h => spot(h.spot).map).find(m => m !== f.mapId); if (!other) return null;
-    const ex = (f.def.exits || []).find(e => e.to === other) || (f.mapId !== 'villa' ? (f.def.exits || []).find(e => e.to === 'villa') : null);
+    const ex = G.zones ? G.zones.route(f.mapId, other) : (f.def.exits || []).find(e => e.to === other);
     return ex ? [ex.x * T + 12, ex.y * T + 14] : null;
   }
   SK.hints = f => (rt.trail && rt.trail.f === (f || G.field) ? rt.trail : null);
@@ -265,7 +281,7 @@
   // who is still hiding: a little panel under the bag (top-left), their pictures; the found ones bright with a tick
   SK.drawHud = function (f, ctx) {
     if (!SK.active() || f.locked || G.top() !== f || (G.hint && G.hint.stripShowing())) return;
-    if (f.mapId !== 'villa' && f.mapId !== 'granja') return;
+    if (!curZone()) return; // (a path between zones: no game there)
     const L = st().list, bag = G.state.bag && G.state.bag.items && G.state.bag.items.length, y = bag ? 30 : 4, w = 26 + L.length * 18;
     G.win(ctx, 4, y, w, 22, { alpha: 0.9 });
     G.drawIcon16(ctx, 'lupa', 8, y + 3);

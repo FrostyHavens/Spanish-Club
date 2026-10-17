@@ -11,13 +11,16 @@
 //   putdown  holding something (and its give demo already seen, or nobody for it): the hand taps you (put it down)
 //   puzzle   a page puzzle: the hand drags a word up to the pictures (and lets go between them: no answer)
 //   seek     hide-and-seek going on, an animal peeking on screen: the hand taps the peeking ears
+//   bus      a bus stop on screen once you've been to two places: the hand taps the stop (zones.js)
+//   worldmap the world map open: the hand taps a place you've been to (the bus goes there), or a "?" one (walk there)
+//   dogspot  the dog's paw-print bubble on screen (his thing to do in this zone): the hand taps it
 // The map's demos wait for a moment of standing about (DM.IDLE, so they don't get in the way of a child who is busy).
 // API: G.demo.shown(kind), .KINDS, .cur (the demo playing: {kind, steps, ...} or null; tests), .skip() (tests: mark all
 // shown), .reset(), .step() / .draw(ctx) (core.js, after the hint hand).
 'use strict';
 (function () {
   const DM = G.demo = {}, T = G.TILE;
-  DM.KINDS = ['answer', 'mic', 'canelo', 'pickup', 'give', 'putdown', 'puzzle', 'seek'];
+  DM.KINDS = ['answer', 'mic', 'canelo', 'pickup', 'give', 'putdown', 'puzzle', 'seek', 'bus', 'worldmap', 'dogspot'];
   DM.IDLE = 90;    // frames standing about on the map before a map demo (1.5 s)
   DM.cur = null;
   let idle = 0, scan = 0;
@@ -62,6 +65,10 @@
       start('puzzle', [{ x: w.x + w.w / 2, y: w.y + w.h / 2, move: 18, act: 'down', hold: 8 }, { x: mx, y: p0.y + p0.h / 2 + 10, move: 34, hold: 6 }, { x: mx, y: p0.y + p0.h / 2 + 10, move: 1, act: 'up', hold: 16 }], { drag: s.words[0] });
       return true;
     }
+    if (n === 'WorldMap' && s.t >= 20 && !s.walk && !DM.shown('worldmap')) {
+      const here = s.here(), R = s.rects(), r = R.find(r => r.id !== here && G.zones.visited(r.id)) || R.find(r => r.id !== here && !G.zones.visited(r.id));
+      if (r) { start('worldmap', [{ x: r.x + r.w / 2, y: r.y + r.h / 2 - 4, move: 28, act: 'tap', hold: 24 }]); return true; }
+    }
     const m = s && s.mic;
     if (m && !DM.shown('mic') && m.shown && m.shown() && m.can && m.can() && !(s.won) && (s.t == null || s.t > 20) && !(DM.cur)) {
       const r = m.o.rect(); start('mic', [{ x: r.x + r.w / 2, y: r.y + r.h / 2 + 2, move: 18, act: 'tap', hold: 4 }, { x: r.x + r.w / 2, y: r.y + r.h / 2 + 2, move: 1, act: 'talk', hold: 70 }], { mic: r });
@@ -81,8 +88,15 @@
     const C = G.carry, h = C && C.held(), dog = G.pet && G.pet.mine() && G.pet.npc(f), [dx, dy] = dog ? scr(dog.x, dog.y) : [0, 0];
     const dogHere = dog && onScreen(dx, dy) && !(G.pet.sleeping && G.pet.sleeping(f));
     if (G.seek && G.seek.active() && !DM.shown('seek')) {
-      const L = G.state.seek.list.filter(x => !x.found);
+      const L = G.seek.list().filter(x => !x.found);
       for (const x of L) { const r = G.seek.where(x, f); if (r && onScreen(r.x + r.w / 2, r.y + 8)) { start('seek', [{ x: r.x + r.w / 2, y: r.y + 10, move: 24, act: 'tap', hold: 20 }]); return true; } }
+    }
+    const Zn = G.zones;
+    if (Zn && !DM.shown('dogspot') && dogHere && !h) {
+      const sp = (f.def.dogSpots || []).find(sp => Zn.dogReady(sp)); if (sp) { const [sx, sy] = scr(sp.at[0], sp.at[1]); if (onScreen(sx, sy - 16, 14)) { start('dogspot', [{ x: sx, y: sy - 14, move: 24, act: 'tap', hold: 22 }]); return true; } }
+    }
+    if (Zn && !DM.shown('bus') && Zn.visitedIds().length >= 2) {
+      const z = Zn.def(Zn.of(f.mapId)); if (z && z.bus && z.bus.map === f.mapId) { const [sx, sy] = scr(z.bus.at[0], z.bus.at[1]); if (onScreen(sx, sy - 8, 14)) { start('bus', [{ x: sx, y: sy - 10, move: 24, act: 'tap', hold: 22 }]); return true; } }
     }
     if (h && C.DOG[h.id] && dogHere && !DM.shown('give')) {
       start('give', [{ x: px, y: py - 10, move: 16, act: 'down', hold: 8 }, { x: dx, y: dy - 2, move: 40, hold: 4 }, { x: dx, y: dy - 2, move: 1, act: 'up', hold: 4 }, { x: dx, y: dy - 2, move: 1, act: 'tap', hold: 16 }], { carry: h.it });

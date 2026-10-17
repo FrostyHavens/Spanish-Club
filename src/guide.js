@@ -31,8 +31,14 @@
 
   const alerting = n => { try { const a = n.alert && n.alert(); return a && !a.wait ? a : null; } catch (e) { return null; } };
   const here = (f, who) => (who === 'canelo' ? (G.pet && G.pet.npc(f)) : f.npcs.find(n => n.id === who && n.spec && !n.hidden)) || null;
-  const mapOfNpc = who => { for (const m in G.maps) if ((G.maps[m].npcs || []).some(n => n.id === who && (!n.cond || n.cond()))) return m; return null; };
-  const mapOfAnimal = kind => { for (const m in G.maps) if ((G.maps[m].animals || []).some(a => a.kind === kind)) return m; return 'villa'; };
+  // The open world (docs/WORLD_PLAN.md): the guide SUGGESTS things to do NEAR you, in the zone you're in (a path between
+  // zones is its own little area), never "go back to town now". Someone or something on another map counts only when
+  // that map is in this zone; the way there is found over every map's exits (G.zones.route).
+  const area = m => (G.zones ? G.zones.area(m) : 'villa');
+  const curArea = () => (G.field ? area(G.field.mapId) : 'villa');
+  const near = m => !m || area(m) === curArea();
+  const mapOfNpc = who => { const L = []; for (const m in G.maps) if ((G.maps[m].npcs || []).some(n => n.id === who && (!n.cond || n.cond()))) L.push(m); return L.find(near) || null; };
+  const mapOfAnimal = kind => { for (const m in G.maps) if ((G.maps[m].animals || []).some(a => a.kind === kind) && near(m)) return m; return null; };
   // a person as a goal (world px of their middle; lift: how far above it the arrow goes, over the head and the bubble)
   const person = (n, why) => ({ x: n.x * T + (n.ox || 0) + 12, y: n.y * T + (n.oy || 0) + 12, lift: alerting(n) ? 44 : 24, npc: n, why });
   const tileP = (x, y, lift, o) => Object.assign({ x: x * T + 12, y: y * T + 12, lift }, o || {});
@@ -53,10 +59,12 @@
     }
     if (CH.needsReview()) { const who = CH.reviewer(), n = here(f, who); return n ? { why: 'review ' + who, pts: [person(n)] } : { why: 'review ' + who, map: mapOfNpc(who), badge: { who } }; }
     const L = CH.live(); if (!L || !L.b) return null;
+    if (!L.started && !GD.laterChapter) return null; // (a chapter not started yet is a suggestion among the others: chapterLater)
     const b = L.b, why = L.id + ':' + L.k;
     if (b.evening) return G.day && G.day.over() ? { why: why + ' evening', map: 'casa', home: true, badge: { icon: 'noche' } } : null;
     if (!whenOk(L)) return null;
-    if (b.auto) return b.auto === true || b.auto === f.mapId ? null : { why, map: b.auto, badge: { icon: CH.def(L.id).icon } }; // (it starts by itself there)
+    const au = CH.autoOf(L);
+    if (au) return au === true || au === f.mapId ? null : { why, map: au, badge: { icon: CH.def(L.id).icon } }; // (it starts by itself there)
     const ts = CH.targets(f);
     if (ts.length) {
       const spots = b.spots || (b.spot ? [b.spot] : []);
@@ -89,7 +97,7 @@
     if (!G.day || !G.day.over()) return null;
     if (f.mapId === 'casa') return f.evening ? null : { why: 'bed (sunset)', pts: [tileP(7, 2, 20, { icon: 'noche' })] }; // (home already: your bed ends the day, maps.js)
     const d = G.day.homeDoor(f); if (d) return { why: 'home (sunset)', pts: [tileP(d[0], d[1], 48, { door: true, icon: 'noche' })] }; // (over the moon bubble)
-    return { why: 'home (sunset)', map: 'casa', badge: { icon: 'noche' } };
+    return { why: 'home (sunset)', map: 'casa', far: true, badge: { icon: 'noche' } };
   }
   function favourGoal(f) {
     const FV = G.favores; if (!FV || !G.state || !FV.today) return null;
@@ -112,7 +120,7 @@
     const SK = G.seek; if (!SK || !G.state) return null;
     if (SK.alert && SK.alert(SK.HOST)) { const n = here(f, SK.HOST); return n ? { why: 'seek: Nico', pts: [person(n)] } : { why: 'seek: Nico', map: mapOfNpc(SK.HOST), badge: { who: SK.HOST } }; }
     if (!SK.active()) return null;
-    const p = f.player, L = G.state.seek.list.filter(h => !h.found).map(h => ({ h, sp: SK.SPOTS.find(s => s.id === h.spot) }));
+    const p = f.player, L = SK.list().filter(h => !h.found).map(h => ({ h, sp: SK.SPOTS.find(s => s.id === h.spot) }));
     const mine = L.filter(o => o.sp.map === f.mapId).sort((a, b) => Math.abs(a.sp.at[0] - p.x) + Math.abs(a.sp.at[1] - p.y) - Math.abs(b.sp.at[0] - p.x) - Math.abs(b.sp.at[1] - p.y));
     if (mine.length) return { why: 'seek ' + mine[0].h.kind, soft: true, pts: [tileP(mine[0].sp.at[0], mine[0].sp.at[1], 26, { icon: mine[0].h.kind })] };
     if (L.length) return { why: 'seek ' + L[0].h.kind, soft: true, map: L[0].sp.map, badge: { icon: 'lupa' } };
@@ -127,7 +135,8 @@
     const E = G.errands;
     if (E && E.spots) { const sp = E.spots(f).filter(s => !s.quiet && !(s.nohint && s.nohint()))[0]; if (sp) return { why: 'job ' + sp.id, pts: [tileP(sp.at[0], sp.at[1], 42)] }; }
     // anyone else on this map with a bubble (a present they'd like...), the nearest
-    const p = f.player, ns = f.npcs.filter(n => n.spec && !n.hidden && alerting(n)).sort((a, b) => Math.abs(a.x - p.x) + Math.abs(a.y - p.y) - Math.abs(b.x - p.x) - Math.abs(b.y - p.y));
+    const Lc = G.chapters && G.chapters.live(), later = Lc && !Lc.started && Lc.b && Lc.b.who; // (the next chapter's giver: a suggestion for later, chapterLater)
+    const p = f.player, ns = f.npcs.filter(n => n.spec && !n.hidden && alerting(n) && n.id !== later).sort((a, b) => Math.abs(a.x - p.x) + Math.abs(a.y - p.y) - Math.abs(b.x - p.x) - Math.abs(b.y - p.y));
     if (ns.length) return { why: 'bubble ' + ns[0].id, pts: [person(ns[0])] };
     if (E && E.waitsIn) for (const m in G.maps) if (m !== f.mapId && E.waitsIn(m)) return { why: 'job in ' + m, map: m, badge: { icon: G.maps[m].icon || 'pregunta' } };
     return null;
@@ -142,14 +151,23 @@
     if (p.map === f.mapId) return { why, play: true, pts: [tileP(p.at[0], p.at[1], 20, { icon: p.icon })] };
     return { why, play: true, map: p.map, badge: { icon: p.icon } };
   }
-  const TIERS = [chapterGoal, sunsetGoal, favourGoal, seekGoal, reviewGoal, playGoal];
+  // the next chapter of Villa Sol's story, not started yet: offered after the things going on here (never a must)
+  // (chapter 1 after "go explore" in the opener: the puppy's games at home are the very last suggestion, never a pull)
+  const puppyLater = () => !!G.state && !!G.state.flags.dogSkip && !G.chapters.current() && G.chapters.next() === 'c1';
+  function chapterLater(f) { if (puppyLater()) return null; GD.laterChapter = true; try { return chapterGoal(f); } finally { GD.laterChapter = false; } }
+  function puppyGoal(f) { if (!puppyLater()) return null; GD.laterChapter = true; try { return chapterGoal(f); } finally { GD.laterChapter = false; } }
+  // the zone's own things: the dog's spot, ... (zones.js); the way to a place asked for on the world map, or not
+  // visited yet (exploring)
+  const zoneGoal = f => (G.zones ? G.zones.goal(f) : null);
+  const wantGoal = f => (G.zones && G.zones.want() ? G.zones.exploreGoal(f) : null);
+  const exploreGoal = f => (G.zones ? G.zones.exploreGoal(f) : null);
+  const TIERS = [chapterGoal, sunsetGoal, favourGoal, seekGoal, reviewGoal, zoneGoal, wantGoal, chapterLater, exploreGoal, playGoal, puppyGoal];
 
   // on another map: the door that leads there (from town, its door; from a building, the way out)
   function viaDoor(f, g) {
-    const ex = (f.def.exits || []).filter(e => e.to && (!e.cond || e.cond()));
-    const e = f.mapId === 'villa' ? ex.find(e => e.to === g.map) : ex.find(e => e.to === 'villa') || ex[0];
+    const e = G.zones ? G.zones.route(f.mapId, g.map) : null;
     if (!e) return null;
-    return Object.assign({}, g, { via: 'door', pts: [tileP(e.x, e.y, f.mapId === 'villa' ? 28 : 16, { door: true })] });
+    return Object.assign({}, g, { via: 'door', pts: [tileP(e.x, e.y, e.edge ? 16 : f.mapId === 'villa' ? 28 : 16, { door: true })] });
   }
   GD.goal = function (f) {
     if (!G.state || !f) return null;
@@ -158,7 +176,7 @@
       try { g = tier(f); } catch (e) { if (!GD.err) { GD.err = true; console.error(e); } }
       if (!g) continue;
       if (g.pts && g.pts.length) return g;
-      if (g.map && g.map !== f.mapId) { const d = viaDoor(f, g); if (d) return d; }
+      if (g.map && g.map !== f.mapId && (g.home || g.far || near(g.map))) { const d = viaDoor(f, g); if (d) return d; }
     }
     return null;
   };

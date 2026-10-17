@@ -36,6 +36,7 @@
         if (word) { if (G.vocabLog) G.vlog('shown', ic, { via: 'banner' }); G.st.see(ic); }
       }
       if (this.def.onEnter) this.tasks.add(this.def.onEnter(this));
+      if (G.zones) G.zones.enter(this); // a zone you've never been to: "¡Nuevo lugar!" (zones.js)
     }
     // ---------- walkability ----------
     blocked(x, y, self) {
@@ -43,6 +44,7 @@
       const ex = this.exitAt(x, y); if (ex) return false;
       const t = G.TERRAIN[this.map.get(x, y)] || G.TERRAIN['.'];
       if (t.block || t.wall) return true;
+      if (G.zones && G.zones.blocks(this, x, y)) return true; // a bus stop, a signpost (zones.js)
       if (this.npcs.some(n => n !== self && !n.ghost && n.x === x && n.y === y)) return true;
       if (self !== this.player && this.player.x === x && this.player.y === y) return true;
       return false;
@@ -137,7 +139,7 @@
       if (door) return { exit: true, x: door.x, y: door.y }; // the wall or sign around a door, the dark just outside one
       const pg = (this.def.pages || {})[key(tx, ty)];
       const name = G.world ? G.world.wordAt(this, tx, ty) : null;
-      const special = !!((pg && G.pages.ready(pg)) || (this.def.searches || {})[key(tx, ty)] || (G.chapters && G.chapters.spotAt(this, tx, ty)) || (G.errands && G.errands.spotAt(this, tx, ty)) || G.intro.spotAt(this, tx, ty) || (G.carry && G.carry.at(this, tx, ty))); // these win over an animal on them (a thing to pick up: carry.js)
+      const special = !!((pg && G.pages.ready(pg)) || (this.def.searches || {})[key(tx, ty)] || (G.chapters && G.chapters.spotAt(this, tx, ty)) || (G.errands && G.errands.spotAt(this, tx, ty)) || G.intro.spotAt(this, tx, ty) || (G.carry && G.carry.at(this, tx, ty)) || (G.zones && G.zones.special(this, tx, ty))); // these win over an animal on them (a thing to pick up: carry.js)
       if (special || THING.includes(c)) return { search: true, x: tx, y: ty, name, special };
       if (name) return this.blocked(tx, ty, this.player) && !(this.player.x === tx && this.player.y === ty) ? { search: true, x: tx, y: ty, name } : { x: tx, y: ty, name };
       return { x: tx, y: ty };
@@ -199,6 +201,8 @@
     }
     *search(fx, fy) {
       if (fx === undefined) [fx, fy] = this.facing();
+      const zs = G.zones && G.zones.search(this, fx, fy); // the bus stop, a signpost, the dog's spot (zones.js)
+      if (zs) { yield* zs; return; }
       const cs = G.chapters && G.chapters.spotAt(this, fx, fy); // a place in the story (chapters.js)
       if (cs) { yield* G.chapters.runSpot(this, cs); return; }
       const sp = G.errands && G.errands.spotAt(this, fx, fy); // a place an errand sends you (errands.js)
@@ -308,10 +312,11 @@
       if (G.pet) G.pet.drawUnder(this, ctx); // Canelo's cushion and bowl at home
       if (G.errands) G.errands.drawUnder(this, ctx); // Lucía's flowers, the picnic blanket, the party ribbons (errands.js)
       if (G.carry) G.carry.drawUnder(this, ctx); // things lying about to pick up (carry.js)
+      if (G.zones) G.zones.drawUnder(this, ctx); // the dog's spots (zones.js)
       if (G.seek) G.seek.draw(this, ctx); // animals hiding (hide-and-seek: an ear, a tail peeking out; seek.js)
       if (G.chapters) G.chapters.draw(this, ctx, 'under'); // a chapter's own things on the ground (chapters.js)
       if (G.intro && G.intro.drawUnder) G.intro.drawUnder(this, ctx); // a find-it puzzle's picture bubbles (intro.js)
-      const ents = this.npcs.filter(n => n.spec && !n.hidden).concat([this.player]);
+      const ents = this.npcs.filter(n => n.spec && !n.hidden).concat(this.player.hidden ? [] : [this.player]); // (hidden: on the bus)
       const zoo = G.animals ? G.animals.ents(this) : []; // land animals, drawn in order with the people
       for (const e of ents.concat(zoo).sort((a, b) => (a.sy != null ? a.sy : a.y * T + a.oy) - (b.sy != null ? b.sy : b.y * T + b.oy))) {
         if (e.draw) { e.draw(ctx, cx, cy); continue; }
@@ -322,6 +327,7 @@
         ctx.drawImage(img, Math.round(e.x * T + e.ox - cx), Math.round(e.y * T + e.oy - cy - 3) - bob);
       }
       if (G.carry) G.carry.drawHeld(this, ctx); // what you hold, up over your head (carry.js)
+      if (G.zones) G.zones.drawTop(this, ctx); // signposts, the bus stop, the bus, the dog's paw-print bubbles (zones.js)
       if (G.ambient) G.ambient.draw(this, ctx, 'air'); // birds in flight, butterflies, the cat
       if (G.animals) G.animals.drawTop(this, ctx); // hearts and splashes
       if (G.pet) G.pet.drawTop(this, ctx); // Canelo's hearts, dust, crumbs; the trick he's learning

@@ -349,7 +349,7 @@
   P.ask = function* (id, o = {}) {
     const c = G.wordChoices(id, [id].concat(others(id, o.pool)), 3, { label: k => LABEL[k] || null });
     // (the trick's picture over the question only while it's new: once met, the child has to remember it)
-    return yield* G.ask({ prompt: o.prompt || '¡Dile a Canelo!', en: o.en || 'Tell Canelo! (say the trick, or tap it)', show: o.show === false || S.seen(id) ? null : id, choices: c.choices, answer: c.answer, layout: 'cards', who: 'canelo' });
+    return yield* G.ask({ prompt: o.prompt || '¡Dile a {dog}!', en: o.en || 'Tell {dog}! (say the trick, or tap it)', show: o.show === false || S.seen(id) ? null : id, choices: c.choices, answer: c.answer, layout: 'cards', who: 'canelo' });
   };
   // for errands (a show): ask for any trick, then he does it
   P.command = function* (id, o = {}) { const first = yield* P.ask(id, o); yield* P.trick(id, { amp: P.knows(id) ? 1 : 0.7 }); return first; };
@@ -380,11 +380,11 @@
     const f = G.field, n = P.npc(f), p = st();
     p.learning = id; p.tricks[id] = p.tricks[id] | 0; if (G.vocabLog) G.vlog('shown', id, { via: 'pet-teach', who }); S.see(id); S.autosave();
     if (n) { while (n.moving) yield 1; P.place(f, n); }
-    yield tsay(who, TT('¡Mira! Canelo... ¡[' + id + ']!', 'Look! Canelo... (watch what he does)'));
+    yield tsay(who, TT('¡Mira! {dog}... ¡[' + id + ']!', 'Look! {dog}... (watch what he does)'));
     yield* P.trick(id, { amp: 1 });
-    yield tsay(who, TT('¡Muy bien, Canelo! ¡Ahora tú, {name}!', 'Good dog! Now you, {name}!'));
+    yield tsay(who, TT('¡Muy bien, {dog}! ¡Ahora tú, {name}!', 'Good dog! Now you, {name}!'));
     yield* P.practice(id, false);
-    yield tsay(who, TT('¡Otra vez! Toca a Canelo. ¡[' + id + ']!', 'Again! Tap Canelo and practice: three times.'));
+    yield tsay(who, TT('¡Otra vez! Toca a {dog}. ¡[' + id + ']!', 'Again! Tap {dog} and practice: three times.'));
   };
   // Mamá gives you Canelo (her "!" after the Saludos errand), the Mi perro page and his first trick
   P.start = function* (f) {
@@ -397,10 +397,10 @@
     }
     yield tsay('mama', TT('¡{name}! ¡Mira!', '{name}! Look!'));
     P.place(f, n); yield 16; yield* P.play('dance');
-    yield tsay('mama', TT('¡Canelo es tu [perro]!', 'Canelo is your dog!'));
+    yield tsay('mama', TT('¡{dog} es tu [perro]!', '{dog} is your dog!'));
     if (G.animals) G.animals.meet('perro');
     yield* P.play('pet');
-    yield tsay('mama', TT('¡Para ti!', 'For you! (Canelo\'s word cards)'));
+    yield tsay('mama', TT('¡Para ti!', 'For you! ({dog}\'s word cards)'));
     if (!S.hasPage('mascota')) yield* G.findPage('mascota');
     yield* P.teach('sientate', 'mama');
   };
@@ -516,7 +516,7 @@
       // his name and hearts, top left
       G.win(ctx, 4, 4, 104, 28);
       G.drawIcon16(ctx, 'perro', 9, 10);
-      G.text(ctx, 'Canelo', 28, 9, '#f8e060');
+      G.text(ctx, G.dogName(), 28, 9, '#f8e060');
       if (G.hearts) G.hearts.row(ctx, 'canelo', 28, 19);
       G.closeBtn(ctx, ...this.closeXY());
       if (this.mic && slide === 0 && (!this.won || this.won.v.spoken)) this.mic.draw(ctx);

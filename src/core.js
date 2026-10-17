@@ -184,6 +184,7 @@ function step() {
   if (G.fx.step) G.fx.step(); // the particle layer (fx.js): sees this frame's tap before a scene can eat it
   if (G.intro && G.intro.step) G.intro.step(); // a word just met: its new card (intro.js)
   if (G.cards && G.cards.step) G.cards.step(); // word cards popping up and growing, flying into the deck (cards.js)
+  if (G.album && G.album.step) G.album.step(); // "¡Nuevo animal!" (album.js)
   if (G.demo && G.demo.pre) G.demo.pre(); // a tap stops a ghost-hand demo (demo.js: seen here, before a scene can eat it)
   if (s) s.update();
   // fade
@@ -214,6 +215,7 @@ function draw() {
   if (G.hint) G.hint.draw(ctx); // the tapping hand, the keyboard strip
   if (G.intro && G.intro.draw) G.intro.draw(ctx); // (intro.js: nothing of its own now, its new cards are cards.js's)
   if (G.cards && G.cards.draw) G.cards.draw(ctx); // word cards growing and flying into the deck (cards.js)
+  if (G.album && G.album.draw) G.album.draw(ctx); // "¡Nuevo animal!" popping in, then into the album (album.js)
   if (G.demo && G.demo.draw) G.demo.draw(ctx); // the ghost hand showing a first-time action (demo.js)
   if (G.fx.draw) G.fx.draw(ctx); // ripples, bursts, confetti, flying stars (unshaken)
   if (G.fade.a > 0) { ctx.globalAlpha = G.fade.a; ctx.fillStyle = G.fade.color; ctx.fillRect(0, 0, G.W, G.H); ctx.globalAlpha = 1; }

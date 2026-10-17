@@ -16,12 +16,14 @@
   };
 
   // ---------- Player name & gendered Spanish ----------
-  // {name} becomes the player's name; {boy form/girl form} picks by the chosen character:
-  // '¡Bienvenid{o/a}!' -> '¡Bienvenido!' or '¡Bienvenida!'
+  // {name} becomes the player's name, {dog} the dog's (the child names him in the opener: G.dogName(), default
+  // "Canelo"); {boy form/girl form} picks by the chosen character: '¡Bienvenid{o/a}!' -> '¡Bienvenido!' or '¡Bienvenida!'
+  G.DOG_NAME = 'Canelo';
+  G.dogName = () => (G.state && typeof G.state.dogName === 'string' && G.state.dogName.trim()) || G.DOG_NAME;
   G.fill = function (s) {
     if (s == null || !G.st) return s;
     const girl = G.st.isGirl();
-    return String(s).replace(/\{name\}/g, G.st.playerName()).replace(/\{([^{}\/]*)\/([^{}]*)\}/g, (m, a, b) => girl ? b : a);
+    return String(s).replace(/\{name\}/g, G.st.playerName()).replace(/\{dog\}/g, G.dogName()).replace(/\{([^{}\/]*)\/([^{}]*)\}/g, (m, a, b) => girl ? b : a);
   };
 
   // ---------- Rich text: words grow from pictures ----------

@@ -46,9 +46,24 @@
     caballo: { word: 'caballo', sound: null, cry: '¡Iiijii!' },
     cabra: { word: 'cabra', sound: null, cry: '¡Beee!' },
   };
-  const ORDER = Object.keys(AN.KINDS);
+  let ORDER = Object.keys(AN.KINDS);
   ORDER.forEach((k, i) => { AN.KINDS[k].order = i; });
   AN.list = () => ORDER.slice();
+  // A zone's own animal (docs/WORLD_PLAN.md, "How to build a zone"): its word (content/es/words.js, with a picture in
+  // src/icons.js), its pixel frames (rows of letters facing right, the same size each: 'stand' and 'walk'; more for its
+  // own behaviour), a palette, its cry text and sound. It then lives on a map with animals: [{ kind, area, n, when, chance }]
+  // and walks about like the hens (a case in tick() / frameOf() gives it its own behaviour), joins hide-and-seek
+  // (G.seek.KINDS, G.seek.PEEK) and the album (its zone's animals list).
+  //   G.animals.addKind('cangrejo', { word: 'cangrejo', sound: null, cry: '¡Clic, clic!', speed: 0.3,
+  //     spr: { pal: { r: '#e04030', e: '#101010' }, stand: ['..r.r..', ...], walk: [...] },
+  //     sfx: () => {...} /* or omit: a soft chirp */ });
+  AN.addKind = function (id, o) {
+    AN.KINDS[id] = { word: o.word || id, sound: o.sound || null, cry: o.cry || null, speed: o.speed, order: ORDER.length };
+    if (o.spr) SPR[id] = o.spr;
+    CRY[id] = o.sfx || (() => tone('triangle', 900, 1200, 0.08, 0.06, 0));
+    if (!ORDER.includes(id)) ORDER = ORDER.concat([id]);
+    return AN.KINDS[id];
+  };
   // meeting an animal's word in the story (a chapter's puzzle) meets the animal too: its album card fills in
   if (G.words && G.words.meet) { const wm = G.words.meet; G.words.meet = function (id, ...a) { const r = wm.call(this, id, ...a); if (r && AN.KINDS[id] && G.state && !AN.met(id)) AN.meet(id); return r; }; }
   const album = () => (G.state.album || (G.state.album = {}));
@@ -56,7 +71,7 @@
   AN.meet = function (id) {
     if (!AN.KINDS[id] || !G.state) return false;
     const a = album(), first = !a[id];
-    if (first) a[id] = { first: Date.now(), map: G.field ? G.field.mapId : null, n: 0, said: false };
+    if (first) { a[id] = { first: Date.now(), map: G.field ? G.field.mapId : null, n: 0, said: false }; if (G.album && G.album.discover) G.album.discover(id); } // ("¡Nuevo animal!", album.js)
     a[id].n++;
     G.st.autosave();
     return first;
@@ -165,6 +180,9 @@
   function setup(f) {
     const z = f.zoo = { f: G.frame, list: [], fx: [] };
     for (const c of f.def.animals || []) {
+      // rare ones (docs/WORLD_PLAN.md): only at a time of day (when: 'manana' | 'noche' | 'dia' | fn), only some visits (chance)
+      if (c.when && !(G.zones && G.zones.timeOk(c.when))) continue;
+      if (c.chance != null && Math.random() > c.chance) continue;
       const r = area(f, c.area || c.at); if (!r) continue;
       if (c.kind === 'pato') {
         const water = tilesIn(f, r, ch => ch === 'w'); if (!water.length) continue;
@@ -302,6 +320,11 @@
         }
         break;
       }
+      default: { // a zone's own animal (AN.addKind): walk about and stand, like the hens
+        if (a.st === 'walk') { if (goToward(a, (AN.KINDS[a.kind] || {}).speed || 0.4)) { a.st = 'idle'; a.t = 30 + ri(90); } break; }
+        if (--a.t <= 0) { if (Math.random() < 0.6) { [a.tx, a.ty] = pickGround(a); a.st = 'walk'; } else { a.flip = !a.flip; a.t = 40 + ri(60); } }
+        break;
+      }
       case 'pez': {
         if (a.st === 'jump') {
           const s = ++a.h / 40; a.z = Math.sin(Math.min(1, s) * Math.PI) * 18; a.x = a.cx + (s - 0.5) * 8 * (a.flip ? -1 : 1);
@@ -371,6 +394,7 @@
       case 'cabra': fr = R ? 'hop' : a.st === 'graze' ? 'graze' : 'stand'; break;
       case 'rana': fr = a.st === 'hop' ? 'hop' : a.st === 'croak' && (a.t >> 3) & 1 ? 'croak' : 'sit'; break;
       case 'pez': fr = a.st === 'jump' ? 'jump' : 'swim'; break;
+      default: fr = a.st === 'walk' && S.walk && (a.age >> 3) & 1 ? 'walk' : S.stand ? 'stand' : Object.keys(S).find(k => k !== 'pal');
     }
     const tint = a.tint && TINT[a.kind], pal = tint ? Object.assign({}, S.pal, tint) : S.pal;
     return pix((a.baby ? 'patito' : a.kind) + fr + (tint ? 'w' : ''), S[fr], pal, a.flip);

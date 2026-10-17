@@ -208,7 +208,7 @@
   // ---------- 3 hearts: a secret and a sticker; 5 hearts: a photo together ----------
   const PAGE_PLACE = { saludos: 'fuente', numeros: 'fuente', comida: 'casa', colores: 'parque', pueblo: 'biblioteca', animales: 'parque', granja: 'granja', sonidos: 'granja', cosas: 'banco', sentir: 'escuela', mascota: 'casa' };
   const T_ = (t, en) => ({ t, en });
-  const say = (npc, ...pages) => G.say(pages, { portrait: G.portraitOf(npc), name: G.nameOf(npc) || (npc === 'canelo' ? 'Canelo' : null), who: npc });
+  const say = (npc, ...pages) => G.say(pages, { portrait: G.portraitOf(npc), name: G.nameOf(npc) || (npc === 'canelo' ? '{dog}' : null), who: npc });
   function* secret(npc) {
     if (npc === 'canelo') { yield say(npc, T_('¡Guau, guau!', 'Woof, woof! (he wags his tail)')); return; }
     const pg = G.data.pageOrder.find(p => G.pages.ready(p) && PAGE_PLACE[p] && p !== 'saludos'); // a page puzzle waiting (intro.js)
@@ -226,7 +226,7 @@
     }
     if (h >= 5 && !fr.m5) {
       fr.m5 = 1; G.st.autosave();
-      yield say(npc, T_(npc === 'canelo' ? '¡Guau! ¡Guau, guau!' : '¡{name}! ¡Mi amig{o/a}!', npc === 'canelo' ? 'Woof! (Canelo is your best friend)' : '{name}! My friend! (best friends)'));
+      yield say(npc, T_(npc === 'canelo' ? '¡Guau! ¡Guau, guau!' : '¡{name}! ¡Mi amig{o/a}!', npc === 'canelo' ? 'Woof! ({dog} is your best friend)' : '{name}! My friend! (best friends)'));
       yield H.card(npc, 'photo');
     }
   };
@@ -268,7 +268,7 @@
         G.textC(ctx, G.fill('¡Mejores amigos!'), cx, cy + 34, '#a05020', null);
       }
       ctx.restore();
-      const nm = G.nameOf(this.npc) || 'Canelo';
+      const nm = G.nameOf(this.npc) || G.dogName();
       if (u >= 1) { G.bigText(ctx, nm, cx, cy + 62, 2, '#f8e060'); H.row(ctx, this.npc, cx - H.rowW(2) / 2, cy + 84, 2); }
       if (this.t > 30 && (this.t >> 4) % 2 === 0) G.text(ctx, '\u0001', G.W - 22, G.H - 16, '#f8e060');
     }

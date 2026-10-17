@@ -107,6 +107,14 @@
   // off a doorstep, back the way you came (a door that isn't for now always says why first: Mamá, a chapter's moment)
   function stepBack(f, dir) { const p = f.player, [dx, dy] = G.DIRS[dir]; p.x += dx; p.y += dy; p.ox = p.oy = 0; p.dir = dir; f.route = null; }
 
+  // for the zones' content files (content/es/zone-*.js): the same talk, greeting and Canelo on any map
+  G.mapKit = {
+    talker, hello, say, stepBack, met,
+    // Canelo on a map: he follows you there once he's yours (ambient.js puts a follower beside you as you arrive)
+    canelo: (x, y) => ({ id: 'canelo', npc: 'canelo', x, y, dir: 'down', wander: 2, follow: () => !!F().canelo,
+      cond: () => !!(G.pet && G.pet.mine()) && !(G.errands && G.errands.lost()),
+      alert: () => CA('canelo'), talk: function* (f, n) { yield* caneloTalk(f, n); } }),
+  };
   // Canelo: a chapter's beat with him first; once he's yours, the pet menu (pet.js)
   function* caneloTalk(f, n) {
     if (yield* CT('canelo', f)) return;
@@ -143,7 +151,7 @@
     exits: [Object.assign(exitAt('casa', 'casaDoor'), {
       run: function* (f) {
         if (G.chapters && !(yield* G.chapters.door(f))) { stepBack(f, 'up'); return false; } // a chapter's moment at the door (chapters.js)
-        if (F().intro || !G.chapters || G.chapters.done('c1')) return true;
+        if ((F().intro && !(F().dogSkip && G.chapters && G.chapters.active('c1'))) || !G.chapters || G.chapters.done('c1')) return true; // (the puppy's game going on: Mamá says wait)
         // chapter 1 isn't over: Mamá says why (the puppy is still hiding: she points at his hiding place)
         stepBack(f, 'up');
         const want = G.intro.seeking('mama'), at = want && G.state.finds[want] && G.state.finds[want].at.split(',').map(Number);
@@ -163,7 +171,7 @@
           if (yield* CT('mama', f)) return;
           if (yield* ET('mama', f)) return; // a present, a favour (errands.js, favores.js)
           if (S.done('fiestab') || S.done('c21')) yield* say('mama', T('¡{name}! ¡Muy bien!', '{name}! Well done!'));
-          else if (G.pet && G.pet.mine()) yield* say('mama', T('¡Canelo y {name}! ¡A jugar!', 'Canelo and {name}! Off you go and play!'));
+          else if (G.pet && G.pet.mine()) yield* say('mama', T('¡{dog} y {name}! ¡A jugar!', '{dog} and {name}! Off you go and play!'));
           else yield* say('mama', T('¡{name}!', '{name}!'));
         } },
       // Canelo lives here too once he's yours: he follows you in, and sleeps on his cushion at night (pet.js)

@@ -51,6 +51,12 @@
     ['mama', 'feel', FEEL], ['lucia', 'feel', FEEL],
     ['pepe', 'thing', THINGS.pepe], ['marta', 'thing', THINGS.marta], ['rosa', 'thing', THINGS.rosa], ['mama', 'thing', THINGS.mama],
   ];
+  // Data-driven per map (the open world, docs/WORLD_PLAN.md): a zone file adds its own offers and places, e.g.
+  //   G.favores.OFFERS.push(['lola', 'find', ['cangrejo', 'estrella_mar'], () => G.zones.visited('playa')]);
+  //   G.favores.PLACES.faro = { at: [12, 3], on: 'playa' };  (a tile on that map: walk up to it) or { map: 'playa_cueva' }
+  //   G.favores.ANIMALS.push('cangrejo'); G.favores.THINGS.lola = ['concha', 'sol']; G.favores.COUNT_OF.lola = 'concha';
+  // An offer's 4th entry is an optional condition (the zone was visited). Words must be known (stage 2+) to be asked.
+  Object.assign(FV, { OFFERS, PLACES, ANIMALS, THINGS, COUNT_OF });
   const st = () => { const s = G.state; if (!s.fav || typeof s.fav !== 'object') s.fav = { day: -1, list: [], pal: -1 }; if (!Array.isArray(s.fav.list)) s.fav.list = []; return s.fav; };
   // today's favours: made the first time they're asked for on a new day
   FV.today = function () {
@@ -60,8 +66,8 @@
       s.day = d; s.list = [];
       const used = new Set(), whoUsed = new Set();
       const offers = OFFERS.slice().sort(() => G.rand() - 0.5);
-      for (const [who, kind, pool] of offers) {
-        if (s.list.length >= 3 || whoUsed.has(who)) continue;
+      for (const [who, kind, pool, cond] of offers) {
+        if (s.list.length >= 3 || whoUsed.has(who) || (cond && !cond())) continue;
         const ok = id => known(id) && !used.has(id);
         const word = G.review.next({ minStage: 2, filter: id => pool.includes(id) && ok(id) }) || null;
         if (!word) continue;
@@ -166,13 +172,13 @@
     if (!G.state || !f || f.locked || G.top() !== f || f.player.moving) return;
     const v = onNow(); if (!v || v.kind !== 'go') return;
     const p = PLACES[v.word], pl = f.player;
-    const here = (p.map && f.mapId === p.map) || (!!p.at && f.mapId === 'villa' && Math.abs(pl.x - p.at[0]) + Math.abs(pl.y - p.at[1]) <= 2); // (the farm: its front, or inside the barn)
+    const here = (p.map && f.mapId === p.map) || (!!p.at && f.mapId === (p.on || 'villa') && Math.abs(pl.x - p.at[0]) + Math.abs(pl.y - p.at[1]) <= 2); // (the farm: its front, or inside the barn)
     if (!here) return;
     G.chapters.scene(f, arrived(f, v));
   };
   FV.targets = function (f) {
     const v = onNow(); if (!v || !f) return [];
-    if (v.kind === 'go') { const p = PLACES[v.word]; if (p.at && f.mapId === 'villa') return [{ x: p.at[0] * T + 12, y: p.at[1] * T + 12, spot: 'fav:' + v.word }]; return []; }
+    if (v.kind === 'go') { const p = PLACES[v.word]; if (p.at && f.mapId === (p.on || 'villa')) return [{ x: p.at[0] * T + 12, y: p.at[1] * T + 12, spot: 'fav:' + v.word }]; return []; }
     if (v.kind === 'find' && G.animals) { const a = G.animals.find(v.word, f); if (a) return [{ x: Math.round(a.x), y: Math.round(a.y - 6), animal: v.word }]; }
     return [];
   };

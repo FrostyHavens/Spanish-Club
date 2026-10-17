@@ -39,6 +39,10 @@
       else if (r.result === 'book') yield G.notebook();
       else if (r.result === 'quest') yield G.questLog();
       else if (r.result === 'album') yield G.album();
+      else if (r.result === 'map') { // the world map (zones.js): a place you've been to and the bus comes to take you there
+        const m = yield G.worldMap({ travel: true });
+        if (m.result && G.zones) { yield* G.zones.travel(field, m.result); return; }
+      }
       else return;
     }
   };
@@ -51,10 +55,10 @@
     constructor(w) { this.transparent = true; this.w = w; this.t = 0; this.sel = 'cards'; this.gear = new G.Hold(120); }
     // tap areas (shared with draw): the picture tiles, the 'gear' (and its padded hold area), close
     box() { return { x: 22, y: 46, w: 276, h: 132 }; }
-    tiles() { return ['cards'].concat(G.cards && !G.cards.bookOpen() ? [] : ['book'], ['album']); }
+    tiles() { return ['cards'].concat(G.cards && !G.cards.bookOpen() ? [] : ['book'], ['album'], G.zones ? ['map'] : []); }
     kids() { return this.tiles().concat(['gear']); }
     rect(k) {
-      const b = this.box(), T = this.tiles(), n = T.length, tw = n > 2 ? 78 : 84, gap = n > 2 ? 10 : 20;
+      const b = this.box(), T = this.tiles(), n = T.length, tw = n > 3 ? 60 : n > 2 ? 78 : 84, gap = n > 3 ? 6 : n > 2 ? 10 : 20;
       if (k === 'gear') return { x: b.x + b.w - 32, y: b.y + b.h - 28, w: 24, h: 20 };
       return { x: Math.round(b.x + b.w / 2 - (n * tw + (n - 1) * gap) / 2 + T.indexOf(k) * (tw + gap)), y: b.y + 18, w: tw, h: 84 };
     }
@@ -92,12 +96,16 @@
             ctx.save(); ctx.translate(cx, cy); ctx.rotate(a); G.cards.drawCard(ctx, id, -C_W * 0.33, -C_H * 0.33, { s: 0.66 }); ctx.restore();
           });
           G.textC(ctx, String(G.cards.count()), r.x + r.w / 2, r.y + 72 - bob, '#a8d8ff');
-        } else if (k === 'book' && G.cards) G.cards.drawBook(ctx, r.x + r.w / 2, r.y + 40 - bob, 0.85, sel ? this.t : null); // the notebook, open
-        else {
-          const big = G.cached('kidbtn_' + k + (sel ? 1 : 0), 24, 20, c => G.drawIcon(c, k, 0, 0, sel));
-          ctx.drawImage(big, r.x + (r.w - 60) / 2, r.y + 14 - bob, 60, 50);
+        } else if (k === 'book' && G.cards) G.cards.drawBook(ctx, r.x + r.w / 2, r.y + 40 - bob, r.w < 70 ? 0.68 : 0.85, sel ? this.t : null); // the notebook, open
+        else if (k === 'map') { // the world map: a folded map, and how many places you've been to
+          G.drawIcon16(ctx, 'mapa', r.x + r.w / 2 - 24, r.y + 14 - bob, 3);
+          if (G.zones) G.textC(ctx, G.zones.visitedIds().length + '/' + G.zones.ids().length, r.x + r.w / 2, r.y + 70 - bob, '#a8d8ff');
         }
-        if (k === 'album' && G.state && G.animals) { const n = G.animals.list().filter(G.animals.met).length; G.textC(ctx, n + '/' + G.animals.list().length, r.x + r.w / 2, r.y + 70 - bob, '#a8d8ff'); }
+        else {
+          const big = G.cached('kidbtn_' + k + (sel ? 1 : 0), 24, 20, c => G.drawIcon(c, k, 0, 0, sel)), bw = Math.min(60, r.w - 6);
+          ctx.drawImage(big, r.x + (r.w - bw) / 2, r.y + 14 - bob, bw, Math.round(bw * 50 / 60));
+        }
+        if (k === 'album' && G.state && G.animals) { const n = G.animals.list().filter(G.animals.met).length; G.textC(ctx, String(n), r.x + r.w / 2, r.y + 70 - bob, '#a8d8ff'); }
         if (sel && (this.t >> 3) % 4 !== 3) G.textC(ctx, '\u0001', r.x + r.w / 2, r.y - 9 - bob, '#f8e060');
       });
       const g = this.rect('gear');
@@ -163,9 +171,9 @@
         ctx.fillStyle = k === this.pi ? '#a05020' : '#c8a070'; ctx.fillRect(x, 11, dw, 6); ctx.fillStyle = '#7a4a20'; ctx.fillRect(x, 17, dw, 1);
       });
       const ws = this.words(), got = ws.filter(id => S().seen(id)).length, tp = D().topics[D().pages[pid].topic];
-      G.textC(ctx, tp.name, G.W / 2, 25, '#a05020', null);
+      G.textC(ctx, G.fill(tp.name), G.W / 2, 25, '#a05020', null);
       G.textR(ctx, got + '/' + ws.length, G.W - 40, 25, '#a08060', null);
-      if (G.enVisible()) G.text(ctx, tp.en, 22, 25, '#a09070', null);
+      if (G.enVisible()) G.text(ctx, G.fill(tp.en), 22, 25, '#a09070', null);
       const dx = this.flip * 3;
       ws.forEach((id, k) => {
         const R = this.cellRect(k), cx = R.x + dx + (R.w - 90) / 2, cy = R.y + 2, sel = k === this.wi, st = S().stage(id);
@@ -231,7 +239,7 @@
         });
         else { ctx.globalAlpha = r.st === 'new' || r.st === 'wait' ? 0.7 : 1; G.drawGoal(ctx, q.goal, 70, y + 3); ctx.globalAlpha = 1; }
         if (r.st === 'done') G.drawIcon16(ctx, 'si', G.W - 36, y + 3);
-        if (G.enVisible()) G.textR(ctx, q.en.length > 34 ? q.en.slice(0, 33) + '..' : q.en, G.W - 18, y + 14, '#f8e8b0');
+        if (G.enVisible()) { const en = G.fill(q.en); G.textR(ctx, en.length > 34 ? en.slice(0, 33) + '..' : en, G.W - 18, y + 14, '#f8e8b0'); }
       });
       // the bag
       const bag = E ? E.bag.list() : [], yb = 138;

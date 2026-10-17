@@ -25,11 +25,9 @@
 //
 // Opening (gate(id) -> null when it may start, else why not):
 //   'prev'      the chapter before isn't done          'unwritten'  no script yet
-//   'budget'    its new words don't fit today: at most 6 new words a day (G.words.day) and 8 a calendar date
-//   'soon'      more than 5 new words would fall inside 5 minutes of play: it opens a few minutes later (no bubble
-//               meanwhile; the evening chapter has the sunset for that)
-//   'busy'      10 or more words are still only met (stage 1, never picked without a cue): a review day (the
-//               reviewer, Luna or Mamá, has a notebook bubble and asks 5 of them: .needsReview(), .review(who))
+//   (there is no word budget any more (2026-10-17, the open world: docs/WORLD_PLAN.md): 'budget', 'soon' and 'busy'
+//    are gone; a review day is only an offer now: with 10+ words only met, Luna or Mamá has a notebook bubble and
+//    asks 5 of them (.needsReview(), .review(who)), but nothing waits for it)
 //   'morning'   a morning chapter opens only as the first chapter of a session (a new day, a night at home)
 //   'evening'   an evening chapter opens only in the evening at home (after C8 the sunset comes ~5 minutes later)
 // A started chapter can always be finished. While the next chapter waits, its giver shows a night-blue moon bubble
@@ -102,10 +100,8 @@
     if (k > 0 && !CH.done(CH.ids()[k - 1])) return 'prev';
     if (c.when === 'evening' && !o.evening) return 'evening';
     if (c.when === 'morning' && st().lastDoneSess === G.words.sess()) return 'morning';
-    const n = CH.newWords(id).length;
-    if (n && (CH.newToday() + n > CH.LIMITS.day || CH.newOnDate() + n > CH.LIMITS.date)) return 'budget';
-    if (n && CH.stage1() >= CH.LIMITS.busy) return 'busy';
-    if (n && c.when !== 'evening' && CH.newRecent(CH.LIMITS.win) + n > CH.LIMITS.inWin) return 'soon';
+    // (no new-word budget any more, 2026-10-17: the world is open and play is never blocked by a daily word count;
+    // the teaching rules live inside the activities: one unknown at a time, used again soon after; docs/WORLD_PLAN.md)
     return null;
   };
   CH.ready = (id, o) => !CH.gate(id, o);
@@ -157,6 +153,8 @@
     return { id: nx, k: 0, b: scripts[nx].beats[0], started: false };
   }
   CH.live = live;
+  // a beat's auto may be a function of the chapter (c1: by itself after "play", or Mamá's bubble after "explore")
+  CH.autoOf = L => { const a = L && L.b && L.b.auto; if (typeof a !== 'function') return a; try { return a(CH.ctx(L.id)); } catch (e) { console.error(e); return null; } };
   const when = (L) => { try { return !L.b.when || !!L.b.when(CH.ctx(L.id)); } catch (e) { console.error(e); return false; } };
 
   // ---------- who says what (maps.js) ----------
@@ -246,7 +244,7 @@
     const say = (show, ...p) => G.say(p, { portrait: G.portraitOf(who), name: G.nameOf(who), who, show });
     if (n && G.pet && G.pet.puff) for (let k = 0; k < 3; k++) G.pet.puff('txt', n.x * T + 14 + k * 5, n.y * T - 4 - k * 7, { s: 'z', life: 60 + k * 20, vy: -0.3 });
     if (why === 'evening') { yield say({ icon: 'noche' }, TT('¡Esta noche!', 'Tonight! (when the sun goes down, come home)')); yield say({ icon: 'casa' }, TT('¡En [casa]!', 'At home!')); }
-    else if (why === 'busy') yield say({ icon: 'dormir' }, TT('¡Mañana! Hoy... ¡a jugar con Canelo!', 'Tomorrow! Today, play with Canelo and say hello to everyone.'));
+    else if (why === 'busy') yield say({ icon: 'dormir' }, TT('¡Mañana! Hoy... ¡a jugar con {dog}!', 'Tomorrow! Today, play with {dog} and say hello to everyone.'));
     else { G.audio.sfx('huh'); yield say({ icon: 'dormir' }, TT('¡Mañana!', 'Tomorrow! (a new chapter opens after the night)')); yield say({ icon: 'manana' }, TT('¡Aaah... mañana!', 'Yaaawn... tomorrow! (play now: follow the arrow)')); }
   }
 
@@ -311,8 +309,10 @@
     // an evening chapter waiting: the sunset comes soon
     if (!L && !CH.current()) { const nx = CH.next(); if (nx && CH.def(nx).when === 'evening' && !CH.gate(nx, { evening: true }) && G.day && G.day.bring && !G.day.brought()) G.day.bring(180); }
     if (f.locked || G.top() !== f || G.fade.a > 0 || f.player.moving || running) return;
-    if (L && L.b.auto && (L.b.auto === true || L.b.auto === f.mapId) && when(L)) { scene(f, play(L.id, f, L.k)); return; }
-    if (!L || L.b.auto) placeAsk(f);
+    if (!CH.openerDone || !CH.openerDone()) { if (f.mapId === 'casa' && CH.opener && G.state.name) scene(f, CH.opener(f)); return; } // (a new game: the opener first)
+    const au = L && CH.autoOf(L);
+    if (au && (au === true || au === f.mapId) && when(L)) { scene(f, play(L.id, f, L.k)); return; }
+    if (!L || au) placeAsk(f);
   };
   function restage(f) {
     f = f || G.field; if (!f || !G.state) return;
@@ -366,7 +366,7 @@
     const L = live(); if (!L || !when(L)) return false;
     const b = L.b, def = G.maps[m];
     if (spotsOf(b).some(sp => sp.map === m)) return true;
-    if (b.auto === m || b.door === m) return true;
+    if (CH.autoOf(L) === m || b.door === m) return true;
     if (b.who && def && (def.npcs || []).some(n => n.id === b.who && (!n.cond || n.cond()))) return true;
     return false;
   };
@@ -449,7 +449,7 @@
   // =====================================================================
   const K = CH.K = {};
   K.T = TT;
-  K.say = function* (who, ...pages) { yield G.say(pages, who ? { portrait: G.portraitOf(who), name: G.nameOf(who) || (who === 'canelo' ? 'Canelo' : null), who } : {}); };
+  K.say = function* (who, ...pages) { yield G.say(pages, who ? { portrait: G.portraitOf(who), name: G.nameOf(who) || (who === 'canelo' ? '{dog}' : null), who } : {}); };
   K.sayShow = function* (who, show, ...pages) { yield G.say(pages, Object.assign(who ? { portrait: G.portraitOf(who), name: G.nameOf(who), who } : {}, { show })); };
   K.tell = function* (...pages) { yield G.say(pages); };
   // a picture-card question: [answer, ...others] shuffled; the answer is what it practises. o: show, en, mask, noMic,

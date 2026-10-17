@@ -179,7 +179,7 @@
     yield* tell(TT('¡Un [huevo]! ¿Para Rosa?', 'An egg! For Grandma Rosa?'));
   }
   function* waterJob() {
-    yield* tell(TT('La [fuente]... ¿Para Canelo?', 'The fountain... for Canelo\'s bowl?'));
+    yield* tell(TT('La [fuente]... ¿Para {dog}?', 'The fountain... for {dog}\'s bowl?'));
     yield* q(null, '¿Qué es?', 'What is it?', 'agua', ['agua', 'leche', 'pan']);
     B.add('agua');
   }

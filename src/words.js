@@ -225,5 +225,8 @@
   B.session = () => metList().filter(r => r.ms === wm().sess).length;
   B.pending = () => metList().filter(r => r.fu > 0).length;
   B.left = (o = {}) => Math.max(0, Math.min(B.LIMITS.per5 - B.recent(), (o.hard ? B.LIMITS.hard : B.LIMITS.session) - B.session()));
-  B.canIntro = (n = 1, o = {}) => B.left(o) >= n;
+  // No daily word limit any more (2026-10-17, the open world): canIntro is always true; the counts above stay for the
+  // audit and grown-ups. Good teaching stays inside each activity (one unknown at a time, used again soon after).
+  B.OPEN = true;
+  B.canIntro = (n = 1, o = {}) => B.OPEN || B.left(o) >= n;
 })();

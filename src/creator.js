@@ -143,12 +143,20 @@
     ['Ó', 'Ú', '-', '\'', 'SP', 'DEL', 'OK'],
   ];
   const MAX = 10;
+  // o.dog: naming the puppy (the opener, content/es/story-c01-c10.js): his picture, "¿Cómo se llama?", his name already
+  // typed in (G.DOG_NAME: one tap on ✓ keeps it), a dice for another dog's name, no way back (he needs a name)
+  const DOG_NAMES = ['Canelo', 'Chispa', 'Coco', 'Toby', 'Pelusa', 'Bombón', 'Manchas', 'Rocky', 'Nube', 'Chocolate', 'Pipo', 'Lucky', 'Galleta', 'Max', 'Kira', 'Tango'];
   class NameEntry {
-    constructor(look, name, w) {
+    constructor(look, name, w, o) {
       this.transparent = true; this.look = look; this.w = w; this.t = 0; this.r = 0; this.c = 0; this.grid = GRID;
+      this.o = o || {}; this.dog = !!this.o.dog;
       this.name = name || '';
+      if (this.dog) { this.r = 3; this.c = GRID[3].length - 1; } // (on ✓: his name is already there)
       G.textInput = key => this.key(key);
     }
+    onEnter() { if (this.dog && G.speak) G.speak('¿Cómo se llama?'); }
+    diceXY() { return [(G.W + 268) / 2 - 30, 14 + 38]; }
+    randomName() { const L = DOG_NAMES.filter(n => n !== this.name); this.name = L[G.r(L.length)]; G.audio.sfx('select'); if (G.speak) G.speak(this.name); }
     done(v) { G.textInput = null; G.pop(); this.w.resolve(v); }
     add(ch) {
       if (this.name.length >= MAX) { G.audio.sfx('error'); return; }
@@ -158,7 +166,7 @@
       G.audio.sfx('cursor');
     }
     back() { if (this.name) { this.name = this.name.slice(0, -1); G.audio.sfx('cancel'); } }
-    ok() { const n = this.name.trim(); G.audio.sfx('ok'); this.done(n || G.data.player.name); }
+    ok() { const n = this.name.trim(); G.audio.sfx('ok'); this.done(n || (this.dog ? G.DOG_NAME : G.data.player.name)); }
     key(k) { // physical keyboard
       if (k === 'Enter') this.ok();
       else if (k === 'Backspace') this.back();
@@ -180,7 +188,8 @@
     update() {
       this.t++;
       if (G.input.tap() && this.t > 5) { // tap a letter; the close button returns to the creator
-        if (G.btnHit(...this.backXY())) { G.audio.sfx('cancel'); this.done(null); return; }
+        if (!this.dog && G.btnHit(...this.backXY())) { G.audio.sfx('cancel'); this.done(null); return; }
+        if (this.dog && G.btnHit(...this.diceXY())) { this.randomName(); return; }
         GRID.forEach((row, r) => row.forEach((cell, c) => { const o = this.cellRect(r, c); if (G.tapIn(o.x - 2, o.y - 2, o.w + 4, o.h + 4)) { this.r = r; this.c = c; this.press(cell); } }));
         if (this.w.done()) return;
       }
@@ -188,22 +197,33 @@
       if (d === 'up' || d === 'down') { this.r = (this.r + (d === 'up' ? -1 : 1) + GRID.length) % GRID.length; this.c = Math.min(this.c, GRID[this.r].length - 1); G.audio.sfx('cursor'); }
       if (d === 'left' || d === 'right') { const n = GRID[this.r].length; this.c = (this.c + (d === 'left' ? -1 : 1) + n) % n; G.audio.sfx('cursor'); }
       if (G.input.p('A') && this.t > 5) this.press(GRID[this.r][this.c]);
-      if (G.input.p('B')) { if (this.name) this.back(); else { G.audio.sfx('cancel'); this.done(null); } }
+      if (G.input.p('B')) { if (this.name) this.back(); else if (!this.dog) { G.audio.sfx('cancel'); this.done(null); } }
     }
     draw(ctx) {
       const W = 268, H = 196, x = (G.W - W) / 2, y = 14;
       G.win(ctx, x, y, W, H);
-      const spec = G.data.playerSpec(this.look);
       G.win(ctx, x + 10, y + 8, 60, 60, { alpha: 1 });
-      G.drawPortrait(ctx, spec.portrait, x + 14, y + 12, this.t);
-      G.text(ctx, '¿Cómo te llamas?', x + 82, y + 14, '#f8e060');
-      if (G.enVisible()) G.text(ctx, 'What\'s your name?', x + 82, y + 26, '#f8e8b0');
+      if (this.dog) { // the puppy, wagging (a little hop now and then), and a heart
+        const img = G.unitSprite(G.data.npcs.canelo.map, 'down', (this.t >> 3) & 1), hop = (this.t % 90) < 10 ? -Math.round(Math.sin((this.t % 90) / 10 * Math.PI) * 4) : 0;
+        ctx.fillStyle = '#4a7a40'; ctx.fillRect(x + 13, y + 11, 54, 54);
+        ctx.imageSmoothingEnabled = false; ctx.drawImage(img, x + 16, y + 10 + hop, 48, 48);
+        if (G.hearts && G.hearts.heart) G.hearts.heart(ctx, x + 52, y + 12 - ((this.t >> 4) % 3), true, 1);
+        G.text(ctx, '¿Cómo se llama?', x + 82, y + 14, '#f8e060');
+        if (G.enVisible()) G.text(ctx, 'What\'s his name?', x + 82, y + 26, '#f8e8b0');
+      } else {
+        const spec = G.data.playerSpec(this.look);
+        G.drawPortrait(ctx, spec.portrait, x + 14, y + 12, this.t);
+        G.text(ctx, '¿Cómo te llamas?', x + 82, y + 14, '#f8e060');
+        if (G.enVisible()) G.text(ctx, 'What\'s your name?', x + 82, y + 26, '#f8e8b0');
+      }
       // the name field
-      ctx.fillStyle = '#000830'; ctx.fillRect(x + 82, y + 38, 170, 22);
-      ctx.fillStyle = '#8898e0'; ctx.fillRect(x + 82, y + 59, 170, 1);
+      const fw = this.dog ? 146 : 170;
+      ctx.fillStyle = '#000830'; ctx.fillRect(x + 82, y + 38, fw, 22);
+      ctx.fillStyle = '#8898e0'; ctx.fillRect(x + 82, y + 59, fw, 1);
       G.bigText(ctx, this.name, x + 84 + G.textWidth(this.name), y + 49, 2, '#ffffff');
       if ((this.t >> 4) % 2 === 0 && this.name.length < MAX) { ctx.fillStyle = '#f8e060'; ctx.fillRect(x + 86 + G.textWidth(this.name) * 2, y + 42, 2, 15); }
-      G.closeBtn(ctx, ...this.backXY());
+      if (this.dog) { const [dx, dy] = this.diceXY(); G.win(ctx, dx, dy, 22, 22, { fill1: '#3a56c8', fill2: '#1c2c8c' }); G.drawIcon16(ctx, { icon: 'dado', n: 1 + ((this.t >> 5) % 6) }, dx + 3, dy + 3); }
+      else G.closeBtn(ctx, ...this.backXY());
       // letter grid
       GRID.forEach((row, r) => row.forEach((cell, c) => {
         const o = this.cellRect(r, c), cx = o.x, cy = o.y, cw = o.w, sel = r === this.r && c === this.c;
@@ -211,12 +231,13 @@
         const col = sel ? '#f8e060' : '#ffffff';
         if (cell === 'SP') { ctx.fillStyle = col; ctx.fillRect(cx + 10, cy + 13, 20, 2); ctx.fillRect(cx + 10, cy + 10, 1, 4); ctx.fillRect(cx + 29, cy + 10, 1, 4); }
         else if (cell === 'DEL') { G.textC(ctx, '<', cx + 14, cy + 7, col); ctx.fillStyle = col; ctx.fillRect(cx + 18, cy + 10, 16, 2); }
-        else if (cell === 'OK') G.drawIcon16(ctx, 'si', cx + 18, cy + 3);
+        else if (cell === 'OK') { if (this.dog && (this.t >> 4) % 2) { ctx.fillStyle = '#f8e060'; ctx.fillRect(cx - 1, cy - 1, cw + 2, 1); ctx.fillRect(cx - 1, cy + 22, cw + 2, 1); } G.drawIcon16(ctx, 'si', cx + 18, cy + 3); }
         else G.textC(ctx, cell, cx + 10, cy + 7, col);
       }));
     }
   }
-  G.nameEntry = function (look, name) { const w = new G.Wait(); G.push(new NameEntry(look, name, w)); return w; };
+  G.nameEntry = function (look, name, o) { const w = new G.Wait(); G.push(new NameEntry(look, name, w, o)); return w; };
+  G.nameEntry.DOG_NAMES = DOG_NAMES;
 
   G.creator = function () { const w = new G.Wait(); G.push(new Creator(w)); return w; };
 })();

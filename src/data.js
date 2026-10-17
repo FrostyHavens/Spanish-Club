@@ -95,6 +95,11 @@
     nico: { name: 'Nico',
       portrait: { body: 'halfling', skin: '#e8b890', hair: '#e0c060', hairStyle: 'spiky', eyes: '#306030', outfit: '#40a0e0', trim: '#f0f0f0', age: 'young', face: 'round', bg: '#307090' },
       map: { body: 'halfling', skin: '#e8b890', hair: '#e0c060', hairStyle: 'spiky', outfit: '#40a0e0', trim: '#f0f0f0', eyes: '#306030' } },
+    // Lola, the friend who travels (the open world, docs/WORLD_PLAN.md): an explorer with a hat and a backpack, waiting
+    // at every zone's first map with its picture and its name
+    lola: { name: 'Lola',
+      portrait: { body: 'halfling', skin: '#d8a078', hair: '#7a3a18', hairStyle: 'ponytail', eyes: '#302010', head: 'hat', headColor: '#e8b040', outfit: '#3a9a58', trim: '#f8e8b0', age: 'young', face: 'round', lashes: true, bg: '#3a8a6a' },
+      map: { body: 'halfling', skin: '#d8a078', hair: '#7a3a18', hairStyle: 'ponytail', head: 'hat', headColor: '#e8b040', outfit: '#3a9a58', trim: '#f8e8b0', eyes: '#302010' } },
     canelo: { name: 'Canelo',
       map: { body: 'wolf', outfit: '#b87038', trim: '#f0d8b0', eyes: '#201008' } },
   };

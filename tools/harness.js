@@ -134,6 +134,28 @@ class Game {
           if (this.touch) { await this.tapRect(s.pic); await this.tapRect(await this.ev(() => { const s = G.top(), k = s.pics.findIndex((p, k) => !s.match[k]); return s.wordRect(s.words.indexOf(s.pics[k])); })); }
           else { await this.press('Enter'); const j = await this.ev(() => { const s = G.top(); return s.words.indexOf(s.pics[s.sel.k]); }); for (let n = 0; n < 4 && await this.ev(() => G.top().ki) !== j; n++) await this.press('ArrowRight'); await this.press('Enter'); }
           break;
+        case 'NameEntry': { // naming the puppy in the opener (src/creator.js dog mode): keep the name (g.dogName: type one)
+          if (s.t <= 8) { await this.frames(6); break; }
+          if (first) { await this.frames(4); await this.shot('dog_name'); this.seen.add('NameEntry'); }
+          if (this.dogName != null) { await this.ev(n => { G.top().name = n; }, this.dogName); }
+          if (this.touch) await this.tapRect(await this.ev(() => G.top().cellRect(3, 6))); else await this.press('Enter');
+          break;
+        }
+        case 'PlayOrExplore': { // the opener's choice (src/zones.js): play with the puppy, unless g.explore
+          if (s.t <= 22) { await this.frames(24); break; }
+          if (first) { await this.shot('play_or_explore'); this.seen.add('PlayOrExplore'); }
+          if (this.touch) await this.tapRect(await this.ev(k => G.top().rect(k), this.explore ? 1 : 0));
+          else { if (this.explore) await this.press('ArrowRight'); await this.press('Enter'); }
+          break;
+        }
+        case 'NewPlace': // "¡Nuevo lugar!" (zones.js): it closes by itself, or a tap
+          if (s.t <= 44) { await this.frames(46 - s.t); break; }
+          if (first) { await this.shot('new_place'); this.seen.add('NewPlace'); }
+          if (this.touch) await this.tap(160, 120); else await this.press('z');
+          break;
+        case 'WorldMap':
+          if (this.touch) await this.tapBtn(await this.ev(() => G.top().closeXY())); else await this.press('x');
+          break;
         case 'Notebook': case 'Deck':
           if (first) { await this.frames(4); await this.shot(s.name === 'Deck' ? 'deck' : 'notebook'); this.seen.add(s.name); }
           if (this.touch) await this.tapBtn(s.close); else await this.press('x');

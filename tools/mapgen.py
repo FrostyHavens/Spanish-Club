@@ -132,6 +132,17 @@ t.put(36, 13, 'P'); t.put(43, 7, 'P')
 # named buildings (tap-anything: a tap on a roof or wall names the building), as x, y, w, h
 t.pos['escuelaArea'] = [14, 2, 7, 3]; t.pos['rosaArea'] = [3, 4, 5, 3]; t.pos['panaderiaArea'] = [27, 4, 6, 3]
 t.pos['casaArea'] = [3, 15, 5, 3]; t.pos['bibliotecaArea'] = [26, 15, 7, 3]
+# ----- The open world (docs/WORLD_PLAN.md): five paths out of Villa Sol, each with a signpost (src/zones.js posts) -----
+# west (0, 14): El parque de juegos; north (10, 0): El bosque; east (47, 10): La montaña; south (29, 27): La playa;
+# south-west (5, 27): La casa de los abuelos. Each opening is a path tile on the map's edge (an exit in content/es/zone-villa.js).
+t.hline(0, 4, 14, ',')                      # west, from the path by Rosa's house
+t.vline(10, 0, 9, ',')                      # north, from the plaza road
+t.hline(42, 47, 10, ',')                    # east, past the barn road
+t.vline(29, 22, 27, ',')                    # south, from the library road
+t.vline(5, 22, 27, ',')                     # south-west, from home
+for tag, (x, y) in {'edgeJuegos': (0, 14), 'edgeBosque': (10, 0), 'edgeMontana': (47, 10), 'edgePlaya': (29, 27), 'edgeAbuelos': (5, 27)}.items(): t.mark(tag, x, y)
+for tag, (x, y) in {'postJuegos': (2, 13), 'postBosque': (11, 3), 'postMontana': (45, 9), 'postPlaya': (30, 25), 'postAbuelos': (6, 25)}.items(): t.mark(tag, x, y)
+t.mark('busVilla', 26, 11)                  # the bus stop, by the plaza road (east side)
 out['villa'] = t
 
 # ---------------- Interiors ----------------
@@ -194,6 +205,134 @@ g.put(5, 4, 'A')
 g.put(9, 5, 'H'); g.put(10, 5, 'H')                     # a low wall of bales in the middle (good for hiding behind)                                         # apples for the horse, by the stall
 g.put(6, 8, 'z'); g.mark('door', 6, 8)
 out['granja'] = g
+
+
+# =====================================================================
+#  The open world: the PATH maps from Villa Sol to each zone, and each zone's first map (a placeholder entrance that a
+#  later step replaces with the whole zone: docs/WORLD_PLAN.md). Every path map: a road from edge to edge, a couple of
+#  things to meet on the way (animals, something to pick up, a signpost). Every entrance: the zone's signpost, its bus
+#  stop, a dog's spot, a friend (Lola), Nico's hiding places. Tags: 'in' (where you arrive from the path), 'bus', 'busIn'
+#  (where the bus leaves you), 'post', 'dog', 'lola', 'nico', areas for animals.
+# =====================================================================
+def hpath(w, h, y, fill='.', edge='T'):
+    m = M(w, h, fill); m.rect(0, 0, w, 1, edge); m.rect(0, h - 1, w, 1, edge); m.rect(0, 0, 1, h, edge); m.rect(w - 1, 0, 1, h, edge)
+    m.hline(0, w - 1, y, ','); return m
+def vpath(w, h, x, fill='.', edge='T'):
+    m = M(w, h, fill); m.rect(0, 0, w, 1, edge); m.rect(0, h - 1, w, 1, edge); m.rect(0, 0, 1, h, edge); m.rect(w - 1, 0, 1, h, edge)
+    m.vline(x, 0, h - 1, ','); return m
+
+# --- El camino al parque de juegos (west): a meadow with flowers, a bench, rabbits and sticks to throw ---
+m = hpath(30, 12, 6)
+m.rect(0, 0, 30, 2, 'T'); m.rect(0, 10, 30, 2, 'T')
+for x, y in [(3, 3), (5, 8), (9, 3), (12, 8), (15, 2), (18, 9), (21, 3), (24, 8), (27, 3), (7, 4), (19, 4)]: m.put(x, y, 'o')
+for x, y in [(4, 2), (11, 9), (17, 2), (25, 9)]: m.put(x, y, 'f')
+m.put(14, 5, 'J'); m.put(8, 8, 'P'); m.put(22, 2, 'P')
+m.pos['conejos'] = [10, 2, 8, 3]; m.mark('palo', 13, 8); m.mark('lola', 16, 5)
+m.mark('east', 29, 6); m.mark('west', 0, 6); m.mark('postW', 1, 5); m.mark('postE', 28, 7)
+out['camino_juegos'] = m
+
+# --- El camino al bosque (north): the trees get thicker, a little pond with a frog, mushrooms, a fallen log ---
+m = vpath(14, 26, 6)
+for y in range(1, 25):
+    for x in (1, 12): m.put(x, y, 'T')
+    if y < 12:
+        for x in (2, 11): m.put(x, y, 'T')
+for x, y in [(3, 4), (9, 3), (4, 9), (10, 8), (3, 15), (9, 17), (4, 21), (10, 22), (2, 13), (11, 19)]: m.put(x, y, 'f')
+for x, y in [(4, 6), (8, 11), (3, 18), (10, 14), (8, 23)]: m.put(x, y, 'o')
+m.rect(8, 15, 3, 2, 'w'); m.pos['rana'] = [8, 15, 3, 2]
+m.put(3, 11, 'r'); m.mark('palo', 4, 13); m.mark('lola', 7, 10)
+m.pos['conejos'] = [2, 18, 3, 5]
+m.mark('south', 6, 25); m.mark('north', 6, 0); m.mark('postS', 7, 23); m.mark('postN', 5, 2)
+out['camino_bosque'] = m
+
+# --- El camino a la montaña (east): rolling hills, boulders, the mountains behind, a goat on the slope ---
+m = hpath(30, 12, 6, '.', 'M')
+m.rect(0, 1, 30, 1, 'M'); m.rect(0, 10, 30, 1, 'T')
+for x in range(2, 28, 3): m.put(x, 2, 'h'); m.put(x + 1, 3, 'h')
+for x, y in [(6, 4), (13, 8), (19, 3), (24, 8), (9, 9)]: m.put(x, y, 'r')
+for x, y in [(4, 8), (11, 4), (17, 8), (22, 4), (27, 8)]: m.put(x, y, 'o')
+m.pos['cabras'] = [14, 2, 8, 3]; m.mark('palo', 8, 7); m.mark('lola', 15, 5)
+m.mark('west', 0, 6); m.mark('east', 29, 6); m.mark('postW', 1, 7); m.mark('postE', 28, 5)
+out['camino_montana'] = m
+
+# --- El camino a la playa (south): grass turns to sand, a lagoon with ducks, the smell of the sea ---
+m = vpath(14, 24, 6)
+for y in range(12, 23):
+    for x in range(1, 13):
+        if m.g[y][x] != ',': m.put(x, y, 's')
+for y in range(1, 23): m.put(1, y, 'T'); m.put(12, y, 'T')
+for y in range(16, 23): m.put(1, y, 'f'); m.put(12, y, 'f')
+m.rect(8, 6, 4, 4, 'w'); m.pos['laguna'] = [8, 6, 4, 4]
+for x, y in [(3, 3), (4, 8), (3, 10), (10, 3)]: m.put(x, y, 'o')
+m.put(3, 5, 'P'); m.mark('palo', 4, 15); m.mark('lola', 7, 13)
+m.mark('north', 6, 0); m.mark('south', 6, 23); m.mark('postN', 5, 2); m.mark('postS', 7, 21)
+out['camino_playa'] = m
+
+# --- El camino a la casa de los abuelos (south-west): wheat fields, a fence, hens, an apple tree ---
+m = vpath(14, 24, 6)
+for y in range(1, 23): m.put(1, y, 'T'); m.put(12, y, 'T')
+m.rect(8, 3, 4, 7, 'y'); m.vline(7, 3, 9, 'F'); m.put(7, 6, '.')
+m.rect(2, 14, 3, 6, 'y')
+for x, y in [(3, 4), (4, 10), (9, 13), (10, 18), (3, 21), (9, 21)]: m.put(x, y, 'o')
+m.put(10, 15, 'f'); m.mark('manzana', 10, 16)
+m.pos['gallinas'] = [2, 5, 4, 4]; m.mark('lola', 7, 12)
+m.mark('north', 6, 0); m.mark('south', 6, 23); m.mark('postN', 5, 2); m.mark('postS', 7, 21)
+out['camino_abuelos'] = m
+
+# --- the zones' first maps (placeholders: each a small place with its signpost, bus stop, dog's spot and friends) ---
+def entrance(w, h, fill, edge):
+    m = M(w, h, fill); m.border(edge, 1); return m
+# La playa: sand, the sea along the bottom, shallows, a sandcastle spot (dig), the bus stop by the road
+m = entrance(22, 14, 's', 'T')
+m.rect(1, 10, 20, 3, 'w'); m.rect(1, 9, 20, 1, '~'); m.vline(10, 0, 8, ','); m.hline(4, 16, 4, ',')
+for x, y in [(2, 2), (19, 2), (2, 6), (19, 6)]: m.put(x, y, 'f')
+m.mark('in', 10, 1); m.mark('north', 10, 0); m.mark('post', 11, 2); m.mark('bus', 5, 3); m.mark('busIn', 5, 4)
+m.mark('dog', 15, 7); m.mark('lola', 13, 5); m.mark('nico', 7, 6); m.pos['patos'] = [1, 10, 20, 3]
+m.mark('hide1', 2, 2); m.mark('hide2', 19, 6); m.mark('hide3', 16, 4)
+m.put(16, 4, 'k')
+out['playa'] = m
+# El bosque: tall trees all around, a clearing, a hollow log (sniff), mushrooms, a stream
+m = entrance(22, 14, '.', 'T')
+for x, y in [(2, 2), (3, 2), (2, 3), (18, 2), (19, 2), (19, 3), (2, 10), (3, 11), (18, 11), (19, 10), (6, 3), (15, 3), (5, 10), (16, 10)]: m.put(x, y, 'T')
+for x, y in [(4, 4), (17, 5), (6, 11), (14, 11), (9, 2), (12, 2)]: m.put(x, y, 'f')
+m.vline(10, 7, 13, ','); m.hline(5, 15, 7, ','); m.rect(17, 7, 3, 2, 'w')
+for x, y in [(7, 5), (13, 9), (4, 8), (16, 4)]: m.put(x, y, 'o')
+m.mark('in', 10, 12); m.mark('south', 10, 13); m.mark('post', 11, 11); m.mark('bus', 12, 8); m.mark('busIn', 12, 7)
+m.mark('dog', 6, 6); m.mark('lola', 8, 9); m.mark('nico', 14, 6); m.pos['conejos'] = [7, 3, 8, 3]; m.pos['rana'] = [17, 7, 3, 2]
+m.mark('hide1', 15, 3); m.mark('hide2', 4, 4); m.mark('hide3', 17, 5)
+out['bosque'] = m
+# El parque de juegos: a sandbox (dig), benches, flower beds, a fence (the swings and the slide come later)
+m = entrance(22, 14, '.', 'T')
+m.hline(10, 21, 7, ','); m.vline(10, 3, 11, ','); m.hline(4, 10, 3, ',')
+m.rect(3, 8, 4, 3, 's'); m.rect(13, 2, 6, 1, 'F'); m.rect(13, 2, 1, 4, 'F'); m.rect(18, 2, 1, 4, 'F')
+for x, y in [(2, 2), (8, 11), (16, 11), (19, 9), (5, 5)]: m.put(x, y, 'o')
+m.put(12, 9, 'J'); m.put(7, 3, 'J'); m.put(2, 11, 'P'); m.put(19, 11, 'P')
+m.mark('in', 20, 7); m.mark('east', 21, 7); m.mark('post', 19, 6); m.mark('bus', 12, 5); m.mark('busIn', 11, 5)
+m.mark('dog', 4, 9); m.mark('lola', 14, 8); m.mark('nico', 8, 6); m.pos['conejos'] = [14, 3, 4, 3]
+m.mark('hide1', 2, 11); m.mark('hide2', 19, 11); m.mark('hide3', 12, 9)
+out['juegos'] = m
+# La casa de los abuelos: a garden with a fence, the cottage seen from its back (its door is round the front: a later
+# step adds the front and the inside), an apple tree, a hen run
+m = entrance(22, 14, '.', 'T')
+m.vline(10, 0, 12, ','); m.hline(5, 16, 9, ',')
+m.house(6, 2, 7, 'R', walls='WNWNWNW'); m.put(9, 4, 'N')   # (no door on this side)
+m.rect(14, 2, 6, 1, 'F'); m.rect(14, 2, 1, 5, 'F'); m.rect(19, 2, 1, 5, 'F'); m.rect(14, 6, 6, 1, 'F'); m.put(16, 6, '.')
+for x, y in [(2, 6), (3, 7), (4, 11), (16, 11), (18, 9), (2, 2)]: m.put(x, y, 'o')
+m.put(3, 3, 'f'); m.put(18, 11, 'P')
+m.mark('in', 10, 1); m.mark('north', 10, 0); m.mark('post', 11, 6); m.mark('bus', 12, 10); m.mark('busIn', 12, 9)
+m.mark('dog', 4, 9); m.mark('lola', 8, 8); m.mark('nico', 15, 10); m.mark('manzana', 3, 4); m.pos['gallinas'] = [15, 3, 4, 3]
+m.mark('hide1', 3, 3); m.mark('hide2', 18, 11); m.mark('hide3', 2, 6)
+out['abuelos'] = m
+# La montaña: a meadow under the peaks, snow up top (roll), boulders, a goat
+m = entrance(22, 14, '.', 'M')
+m.rect(1, 1, 20, 2, 'M'); m.rect(1, 3, 20, 2, 'h')
+m.hline(0, 10, 9, ','); m.vline(10, 5, 9, ',')
+for x, y in [(4, 6), (15, 10), (18, 6), (6, 11)]: m.put(x, y, 'r')
+for x, y in [(3, 11), (13, 7), (17, 11), (8, 6)]: m.put(x, y, 'o')
+m.mark('in', 1, 9); m.mark('west', 0, 9); m.mark('post', 2, 8); m.mark('bus', 7, 10); m.mark('busIn', 7, 9)
+m.mark('dog', 12, 4); m.mark('lola', 12, 8); m.mark('nico', 16, 8); m.pos['cabras'] = [12, 5, 7, 3]
+m.mark('hide1', 4, 6); m.mark('hide2', 15, 10); m.mark('hide3', 18, 6)
+out['montana'] = m
 
 import os
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

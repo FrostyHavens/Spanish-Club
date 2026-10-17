@@ -372,7 +372,7 @@
       const k = e.t / e.life; let x = Math.round((e.o ? e.o.x * T + e.o.ox + 12 : e.x) - cx), y = Math.round((e.o ? e.o.y * T + e.o.oy - 8 : e.y) - cy);
       ctx.globalAlpha = k > 0.75 ? (1 - k) * 4 : 1;
       if (e.kind === 'heart') G.text(ctx, '\u0003', x - 2 + (e.dx || 0), y - Math.round(e.t * 0.35), '#f04878', '#401020');
-      else if (e.kind === 'say') { const w = G.textWidth(e.s) + 8, bx = x + (e.dx || 0) - (w >> 1), by = y - 14; G.win(ctx, bx, by, w, 13, { fill1: '#ffffff', fill2: '#e8e8f0', alpha: 1 }); ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 1, by + 12, 3, 2); G.text(ctx, e.s, bx + 4, by + 3, '#603018', null); }
+      else if (e.kind === 'say') { const es = G.fill(e.s), w = G.textWidth(es) + 8, bx = x + (e.dx || 0) - (w >> 1), by = y - 14; G.win(ctx, bx, by, w, 13, { fill1: '#ffffff', fill2: '#e8e8f0', alpha: 1 }); ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 1, by + 12, 3, 2); G.text(ctx, es, bx + 4, by + 3, '#603018', null); }
       else if (e.kind === 'letter') { const ly = y - Math.round(k * 14 + Math.sin(k * Math.PI) * 4); x += Math.round(k * e.dx); ctx.fillStyle = OL; ctx.fillRect(x - 3, ly - 1, 7, 6); ctx.fillStyle = '#f8f4e8'; ctx.fillRect(x - 2, ly, 5, 4); ctx.fillStyle = '#c04040'; ctx.fillRect(x - 1, ly + 1, 1, 1); ctx.fillRect(x + 1, ly + 1, 1, 1); ctx.fillRect(x, ly + 2, 1, 1); }
       ctx.globalAlpha = 1;
     }

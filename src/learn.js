@@ -375,7 +375,7 @@
       const q = D().quests[this.q], W = 200, H = 100, x = (G.W - W) / 2, y = 44;
       G.win(ctx, x, y, W, H, { fill1: '#7a4a10', fill2: '#3a2008' });
       G.drawBadge(ctx, this.q, G.W / 2 - 16, y + 14, this.t, 2);
-      G.bigText(ctx, q.name, G.W / 2, y + 66, 2, '#fff8e0', '#3a1a00');
+      G.bigText(ctx, G.fill(q.name), G.W / 2, y + 66, 2, '#fff8e0', '#3a1a00');
       if (G.enVisible()) G.textC(ctx, q.en, G.W / 2, y + 84, '#f8d8a0');
     }
   }
@@ -429,6 +429,7 @@
 
   G.nameOf = function (who) {
     if (who === 'player') return S().playerName();
+    if (who === 'canelo') return G.dogName(); // (the dog's name: the child chose it, ui.js)
     return D().npcs[who] ? D().npcs[who].name : null;
   };
 })();

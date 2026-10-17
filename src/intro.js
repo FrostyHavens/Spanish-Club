@@ -291,7 +291,7 @@
       ctx.globalAlpha = u;
       const tp = D().topics[D().pages[this.page].topic];
       G.drawIcon16(ctx, 'pagina', 18, 12);
-      G.textC(ctx, tp.name, G.W / 2, 18, '#a05020', null);
+      G.textC(ctx, G.fill(tp.name), G.W / 2, 18, '#a05020', null);
       if (G.enVisible()) G.textC(ctx, 'Match each picture with its word', G.W / 2, 28, '#a09070', null);
       G.closeBtn(ctx, ...this.closeXY());
       const keys = G.hint && G.hint.keyboard && G.hint.keyboard(), keyPic = keys && !(this.sel && this.sel.kind === 'pic'), wob = (m, on) => (m && on ? Math.round(Math.sin(m.t * 1.7) * 3 * (1 - m.t / 18)) : 0);

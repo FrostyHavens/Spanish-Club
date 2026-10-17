@@ -347,6 +347,44 @@
       p.put(4, 4, '#e0f4ff'); p.put(5, 4, '#e0f4ff'); p.put(4, 5, '#e0f4ff'); p.put(10, 4, '#e0f4ff');
       p.rect(1, 13, 14, 2, '#a05a28'); p.rect(0, 2, 2, 11, '#d84040'); p.rect(14, 2, 2, 11, '#d84040');
     },
+    // ---- the open world (src/zones.js, docs/WORLD_PLAN.md): the zones' pictures, the bus, the map ----
+    autobus(p) { // a little yellow bus: windows, a door, two wheels
+      p.rect(1, 4, 14, 8, '#f8c830'); p.rect(1, 4, 14, 1, '#fff0a0'); p.rect(1, 11, 14, 1, '#c08818');
+      for (const x of [2, 5, 8]) p.rect(x, 5, 2, 3, '#88d0f8'); p.rect(11, 5, 3, 6, '#88d0f8'); p.rect(12, 5, 1, 6, '#5898d0');
+      p.rect(1, 9, 9, 1, '#e05030'); p.disc(4.5, 12.5, 2, '#303040'); p.disc(11.5, 12.5, 2, '#303040'); p.put(4, 12, '#a0a0b0'); p.put(11, 12, '#a0a0b0');
+      p.put(15, 9, '#fff8c0');
+    },
+    mapa(p) { // a folded paper map: green land, a blue lake, a red dotted path and an X
+      p.rect(1, 2, 14, 12, '#f4e8c0'); p.rect(5, 2, 1, 12, '#d8c890'); p.rect(10, 2, 1, 12, '#d8c890');
+      p.ell(4, 6, 3, 2.4, '#78c058'); p.ell(12, 11, 3, 2.2, '#78c058'); p.ell(11.5, 5, 2.4, 1.8, '#68a8e8');
+      for (const [x, y] of [[3, 11], [5, 10], [7, 9], [9, 8]]) p.put(x, y, '#e03028'); p.put(12, 6.5, '#e03028');
+    },
+    playa(p) { // the beach: the sun, the sea, the sand and a red pail
+      p.rect(0, 0, 16, 9, '#a8e0f8'); p.disc(12, 4, 2.6, '#f8d030'); p.rect(0, 8, 16, 3, '#3888e0'); p.rect(0, 8, 16, 1, '#f8f8ff');
+      p.rect(0, 11, 16, 5, '#f8e0a0'); p.rect(3, 11, 3, 3, '#e03028'); p.rect(3, 11, 3, 1, '#f86048'); p.put(4, 10, '#303040');
+    },
+    bosque(p) { // the forest: two pine trees and a mushroom
+      p.tri(1, 12, 9, 12, 5, 1, '#2a8a3a'); p.tri(6, 14, 15, 14, 10.5, 3, '#38a848'); p.rect(4, 12, 2, 3, '#7a4a20'); p.rect(10, 14, 2, 2, '#7a4a20');
+      p.ell(7.5, 13, 2.2, 1.2, '#e03028'); p.rect(7, 13, 1, 2, '#f8f0e0'); p.put(7, 12, '#ffffff');
+    },
+    juegos(p) { // the playground: a swing on a frame and a slide
+      p.rect(1, 2, 1, 13, '#e04040'); p.rect(8, 2, 1, 13, '#e04040'); p.rect(1, 2, 8, 1, '#e04040');
+      p.rect(3, 3, 1, 7, '#a0a0b0'); p.rect(6, 3, 1, 7, '#a0a0b0'); p.rect(3, 10, 4, 1, '#3870d8');
+      p.tri(9, 14, 15, 14, 15, 6, '#f8c830'); p.rect(14, 6, 1, 9, '#3870d8'); p.rect(0, 15, 16, 1, '#58b040');
+    },
+    abuelos(p) { // the grandparents' house: a cottage with a chimney, a heart over it
+      p.tri(1, 8, 15, 8, 8, 2, '#c05030'); p.rect(3, 8, 10, 7, '#f8e0b0'); p.rect(11, 3, 2, 4, '#8a5030');
+      p.rect(7, 10, 3, 5, '#8a5030'); p.rect(4, 10, 2, 2, '#88d0f8'); p.put(13, 1, '#d0d0d8'); p.put(14, 0, '#d0d0d8');
+      p.disc(3, 3, 1.2, '#f05080'); p.disc(5, 3, 1.2, '#f05080'); p.tri(2, 3.5, 6, 3.5, 4, 6, '#f05080');
+    },
+    montana(p) { // the mountain: two peaks with snow, a cloud
+      p.tri(0, 15, 10, 15, 5, 3, '#7a8aa0'); p.tri(5, 15, 16, 15, 11, 1, '#8a9ab8'); p.tri(9, 4, 13, 4, 11, 1, '#ffffff'); p.tri(3.5, 6, 6.5, 6, 5, 3, '#ffffff');
+      p.ell(3, 2, 2.4, 1.2, '#ffffff'); p.rect(0, 15, 16, 1, '#58b040');
+    },
+    explorar(p) { // going exploring: a winding path to green hills, the sun
+      p.rect(0, 0, 16, 9, '#a8e0f8'); p.disc(12, 3, 2, '#f8d030'); p.ell(4, 10, 6, 4, '#58b040'); p.ell(13, 10, 5, 3, '#48a038'); p.rect(0, 10, 16, 6, '#78c058');
+      for (const [x, y] of [[7, 15], [8, 14], [8, 13], [9, 12], [9, 11], [10, 10]]) { p.put(x, y, '#e8c888'); p.put(x + 1, y, '#e8c888'); }
+    },
     granja(p) {
       p.tri(0, 7, 16, 7, 8, 1, '#c03028'); p.rect(2, 7, 12, 8, '#d84030'); p.rect(2, 14, 12, 1, '#a02820');
       p.rect(5, 9, 6, 6, '#f8f0e0'); for (let i = 0; i < 6; i++) { p.put(5 + i, 9 + i, '#f8f0e0'); }

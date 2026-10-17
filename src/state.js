@@ -33,6 +33,8 @@
       bag: { items: [] }, // Round B (errands.js): what you carry: [{id: word id, col: colour word id (flowers), q: errand it belongs to, to: where (letters)}]
       jobs: {},           // Round B (errands.js): side job id -> 'YYYY-M-D' it was last done (once a day each)
       ch: {},             // the story's chapters (chapters.js): the beat each one is on, their own data, when they began
+      world: {},          // the open world (zones.js): zones visited, the one asked for on the map, the dog's spots done
+      dogName: null,      // the dog's name, chosen by the child in the opener (G.dogName(): "Canelo" until then)
     };
   }
   function devicePrefs(s) {
@@ -96,6 +98,7 @@
       for (const k in f) if (f[k] !== null && (s[k] == null || typeof s[k] !== typeof f[k] || Array.isArray(s[k]))) s[k] = f[k];
       if (!isObj(s.look)) s.look = null;
       if (typeof s.name !== 'string' || !s.name) s.name = null;
+      if (typeof s.dogName !== 'string' || !s.dogName) s.dogName = null;
       s.opts = Object.assign(f.opts, s.opts);
       const l = s.loc, m = G.maps && G.maps[l.map];
       if (!m || !Number.isInteger(l.x) || !Number.isInteger(l.y) || l.y < 0 || l.x < 0 || l.y >= m.rows.length || l.x >= m.rows[l.y].length) s.loc = f.loc;

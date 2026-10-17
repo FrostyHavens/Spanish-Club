@@ -16,7 +16,7 @@
 
   C.topics = {
     saludos: { name: 'Saludos', en: 'Greetings' },
-    mascota: { name: 'Mi perro Canelo', en: 'My dog Canelo' },
+    mascota: { name: 'Mi perro {dog}', en: 'My dog {dog}' },
     animales: { name: 'Los animales', en: 'Animals' },
     sonidos: { name: '¿Qué dicen?', en: 'What do they say?' },
     comida: { name: 'La comida', en: 'Food' },
@@ -146,22 +146,22 @@
 
   // ---------- the 21 chapters, in order (docs/CURRICULUM.md section 4) ----------
   C.chapters = [
-    { id: 'c1', title: '¡Un perro!', en: 'A dog! A puppy bursts in: Canelo becomes yours', giver: 'mama', session: 1, words: ['hola', 'perro', 'guau', 'ven'], icon: 'perro', col: '#b87038', goal: [['perro', 1]] },
+    { id: 'c1', title: '¡Un perro!', en: 'A dog! A puppy bursts in: {dog} becomes yours', giver: 'mama', session: 1, words: ['hola', 'perro', 'guau', 'ven'], icon: 'perro', col: '#b87038', goal: [['perro', 1]] },
     { id: 'c2', title: 'El gato de la cerca', en: 'The cat on the fence: Nico\'s sound game', giver: 'nico', session: 1, words: ['gato', 'miau'], icon: 'gato', col: '#e8902c', goal: [['gato', 1]] },
-    { id: 'c3', title: '¡Buenos días, Canelo!', en: 'Good morning, Canelo! A bone for sitting', giver: 'mama', session: 2, words: ['buenosdias', 'hueso', 'sientate'], icon: 'sol', col: '#e8b820', when: 'morning', goal: [['hueso', 1], ['sientate', 1]] },
+    { id: 'c3', title: '¡Buenos días, {dog}!', en: 'Good morning, {dog}! A bone for sitting', giver: 'mama', session: 2, words: ['buenosdias', 'hueso', 'sientate'], icon: 'sol', col: '#e8b820', when: 'morning', goal: [['hueso', 1], ['sientate', 1]] },
     { id: 'c4', title: 'El juego de Don Pepe', en: 'Don Pepe\'s yes-or-no game, and an apple', giver: 'pepe', session: 2, words: ['si', 'no', 'manzana'], icon: 'manzana', col: '#d83838', goal: [['si', 1], ['no', 1], ['manzana', 1]] },
     { id: 'c5', title: 'La pelota roja', en: 'The red ball: find Sofía\'s ball', giver: 'sofia', session: 3, words: ['pelota', 'rojo'], icon: 'pelota', col: '#3a78e0', goal: [['pelota', 1]] },
     { id: 'c6', title: 'Pan para los patos', en: 'Bread for the ducks: the bakery, then the farm pond', giver: 'marta', session: 3, words: ['pan', 'gracias', 'pato', 'cuac'], icon: 'pan', col: '#c88838', goal: [['pan', 1], '>', ['pato', 1]] },
-    { id: 'c7', title: '¿Dónde está Canelo?', en: 'Where is Canelo? Four clues, four places', giver: 'mama', session: 4, words: ['parque', 'banco', 'fuente', 'granja', 'cabra'], icon: 'huella', col: '#8a5a2c', when: 'morning', goal: [['perro', 1], ['pregunta', 1]] },
+    { id: 'c7', title: '¿Dónde está {dog}?', en: 'Where is {dog}? Four clues, four places', giver: 'mama', session: 4, words: ['parque', 'banco', 'fuente', 'granja', 'cabra'], icon: 'huella', col: '#8a5a2c', when: 'morning', goal: [['perro', 1], ['pregunta', 1]] },
     { id: 'c8', title: 'La escuela de Luna', en: 'Profesora Luna\'s school: ask three friends how they are', giver: 'mama', session: 5, words: ['escuela', 'bien', 'comoestas'], icon: 'escuela', col: '#3a7ad0', when: 'morning', goal: [['escuela', 1], ['pregunta', 3]] },
-    { id: 'c9', title: '¡Buenas noches, Canelo!', en: 'Good night, Canelo! The first evening at home', giver: 'mama', session: 5, words: ['agua', 'cama', 'buenasnoches'], icon: 'noche', col: '#3a3a9a', when: 'evening', goal: [['agua', 1], ['cama', 1]] },
+    { id: 'c9', title: '¡Buenas noches, {dog}!', en: 'Good night, {dog}! The first evening at home', giver: 'mama', session: 5, words: ['agua', 'cama', 'buenasnoches'], icon: 'noche', col: '#3a3a9a', when: 'evening', goal: [['agua', 1], ['cama', 1]] },
     { id: 'c10', title: 'Tomás está cansado', en: 'Tired Tomás: three letters, and a horse who eats one', giver: 'tomas', session: 6, words: ['cansado', 'carta', 'casa', 'caballo', 'adios'], icon: 'carta', col: '#2a9a9a', goal: [['carta', 3]] },
     { id: 'c11', title: 'Los huevos de Rosa', en: 'Grandma Rosa\'s hens and eggs', giver: 'rosa', session: 7, words: ['gallina', 'huevo', 'uno', 'dos', 'blanco'], icon: 'huevo', col: '#d8c8a0', goal: [['huevo', 2]] },
     { id: 'c12', title: 'El mercado de Mamá', en: 'Mom\'s shopping list at Don Pepe\'s', giver: 'mama', session: 8, words: ['platano', 'naranja', 'porfavor', 'tres', 'cuatro'], icon: 'platano', col: '#e8a030', goal: [['platano', 3], ['naranja', 4]] },
     { id: 'c13', title: 'El día de campo', en: 'Grandma Rosa\'s picnic', giver: 'rosa', session: 9, words: ['panaderia', 'queso', 'leche', 'cinco', 'seis'], icon: 'canasta', col: '#e05a30', goal: [['canasta', 1]] },
     { id: 'c14', title: 'El show de perros', en: 'Sofía\'s dog show', giver: 'sofia', session: 10, words: ['pata', 'salta', 'galleta', 'azul', 'feliz'], icon: 'cinta', col: '#3a56c8', goal: [['pata', 1], ['salta', 1], ['cinta', 1]] },
     { id: 'c15', title: 'Las flores de Lucía', en: 'Lucía\'s flowers', giver: 'lucia', session: 11, words: ['triste', 'flor', 'rosa', 'amarillo', 'mariposa'], icon: 'flor', col: '#e060a0', goal: [['flor', 3]] },
-    { id: 'c16', title: 'Las páginas perdidas', en: 'The lost notebook pages: Canelo learns ¡busca!', giver: 'gomez', session: 12, words: ['biblioteca', 'busca', 'arbol', 'conejo'], icon: 'pagina', col: '#7a5a3a', goal: [['pagina', 3]] },
+    { id: 'c16', title: 'Las páginas perdidas', en: 'The lost notebook pages: {dog} learns ¡busca!', giver: 'gomez', session: 12, words: ['biblioteca', 'busca', 'arbol', 'conejo'], icon: 'pagina', col: '#7a5a3a', goal: [['pagina', 3]] },
     { id: 'c17', title: '¿Qué dicen?', en: 'Nico\'s sound game around town', giver: 'nico', session: 13, words: ['rana', 'croac', 'verde', 'pajaro', 'gira'], icon: 'nota', col: '#e0a020', goal: [['nota', 1]] },
     { id: 'c18', title: '¿Cuántos animales?', en: 'Count the animals of Villa Sol with Profesora Luna', giver: 'luna', session: 14, words: ['pez', 'siete', 'ocho'], icon: 'pez', col: '#8a50c8', goal: [['pez', 1], ['pregunta', 1]] },
     { id: 'c19', title: '¡Todos a la granja!', en: 'Call every animal to the farm', giver: 'luna', session: 15, words: ['nueve', 'diez'], icon: 'diez', col: '#5a9a30', when: 'morning', goal: [['granja', 1]] },

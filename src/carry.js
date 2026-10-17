@@ -235,7 +235,7 @@
     }
     const lk = C.likerFor(h.it, who);
     if (lk) yield say(who, { face: lk }, TT('¡Oh! ¿Para ' + G.nameOf(lk).replace(/^(Profesora|Señor|Señora|Don|Doña|Abuela) /, '') + '?', 'Oh, nice! Take it to ' + G.nameOf(lk) + ': they love it!'));
-    else if (C.DOG[h.id] === 'fetch' && G.pet && G.pet.mine()) yield say(who, { icon: 'perro' }, TT('¡Para Canelo!', 'For Canelo! (tap him: he fetches it)'));
+    else if (C.DOG[h.id] === 'fetch' && G.pet && G.pet.mine()) yield say(who, { icon: 'perro' }, TT('¡Para {dog}!', 'For {dog}! (tap him: he fetches it)'));
     else yield say(who, C.pic(h), TT('¡Oh! ¡Mira!', 'Oh, look at that! (put it down: tap yourself)'));
     return true;
   };
@@ -349,6 +349,7 @@
   };
   // what you hold, up over your head in both hands (after the people); things flying to and from your hands
   C.drawHeld = function (f, ctx) {
+    if (f.player.hidden) return; // (on the bus: zones.js)
     if (!G.state || !G.errands) return;
     const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y), p = f.player;
     const L = bag().list(), fr = L.filter(it => !it.q && it !== thrown), qs = L.filter(it => it.q);
