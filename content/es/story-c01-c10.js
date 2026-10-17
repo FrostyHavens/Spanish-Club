@@ -120,7 +120,7 @@
   // Chosen "play" in the opener: it starts right away. Chosen "explore": it waits as Mamá's puppy game (her bubble
   // shows the puppy; a suggestion, never required: the story of Villa Sol is one zone's quest line, docs/WORLD_PLAN.md).
   CH.script('c1', [
-    { auto: () => (F().dogSkip ? null : 'casa'), who: 'mama', bubble: 'perro', when: () => !!F().opener, run: function* (f, c) { // ¡A jugar! he does a lap and hides
+    { auto: () => (F().dogSkip ? null : 'casa'), who: 'mama', bubble: 'perro', when: () => CH.openerDone(), run: function* (f, c) { // ¡A jugar! he does a lap and hides
       const n = dog(f);
       if (F().dogSkip) { F().canelo = false; n.ghost = true; } // (his game now: he stops following to hide)
       yield* say('mama', T('¡{dog}! ¡A jugar!', 'Let\'s play hide-and-seek with {dog}!'));

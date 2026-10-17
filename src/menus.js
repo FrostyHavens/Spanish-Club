@@ -76,8 +76,9 @@
       }
       const d = G.input.repDir(14, 6);
       if (d) {
-        const i = K.indexOf(this.sel), g = K.length - 1, n = d === 'down' ? g : d === 'up' ? (i === g ? g - 1 : i) : (i + (d === 'left' ? K.length - 1 : 1)) % K.length;
-        if (n !== i) { this.sel = K[n]; G.audio.sfx('cursor'); }
+        const i = K.indexOf(this.sel), g = K.length - 1, back = Math.max(0, K.indexOf(this.last)); // (up from the gear: back to the picture you came from)
+        const n = d === 'down' ? g : d === 'up' ? (i === g ? (this.last ? back : g - 1) : i) : (i + (d === 'left' ? K.length - 1 : 1)) % K.length;
+        if (n !== i) { if (this.sel !== 'gear') this.last = this.sel; this.sel = K[n]; G.audio.sfx('cursor'); }
       }
       if (G.input.p('A') && this.sel !== 'gear') this.pick(this.sel);
       else if (G.input.p('B')) this.close();
