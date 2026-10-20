@@ -152,12 +152,16 @@
       const cue = this.cue(k);
       G.vlog('recognized', c.word, { who, pic: !!this.view(k).icon, show: cue.show || null, prompt: cue.prompt || null, cued: cue.cued || null });
     }
-    // when some cards show only their word and others a picture, the pictured ones would give the answer away
-    // (the new word written among known ones drawn): then every card shows only its word
+    // every card shows only its word when pictures would give the answer away: some cards show only their word and
+    // others a picture (the new word written among known ones drawn), or the answer's picture is in the prompt
     view(k) {
-      if (this.textOnly == null) {
+      if (this.textOnly == null || !this.lines) {
         const vs = this.ch.map((c, i) => view(c, this.disp, i === this.o.answer));
-        this.textOnly = this.o.answer != null && vs.some((v, i) => this.ch[i].word && v.label && !v.icon) && vs.some((v, i) => this.ch[i].word && v.icon);
+        const a = this.o.answer != null && this.ch[this.o.answer], aw = a && a.word && D().words[a.word];
+        // the answer's own picture above the prompt (or drawn in it): picture cards would be a matching game
+        const sh = this.o.show, pic = w => w && (w === aw || w === a.word || (typeof w === 'string' && (D().words[w] === aw || w === (aw && aw.icon))));
+        const shown = !!aw && (pic(sh) || (sh && typeof sh === 'object' && pic(sh.icon)) || (this.lines || []).some(L => L.items.some(it => it.id === a.word && G.lookHasPic(it.look))));
+        this.textOnly = this.o.answer != null && (shown || (vs.some((v, i) => this.ch[i].word && v.label && !v.icon) && vs.some((v, i) => this.ch[i].word && v.icon)));
       }
       const v = view(this.ch[k], this.disp, k === this.o.answer), c = this.ch[k];
       return this.textOnly && c.word ? Object.assign({}, v, { icon: null, label: v.label || c.label || G.baseForm(c.word) }) : v;

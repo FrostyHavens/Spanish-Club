@@ -18,6 +18,12 @@ run('choices', async browser => {
     await g.until(() => G.top().constructor.name === 'Choice', null, 'the second question');
     const vp = await g.ev(() => G.top().ch.map((c, k) => !!G.top().view(k).icon));
     check('choices: picture questions keep their pictures', vp.every(Boolean), JSON.stringify(vp));
+    await g.ev(() => { G.pop(); window.__q.resolve(-1); });
+    // the answer's picture above the prompt (a wave for ¡hola!): picture cards would be a matching game, so words
+    await g.ev(() => { window.__q = G.choose({ prompt: 'Abuela: ¡...!', answer: 1, layout: 'cards', show: { icon: 'hola' }, choices: [{ word: 'gato' }, { word: 'hola' }, { word: 'pelota' }] }); });
+    await g.until(() => G.top().constructor.name === 'Choice', null, 'the greeting question');
+    const vg = await g.ev(() => G.top().ch.map((c, k) => { const v = G.top().view(k); return { icon: !!v.icon, label: v.label }; }));
+    check('choices: with the answer pictured above, every card is a word', vg.every(v => !v.icon && v.label), JSON.stringify(vg));
     check('choices: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
 });
