@@ -64,7 +64,7 @@ async function growing(browser) {
     await g.until(() => !G.cards.busy(), null, 'quiet');
 
     // a right pick: the card pops up by the card tapped, grows, then flies into the deck
-    await ask(g, { prompt: '¿Qué es?', show: 'adios', layout: 'cards', choices: cards('hola', 'adios', 'gracias'), answer: 1, noMic: true });
+    await ask(g, { prompt: '¿Qué es?', layout: 'cards', choices: cards('hola', 'adios', 'gracias'), answer: 1, noMic: true }); // (no picture above: picture cards)
     await choiceUp(g);
     const r1 = await g.ev(() => G.top().rects()[1]);
     await g.ev(() => { window.__sfx.length = 0; });

@@ -64,7 +64,7 @@
       if (r.gpt != null && now >= r.gpt && now - r.gpt < C.GAP) return 0;
       r.gpt = now;
     }
-    const from = C.pts(id);
+    const from = o.from != null ? Math.min(o.from, C.pts(id)) : C.pts(id); // (o.from: before a stage change)
     r.gp = Math.round(((+r.gp || 0) + add) * 10) / 10;
     const to = C.pts(id);
     C.log.push({ id, how, add, from, to }); if (C.log.length > 60) C.log.shift();

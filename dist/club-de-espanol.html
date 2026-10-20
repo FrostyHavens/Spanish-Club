@@ -9037,6 +9037,7 @@ G.store = {
   W.answerRight = function (id, o = {}) {
     const r = W.rec(id, true); if (!r) return { stage: 0, up: false, star: false, gold: false };
     const first = o.firstTry !== false, mode = o.mode || 'both', day = G.today(), st0 = r.st, cued = !!o.cued || st0 < 1; // (meeting a word by answering is its puzzle, not a retrieval)
+    const pts0 = G.cards && st0 >= 1 ? G.cards.pts(id) : 0; // (its card before the stage moves: a new stage's floor would hide the growth)
     if (st0 < 1) W.meet(id, o.how || 'answer');
     r.last = W.now(); r.ru = r.last; r.n++; r.ret++; // (ru: the last retrieval, chapters.js nudge)
     if (first) r.right++; // (a miss was counted by answerWrong)
@@ -9065,7 +9066,7 @@ G.store = {
     }
     log('retrieval', id, { said: !!o.said || null, cued: cued || null, mode, first: first || null, st0, st: r.st, review: o.review || null, star: star || null });
     // its card grows (cards.js): a pick, a page match (saying it grows it through G.st.said, mic.js)
-    if (G.cards && !o.said && !o.noGrow && st0 >= 1) G.cards.grow(id, mode === 'match' ? 'match' : 'pick', first ? {} : { add: 1 });
+    if (G.cards && !o.said && !o.noGrow && st0 >= 1) G.cards.grow(id, mode === 'match' ? 'match' : 'pick', first ? { from: pts0 } : { add: 1, from: pts0 });
     save();
     return { stage: r.st, up: r.st > st0, star, gold: r.st >= 3 && st0 < 3 };
   };
@@ -9201,7 +9202,7 @@ G.store = {
       if (r.gpt != null && now >= r.gpt && now - r.gpt < C.GAP) return 0;
       r.gpt = now;
     }
-    const from = C.pts(id);
+    const from = o.from != null ? Math.min(o.from, C.pts(id)) : C.pts(id); // (o.from: before a stage change)
     r.gp = Math.round(((+r.gp || 0) + add) * 10) / 10;
     const to = C.pts(id);
     C.log.push({ id, how, add, from, to }); if (C.log.length > 60) C.log.shift();

@@ -167,13 +167,13 @@ async function questions(browser) {
     const a1 = await g.ev(() => ({ st: G.words.stage('manzana'), pan: G.words.stage('pan'), galleta: G.words.stage('galleta') }));
     check('ask: right uncued -> known; `learn:` co-listed words are only met; the distractor stays unmet', a1.st === 2 && a1.pan === 1 && a1.galleta === 0, JSON.stringify(a1));
 
-    // a cued answer (its picture over the question, picture cards) changes nothing
+    // its picture over the question: the cards turn to words, so it can't be matched (not cued: it counts)
     await task(g, `function* () { return yield* G.ask({ prompt: '¿...?', show: 'pan', choices: [{ word: 'pan', look: 'both' }, { word: 'hola' }], answer: 0, layout: 'cards' }); }`);
     await choiceUp(g);
-    check('ask: picture over the question + its picture on the card = cued', await g.ev(() => G.top().cue(0).cued === true));
+    check('ask: picture over the question -> word cards, nothing to match (not cued)', await g.ev(() => G.top().ch.every((c, k) => !G.top().view(k).icon && G.top().view(k).label) && G.top().cue(0).cued === false));
     await g.tapRect(await g.ev(() => G.top().rects()[0]));
     await g.drive(() => window.__r !== undefined, 'the question');
-    check('ask: a cued right answer: no stage up', await g.ev(() => G.words.stage('pan') === 1 && G.state.words.pan.cue === 1));
+    check('ask: so the right answer counts: known', await g.ev(() => G.words.stage('pan') === 2 && !G.state.words.pan.cue));
 
     // known -> word cards from its picture -> remembered: the gold card ("¡Palabra de oro!")
     await task(g, `function* () { return yield* G.ask({ prompt: '¿Qué es?', show: 'platano', choices: [{ word: 'manzana' }, { word: 'platano' }, { word: 'naranja' }], answer: 1, layout: 'cards' }); }`);
