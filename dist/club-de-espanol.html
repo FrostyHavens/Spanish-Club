@@ -9745,7 +9745,16 @@ G.store = {
       const cue = this.cue(k);
       G.vlog('recognized', c.word, { who, pic: !!this.view(k).icon, show: cue.show || null, prompt: cue.prompt || null, cued: cue.cued || null });
     }
-    view(k) { return view(this.ch[k], this.disp, k === this.o.answer); }
+    // when some cards show only their word and others a picture, the pictured ones would give the answer away
+    // (the new word written among known ones drawn): then every card shows only its word
+    view(k) {
+      if (this.textOnly == null) {
+        const vs = this.ch.map((c, i) => view(c, this.disp, i === this.o.answer));
+        this.textOnly = this.o.answer != null && vs.some((v, i) => this.ch[i].word && v.label && !v.icon) && vs.some((v, i) => this.ch[i].word && v.icon);
+      }
+      const v = view(this.ch[k], this.disp, k === this.o.answer), c = this.ch[k];
+      return this.textOnly && c.word ? Object.assign({}, v, { icon: null, label: v.label || c.label || G.baseForm(c.word) }) : v;
+    }
     // can choice k be found by matching the prompt? Its picture is the prompt's picture (or a token drawn with its
     // picture), or its word is written in the prompt -> {cued, show, prompt}
     cue(k) {

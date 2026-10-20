@@ -220,7 +220,7 @@ async function intros(browser) {
     await g.drive(() => G.top().constructor.name === 'Choice', 'the line');
     await choiceUp(g);
     const q = await g.ev(() => { const s = G.top(); return { ans: s.ch[s.o.answer].word, views: s.ch.map((c, k) => [c.word, !!s.view(k).icon, !!s.view(k).label]), n: s.ch.length, show: s.o.show }; });
-    check('intro.show: "¿Qué es?" with the new word written (no picture) among 2 known ones as pictures', q.ans === 'pelota' && q.n === 3 && q.views.every(([w, i, l]) => w === 'pelota' ? !i && l : i && l) && q.show === 'pelota', JSON.stringify(q));
+    check('intro.show: "¿Qué es?" with the new word written among 2 known ones, all as words (no picture gives it away)', q.ans === 'pelota' && q.n === 3 && q.views.every(([w, i, l]) => !i && l) && q.show === 'pelota', JSON.stringify(q));
     await g.frames(4); await g.shot('intro_show_question');
     await g.drive(() => window.__r !== undefined && G.top() === G.field, 'the introduction');
     const s = await g.ev(() => ({ st: G.words.stage('pelota'), how: G.words.rec('pelota').how, fu: G.words.rec('pelota').fu, due: G.review.due(9) }));
