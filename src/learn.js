@@ -23,7 +23,7 @@
     heard(alts) {
       if (!G.speech.match(this.word().es, alts).pass) { this.mic.miss(); return; }
       const r = this.micRect(); this.mic.win();
-      G.mic.award(this.ids[this.i], r.x + r.w / 2, r.y + r.h / 2);
+      G.mic.award(this.ids[this.i], r.x + r.w / 2, r.y + r.h / 2, { cued: true }); // (the card said it first: an echo, for the history)
       G.fx.say('¡Bien dicho!', G.W / 2, this.box().y + 126, '#a8f0ff', true); // under the word
     }
     word() { return D().words[this.ids[this.i]]; }
@@ -104,6 +104,9 @@
   // Speaking (mic.js): in a G.ask question whose answer is a word, a mic button sits at the bottom right (unless
   // opts.noMic). What the child says is matched against EVERY choice's spoken form: the right one counts as picking it
   // plus a speaking star; a wrong one is just like tapping it; nothing heard or no match: "¡Otra vez!", no penalty.
+  // opts.micBig (with opts.show): a big mic right beside the picture held up, the first thing to try (the dog's warm-up,
+  // warmup.js). opts.cancel: a way out (a back button; opts.cancelIcon 'skip': the big skip button, G.skipBtn), and
+  // opts.onCancel() hears about it. opts.drawExtra(ctx, scene): more to draw over the question (the warm-up's cards).
   const GOLD = '#f8d860', BLUE = '#a8d8ff';
   function view(c, disp, isAns) {
     const W = D().words[c.word] && c.img ? c.img : D().words[c.word]; // (c.img: a picture of its own, e.g. the red ball for rojo)
@@ -176,7 +179,11 @@
     }
     onEnter() { if (this.mic) this.mic.arm(); }
     onExit() { if (this.mic) this.mic.off(); }
-    micRect() { return { x: G.W - 42, y: G.H - 62, w: 36, h: 36 }; } // the cards and the list keep clear of it (rects)
+    big() { return !!(this.o.micBig && this.o.show); } // (the big mic sits beside the picture held up)
+    micRect() { return this.big() ? { x: G.W / 2 + 40, y: 14, w: 46, h: 46 } : { x: G.W - 42, y: G.H - 62, w: 36, h: 36 }; } // the cards and the list keep clear of it (rects)
+    skip() { return this.o.cancelIcon === 'skip'; }
+    cancelHit() { return this.skip() ? G.skipHit(...this.backXY()) : G.btnHit(...this.backXY()); }
+    cancel() { G.audio.sfx('cancel'); G.pop(); if (this.o.onCancel) this.o.onCancel(); this.w.resolve(-1); }
     heard(alts) { // what the mic heard, against every choice
       const k = G.mic.best(this.ch.map(G.mic.target), alts, this.o.answer);
       if (k < 0 || this.ch[k].off) this.mic.miss(); else this.pick(k, true);
@@ -189,17 +196,18 @@
     // tap areas: one rect per choice (picture cards or list rows), the speaker and the back button (o.cancel)
     rects() {
       const vs = this.ch.map((c, k) => this.view(k));
+      const side = this.mic && !this.big(); // (the mic at the bottom right: the cards keep left of it)
       if (this.cards) {
-        const n = this.ch.length, cw = 58, gap = this.mic && n > 3 ? 6 : 12, tw = n * cw + (n - 1) * gap, y0 = G.H - 92;
-        const x0 = this.mic ? Math.min((G.W - tw) / 2, G.W - 54 - tw) : (G.W - tw) / 2; // (left of the mic)
+        const n = this.ch.length, cw = 58, gap = side && n > 3 ? 6 : 12, tw = n * cw + (n - 1) * gap, y0 = G.H - 92;
+        const x0 = side ? Math.min((G.W - tw) / 2, G.W - 54 - tw) : (G.W - tw) / 2; // (left of the mic)
         return vs.map((v, k) => ({ x: x0 + k * (cw + gap), y: y0, w: cw, h: v.label ? 78 : 62 }));
       }
       const wd = Math.max(...vs.map((v, k) => { const c = this.ch[k], lab = v.label || (c.word && D().words[c.word] ? c.label || G.baseForm(c.word) : ''); return (lab ? G.textWidth(lab) : 0) + (v.icon || (c.word && D().words[c.word]) ? 20 : 0); })) + 34; // (room for the picture and the word the right row shows once picked)
-      const h = this.ch.length * 20 + 8, x = this.mic ? Math.min((G.W - wd) / 2, G.W - 50 - wd) : (G.W - wd) / 2, y = G.H - h - 10;
+      const h = this.ch.length * 20 + 8, x = side ? Math.min((G.W - wd) / 2, G.W - 50 - wd) : (G.W - wd) / 2, y = G.H - h - 10;
       return vs.map((v, k) => ({ x, y: y + 4 + k * 20, w: wd, h: 20 }));
     }
     spk() { return [G.W - 38, 12]; }
-    backXY() { return [18, 12]; }
+    backXY() { return this.skip() ? [4, 4] : [18, 12]; }
     pick(k, spoken) {
       const o = this.o, c = this.ch[k], R = this.rects(), r = R[k];
       if (c.off) { G.audio.sfx('boop'); return; }
@@ -234,22 +242,23 @@
       if (d === (this.cards ? 'right' : 'down')) this.move(1);
       if (G.input.p('C') || (G.speakerHit(...this.spk()) && G.input.eat())) G.speak(this.o.prompt || '');
       if (G.input.tap() && this.t > 8) { // tapping a card (or row) answers with it
-        if (this.o.cancel && G.btnHit(...this.backXY())) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(-1); return; }
+        if (this.o.cancel && this.cancelHit()) { this.cancel(); return; }
         const pad = this.cards ? 6 : 0;
         const k = this.rects().findIndex(r => G.tapIn(r.x - pad, r.y - pad, r.w + pad * 2, r.h + pad));
         if (k >= 0 && calm) this.pick(k);
         return;
       }
       if (G.input.p('A') && this.t > 8 && calm) { this.pick(this.i); return; }
-      if (G.input.p('B') && this.o.cancel) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(-1); }
+      if (G.input.p('B') && this.o.cancel) this.cancel();
     }
     draw(ctx) {
       const o = this.o, top = 8;
       const ph = this.lines.length * 16 + 10 + (o.show ? 58 : 0);
       G.win(ctx, 12, top, G.W - 24, ph);
       G.speakerBtn(ctx, ...this.spk());
-      if (o.cancel) G.iconBtn(ctx, 'back', ...this.backXY());
+      if (o.cancel) { if (this.skip()) G.skipBtn(ctx, ...this.backXY(), this.t); else G.iconBtn(ctx, 'back', ...this.backXY()); }
       if (o.show) G.drawIcon16(ctx, o.show, G.W / 2 - 24, top + 8, 3, 'card');
+      if (o.drawExtra) { try { o.drawExtra(ctx, this); } catch (e) { console.error(e); } }
       G.richDraw(ctx, this.lines, G.W / 2, top + 5 + (o.show ? 58 : 0), { center: true });
       if (o.en && G.enVisible()) G.enBox(ctx, o.en, top + ph + 1, true);
       const R = this.rects(), won = this.won, wt = won ? won.t : 0;
@@ -303,7 +312,7 @@
   G.choose = function (opts) { const w = new G.Wait(); const s = new Choice(opts, w); w.scene = s; G.push(s); return w; };
 
   // ---------- Ask until right ----------
-  // q: {prompt, en, show, choices, answer: index, layout, learn, who, display, mask, intro, review, credit}
+  // q: {prompt, en, show, choices, answer: index, layout, learn, who, display, mask, intro, review, credit, reintro}
   // Wrong picks wobble and grey out with a soft boop (no lecture) while the question stays up, so every
   // question can be finished. The right pick pops with praise; a first-try answer earns a star (one per word a day).
   // Saying the right answer out loud (the mic, mic.js) answers too, and earns a speaking star on top.
@@ -346,13 +355,15 @@
     }));
     scene = wq.scene;
     if (G.vocabLog && aid) { const v = scene.view(q.answer); G.vlog('prompt', aid, { kind, st: st0, mode: v.icon && v.label ? 'both' : v.label ? 'text' : 'pic', cued: scene.cue(q.answer).cued || null, who: q.who || null }); }
+    const heard = !!aid && (scene.o.mask || []).indexOf(aid) >= 0; // (the prompt says the answer: saying it back is an echo, for the history)
     const r = yield wq;
     if (r.result !== q.answer) return false; // closed without answering (a question with a way out)
     const first = tries === 0;
     let res = null;
     if (aid) {
       const v = scene.view(q.answer), mode = spoken && !v.label ? 'say' : v.icon && v.label ? 'both' : v.label ? 'text' : 'pic';
-      res = G.words.answerRight(aid, { cued: !!scene.cue(q.answer).cued, said: spoken, firstTry: first, mode, review: kind === 'review', how: q.intro ? q.how || 'show' : 'answer' });
+      // (q.reintro: a slipping word met again, intro.js G.intro.again: a cued use, it doesn't move the word on)
+      res = G.words.answerRight(aid, { cued: !!q.reintro || !!scene.cue(q.answer).cued, said: spoken, echo: spoken && heard, firstTry: first, mode, review: kind === 'review', how: q.intro ? q.how || 'show' : 'answer' });
     }
     yield 10;
     // a word met just now: its small celebration (it goes in the notebook); co-listed words are only met

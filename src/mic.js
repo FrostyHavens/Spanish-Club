@@ -43,9 +43,9 @@
     });
     return k;
   };
-  M.award = function (id, x, y) {
+  M.award = function (id, x, y, o) { // (o.cued: said right after hearing it, e.g. on the gold card: the history's echo)
     if (G.cards) G.cards.at(x, y); // its card pops up here and grows the most (cards.js)
-    G.st.said(id);
+    G.st.said(id, o);
     G.audio.sfx('micstar');
     G.fx.ring(x, y, 26, '#70e0ff', 22);
     for (let i = 0; i < 3; i++) G.fx.twinkle(x + (Math.random() - 0.5) * 30, y + (Math.random() - 0.5) * 20);

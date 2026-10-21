@@ -16,16 +16,29 @@
 // dc (calendar day number), fu, met (play s),
 // ms (session met), md (day met), mdate (the calendar date it was met: the chapters' daily budget), how, last, n (encounters), right, wrong, said, cue (cued right answers), ret (active
 // retrievals), ft {date: uncued first-try rights}, star (date of the last star), s3 (day it reached stage 3), gold
-// (its "¡Palabra de oro!" was shown), learned (= st >= 3, for older readers)}.
+// (its "¡Palabra de oro!" was shown), learned (= st >= 3, for older readers),
+// ld (the calendar day number it was last met or used: picked, recalled, said, missed, checked by a grown-up; passive
+// appearances in a line don't count; older records: estimated from star / ft / mdate, W.lastDay), mc (misses in a row),
+// mw (play times of the last 3 misses), slip ({d: day number, n: right first tries since, re: 1 once re-introduced}:
+// a SLIPPING word, docs/LEARNING_PLAN_2.md Phase 1)}.
+// Slipping: a word missed 3 times (in a row, or 3 misses within W.SLIP.win play seconds) is marked slipping; the next
+// review question for it (G.review.ask, the dog's warm-up) is a fresh one-unknown introduction instead (G.intro.again,
+// intro.js); it stays slipping until it is answered right on the first try twice. W.slipping(id), W.needsReintro(id).
+// The learning history (src/history.js, G.hist) hears every retrieval from here: answerRight / answerWrong / meet (and
+// G.st.said for the mic), so every path that goes through the model is recorded.
 //
 // API (G.words, short W below):
 //   W.stage(id) 0..4   W.met(id)   W.rec(id) the record (made and migrated on demand; null for a word not in D.words)
 //   W.meet(id, how, o) stage 0 -> 1 (how: 'show' 'find' 'watch' 'listen' 'answer' 'co' 'tap' ...; o.who), schedules the
 //                      follow-ups; true if it was new. (G.intro.* call it and add the small celebration.)
-//   W.answerRight(id, {cued, said, firstTry = true, mode: 'both'|'text'|'pic'|'match'|'say', review}) -> {stage, up,
-//                      star, gold}: an active retrieval. Uncued first tries move the box and the stage; a star at most
-//                      once per word per day (first tries only)
-//   W.answerWrong(id)  a miss: down a box, due again soon
+//   W.answerRight(id, {cued, said, echo, parent, firstTry = true, mode: 'both'|'text'|'pic'|'match'|'say'|'parent',
+//                      review}) -> {stage, up, star, gold}: an active retrieval. Uncued first tries move the box and the
+//                      stage; a star at most once per word per day (first tries only). echo: said right after hearing
+//                      it (a listening question answered aloud: the history's echo, not a recall); parent: a grown-up's
+//                      check (a recall, recorded as 'parent')
+//   W.answerWrong(id, {parent})  a miss: down a box, due again soon (3 misses: slipping)
+//   W.lastDay(id) the day number it was last met or used (or null)   W.gapDays(id) days since then (or null)
+//   W.slipping(id)  W.needsReintro(id) (slipping, not re-introduced yet)  W.reintroduced(id) (G.intro.again calls it)
 //   W.encounter(id, how) a passive meeting of a met word (heard, named, in the bag...): only `last` and `n`
 //   W.due(id)  W.overdue(id) (how late, for sorting)  W.strength(id) 0..1  W.stars(id) 0..3 (the notebook's)
 //   W.isOld(id) met in an earlier session or 5+ minutes ago (a prompt for it is a review)
@@ -44,6 +57,7 @@
   W.FOLLOW = [90, 360];               // just met: asked again after 1.5 min, then 6 min (play seconds)
   W.MISS = 90;                        // a miss: due again after 1.5 min
   W.BOX_DAYS = [0, 0, 1, 2, 4, 8];    // box -> days until due (box 1: the same session)
+  W.SLIP = { n: 3, win: 600, rights: 2 }; // 3 misses (in a row, or within 10 min of play) -> slipping, until 2 right first tries
 
   // ---------- calendar ----------
   G.debug = G.debug || {};
@@ -74,6 +88,7 @@
     if (!G.state) return;
     const m = wm(); m.clock += 1 / 60;
     if (++dateT >= 600) { dateT = 0; if (m.date && m.date !== G.today()) { m.day++; m.date = G.today(); } } // played past midnight
+    if (G.hist) G.hist.step(); // the learning history: today's minutes of play (src/history.js)
   };
   W.addTime = sec => { if (G.state && sec > 0) wm().clock += sec; };
 
@@ -120,11 +135,40 @@
     r.last = W.now(); r.n++;
     if (r.st >= 1) return false;
     r.st = 1; r.box = 1; r.fu = 1; r.met = W.now(); r.ms = wm().sess; r.md = wm().day; r.mdate = G.today(); r.how = how || 'meet';
+    r.ld = dayNum();
     schedule(r, W.FOLLOW[0]);
     log('meet', id, { how: r.how, who: o.who || null });
+    if (G.hist) G.hist.met(id); // (the learning history: words met today)
     save();
     return true;
   };
+
+  // ---------- the last day a word was met or used (the history's gaps), and slipping words ----------
+  // 'YYYY-M-D' (G.today()) -> the day number (dayNum), or null
+  W.numOf = s => { const p = String(s || '').split('-').map(Number); return p.length === 3 && p.every(v => Number.isFinite(v) && v > 0) ? Math.round(Date.UTC(p[0], p[1] - 1, p[2]) / 864e5) : null; };
+  W.lastDay = function (id) {
+    const r = W.rec(id); if (!r || r.st < 1) return null;
+    if (Number.isFinite(r.ld)) return r.ld;
+    let best = null; // (an older record: its last star, its first-try days, the day it was met)
+    const see = s => { const n = W.numOf(s); if (n != null && (best == null || n > best)) best = n; };
+    see(r.star); if (isObj(r.ft)) Object.keys(r.ft).forEach(see); see(r.mdate);
+    return best;
+  };
+  W.gapDays = id => { const l = W.lastDay(id); return l == null ? null : Math.max(0, dayNum() - l); };
+  W.slipping = id => { const r = W.rec(id); return !!(r && r.st >= 1 && isObj(r.slip)); };
+  W.needsReintro = id => { const r = W.rec(id); return !!(r && r.st >= 1 && isObj(r.slip) && !r.slip.re); };
+  W.reintroduced = id => { const r = W.rec(id); if (!r || !isObj(r.slip)) return; r.slip.re = 1; r.mc = 0; r.mw = []; save(); };
+  W.slipList = () => W.list(1).filter(W.slipping);
+  // a miss: three in a row, or three within W.SLIP.win play seconds, and the word is slipping (a fresh episode if it was
+  // already re-introduced and is missed again)
+  function missed(r) {
+    r.mc = (r.mc | 0) + 1;
+    const mw = (Array.isArray(r.mw) ? r.mw : []).concat([Math.round(W.now())]).slice(-W.SLIP.n); r.mw = mw;
+    if (r.mc < W.SLIP.n && !(mw.length >= W.SLIP.n && mw[mw.length - 1] - mw[0] <= W.SLIP.win)) return;
+    if (!isObj(r.slip)) r.slip = { d: dayNum(), n: 0, re: 0 };
+    else if (r.slip.re) { r.slip.re = 0; r.slip.n = 0; }
+    r.mc = 0; r.mw = [];
+  }
   W.encounter = function (id, how) {
     const r = W.rec(id); if (!r || r.st < 1) return false;
     r.last = W.now(); r.n++;
@@ -136,10 +180,16 @@
     const r = W.rec(id, true); if (!r) return { stage: 0, up: false, star: false, gold: false };
     const first = o.firstTry !== false, mode = o.mode || 'both', day = G.today(), st0 = r.st, cued = !!o.cued || st0 < 1; // (meeting a word by answering is its puzzle, not a retrieval)
     const pts0 = G.cards && st0 >= 1 ? G.cards.pts(id) : 0; // (its card before the stage moves: a new stage's floor would hide the growth)
+    // the history's event (src/history.js): P/p pick, R/r recall (word-only cards, a page match), S/s said, E said right
+    // after hearing it (an echo), K a cued pick, C a grown-up's check (capitals: right on the first try)
+    const hk = st0 < 1 ? null : o.parent ? 'C' : o.said ? (cued || o.echo ? 'E' : first ? 'S' : 's') : cued ? 'K' : mode === 'text' || mode === 'match' ? (first ? 'R' : 'r') : first ? 'P' : 'p';
+    if (hk && G.hist) G.hist.event(id, hk, { answer: true, said: !!o.said });
     if (st0 < 1) W.meet(id, o.how || 'answer');
     r.last = W.now(); r.ru = r.last; r.n++; r.ret++; // (ru: the last retrieval, chapters.js nudge)
-    if (first) r.right++; // (a miss was counted by answerWrong)
+    r.ld = dayNum();
+    if (first) { r.right++; r.mc = 0; } // (a miss was counted by answerWrong)
     if (cued) r.cue++;
+    if (first && !cued && !o.echo && isObj(r.slip) && st0 >= 1 && ++r.slip.n >= W.SLIP.rights) r.slip = null; // (slipping: right twice, it's back)
     let star = false;
     if (first && !o.noStar && r.star !== day) { r.star = day; star = true; G.state.stars = (G.state.stars | 0) + 1; }
     if (first && !cued) {
@@ -147,7 +197,7 @@
       const keys = Object.keys(r.ft); if (keys.length > 12) delete r.ft[keys[0]]; // (only the recent days matter)
       // the stage: 1 -> 2 by any uncued answer; 2 -> 3 by recall (word-only cards, a page match, saying it outside
       // picture+word cards); 3 -> 4 on a later day once 3 uncued first tries over 2+ days have come since
-      const recall = mode === 'text' || mode === 'match' || mode === 'say' || (o.said && mode !== 'both');
+      const recall = mode === 'text' || mode === 'match' || mode === 'say' || mode === 'parent' || (o.said && mode !== 'both');
       if (r.st === 1) setStage(r, id, 2);
       else if (r.st === 2 && recall) setStage(r, id, 3);
       else if (r.st === 3 && r.s3 != null && wm().day > r.s3) {
@@ -168,12 +218,14 @@
     save();
     return { stage: r.st, up: r.st > st0, star, gold: r.st >= 3 && st0 < 3 };
   };
-  W.answerWrong = function (id) {
+  W.answerWrong = function (id, o = {}) {
     const r = W.rec(id, true); if (!r) return;
     if (r.st < 1) return; // an unmet word can't be missed (it's still a puzzle)
-    r.wrong++; r.last = W.now();
+    if (G.hist) G.hist.event(id, o.parent ? 'c' : 'm'); // (the history, src/history.js: before the last day moves)
+    r.wrong++; r.last = W.now(); r.ld = dayNum();
     r.box = Math.max(1, (r.box | 0) - 1); if (r.fu === 2) r.fu = 1;
     schedule(r, W.MISS);
+    missed(r);
     save();
   };
 

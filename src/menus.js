@@ -307,11 +307,11 @@
   G.questLog = function () { const w = new G.Wait(); G.push(new QuestLog(w)); return w; };
 
   // ---------- Grown-ups menu (behind the held gear; English labels) ----------
-  // Volumes, voice, English help, on-screen buttons, speaking (the kids' mic), microphone test, controls, Misiones (story progress), back to
-  // title. Nothing to save by hand: volumes, the voice, English help, the D-pad and speaking are kept per device
+  // Volumes, voice, English help, on-screen buttons, speaking (the kids' mic), microphone test, controls, Learning (what the
+  // child knows and keeps: src/dashboard.js), Misiones (story progress), back to title. Nothing to save by hand: volumes, the voice, English help, the D-pad and speaking are kept per device
   // (G.prefs), and the game saves itself.
   // Up/down picks a row, left/right moves a volume, A changes the others; tap a row, tap or drag along a volume bar.
-  const ROW_H = 16, BAR = 168, CELL = 12; // volume bars: 10 cells from x = BAR; the speaker just left of it = 0
+  const ROW_H = 15, ROW_Y = 25, BAR = 168, CELL = 12; // volume bars: 10 cells from x = BAR; the speaker just left of it = 0
   class GrownUps {
     constructor(w, o) { this.transparent = true; this.w = w; this.o = o || {}; this.t = 0; this.i = 0; this.drag = null; this.tick = 0; }
     rows() {
@@ -328,12 +328,13 @@
         { id: 'mic', label: 'Microphone test', right: mic ? '>' : 'not available', off: !mic, help: mic ? 'Does speech recognition hear Spanish words?' : 'The microphone test is not in this version.' },
         { id: 'help', label: 'Controls and tips', right: '>', help: 'The keys, and how the game teaches.' },
       ];
-      if (!this.o.title) R.push({ id: 'story', label: 'Story progress', right: '>', off: !G.state, help: 'Misiones: the chapter going on, its steps, the bag, the badges.' },
+      if (!this.o.title) R.push({ id: 'learning', label: 'Learning', right: '>', off: !G.state || !G.dashboard, col: '#f8d860', help: 'What has stuck: retention, words by place, a check, a question.' },
+        { id: 'story', label: 'Story progress', right: '>', off: !G.state, help: 'Misiones: the chapter going on, its steps, the bag, the badges.' },
         { id: 'title', label: 'Back to title', right: '>', help: 'Progress is saved automatically.' });
       return R;
     }
     // tap areas (shared with draw): row k, its volume bar (with the speaker = 0 and the number), close
-    rowRect(k) { return { x: 10, y: 27 + k * ROW_H, w: G.W - 20, h: ROW_H }; }
+    rowRect(k) { return { x: 10, y: ROW_Y + k * ROW_H, w: G.W - 20, h: ROW_H }; }
     barRect(k) { const r = this.rowRect(k); return { x: BAR - 18, y: r.y, w: r.x + r.w - (BAR - 18), h: r.h }; }
     level(x) { return x < BAR ? 0 : Math.min(10, Math.floor((x - BAR) / CELL) + 1); }
     closeXY() { return [G.W - 30, 8]; }
@@ -384,6 +385,7 @@
         G.audio.sfx('ok'); try { G.micTest(); } catch (e) { console.warn(e); }
       } else if (r.id === 'help') { G.audio.sfx('ok'); G.controlsHelp(); }
       else if (r.id === 'story') { if (r.off) { G.audio.sfx('error'); return; } G.audio.sfx('ok'); G.questLog(); }
+      else if (r.id === 'learning') { if (r.off) { G.audio.sfx('error'); return; } G.audio.sfx('ok'); G.dashboard.open(); }
       else if (r.id === 'title') { G.audio.sfx('ok'); G.toTitle(); }
     }
     draw(ctx) {
@@ -393,18 +395,18 @@
       G.textR(ctx, 'Progress saves by itself', G.W - 40, 14, '#8890c0');
       G.closeBtn(ctx, ...this.closeXY());
       rows.forEach((r, k) => {
-        const R = this.rowRect(k), y = R.y + 5, sel = k === this.i, col = r.off ? '#7078a0' : sel ? '#f8e060' : '#ffffff', xr = R.x + R.w - 4;
+        const R = this.rowRect(k), y = R.y + 4, sel = k === this.i, col = r.off ? '#7078a0' : sel ? '#f8e060' : r.col || '#ffffff', xr = R.x + R.w - 4;
         if (sel) { ctx.fillStyle = 'rgba(248,224,96,0.13)'; ctx.fillRect(R.x + 2, R.y + 1, R.w - 4, R.h - 2); }
         else { ctx.fillStyle = 'rgba(136,152,224,0.22)'; ctx.fillRect(R.x + 14, R.y + R.h - 1, R.w - 28, 1); }
         if (sel && (this.t >> 3) % 4 !== 3) G.text(ctx, '\u0002', R.x + 4, y, '#f8e060');
         G.text(ctx, r.label, R.x + 14, y, col);
         if (r.vol) {
           const v = G.prefs[r.vol];
-          volIcon(ctx, r.vol === 'sfx' ? 'sound' : r.vol, BAR - 15, R.y + 4, !v);
-          for (let s = 0; s < 10; s++) { const h = 3 + s; ctx.fillStyle = s < v ? (sel ? '#f8d030' : '#c8d0f0') : '#303a78'; ctx.fillRect(BAR + s * CELL + 1, R.y + 15 - h, CELL - 2, h); }
+          volIcon(ctx, r.vol === 'sfx' ? 'sound' : r.vol, BAR - 15, R.y + 3, !v);
+          for (let s = 0; s < 10; s++) { const h = 3 + s; ctx.fillStyle = s < v ? (sel ? '#f8d030' : '#c8d0f0') : '#303a78'; ctx.fillRect(BAR + s * CELL + 1, R.y + ROW_H - 1 - h, CELL - 2, h); }
           G.textR(ctx, String(v), xr, y, v ? '#ffffff' : '#7078a0');
         } else if (r.on != null) { // a switch
-          const sx = xr - 26, sy = R.y + 3;
+          const sx = xr - 26, sy = R.y + 2;
           ctx.fillStyle = '#000010'; ctx.fillRect(sx - 1, sy - 1, 28, 13);
           ctx.fillStyle = r.on ? '#40a848' : '#404870'; ctx.fillRect(sx, sy, 26, 11);
           ctx.fillStyle = '#f0f0ff'; ctx.fillRect(r.on ? sx + 15 : sx + 1, sy + 1, 10, 9);

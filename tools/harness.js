@@ -16,6 +16,9 @@
 //   });
 // Run it with: NODE_PATH=$(npm root -g) node tools/test-<feature>.js [screenshot dir]
 // The page is ../index.html relative to THIS file, so a copy of the repo (e.g. a git worktree) tests its own code.
+// The dog's daily warm-up (src/warmup.js) takes over the map the first time the child is free on a new day, so it is
+// OFF in a test's page unless it asks: open(browser, name, touch, { warmup: true }) (tools/test-learning.js), or the
+// environment says WARMUP=1 (every test then plays with it on; drive() answers its questions like any other).
 'use strict';
 const path = require('path'), fs = require('fs'), os = require('os');
 const { chromium } = require('playwright');
@@ -181,9 +184,10 @@ Game.prototype.toCreator = async function () {
   await this.until(() => G.top().constructor.name === 'Creator', null, 'the character creator');
 };
 
-async function open(browser, name, touch) {
+async function open(browser, name, touch, o = {}) {
   const ctx = await browser.newContext(touch ? { viewport: { width: 1024, height: 768 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 } : { viewport: { width: 1280, height: 800 } });
   const page = await ctx.newPage();
+  await page.addInitScript(on => { window.__warmupOff = !on; }, !!(o.warmup || process.env.WARMUP === '1')); // (the dog's warm-up: off unless asked)
   await page.addInitScript(() => { // log which input event each speak() call runs in (speech must start inside a tap)
     window.__speak = [];
     const ss = window.speechSynthesis, sp = ss && ss.speak.bind(ss);

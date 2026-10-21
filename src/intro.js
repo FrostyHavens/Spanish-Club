@@ -20,6 +20,10 @@
 //   note(ids, o) -> Wait  the small celebration for words just met: the word's new card pops up (cards.js: its picture,
 //        its blue word, a seed), says the word and flies into the deck; yield it to let the word be heard (~0.6 s)
 //   known(id, n) n met words to go with id in a one-unknown puzzle (another topic, stronger first)
+//   again(id, {who, prompt, en, extra})  a SLIPPING word (words.js: missed 3 times) met again instead of the same
+//        question: it is held up and named like the first time, then a one-unknown puzzle (hear it, pick its picture
+//        among 2 known ones; a cued use: the next questions move it on). G.review.ask does it by itself for a
+//        slipping word not re-introduced yet (W.needsReintro), and so does the dog's warm-up (warmup.js).
 // Content checks G.budget.canIntro(n) before introducing (words.js) and defers when it's false ("¡Mañana!").
 // G.review.ask(id, {who, prompt, en, pool, layout}) one question for a met word, fit for its stage: met -> hear it
 //   (a speaker in the prompt) and pick among picture + word cards; known -> its picture, pick its word; remembered+
@@ -107,6 +111,19 @@
     return true;
   };
 
+  // ---------- a slipping word, met again ----------
+  // (o.extra: more for its question, e.g. the warm-up's skip button and its cards)
+  I.again = function* (id, o = {}) {
+    if (!D().words[id] || !Wd().met(id)) return false;
+    Wd().reintroduced(id);
+    if (G.vocabLog) G.vlog('shown', id, { via: 'again', who: o.who || null });
+    yield sayAs(o.who, [TT(o.prompt || '¡Mira! ¡[' + id + ']!', o.en || 'Look! (this word again: listen, then find it)')], { show: id });
+    const known = G.iconDrawn(id) ? I.known(id, 2) : [];
+    if (known.length < 2) return true;
+    const q = ask(id, Object.assign({ how: 'again', ask: '¿[' + id + ']?', askEn: 'Which one? (listen)' }, o), [{ word: id, look: 'pic' }].concat(known.map(k => ({ word: k, look: 'pic' }))), Object.assign({ mask: [id], reintro: true }, o.extra || {}));
+    return yield* G.ask(q);
+  };
+
   // ---------- find it (on the map) ----------
   const finds = () => { const s = G.state; if (!s.finds || typeof s.finds !== 'object') s.finds = {}; return s.finds; };
   const key = (x, y) => x + ',' + y;
@@ -164,6 +181,7 @@
   // ---------- a review question for a word, fit for its stage ----------
   G.review.ask = function* (id, o = {}) {
     const st = Wd().stage(id); if (st < 1) return false;
+    if (Wd().needsReintro(id)) return yield* I.again(id, { who: o.who || null }); // (slipping: met again, not the same question)
     const top = D().words[id].topic, met = Wd().list(1).filter(k => k !== id && G.baseForm(k) !== G.baseForm(id));
     let pool = o.pool || met.filter(k => D().words[k].topic === top);
     if (pool.length < 2) pool = pool.concat(shuffle(met.filter(k => pool.indexOf(k) < 0)).slice(0, 2 - pool.length));

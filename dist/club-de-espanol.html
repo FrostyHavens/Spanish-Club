@@ -1673,6 +1673,22 @@ G.store = {
     }
     ctx.drawImage(spr, x + 10 - (spr.width >> 1), y + 10 - (spr.height >> 1));
   };
+  // the skip button: a bigger picture button, two white arrows (fast forward: "not now"), for something the child may
+  // skip (the dog's warm-up, warmup.js). 26 x 22 game px at x, y; the tap area is padded by 6; t: a frame counter (the
+  // arrows nudge forward now and then)
+  G.SKIP_W = 26; G.SKIP_H = 22;
+  G.skipHit = (x, y) => G.tapIn(x - 6, y - 6, G.SKIP_W + 12, G.SKIP_H + 12);
+  G.skipBtn = function (ctx, x, y, t = 0) {
+    x = Math.round(x); y = Math.round(y);
+    const w = G.SKIP_W, h = G.SKIP_H, on = G.input.holding(x - 6, y - 6, w + 12, h + 12) > 0;
+    ctx.fillStyle = '#000010'; ctx.fillRect(x + 1, y, w - 2, h); ctx.fillRect(x, y + 1, w, h - 2);
+    ctx.fillStyle = on ? '#f0d060' : '#b8f0e0'; ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+    ctx.fillStyle = on ? '#1c6a5a' : '#2a9a7a'; ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+    ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(x + 2, y + 2, w - 4, 4);
+    const u = t % 150, nudge = u < 24 ? Math.round(Math.sin(u / 24 * Math.PI) * 2) : 0;
+    const tri = (tx, ty, col) => { ctx.fillStyle = col; for (let i = 0; i < 6; i++) ctx.fillRect(tx + i, ty + i, 1, 12 - 2 * i); };
+    for (const k of [0, 7]) { tri(x + 7 + k + nudge, y + 6, '#0c3a30'); tri(x + 6 + k + nudge, y + 5, '#ffffff'); }
+  };
   G.closeBtn = (ctx, x = G.W - 26, y = 6) => G.iconBtn(ctx, 'close', x, y);
   G.closeHit = (x = G.W - 26, y = 6) => G.btnHit(x, y);
   G.speakerBtn = (ctx, x, y) => G.iconBtn(ctx, 'speaker', x, y);
@@ -8756,6 +8772,8 @@ G.store = {
       ch: {},             // the story's chapters (chapters.js): the beat each one is on, their own data, when they began
       world: {},          // the open world (zones.js): zones visited, the one asked for on the map, the dog's spots done
       dogName: null,      // the dog's name, chosen by the child in the opener (G.dogName(): "Canelo" until then)
+      hist: {},           // the learning history (history.js): per day the minutes played, words met, every retrieval
+                          // (compact, no audio, the last 60 days); the parent checks; the dog's warm-up (warmup.js)
     };
   }
   function devicePrefs(s) {
@@ -8782,7 +8800,9 @@ G.store = {
   S.learn = function (id) { const r = WM().rec(id, true); if (!r || r.st >= 3) return false; if (r.st < 1) WM().meet(id, 'learn'); r.st = 3; r.learned = true; r.s3 = WM().day(); S.autosave(); if (G.vocabLog) G.vlog('learned', id); return true; };
   S.practiced = (id, firstTry) => (firstTry ? WM().answerRight(id, { firstTry: true }) : WM().answerWrong(id));
   // said out loud with the mic (mic.js): its card grows the most (cards.js); still counted in stars (for the diploma); S.micStars() is the speaking stars so far
-  S.said = function (id) { const w = WM().rec(id, true); if (!w) return; w.said = (w.said | 0) + 1; WM().encounter(id); G.state.stars++; if (G.cards) G.cards.grow(id, 'say'); S.autosave(); if (G.vocabLog) G.vlog('said', id, { via: G.top() && G.top().constructor.name }); };
+  // The learning history records it (history.js): o.cued = said right after hearing it (an echo: the gold card's mic);
+  // a question's answer that follows (words.js answerRight, said) makes it that answer's event instead of a second one.
+  S.said = function (id, o) { const w = WM().rec(id, true); if (!w) return; if (G.hist && w.st >= 1) G.hist.event(id, o && o.cued ? 'E' : 'S', { said: true }); w.said = (w.said | 0) + 1; WM().encounter(id); G.state.stars++; if (G.cards) G.cards.grow(id, 'say'); S.autosave(); if (G.vocabLog) G.vlog('said', id, { via: G.top() && G.top().constructor.name }); };
   S.saidCount = id => (G.state.words[id] && G.state.words[id].said) | 0;
   S.micStars = (s = G.state) => Object.keys(s.words).reduce((n, id) => n + ((s.words[id] && s.words[id].said) | 0), 0);
   // 0..3 stars per word: its stage (known 1, remembered 2, solid 3)
@@ -8918,16 +8938,29 @@ G.store = {
 // dc (calendar day number), fu, met (play s),
 // ms (session met), md (day met), mdate (the calendar date it was met: the chapters' daily budget), how, last, n (encounters), right, wrong, said, cue (cued right answers), ret (active
 // retrievals), ft {date: uncued first-try rights}, star (date of the last star), s3 (day it reached stage 3), gold
-// (its "¡Palabra de oro!" was shown), learned (= st >= 3, for older readers)}.
+// (its "¡Palabra de oro!" was shown), learned (= st >= 3, for older readers),
+// ld (the calendar day number it was last met or used: picked, recalled, said, missed, checked by a grown-up; passive
+// appearances in a line don't count; older records: estimated from star / ft / mdate, W.lastDay), mc (misses in a row),
+// mw (play times of the last 3 misses), slip ({d: day number, n: right first tries since, re: 1 once re-introduced}:
+// a SLIPPING word, docs/LEARNING_PLAN_2.md Phase 1)}.
+// Slipping: a word missed 3 times (in a row, or 3 misses within W.SLIP.win play seconds) is marked slipping; the next
+// review question for it (G.review.ask, the dog's warm-up) is a fresh one-unknown introduction instead (G.intro.again,
+// intro.js); it stays slipping until it is answered right on the first try twice. W.slipping(id), W.needsReintro(id).
+// The learning history (src/history.js, G.hist) hears every retrieval from here: answerRight / answerWrong / meet (and
+// G.st.said for the mic), so every path that goes through the model is recorded.
 //
 // API (G.words, short W below):
 //   W.stage(id) 0..4   W.met(id)   W.rec(id) the record (made and migrated on demand; null for a word not in D.words)
 //   W.meet(id, how, o) stage 0 -> 1 (how: 'show' 'find' 'watch' 'listen' 'answer' 'co' 'tap' ...; o.who), schedules the
 //                      follow-ups; true if it was new. (G.intro.* call it and add the small celebration.)
-//   W.answerRight(id, {cued, said, firstTry = true, mode: 'both'|'text'|'pic'|'match'|'say', review}) -> {stage, up,
-//                      star, gold}: an active retrieval. Uncued first tries move the box and the stage; a star at most
-//                      once per word per day (first tries only)
-//   W.answerWrong(id)  a miss: down a box, due again soon
+//   W.answerRight(id, {cued, said, echo, parent, firstTry = true, mode: 'both'|'text'|'pic'|'match'|'say'|'parent',
+//                      review}) -> {stage, up, star, gold}: an active retrieval. Uncued first tries move the box and the
+//                      stage; a star at most once per word per day (first tries only). echo: said right after hearing
+//                      it (a listening question answered aloud: the history's echo, not a recall); parent: a grown-up's
+//                      check (a recall, recorded as 'parent')
+//   W.answerWrong(id, {parent})  a miss: down a box, due again soon (3 misses: slipping)
+//   W.lastDay(id) the day number it was last met or used (or null)   W.gapDays(id) days since then (or null)
+//   W.slipping(id)  W.needsReintro(id) (slipping, not re-introduced yet)  W.reintroduced(id) (G.intro.again calls it)
 //   W.encounter(id, how) a passive meeting of a met word (heard, named, in the bag...): only `last` and `n`
 //   W.due(id)  W.overdue(id) (how late, for sorting)  W.strength(id) 0..1  W.stars(id) 0..3 (the notebook's)
 //   W.isOld(id) met in an earlier session or 5+ minutes ago (a prompt for it is a review)
@@ -8946,6 +8979,7 @@ G.store = {
   W.FOLLOW = [90, 360];               // just met: asked again after 1.5 min, then 6 min (play seconds)
   W.MISS = 90;                        // a miss: due again after 1.5 min
   W.BOX_DAYS = [0, 0, 1, 2, 4, 8];    // box -> days until due (box 1: the same session)
+  W.SLIP = { n: 3, win: 600, rights: 2 }; // 3 misses (in a row, or within 10 min of play) -> slipping, until 2 right first tries
 
   // ---------- calendar ----------
   G.debug = G.debug || {};
@@ -8976,6 +9010,7 @@ G.store = {
     if (!G.state) return;
     const m = wm(); m.clock += 1 / 60;
     if (++dateT >= 600) { dateT = 0; if (m.date && m.date !== G.today()) { m.day++; m.date = G.today(); } } // played past midnight
+    if (G.hist) G.hist.step(); // the learning history: today's minutes of play (src/history.js)
   };
   W.addTime = sec => { if (G.state && sec > 0) wm().clock += sec; };
 
@@ -9022,11 +9057,40 @@ G.store = {
     r.last = W.now(); r.n++;
     if (r.st >= 1) return false;
     r.st = 1; r.box = 1; r.fu = 1; r.met = W.now(); r.ms = wm().sess; r.md = wm().day; r.mdate = G.today(); r.how = how || 'meet';
+    r.ld = dayNum();
     schedule(r, W.FOLLOW[0]);
     log('meet', id, { how: r.how, who: o.who || null });
+    if (G.hist) G.hist.met(id); // (the learning history: words met today)
     save();
     return true;
   };
+
+  // ---------- the last day a word was met or used (the history's gaps), and slipping words ----------
+  // 'YYYY-M-D' (G.today()) -> the day number (dayNum), or null
+  W.numOf = s => { const p = String(s || '').split('-').map(Number); return p.length === 3 && p.every(v => Number.isFinite(v) && v > 0) ? Math.round(Date.UTC(p[0], p[1] - 1, p[2]) / 864e5) : null; };
+  W.lastDay = function (id) {
+    const r = W.rec(id); if (!r || r.st < 1) return null;
+    if (Number.isFinite(r.ld)) return r.ld;
+    let best = null; // (an older record: its last star, its first-try days, the day it was met)
+    const see = s => { const n = W.numOf(s); if (n != null && (best == null || n > best)) best = n; };
+    see(r.star); if (isObj(r.ft)) Object.keys(r.ft).forEach(see); see(r.mdate);
+    return best;
+  };
+  W.gapDays = id => { const l = W.lastDay(id); return l == null ? null : Math.max(0, dayNum() - l); };
+  W.slipping = id => { const r = W.rec(id); return !!(r && r.st >= 1 && isObj(r.slip)); };
+  W.needsReintro = id => { const r = W.rec(id); return !!(r && r.st >= 1 && isObj(r.slip) && !r.slip.re); };
+  W.reintroduced = id => { const r = W.rec(id); if (!r || !isObj(r.slip)) return; r.slip.re = 1; r.mc = 0; r.mw = []; save(); };
+  W.slipList = () => W.list(1).filter(W.slipping);
+  // a miss: three in a row, or three within W.SLIP.win play seconds, and the word is slipping (a fresh episode if it was
+  // already re-introduced and is missed again)
+  function missed(r) {
+    r.mc = (r.mc | 0) + 1;
+    const mw = (Array.isArray(r.mw) ? r.mw : []).concat([Math.round(W.now())]).slice(-W.SLIP.n); r.mw = mw;
+    if (r.mc < W.SLIP.n && !(mw.length >= W.SLIP.n && mw[mw.length - 1] - mw[0] <= W.SLIP.win)) return;
+    if (!isObj(r.slip)) r.slip = { d: dayNum(), n: 0, re: 0 };
+    else if (r.slip.re) { r.slip.re = 0; r.slip.n = 0; }
+    r.mc = 0; r.mw = [];
+  }
   W.encounter = function (id, how) {
     const r = W.rec(id); if (!r || r.st < 1) return false;
     r.last = W.now(); r.n++;
@@ -9038,10 +9102,16 @@ G.store = {
     const r = W.rec(id, true); if (!r) return { stage: 0, up: false, star: false, gold: false };
     const first = o.firstTry !== false, mode = o.mode || 'both', day = G.today(), st0 = r.st, cued = !!o.cued || st0 < 1; // (meeting a word by answering is its puzzle, not a retrieval)
     const pts0 = G.cards && st0 >= 1 ? G.cards.pts(id) : 0; // (its card before the stage moves: a new stage's floor would hide the growth)
+    // the history's event (src/history.js): P/p pick, R/r recall (word-only cards, a page match), S/s said, E said right
+    // after hearing it (an echo), K a cued pick, C a grown-up's check (capitals: right on the first try)
+    const hk = st0 < 1 ? null : o.parent ? 'C' : o.said ? (cued || o.echo ? 'E' : first ? 'S' : 's') : cued ? 'K' : mode === 'text' || mode === 'match' ? (first ? 'R' : 'r') : first ? 'P' : 'p';
+    if (hk && G.hist) G.hist.event(id, hk, { answer: true, said: !!o.said });
     if (st0 < 1) W.meet(id, o.how || 'answer');
     r.last = W.now(); r.ru = r.last; r.n++; r.ret++; // (ru: the last retrieval, chapters.js nudge)
-    if (first) r.right++; // (a miss was counted by answerWrong)
+    r.ld = dayNum();
+    if (first) { r.right++; r.mc = 0; } // (a miss was counted by answerWrong)
     if (cued) r.cue++;
+    if (first && !cued && !o.echo && isObj(r.slip) && st0 >= 1 && ++r.slip.n >= W.SLIP.rights) r.slip = null; // (slipping: right twice, it's back)
     let star = false;
     if (first && !o.noStar && r.star !== day) { r.star = day; star = true; G.state.stars = (G.state.stars | 0) + 1; }
     if (first && !cued) {
@@ -9049,7 +9119,7 @@ G.store = {
       const keys = Object.keys(r.ft); if (keys.length > 12) delete r.ft[keys[0]]; // (only the recent days matter)
       // the stage: 1 -> 2 by any uncued answer; 2 -> 3 by recall (word-only cards, a page match, saying it outside
       // picture+word cards); 3 -> 4 on a later day once 3 uncued first tries over 2+ days have come since
-      const recall = mode === 'text' || mode === 'match' || mode === 'say' || (o.said && mode !== 'both');
+      const recall = mode === 'text' || mode === 'match' || mode === 'say' || mode === 'parent' || (o.said && mode !== 'both');
       if (r.st === 1) setStage(r, id, 2);
       else if (r.st === 2 && recall) setStage(r, id, 3);
       else if (r.st === 3 && r.s3 != null && wm().day > r.s3) {
@@ -9070,12 +9140,14 @@ G.store = {
     save();
     return { stage: r.st, up: r.st > st0, star, gold: r.st >= 3 && st0 < 3 };
   };
-  W.answerWrong = function (id) {
+  W.answerWrong = function (id, o = {}) {
     const r = W.rec(id, true); if (!r) return;
     if (r.st < 1) return; // an unmet word can't be missed (it's still a puzzle)
-    r.wrong++; r.last = W.now();
+    if (G.hist) G.hist.event(id, o.parent ? 'c' : 'm'); // (the history, src/history.js: before the last day moves)
+    r.wrong++; r.last = W.now(); r.ld = dayNum();
     r.box = Math.max(1, (r.box | 0) - 1); if (r.fu === 2) r.fu = 1;
     schedule(r, W.MISS);
+    missed(r);
     save();
   };
 
@@ -9132,6 +9204,265 @@ G.store = {
   // audit and grown-ups. Good teaching stays inside each activity (one unknown at a time, used again soon after).
   B.OPEN = true;
   B.canIntro = (n = 1, o = {}) => B.OPEN || B.left(o) >= n;
+})();
+
+</script>
+<script>/* src/history.js */
+// ===== The learning history: what the child practised, day by day, kept in the save (no audio, on the device only) =====
+// docs/LEARNING_PLAN_2.md, Phase 1 ("measure and review"). The parent wants to know what she actually RETAINS, so every
+// retrieval is recorded with the gap since the word was last met or used: retention = right on the first try when a word
+// comes back after a day or more.
+//
+// Saved in G.state.hist (one key, compact):
+//   d: { 'YYYY-M-D' (G.today()): { n (the day's number: words.js dayNum), s (seconds played), met: [ids met that day],
+//        w: { id: [gap, events] } } }   the last H.KEEP days; older ones fold into `old` (their totals)
+//      gap: whole days between the word's previous encounter (words.js r.ld: met, picked, recalled, said, missed,
+//        checked; passive appearances in a line don't count) and its first event that day (-1: unknown); every later event
+//        of the day has a gap of 0, so one gap per word and day keeps every event's gap
+//      events: one letter per retrieval, in order: P pick, R recall (word-only cards, a page match), S said aloud
+//        (capital: right on the first try; p, r, s: right after a miss), K a cued pick (it could be matched), E said right
+//        after hearing it (an echo), m a miss, C / c a grown-up's check right / wrong. (Up to H.EVMAX a word a day.)
+//   old: { days, s, rn, rr, pr, sp, cy, cn }   the folded days' totals (see stats below)
+//   pre: seconds of play before the history began (an older save's G.state.playTime)
+//   chk: { cur: {d, at, ids, r: [1 | 0 | null], i} | null, log: [{d, at, ids, r}] }   the grown-ups' word checks
+//   wu: { d: the day the dog's warm-up last ran (or was skipped), n: warm-ups done, k: skipped, none: days with too few
+//        words, last: {d, ids, right, of} }   (warmup.js)
+// Recording (words.js and state.js call these; content never needs to): H.event(id, kind, o), H.met(id), H.step().
+//
+// API (G.hist, short H): (o.days: the last n calendar days including today; o.all: everything, the folded days too)
+//   H.state()                 the saved object          H.day(key?) a day's record (today's by default, made on demand)
+//   H.days()                  the kept days' keys, oldest first
+//   H.events(o)               [{day, n, word, kind: 'pick'|'recall'|'say'|'miss'|'parent', first, ok, cued, echo, gap}]
+//   H.stats(o)                {rn, rr (retention: first events after a day or more, right first try), pr (practice
+//                             events, the grown-ups' checks apart), sp (said aloud), cy, cn (checks right / wrong), s}
+//   H.retention(o)            {n, right, pct}  (pct null with no data)      H.retentionByDay(n) [{key, n, right, pct}]
+//   H.spoken(o)               {said, all, pct}                              H.minutes(key?)  H.totalMinutes()
+//   H.daysPlayed()            calendar days with play (from older word records too)
+//   H.zoneRows(zone)          a zone's words for the grown-ups (warmup.js / dashboard.js): {id, met, st, box, said,
+//                             ago (days since last met or used, or null), slip}
+//   H.overview()              the numbers on the grown-ups' Learning page
+//   The grown-ups' check: H.checkPick(n), H.checkStart(), H.checkCur(), H.checkAnswer(ok: true | false | null (skip)),
+//   H.checkStop(), H.checkLast() -> {d, ago, right, of} | null, H.checks() (the log)
+'use strict';
+(function () {
+  const H = G.hist = {};
+  H.KEEP = 60;          // days kept in detail
+  H.EVMAX = 60;         // events kept per word per day (a dog trick can be said fifty times...)
+  H.IDLE = 180 * 60;    // frames without a touch or a key before play time stops counting (3 min)
+  H.CHECK_N = 10;       // words in a grown-ups' check
+  H.KIND = { P: 'pick', p: 'pick', K: 'pick', R: 'recall', r: 'recall', S: 'say', s: 'say', E: 'say', m: 'miss', C: 'parent', c: 'parent' };
+  const ADULT = ['GrownUps', 'LearningDash', 'MicTest', 'Controls', 'QuestLog']; // grown-ups' screens: not play time
+  const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+  const W = () => G.words, D = () => G.data;
+  const today = () => G.today(), dn = () => G.words.dayNum();
+
+  // ---------- the saved object ----------
+  function st() {
+    const s = G.state; if (!isObj(s.hist)) s.hist = {};
+    const h = s.hist;
+    if (!h.v) { h.v = 1; h.pre = Math.round(+s.playTime || 0); } // (a new history: the play before it is kept as a number)
+    if (!isObj(h.d)) h.d = {};
+    if (!isObj(h.old)) h.old = { days: 0, s: 0, rn: 0, rr: 0, pr: 0, sp: 0, cy: 0, cn: 0 };
+    if (!isObj(h.chk)) h.chk = {};
+    if (!Array.isArray(h.chk.log)) h.chk.log = [];
+    if (h.chk.cur && !(isObj(h.chk.cur) && Array.isArray(h.chk.cur.ids) && Array.isArray(h.chk.cur.r))) h.chk.cur = null;
+    if (!isObj(h.wu)) h.wu = { d: '', n: 0, k: 0, none: 0 };
+    return h;
+  }
+  H.state = () => (G.state ? st() : null);
+  const save = () => { if (G.st && G.st.autosave) G.st.autosave(); };
+  H.numOf = key => G.words.numOf(key);
+  // the day's record, made on demand (making one folds the oldest beyond H.KEEP)
+  H.day = function (key) {
+    const h = st(); key = key || today();
+    let d = h.d[key];
+    if (!isObj(d)) { d = h.d[key] = { n: key === today() ? dn() : H.numOf(key), s: 0, met: [], w: {} }; prune(h); }
+    if (!Array.isArray(d.met)) d.met = [];
+    if (!isObj(d.w)) d.w = {};
+    if (!Number.isFinite(d.n)) d.n = H.numOf(key);
+    return d;
+  };
+  const keys = h => Object.keys(h.d).filter(k => isObj(h.d[k]) && Number.isFinite(h.d[k].n)).sort((a, b) => h.d[a].n - h.d[b].n);
+  H.days = () => (G.state ? keys(st()) : []);
+  function prune(h) {
+    const K = keys(h);
+    while (K.length > H.KEEP) {
+      const k = K.shift(), s = dayStats(h.d[k]), o = h.old;
+      o.days += s.s > 0 || s.pr + s.cy + s.cn > 0 ? 1 : 0;
+      for (const f of ['s', 'rn', 'rr', 'pr', 'sp', 'cy', 'cn']) o[f] = (o[f] | 0) + (s[f] | 0);
+      delete h.d[k];
+    }
+  }
+
+  // ---------- recording ----------
+  // a retrieval (words.js answerRight / answerWrong, state.js said). o.said: said aloud (the mic); o.answer: a question's
+  // answer (answerRight). The mic's say (G.st.said) comes a moment before the answer it belongs to: the answer then
+  // replaces it (first try or not, an echo) instead of counting twice.
+  let pend = null;
+  H.event = function (id, k, o = {}) {
+    if (!G.state || !D().words[id] || !H.KIND[k]) return null;
+    const d = H.day(), r = W().rec(id);
+    let e = d.w[id];
+    if (o.answer && o.said && pend && pend.id === id && pend.key === today() && G.frame - pend.f <= 150 && Array.isArray(e) && typeof e[1] === 'string' && e[1].length > pend.i) {
+      e[1] = e[1].slice(0, pend.i) + k + e[1].slice(pend.i + 1); pend = null;
+      return k;
+    }
+    if (!Array.isArray(e) || typeof e[1] !== 'string') {
+      const ld = W().lastDay(id);
+      e = d.w[id] = [ld == null ? -1 : Math.max(0, d.n - ld), ''];
+    }
+    if (e[1].length < H.EVMAX) e[1] += k;
+    pend = o.said && !o.answer ? { id, key: today(), i: e[1].length - 1, f: G.frame } : null;
+    if (r) r.ld = d.n;
+    save();
+    return k;
+  };
+  // a word met (words.js meet)
+  H.met = function (id) { if (!G.state) return; const d = H.day(); if (d.met.indexOf(id) < 0) d.met.push(id); };
+  // every frame a game is on (words.js step): today's seconds of play (not while idle, not on the grown-ups' screens)
+  let acc = 0, lastIn = 0, lastState = null;
+  H.step = function () {
+    if (!G.state) return;
+    if (lastState !== G.state) { lastState = G.state; lastIn = G.frame; acc = 0; }
+    if (G.input.ptr.down || G.input.tap() || Object.keys(G.pressed).length) lastIn = G.frame;
+    const top = G.top(), name = top && top.constructor ? top.constructor.name : '';
+    if (ADULT.indexOf(name) >= 0 || G.frame - lastIn > H.IDLE) return;
+    if ((acc += 1 / 60) >= 1) { acc -= 1; H.day().s++; }
+  };
+
+  // ---------- reading ----------
+  const CAP = c => c === 'P' || c === 'R' || c === 'S' || c === 'C';
+  // one day's numbers: rn / rr retention (each word's first event that day, after a day or more: was it right first
+  // try? a cued pick or an echo is no test, and a check before it means it was just seen), pr practice (every event but
+  // the grown-ups' checks), sp said aloud, cy / cn checks right / wrong, s seconds played
+  function dayStats(d, minGap = 1) {
+    const o = { s: d.s | 0, rn: 0, rr: 0, pr: 0, sp: 0, cy: 0, cn: 0 };
+    for (const id in d.w) {
+      const e = d.w[id]; if (!Array.isArray(e) || typeof e[1] !== 'string') continue;
+      const ev = e[1], gap = e[0];
+      for (const c of ev) { if (c === 'C') o.cy++; else if (c === 'c') o.cn++; else { o.pr++; if (c === 'S' || c === 's' || c === 'E') o.sp++; } }
+      const c0 = ev[0];
+      if (c0 && gap >= minGap && c0 !== 'C' && c0 !== 'c' && c0 !== 'K' && c0 !== 'E') { o.rn++; if (CAP(c0)) o.rr++; }
+    }
+    return o;
+  }
+  H.dayStats = dayStats;
+  // the days o covers: o.days (the last n calendar days, today included), o.key (one day), else every kept day
+  function inRange(o = {}) {
+    const h = st(), K = keys(h);
+    if (o.key) return h.d[o.key] ? [h.d[o.key]] : [];
+    if (o.days) { const lo = dn() - o.days + 1; return K.map(k => h.d[k]).filter(d => d.n >= lo); }
+    return K.map(k => h.d[k]);
+  }
+  H.stats = function (o = {}) {
+    const t = { s: 0, rn: 0, rr: 0, pr: 0, sp: 0, cy: 0, cn: 0 };
+    if (!G.state) return t;
+    for (const d of inRange(o)) { const s = dayStats(d, o.minGap || 1); for (const f in t) t[f] += s[f]; }
+    if (o.all) { const old = st().old; for (const f in t) t[f] += old[f] | 0; }
+    return t;
+  };
+  const pct = (a, b) => (b > 0 ? Math.round(a * 100 / b) : null);
+  H.retention = o => { const s = H.stats(o); return { n: s.rn, right: s.rr, pct: pct(s.rr, s.rn) }; };
+  H.spoken = o => { const s = H.stats(o); return { said: s.sp, all: s.pr, pct: pct(s.sp, s.pr) }; };
+  // the last n calendar days, oldest first (a day not played: n 0)
+  H.retentionByDay = function (n = 14) {
+    const out = []; if (!G.state) return out;
+    const h = st(), byN = {}; for (const k of keys(h)) byN[h.d[k].n] = k;
+    for (let i = n - 1; i >= 0; i--) {
+      const num = dn() - i, k = byN[num], s = k ? dayStats(h.d[k]) : { rn: 0, rr: 0, pr: 0, s: 0 };
+      out.push({ key: k || null, n: s.rn, right: s.rr, pct: pct(s.rr, s.rn), num, practice: s.pr, sec: s.s });
+    }
+    return out;
+  };
+  H.events = function (o = {}) {
+    const out = []; if (!G.state) return out;
+    for (const d of inRange(o)) {
+      const key = keys(st()).find(k => st().d[k] === d);
+      for (const id in d.w) {
+        const e = d.w[id]; if (!Array.isArray(e) || typeof e[1] !== 'string') continue;
+        [...e[1]].forEach((c, i) => out.push({ day: key, n: d.n, word: id, kind: H.KIND[c], first: CAP(c) || c === 'K' || c === 'E', ok: c !== 'm' && c !== 'c', cued: c === 'K' || c === 'E', echo: c === 'E', gap: i ? 0 : e[0] }));
+      }
+    }
+    return out;
+  };
+  H.minutes = key => { if (!G.state) return 0; const d = st().d[key || today()]; return d ? Math.floor((d.s | 0) / 60) : 0; };
+  H.totalMinutes = () => { if (!G.state) return 0; const h = st(); return Math.floor(((h.pre | 0) + H.stats({ all: true }).s) / 60); };
+  // calendar days with play: the history's, and the days older word records were met or answered on
+  H.daysPlayed = function () {
+    if (!G.state) return 0;
+    const h = st(), set = new Set();
+    for (const k of keys(h)) { const d = h.d[k]; if ((d.s | 0) >= 20 || d.met.length || Object.keys(d.w).length) set.add(d.n); }
+    for (const id in G.state.words) {
+      const r = W().rec(id); if (!r || r.st < 1) continue;
+      for (const s of [r.mdate, r.star].concat(isObj(r.ft) ? Object.keys(r.ft) : [])) { const n = H.numOf(s); if (n != null) set.add(n); }
+    }
+    return set.size + (h.old.days | 0);
+  };
+
+  // ---------- a zone's words, for the grown-ups ----------
+  H.wordsOf = zone => D().pageOrder.filter(p => D().pages[p] && (G.zones ? G.zones.ofTopic(D().pages[p].topic) : 'villa') === zone).reduce((a, p) => a.concat(D().pages[p].words.filter(id => a.indexOf(id) < 0)), []);
+  H.row = function (id) {
+    const r = W().rec(id), st0 = W().stage(id), g = W().gapDays(id);
+    return { id, met: st0 >= 1, st: st0, box: r && st0 >= 1 ? Math.max(1, r.box | 0) : 0, said: r ? r.said | 0 : 0, ago: st0 >= 1 ? g : null, slip: W().slipping(id) };
+  };
+  H.zoneRows = zone => H.wordsOf(zone).map(H.row);
+
+  // ---------- the overview ----------
+  H.overview = function () {
+    const Wd = W(), r7 = H.retention({ days: 7 }), ra = H.retention({ all: true }), sp = H.spoken({ all: true }), h = st();
+    return {
+      days: H.daysPlayed(), minutes: H.totalMinutes(), today: H.minutes(),
+      met: Wd.count(1), known: Wd.count(2), remembered: Wd.count(3), solid: Wd.count(4), all: Object.keys(D().words).length,
+      slipping: Wd.slipList(), r7, ra, spoken: sp, check: H.checkLast(), warmup: Object.assign({}, h.wu),
+    };
+  };
+
+  // ---------- the grown-ups' check: words to ask away from the game ----------
+  // Half that need it (slipping first, then due or only met, the longest unseen first), half strong ones (remembered,
+  // the longest unseen first), shuffled; words with a picture (to show) and no two that look the same.
+  H.checkPick = function (n = H.CHECK_N) {
+    const Wd = W(), seen = new Set();
+    const ok = Wd.list(1).filter(id => G.iconDrawn(id)).filter(id => { const b = G.baseForm(id); if (seen.has(b)) return false; seen.add(b); return true; });
+    const gap = id => { const g = Wd.gapDays(id); return g == null ? 0 : g; };
+    const weak = ok.filter(id => Wd.stage(id) <= 2 || Wd.slipping(id)).sort((a, b) => (Wd.slipping(b) - Wd.slipping(a)) || (Wd.due(b) - Wd.due(a)) || gap(b) - gap(a) || Wd.stage(a) - Wd.stage(b));
+    const strong = ok.filter(id => weak.indexOf(id) < 0).sort((a, b) => gap(b) - gap(a) || Wd.stage(b) - Wd.stage(a));
+    const half = Math.ceil(n / 2), out = weak.slice(0, half);
+    out.push(...strong.slice(0, n - out.length));
+    for (const id of weak.slice(half)) if (out.length < n) out.push(id);
+    for (let i = out.length - 1; i > 0; i--) { const j = G.r(i + 1); [out[i], out[j]] = [out[j], out[i]]; }
+    return out;
+  };
+  H.checkCur = () => (G.state ? st().chk.cur : null);
+  H.checks = () => (G.state ? st().chk.log : []);
+  H.checkStart = function (ids) {
+    ids = ids || H.checkPick(); if (!ids.length) return null;
+    const c = st().chk.cur = { d: today(), at: Date.now(), ids, r: ids.map(() => null), i: 0 };
+    save(); return c;
+  };
+  // the grown-up's answer for the word shown: true (right: a recall), false (a miss), null (skipped: not counted)
+  H.checkAnswer = function (ok) {
+    const c = H.checkCur(); if (!c || c.i >= c.ids.length) return null;
+    const id = c.ids[c.i];
+    if (ok === true) W().answerRight(id, { parent: true, mode: 'parent', noStar: true, noGrow: true, review: true });
+    else if (ok === false) W().answerWrong(id, { parent: true });
+    c.r[c.i] = ok === true ? 1 : ok === false ? 0 : null; c.i++;
+    if (c.i >= c.ids.length) H.checkStop();
+    save();
+    return id;
+  };
+  // the check ends (all asked, or the grown-up stops it): it goes in the log with what was answered
+  H.checkStop = function () {
+    const h = st(), c = h.chk.cur; if (!c) return null;
+    h.chk.cur = null;
+    if (c.r.some(v => v != null)) { h.chk.log.push({ d: c.d, at: c.at, ids: c.ids, r: c.r }); h.chk.log = h.chk.log.slice(-12); }
+    save(); return c;
+  };
+  H.checkScore = c => ({ right: c.r.filter(v => v === 1).length, of: c.r.filter(v => v != null).length });
+  H.checkLast = function () {
+    const L = H.checks(), c = L[L.length - 1]; if (!c) return null;
+    const n = H.numOf(c.d);
+    return Object.assign({ d: c.d, ago: n == null ? null : dn() - n, ids: c.ids, r: c.r }, H.checkScore(c));
+  };
 })();
 
 </script>
@@ -9617,7 +9948,7 @@ G.store = {
     heard(alts) {
       if (!G.speech.match(this.word().es, alts).pass) { this.mic.miss(); return; }
       const r = this.micRect(); this.mic.win();
-      G.mic.award(this.ids[this.i], r.x + r.w / 2, r.y + r.h / 2);
+      G.mic.award(this.ids[this.i], r.x + r.w / 2, r.y + r.h / 2, { cued: true }); // (the card said it first: an echo, for the history)
       G.fx.say('¡Bien dicho!', G.W / 2, this.box().y + 126, '#a8f0ff', true); // under the word
     }
     word() { return D().words[this.ids[this.i]]; }
@@ -9698,6 +10029,9 @@ G.store = {
   // Speaking (mic.js): in a G.ask question whose answer is a word, a mic button sits at the bottom right (unless
   // opts.noMic). What the child says is matched against EVERY choice's spoken form: the right one counts as picking it
   // plus a speaking star; a wrong one is just like tapping it; nothing heard or no match: "¡Otra vez!", no penalty.
+  // opts.micBig (with opts.show): a big mic right beside the picture held up, the first thing to try (the dog's warm-up,
+  // warmup.js). opts.cancel: a way out (a back button; opts.cancelIcon 'skip': the big skip button, G.skipBtn), and
+  // opts.onCancel() hears about it. opts.drawExtra(ctx, scene): more to draw over the question (the warm-up's cards).
   const GOLD = '#f8d860', BLUE = '#a8d8ff';
   function view(c, disp, isAns) {
     const W = D().words[c.word] && c.img ? c.img : D().words[c.word]; // (c.img: a picture of its own, e.g. the red ball for rojo)
@@ -9770,7 +10104,11 @@ G.store = {
     }
     onEnter() { if (this.mic) this.mic.arm(); }
     onExit() { if (this.mic) this.mic.off(); }
-    micRect() { return { x: G.W - 42, y: G.H - 62, w: 36, h: 36 }; } // the cards and the list keep clear of it (rects)
+    big() { return !!(this.o.micBig && this.o.show); } // (the big mic sits beside the picture held up)
+    micRect() { return this.big() ? { x: G.W / 2 + 40, y: 14, w: 46, h: 46 } : { x: G.W - 42, y: G.H - 62, w: 36, h: 36 }; } // the cards and the list keep clear of it (rects)
+    skip() { return this.o.cancelIcon === 'skip'; }
+    cancelHit() { return this.skip() ? G.skipHit(...this.backXY()) : G.btnHit(...this.backXY()); }
+    cancel() { G.audio.sfx('cancel'); G.pop(); if (this.o.onCancel) this.o.onCancel(); this.w.resolve(-1); }
     heard(alts) { // what the mic heard, against every choice
       const k = G.mic.best(this.ch.map(G.mic.target), alts, this.o.answer);
       if (k < 0 || this.ch[k].off) this.mic.miss(); else this.pick(k, true);
@@ -9783,17 +10121,18 @@ G.store = {
     // tap areas: one rect per choice (picture cards or list rows), the speaker and the back button (o.cancel)
     rects() {
       const vs = this.ch.map((c, k) => this.view(k));
+      const side = this.mic && !this.big(); // (the mic at the bottom right: the cards keep left of it)
       if (this.cards) {
-        const n = this.ch.length, cw = 58, gap = this.mic && n > 3 ? 6 : 12, tw = n * cw + (n - 1) * gap, y0 = G.H - 92;
-        const x0 = this.mic ? Math.min((G.W - tw) / 2, G.W - 54 - tw) : (G.W - tw) / 2; // (left of the mic)
+        const n = this.ch.length, cw = 58, gap = side && n > 3 ? 6 : 12, tw = n * cw + (n - 1) * gap, y0 = G.H - 92;
+        const x0 = side ? Math.min((G.W - tw) / 2, G.W - 54 - tw) : (G.W - tw) / 2; // (left of the mic)
         return vs.map((v, k) => ({ x: x0 + k * (cw + gap), y: y0, w: cw, h: v.label ? 78 : 62 }));
       }
       const wd = Math.max(...vs.map((v, k) => { const c = this.ch[k], lab = v.label || (c.word && D().words[c.word] ? c.label || G.baseForm(c.word) : ''); return (lab ? G.textWidth(lab) : 0) + (v.icon || (c.word && D().words[c.word]) ? 20 : 0); })) + 34; // (room for the picture and the word the right row shows once picked)
-      const h = this.ch.length * 20 + 8, x = this.mic ? Math.min((G.W - wd) / 2, G.W - 50 - wd) : (G.W - wd) / 2, y = G.H - h - 10;
+      const h = this.ch.length * 20 + 8, x = side ? Math.min((G.W - wd) / 2, G.W - 50 - wd) : (G.W - wd) / 2, y = G.H - h - 10;
       return vs.map((v, k) => ({ x, y: y + 4 + k * 20, w: wd, h: 20 }));
     }
     spk() { return [G.W - 38, 12]; }
-    backXY() { return [18, 12]; }
+    backXY() { return this.skip() ? [4, 4] : [18, 12]; }
     pick(k, spoken) {
       const o = this.o, c = this.ch[k], R = this.rects(), r = R[k];
       if (c.off) { G.audio.sfx('boop'); return; }
@@ -9828,22 +10167,23 @@ G.store = {
       if (d === (this.cards ? 'right' : 'down')) this.move(1);
       if (G.input.p('C') || (G.speakerHit(...this.spk()) && G.input.eat())) G.speak(this.o.prompt || '');
       if (G.input.tap() && this.t > 8) { // tapping a card (or row) answers with it
-        if (this.o.cancel && G.btnHit(...this.backXY())) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(-1); return; }
+        if (this.o.cancel && this.cancelHit()) { this.cancel(); return; }
         const pad = this.cards ? 6 : 0;
         const k = this.rects().findIndex(r => G.tapIn(r.x - pad, r.y - pad, r.w + pad * 2, r.h + pad));
         if (k >= 0 && calm) this.pick(k);
         return;
       }
       if (G.input.p('A') && this.t > 8 && calm) { this.pick(this.i); return; }
-      if (G.input.p('B') && this.o.cancel) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(-1); }
+      if (G.input.p('B') && this.o.cancel) this.cancel();
     }
     draw(ctx) {
       const o = this.o, top = 8;
       const ph = this.lines.length * 16 + 10 + (o.show ? 58 : 0);
       G.win(ctx, 12, top, G.W - 24, ph);
       G.speakerBtn(ctx, ...this.spk());
-      if (o.cancel) G.iconBtn(ctx, 'back', ...this.backXY());
+      if (o.cancel) { if (this.skip()) G.skipBtn(ctx, ...this.backXY(), this.t); else G.iconBtn(ctx, 'back', ...this.backXY()); }
       if (o.show) G.drawIcon16(ctx, o.show, G.W / 2 - 24, top + 8, 3, 'card');
+      if (o.drawExtra) { try { o.drawExtra(ctx, this); } catch (e) { console.error(e); } }
       G.richDraw(ctx, this.lines, G.W / 2, top + 5 + (o.show ? 58 : 0), { center: true });
       if (o.en && G.enVisible()) G.enBox(ctx, o.en, top + ph + 1, true);
       const R = this.rects(), won = this.won, wt = won ? won.t : 0;
@@ -9897,7 +10237,7 @@ G.store = {
   G.choose = function (opts) { const w = new G.Wait(); const s = new Choice(opts, w); w.scene = s; G.push(s); return w; };
 
   // ---------- Ask until right ----------
-  // q: {prompt, en, show, choices, answer: index, layout, learn, who, display, mask, intro, review, credit}
+  // q: {prompt, en, show, choices, answer: index, layout, learn, who, display, mask, intro, review, credit, reintro}
   // Wrong picks wobble and grey out with a soft boop (no lecture) while the question stays up, so every
   // question can be finished. The right pick pops with praise; a first-try answer earns a star (one per word a day).
   // Saying the right answer out loud (the mic, mic.js) answers too, and earns a speaking star on top.
@@ -9940,13 +10280,15 @@ G.store = {
     }));
     scene = wq.scene;
     if (G.vocabLog && aid) { const v = scene.view(q.answer); G.vlog('prompt', aid, { kind, st: st0, mode: v.icon && v.label ? 'both' : v.label ? 'text' : 'pic', cued: scene.cue(q.answer).cued || null, who: q.who || null }); }
+    const heard = !!aid && (scene.o.mask || []).indexOf(aid) >= 0; // (the prompt says the answer: saying it back is an echo, for the history)
     const r = yield wq;
     if (r.result !== q.answer) return false; // closed without answering (a question with a way out)
     const first = tries === 0;
     let res = null;
     if (aid) {
       const v = scene.view(q.answer), mode = spoken && !v.label ? 'say' : v.icon && v.label ? 'both' : v.label ? 'text' : 'pic';
-      res = G.words.answerRight(aid, { cued: !!scene.cue(q.answer).cued, said: spoken, firstTry: first, mode, review: kind === 'review', how: q.intro ? q.how || 'show' : 'answer' });
+      // (q.reintro: a slipping word met again, intro.js G.intro.again: a cued use, it doesn't move the word on)
+      res = G.words.answerRight(aid, { cued: !!q.reintro || !!scene.cue(q.answer).cued, said: spoken, echo: spoken && heard, firstTry: first, mode, review: kind === 'review', how: q.intro ? q.how || 'show' : 'answer' });
     }
     yield 10;
     // a word met just now: its small celebration (it goes in the notebook); co-listed words are only met
@@ -10067,6 +10409,10 @@ G.store = {
 //   note(ids, o) -> Wait  the small celebration for words just met: the word's new card pops up (cards.js: its picture,
 //        its blue word, a seed), says the word and flies into the deck; yield it to let the word be heard (~0.6 s)
 //   known(id, n) n met words to go with id in a one-unknown puzzle (another topic, stronger first)
+//   again(id, {who, prompt, en, extra})  a SLIPPING word (words.js: missed 3 times) met again instead of the same
+//        question: it is held up and named like the first time, then a one-unknown puzzle (hear it, pick its picture
+//        among 2 known ones; a cued use: the next questions move it on). G.review.ask does it by itself for a
+//        slipping word not re-introduced yet (W.needsReintro), and so does the dog's warm-up (warmup.js).
 // Content checks G.budget.canIntro(n) before introducing (words.js) and defers when it's false ("¡Mañana!").
 // G.review.ask(id, {who, prompt, en, pool, layout}) one question for a met word, fit for its stage: met -> hear it
 //   (a speaker in the prompt) and pick among picture + word cards; known -> its picture, pick its word; remembered+
@@ -10154,6 +10500,19 @@ G.store = {
     return true;
   };
 
+  // ---------- a slipping word, met again ----------
+  // (o.extra: more for its question, e.g. the warm-up's skip button and its cards)
+  I.again = function* (id, o = {}) {
+    if (!D().words[id] || !Wd().met(id)) return false;
+    Wd().reintroduced(id);
+    if (G.vocabLog) G.vlog('shown', id, { via: 'again', who: o.who || null });
+    yield sayAs(o.who, [TT(o.prompt || '¡Mira! ¡[' + id + ']!', o.en || 'Look! (this word again: listen, then find it)')], { show: id });
+    const known = G.iconDrawn(id) ? I.known(id, 2) : [];
+    if (known.length < 2) return true;
+    const q = ask(id, Object.assign({ how: 'again', ask: '¿[' + id + ']?', askEn: 'Which one? (listen)' }, o), [{ word: id, look: 'pic' }].concat(known.map(k => ({ word: k, look: 'pic' }))), Object.assign({ mask: [id], reintro: true }, o.extra || {}));
+    return yield* G.ask(q);
+  };
+
   // ---------- find it (on the map) ----------
   const finds = () => { const s = G.state; if (!s.finds || typeof s.finds !== 'object') s.finds = {}; return s.finds; };
   const key = (x, y) => x + ',' + y;
@@ -10211,6 +10570,7 @@ G.store = {
   // ---------- a review question for a word, fit for its stage ----------
   G.review.ask = function* (id, o = {}) {
     const st = Wd().stage(id); if (st < 1) return false;
+    if (Wd().needsReintro(id)) return yield* I.again(id, { who: o.who || null }); // (slipping: met again, not the same question)
     const top = D().words[id].topic, met = Wd().list(1).filter(k => k !== id && G.baseForm(k) !== G.baseForm(id));
     let pool = o.pool || met.filter(k => D().words[k].topic === top);
     if (pool.length < 2) pool = pool.concat(shuffle(met.filter(k => pool.indexOf(k) < 0)).slice(0, 2 - pool.length));
@@ -10415,9 +10775,9 @@ G.store = {
     });
     return k;
   };
-  M.award = function (id, x, y) {
+  M.award = function (id, x, y, o) { // (o.cued: said right after hearing it, e.g. on the gold card: the history's echo)
     if (G.cards) G.cards.at(x, y); // its card pops up here and grows the most (cards.js)
-    G.st.said(id);
+    G.st.said(id, o);
     G.audio.sfx('micstar');
     G.fx.ring(x, y, 26, '#70e0ff', 22);
     for (let i = 0; i < 3; i++) G.fx.twinkle(x + (Math.random() - 0.5) * 30, y + (Math.random() - 0.5) * 20);
@@ -11096,11 +11456,11 @@ G.store = {
   G.questLog = function () { const w = new G.Wait(); G.push(new QuestLog(w)); return w; };
 
   // ---------- Grown-ups menu (behind the held gear; English labels) ----------
-  // Volumes, voice, English help, on-screen buttons, speaking (the kids' mic), microphone test, controls, Misiones (story progress), back to
-  // title. Nothing to save by hand: volumes, the voice, English help, the D-pad and speaking are kept per device
+  // Volumes, voice, English help, on-screen buttons, speaking (the kids' mic), microphone test, controls, Learning (what the
+  // child knows and keeps: src/dashboard.js), Misiones (story progress), back to title. Nothing to save by hand: volumes, the voice, English help, the D-pad and speaking are kept per device
   // (G.prefs), and the game saves itself.
   // Up/down picks a row, left/right moves a volume, A changes the others; tap a row, tap or drag along a volume bar.
-  const ROW_H = 16, BAR = 168, CELL = 12; // volume bars: 10 cells from x = BAR; the speaker just left of it = 0
+  const ROW_H = 15, ROW_Y = 25, BAR = 168, CELL = 12; // volume bars: 10 cells from x = BAR; the speaker just left of it = 0
   class GrownUps {
     constructor(w, o) { this.transparent = true; this.w = w; this.o = o || {}; this.t = 0; this.i = 0; this.drag = null; this.tick = 0; }
     rows() {
@@ -11117,12 +11477,13 @@ G.store = {
         { id: 'mic', label: 'Microphone test', right: mic ? '>' : 'not available', off: !mic, help: mic ? 'Does speech recognition hear Spanish words?' : 'The microphone test is not in this version.' },
         { id: 'help', label: 'Controls and tips', right: '>', help: 'The keys, and how the game teaches.' },
       ];
-      if (!this.o.title) R.push({ id: 'story', label: 'Story progress', right: '>', off: !G.state, help: 'Misiones: the chapter going on, its steps, the bag, the badges.' },
+      if (!this.o.title) R.push({ id: 'learning', label: 'Learning', right: '>', off: !G.state || !G.dashboard, col: '#f8d860', help: 'What has stuck: retention, words by place, a check, a question.' },
+        { id: 'story', label: 'Story progress', right: '>', off: !G.state, help: 'Misiones: the chapter going on, its steps, the bag, the badges.' },
         { id: 'title', label: 'Back to title', right: '>', help: 'Progress is saved automatically.' });
       return R;
     }
     // tap areas (shared with draw): row k, its volume bar (with the speaker = 0 and the number), close
-    rowRect(k) { return { x: 10, y: 27 + k * ROW_H, w: G.W - 20, h: ROW_H }; }
+    rowRect(k) { return { x: 10, y: ROW_Y + k * ROW_H, w: G.W - 20, h: ROW_H }; }
     barRect(k) { const r = this.rowRect(k); return { x: BAR - 18, y: r.y, w: r.x + r.w - (BAR - 18), h: r.h }; }
     level(x) { return x < BAR ? 0 : Math.min(10, Math.floor((x - BAR) / CELL) + 1); }
     closeXY() { return [G.W - 30, 8]; }
@@ -11173,6 +11534,7 @@ G.store = {
         G.audio.sfx('ok'); try { G.micTest(); } catch (e) { console.warn(e); }
       } else if (r.id === 'help') { G.audio.sfx('ok'); G.controlsHelp(); }
       else if (r.id === 'story') { if (r.off) { G.audio.sfx('error'); return; } G.audio.sfx('ok'); G.questLog(); }
+      else if (r.id === 'learning') { if (r.off) { G.audio.sfx('error'); return; } G.audio.sfx('ok'); G.dashboard.open(); }
       else if (r.id === 'title') { G.audio.sfx('ok'); G.toTitle(); }
     }
     draw(ctx) {
@@ -11182,18 +11544,18 @@ G.store = {
       G.textR(ctx, 'Progress saves by itself', G.W - 40, 14, '#8890c0');
       G.closeBtn(ctx, ...this.closeXY());
       rows.forEach((r, k) => {
-        const R = this.rowRect(k), y = R.y + 5, sel = k === this.i, col = r.off ? '#7078a0' : sel ? '#f8e060' : '#ffffff', xr = R.x + R.w - 4;
+        const R = this.rowRect(k), y = R.y + 4, sel = k === this.i, col = r.off ? '#7078a0' : sel ? '#f8e060' : r.col || '#ffffff', xr = R.x + R.w - 4;
         if (sel) { ctx.fillStyle = 'rgba(248,224,96,0.13)'; ctx.fillRect(R.x + 2, R.y + 1, R.w - 4, R.h - 2); }
         else { ctx.fillStyle = 'rgba(136,152,224,0.22)'; ctx.fillRect(R.x + 14, R.y + R.h - 1, R.w - 28, 1); }
         if (sel && (this.t >> 3) % 4 !== 3) G.text(ctx, '\u0002', R.x + 4, y, '#f8e060');
         G.text(ctx, r.label, R.x + 14, y, col);
         if (r.vol) {
           const v = G.prefs[r.vol];
-          volIcon(ctx, r.vol === 'sfx' ? 'sound' : r.vol, BAR - 15, R.y + 4, !v);
-          for (let s = 0; s < 10; s++) { const h = 3 + s; ctx.fillStyle = s < v ? (sel ? '#f8d030' : '#c8d0f0') : '#303a78'; ctx.fillRect(BAR + s * CELL + 1, R.y + 15 - h, CELL - 2, h); }
+          volIcon(ctx, r.vol === 'sfx' ? 'sound' : r.vol, BAR - 15, R.y + 3, !v);
+          for (let s = 0; s < 10; s++) { const h = 3 + s; ctx.fillStyle = s < v ? (sel ? '#f8d030' : '#c8d0f0') : '#303a78'; ctx.fillRect(BAR + s * CELL + 1, R.y + ROW_H - 1 - h, CELL - 2, h); }
           G.textR(ctx, String(v), xr, y, v ? '#ffffff' : '#7078a0');
         } else if (r.on != null) { // a switch
-          const sx = xr - 26, sy = R.y + 3;
+          const sx = xr - 26, sy = R.y + 2;
           ctx.fillStyle = '#000010'; ctx.fillRect(sx - 1, sy - 1, 28, 13);
           ctx.fillStyle = r.on ? '#40a848' : '#404870'; ctx.fillRect(sx, sy, 26, 11);
           ctx.fillStyle = '#f0f0ff'; ctx.fillRect(r.on ? sx + 15 : sx + 1, sy + 1, 10, 9);
@@ -11837,6 +12199,7 @@ G.store = {
       if (G.animals) G.animals.update(this); // ducks, hens, the fish, the frog, the rabbit, the horse, the goat (animals.js)
       if (G.errands) G.errands.update(this); // Round B errands: who stands where, Canelo lost, Nico tagging along (errands.js)
       if (G.chapters) G.chapters.update(this); // the story: a chapter's moments that start by themselves (chapters.js)
+      if (G.warmup) G.warmup.update(this); // the dog's warm-up, the first time you're free each day (warmup.js; after the story's own)
       if (G.seek) G.seek.update(this); // hide-and-seek: who hides where, Canelo sniffing out a trail (seek.js)
       if (G.guide) G.guide.update(this); // the next thing to do, always in sight; Canelo trots that way (guide.js)
       const ct = this.camTarget(); this.cam.x += (ct.x - this.cam.x) * 0.3; this.cam.y += (ct.y - this.cam.y) * 0.3;
@@ -11907,6 +12270,7 @@ G.store = {
       }
       if (G.chapters) G.chapters.draw(this, ctx, 'top'); // a chapter's bubbles and pointing arrow (chapters.js)
       if (G.guide) G.guide.draw(this, ctx); // the arrow over the next thing to do, or at the screen's edge (guide.js)
+      if (G.warmup) G.warmup.draw(this, ctx); // the dog's warm-up: the card he dropped, the skip button (warmup.js)
       if (G.world) G.world.draw(this, ctx); // the word bubble of a thing just named, and its say-it-back mic (over the arrow: it's short-lived)
       if (this.banner && G.top() !== this) this.banner.t = Math.min(this.banner.t, 0); // a talk or a card opened over the map: the name has done its job
       if (this.banner && this.banner.t > 0) {
@@ -13671,7 +14035,8 @@ G.store = {
 //   G.pet.teach(id, who) generator (the teaching scene), G.pet.practice(id) generator (one good try: the question, then
 //   Canelo's attempt), G.pet.command(id, o) generator (a G.ask "¡Dile a Canelo!" for any trick, then he does it: for
 //   shows; o.prompt, o.pool), G.pet.trick(id) generator (he just does it), G.pet.play(kind, o) generator (any animation:
-//   sit come paw jump spin huh eat drink fetch pet dance wake), G.pet.menu() generator (the pet menu),
+//   sit come paw jump spin huh eat drink fetch pet dance wake; bring (o.item: {id: 'tarjeta'}: he fetches a word card and
+//   drops it at your feet) and wag (a happy wiggle): the dog's warm-up, warmup.js), G.pet.menu() generator (the pet menu),
 //   G.pet.npc(f) (Canelo on this map), G.pet.sleeping(f).
 // Saved: G.state.pet = {tricks: {id: good tries 0..3}, learning: id | null, sleep: bool}, flags.petStart.
 'use strict';
@@ -13746,14 +14111,14 @@ G.store = {
 
   // ---------- Canelo's animations (time from G.frame, so they play under any screen) ----------
   // n.pa = {k, f0, len, amp, sx, sy (away direction), D (px away), ev: fired events, item}
-  const LEN = { sniff: 84, sit: 80, come: 120, paw: 92, jump: 72, spin: 76, huh: 56, eat: 112, drink: 96, fetch: 168, pet: 104, dance: 64, wake: 30 };
+  const LEN = { sniff: 84, sit: 80, come: 120, paw: 92, jump: 72, spin: 76, huh: 56, eat: 112, drink: 96, fetch: 168, pet: 104, dance: 64, wake: 30, bring: 132, wag: 40 };
   const DIRS = ['down', 'right', 'up', 'left'];
   const ease = u => 1 - (1 - u) * (1 - u);
   // the free distance (tiles, up to max) from n's tile going (dx, dy): walls stop it
   function room(f, n, dx, dy, max) { let k = 0; while (k < max) { const x = n.x + dx * (k + 1), y = n.y + dy * (k + 1); const t = G.TERRAIN[f.map.get(x, y)] || G.TERRAIN['.']; if (x < 0 || y < 0 || x >= f.map.w || y >= f.map.h || t.block || t.wall) break; k++; } return k; }
   function start(f, n, k, o = {}) {
     const p = f.player, a = { k, f0: G.frame, len: LEN[k] || 60, amp: o.amp == null ? 1 : o.amp, ev: {}, item: o.item || null, px: p.x, py: p.y };
-    if (k === 'come' || k === 'fetch') { // run away from you along the roomier side, 3 tiles at most
+    if (k === 'come' || k === 'fetch' || k === 'bring') { // run away from you along the roomier side, 3 tiles at most
       const side = n.x < p.x ? -1 : n.x > p.x ? 1 : (room(f, n, 1, 0, 4) >= room(f, n, -1, 0, 4) ? 1 : -1);
       let dx = side, dy = 0, r = room(f, n, dx, dy, 3);
       if (r < 2) { const r2 = room(f, n, -dx, 0, 3); if (r2 > r) { dx = -dx; r = r2; } }
@@ -13851,6 +14216,34 @@ G.store = {
       }
       case 'dance': { o.dir = DIRS[Math.floor(t / 6) % 4]; o.z = Math.abs(Math.sin(t / 6 * Math.PI)) * 6; ev(2, () => P.sound('bark')); ev(34, () => P.sound('bark')); if (t % 10 === 0) puff('spark', wx + (Math.random() - 0.5) * 20, wy + Math.random() * 10, { life: 20 }); break; }
       case 'wake': o.z = Math.sin(Math.min(1, t / 20) * Math.PI) * 6; o.dir = 'down'; ev(2, () => P.sound('bark')); break;
+      case 'bring': { // the dog's warm-up (warmup.js): he runs off, noses about, finds a word card ("!"), trots back with it
+        // in his mouth, drops it at your feet and wags (o.item: the card, drawn in his mouth and then on the ground)
+        const D = a.D;
+        if (t < 20) { const u = ease(t / 20); o.dx = a.sx * D * u; o.dy = a.sy * D * u; o.dir = dirOf(a.sx, a.sy); o.fr = (t >> 2) & 1; if (t % 7 === 0) puff('dust', wx + o.dx, wy + o.dy + 22, { life: 16, vy: -0.2 }); }
+        else if (t < 42) { // nose to the ground, left and right: found one!
+          o.dx = a.sx * D; o.dy = a.sy * D + 2; o.sy = 0.9; o.fr = (t >> 2) & 1; o.dir = t < 34 ? ((t >> 3) & 1 ? 'left' : 'right') : dirOf(-a.sx, -a.sy);
+          if (t % 8 === 0 && t < 34) puff('dust', wx + o.dx + (o.dir === 'left' ? -9 : 9), wy + o.dy + 19, { life: 14, vy: -0.25 });
+          ev(34, () => { puff('ex', wx + o.dx, wy + o.dy - 10, { life: 30 }); P.sound('bark'); });
+          if (t >= 36) o.mouth = true;
+        } else if (t < 82) {
+          const u = (t - 42) / 40; o.dx = a.sx * D * (1 - u); o.dy = a.sy * D * (1 - u); o.dir = dirOf(-a.sx, -a.sy); o.fr = (t >> 2) & 1; o.mouth = true;
+          o.z = Math.abs(Math.sin(t / 3)) * 2; if (t % 7 === 0) puff('dust', wx + o.dx, wy + o.dy + 22, { life: 16, vy: -0.2 });
+        } else { // at your feet: the card drops between you, then a wag
+          o.dir = towardP(n, a);
+          const cx = (a.px - n.x) * T * 0.5, cy = (a.py - n.y) * T * 0.5 + 3, u = Math.min(1, (t - 82) / 8);
+          o.ball = [cx * u, cy * u, (1 - u) * 9 + Math.sin(u * Math.PI) * 4]; o.big = u >= 1;
+          ev(90, () => { P.sound('bounce'); puff('spark', wx + cx, wy + 18 + cy, { life: 22 }); });
+          if (t > 92) { o.rot = Math.sin(t / 2) * 0.07; o.wag = true; }
+          ev(96, () => { P.sound('bark'); puff('heart', wx, wy - 2, { life: 50, vy: -0.35 }); });
+        }
+        break;
+      }
+      case 'wag': { // happy: a little hop, his whole body wagging, a heart (warmup.js: a word remembered)
+        o.dir = towardP(n, a); o.wag = true;
+        o.rot = Math.sin(t / 2) * 0.08 * A; o.z = t < 14 ? Math.sin(t / 14 * Math.PI) * 6 * A : 0;
+        ev(2, () => { P.sound('bark'); puff('heart', wx, wy - 2, { life: 46, vy: -0.4 }); });
+        break;
+      }
     }
     return o;
   }
@@ -13876,9 +14269,14 @@ G.store = {
       ctx.fillStyle = '#f0a0a8'; ctx.fillRect(px - 1, py, 2, 2); ctx.fillRect(px - 3, py - 2, 1, 1); ctx.fillRect(px, py - 3, 1, 1); ctx.fillRect(px + 2, py - 2, 1, 1);
       if (o.paw > 0.9) { ctx.fillStyle = '#fff8b0'; ctx.fillRect(px + side * 6, py - 4, 1, 3); ctx.fillRect(px + side * 7, py, 2, 1); ctx.fillRect(px + side * 5, py + 4, 1, 1); } // a little "ta-da"!
     }
-    const thing = a && a.k === 'fetch' ? a.item : null; // (carry.js: the ball or the stick you threw)
+    const thing = a && (a.k === 'fetch' || a.k === 'bring') ? a.item : null; // (carry.js: the ball or the stick you threw; warmup.js: a word card)
+    if (o.wag) { // his tail going: little marks beside it, flickering
+      const k = (G.frame >> 2) & 1, sides = o.dir === 'right' ? [-1] : o.dir === 'left' ? [1] : [-1, 1], ty = by + 13 - Math.round(o.z);
+      ctx.fillStyle = '#ffffff';
+      for (const sd of sides) { const tx = bx + 12 + sd * (12 + k); ctx.fillRect(tx, ty - 3, 1, 2); ctx.fillRect(tx + sd, ty, 1, 2); ctx.fillRect(tx, ty + 3, 1, 2); }
+    }
     if (o.mouth) drawBall(ctx, bx + 12 + (o.dir === 'left' ? -7 : o.dir === 'right' ? 7 : 0), by + 15 - Math.round(o.z), 0, thing);
-    if (o.ball) drawBall(ctx, bx - o.dx + 12 + o.ball[0], by - o.dy + 22 + o.ball[1] - o.ball[2], o.ball[2], thing);
+    if (o.ball) drawBall(ctx, bx - o.dx + 12 + o.ball[0], by - o.dy + 22 + o.ball[1] - o.ball[2], o.ball[2], o.big && thing ? Object.assign({}, thing, { big: true }) : thing);
     if (o.hand) { const hx = bx + 10, hy = by + 1 - Math.round(o.hand * 4); ctx.fillStyle = '#1a1420'; ctx.fillRect(hx - 1, hy - 1, 9, 6); ctx.fillStyle = G.st.playerSpec().map.skin || '#f0c8a0'; ctx.fillRect(hx, hy, 7, 4); ctx.fillRect(hx + 7, hy + 1, 1, 2); }
     if (sl) for (let i = 0; i < 3; i++) { const k = ((G.frame + i * 40) % 120) / 120; ctx.globalAlpha = 1 - k; G.text(ctx, 'z', bx + 16 + Math.round(k * 8 + Math.sin(k * 6) * 2), by + 6 - Math.round(k * 18), '#ffffff', '#303060'); ctx.globalAlpha = 1; }
     return true;
@@ -13887,6 +14285,24 @@ G.store = {
   function drawBall(ctx, x, y, z, thing) {
     x = Math.round(x); y = Math.round(y);
     if (z > 1) { ctx.fillStyle = 'rgba(16,28,8,0.3)'; ctx.fillRect(x - 2, y + Math.round(z) + 3, 4, 1); }
+    if (thing && thing.id === 'tarjeta' && thing.big) { // the card on the ground (warmup.js): bigger, a little shine
+      ctx.fillStyle = 'rgba(16,28,8,0.35)'; ctx.fillRect(x - 5, y + 7, 12, 2);
+      ctx.fillStyle = '#1a1420'; ctx.fillRect(x - 6, y - 8, 13, 16); ctx.fillRect(x - 5, y - 9, 11, 18);
+      ctx.fillStyle = '#f0c030'; ctx.fillRect(x - 5, y - 8, 11, 16);
+      ctx.fillStyle = '#fffaf0'; ctx.fillRect(x - 4, y - 7, 9, 14);
+      ctx.fillStyle = '#3c9a3c'; ctx.fillRect(x, y - 4, 1, 6); ctx.fillStyle = '#58c048'; ctx.fillRect(x - 2, y - 4, 2, 1); ctx.fillRect(x + 1, y - 3, 2, 1); ctx.fillRect(x - 2, y - 1, 2, 1);
+      ctx.fillStyle = '#d87038'; ctx.fillRect(x - 2, y + 2, 5, 1); ctx.fillStyle = '#b0582c'; ctx.fillRect(x - 1, y + 3, 3, 2);
+      if (((G.frame >> 3) & 3) === 0) { ctx.fillStyle = '#ffffff'; ctx.fillRect(x + 4, y - 11, 1, 3); ctx.fillRect(x + 3, y - 10, 3, 1); }
+      return;
+    }
+    if (thing && thing.id === 'tarjeta') { // a word card (the dog's warm-up): a gold rim, a sprout in its pot
+      ctx.fillStyle = '#1a1420'; ctx.fillRect(x - 4, y - 5, 9, 11);
+      ctx.fillStyle = '#f0c030'; ctx.fillRect(x - 3, y - 4, 7, 9);
+      ctx.fillStyle = '#fffaf0'; ctx.fillRect(x - 2, y - 3, 5, 7);
+      ctx.fillStyle = '#3c9a3c'; ctx.fillRect(x, y - 2, 1, 3); ctx.fillStyle = '#58c048'; ctx.fillRect(x - 1, y - 2, 1, 1); ctx.fillRect(x + 1, y - 1, 1, 1);
+      ctx.fillStyle = '#b0582c'; ctx.fillRect(x - 1, y + 1, 3, 2);
+      return;
+    }
     if (thing && thing.id === 'palo') { // a stick, crosswise
       ctx.fillStyle = '#1a1420'; ctx.fillRect(x - 6, y - 2, 13, 4); ctx.fillStyle = '#a87038'; ctx.fillRect(x - 5, y - 1, 11, 2); ctx.fillStyle = '#6a4018'; ctx.fillRect(x - 5, y, 11, 1); ctx.fillStyle = '#58b048'; ctx.fillRect(x + 3, y - 3, 2, 1);
       return;
@@ -13896,6 +14312,7 @@ G.store = {
     ctx.fillStyle = col; ctx.fillRect(x - 2, y - 2, 4, 5); ctx.fillRect(x - 3, y - 1, 6, 3);
     ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 1, y - 2, 1, 1); ctx.fillStyle = '#f8e060'; ctx.fillRect(x - 3, y, 6, 1);
   }
+  P.drawThing = drawBall; // (warmup.js: the word card on the ground)
   function drawBowl(ctx, x, y, what, left) {
     x = Math.round(x); y = Math.round(y);
     const el = (rx, ry, c, dy = 0) => { ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(x, y + dy, rx, ry, 0, 0, Math.PI * 2); ctx.fill(); };
@@ -19002,7 +19419,8 @@ G.MAPDATA = {
 //      sometimes leaves something to pick up (carry.js). Every zone has one: the dog always has something to do)
 //   indoor: true (no bus driving in: a ride from the menu just fades)
 // Map edges: G.zones.edge(x, y, to, tx, ty, dir) is an exit on a path tile at the map's edge (no door sound).
-// API: G.zones.add(def), .def(id), .ids(), .of(map) (its zone id, null on a path), .pathOf(map), .area(map) (the
+// API: G.zones.add(def), .def(id), .ids(), .of(map) (its zone id, null on a path), .ofWord(id) / .ofTopic(topic) (the
+//   place a word belongs to: where its notebook page's puzzle is), .pathOf(map), .area(map) (the
 //   "nearby" unit for the guide: the zone, or 'path:<zone>'), .visited(id), .visitedIds(), .visit(id), .want() (a zone
 //   the child asked for on the map and hasn't reached), .route(fromMap, toMap) (the exit to take next, over every map's
 //   exits), .travel(f, id) / .ride(f, id) (the bus), .worldMap(o) -> Wait (G.worldMap), .enter(f) (field.js onEnter),
@@ -19029,6 +19447,18 @@ G.MAPDATA = {
   Z.pathOf = m => (G.maps[m] && G.maps[m].path) || null;
   Z.area = m => Z.of(m) || ('path:' + Z.pathOf(m));
   Z.name = id => { const z = Z.def(id); return z ? z.name : ''; };
+  // the place a word belongs to (the grown-ups' Learning page, the dog's warm-up: words from other places first): where
+  // its notebook page's puzzle is (content/es/words.js pagePlaces: a map, so a zone), else Villa Sol
+  let topicZone = null, topicN = -1;
+  Z.ofTopic = function (t) {
+    if (!topicZone || topicN !== Z.LIST.length) {
+      topicZone = {}; topicN = Z.LIST.length;
+      const P = G.data.pagePlaces || {};
+      for (const m in P) for (const k in P[m]) { const pg = G.data.pages[P[m][k]]; if (pg && !topicZone[pg.topic]) topicZone[pg.topic] = Z.of(m) || 'villa'; }
+    }
+    return topicZone[t] || 'villa';
+  };
+  Z.ofWord = id => { const w = G.data.words[id]; return w ? Z.ofTopic(w.topic) : null; };
   // a time of day for rare animals (animals.js: a map's animals entry with when): 'manana' (the first minutes of a
   // session: the morning), 'noche' (after sunset), 'dia' (before sunset), or a function
   Z.timeOk = function (w) {
@@ -24883,6 +25313,8 @@ G.MAPDATA = {
 //   bus      a bus stop on screen once you've been to two places: the hand taps the stop (zones.js)
 //   worldmap the world map open: the hand taps a place you've been to (the bus goes there), or a "?" one (walk there)
 //   dogspot  the dog's paw-print bubble on screen (his thing to do in this zone): the hand taps it
+//   warmup   the dog's daily warm-up (warmup.js), its first question: the hand taps the big mic and a mouth talks (say
+//            it!), or, without the mic, glides over the cards and taps one (never the answer)
 //   (zones)  a zone's own new action (G.zones.demos: {kind, find(f) -> tile}): the beach's 'fillpail' (the empty pail
 //            in your hands: the hand taps the water's edge)
 // The map's demos wait for a moment of standing about (DM.IDLE, so they don't get in the way of a child who is busy).
@@ -24891,7 +25323,7 @@ G.MAPDATA = {
 'use strict';
 (function () {
   const DM = G.demo = {}, T = G.TILE;
-  DM.KINDS = ['answer', 'mic', 'canelo', 'pickup', 'give', 'putdown', 'puzzle', 'seek', 'bus', 'worldmap', 'dogspot'];
+  DM.KINDS = ['answer', 'mic', 'canelo', 'pickup', 'give', 'putdown', 'puzzle', 'seek', 'bus', 'worldmap', 'dogspot', 'warmup'];
   DM.IDLE = 90;    // frames standing about on the map before a map demo (1.5 s)
   DM.cur = null;
   let idle = 0, scan = 0;
@@ -24927,6 +25359,19 @@ G.MAPDATA = {
   // ---------- when each one comes up ----------
   function onQuestion(s) {
     const n = name(s);
+    if (n === 'Choice' && s.o.warmup && s.cards && s.o.answer != null && !s.won && s.t >= 14 && !DM.shown('warmup')) { // the dog's warm-up (warmup.js): say it, or tap
+      const m = s.mic;
+      if (m && m.shown && m.shown() && m.can && m.can()) {
+        const r = m.o.rect(); book().mic = book().mic || G.frame || 1; // (the mic shown here: no second mic demo)
+        start('warmup', [{ x: r.x + r.w / 2, y: r.y + r.h / 2 + 2, move: 22, act: 'tap', hold: 4 }, { x: r.x + r.w / 2, y: r.y + r.h / 2 + 2, move: 1, act: 'talk', hold: 70 }], { mic: r });
+        return true;
+      }
+      const R = s.rects(), ks = R.map((r, k) => k).filter(k => k !== s.o.answer), k = ks.length ? ks[Math.floor(Math.random() * ks.length)] : 0;
+      const steps = R.map(r => ({ x: r.x + r.w / 2, y: r.y + r.h * 0.55, move: 14, hold: 4 }));
+      steps.push({ x: R[k].x + R[k].w / 2, y: R[k].y + R[k].h * 0.55, move: 12, act: 'tap', hold: 16 });
+      book().answer = book().answer || G.frame || 1;
+      start('warmup', steps); return true;
+    }
     if (n === 'Choice' && s.cards && s.o.answer != null && !s.won && s.t >= 14 && !DM.shown('answer')) {
       const R = s.rects(), k = Math.floor(Math.random() * R.length), steps = R.map(r => ({ x: r.x + r.w / 2, y: r.y + r.h * 0.55, move: 14, hold: 4 }));
       steps.push({ x: R[k].x + R[k].w / 2, y: R[k].y + R[k].h * 0.55, move: 12, act: 'tap', hold: 16 });
@@ -25030,6 +25475,663 @@ G.MAPDATA = {
     if (c.talk) { const mx = c.mic ? c.mic.x + c.mic.w / 2 : c.x, my = (c.mic ? c.mic.y : c.y) - 16; ctx.globalAlpha = Math.min(1, c.a); ctx.save(); ctx.translate(mx, my); ctx.scale(1.3, 1.3); mouth(ctx, 0, 0, c.talk); ctx.restore(); } // a mouth talking, over the mic
     ctx.restore();
   };
+})();
+
+</script>
+<script>/* src/warmup.js */
+// ===== The dog's warm-up: once a day, the first time the child is free to walk, the dog brings some words back =====
+// docs/LEARNING_PLAN_2.md, Phase 1 [decided with the parent]. The first time each day she is free to walk (on any map),
+// the dog trots off, noses about, finds a word card and drops it at her feet. Then 3-4 words that are due come back as
+// quick questions, the most overdue first, words from earlier days and from other places first (G.review.due): she says
+// the word (a big mic right beside its picture) or taps it. Each card grows (cards.js); the dog wags after each one, and
+// at the end he jumps for joy and gets a treat (and gives a heart). About a minute. A skip button (two arrows: "not
+// now", top left) ends it at any moment, without a word of Spanish. Nothing new is taught: only met words; a slipping
+// word (words.js) is met again instead (G.intro.again). The first time, a ghost hand shows the mic (demo.js 'warmup').
+// It waits for the story: never during a beat (CH.running), a find-it puzzle, the opener, the bus, a dog lost in a
+// chapter, the evening at home; with fewer than 2 words due it doesn't come (that day). The guide carries on after.
+//   The form, from the word's stage (the answer-card rules: learn.js Choice.view never lets pictures give it away):
+//     met (1)        hear it, pick it (its picture and word among two others: recognition, as for any met word)
+//     known and up   its picture held up: say it (the big mic) or pick its word (word-only cards: recall)
+//
+// API (G.warmup, short WU):
+//   WU.wait(f) why it can't start now ('done', 'story', 'find', 'busy'... or null: it can)   WU.pick(f, n) the words
+//   WU.update(f) / WU.draw(f, ctx) (field.js, every frame)    WU.start(f, ids) start it now (tests, content)
+//   WU.cur() the one going on: {ids, i, phase: 'bring' | 'ask' | 'party', res: [1 | 0], skipped} or null
+//   WU.done() today's has come (done, skipped or too few words)   WU.skip() ends the one going on   WU.skipToday()
+//   WU.HOLDS.push(f => bool)   content holds it back while true (a zone's moment that mustn't be interrupted)
+//   WU.FORMS[topic] = function* (id, extra) { ... return true if right first try }   a topic's own way to ask a word
+//     (extra: options for its G.ask: the skip button, the cards; pass them on so the child can still skip)
+// Saved: G.state.hist.wu (history.js: {d: the day it last came, n: done, k: skipped, none, last: {d, ids, right, of}}).
+// Off while G.debug.noWarmup (tools/harness.js keeps it off unless a test opens its page with {warmup: true}).
+'use strict';
+(function () {
+  const WU = G.warmup = {}, T = G.TILE;
+  WU.MAX = 4;        // words it brings
+  WU.MIN = 2;        // fewer due than this: no warm-up that day
+  WU.SETTLE = 40;    // frames free on the map before it starts (the map has faded in, the child has looked)
+  WU.HOLDS = [];
+  WU.FORMS = {};
+  const SKIP = [4, 4]; // the skip button (G.skipBtn), the same place on the map and over the questions
+  let cur = null, freeT = 0;
+  const wu = () => G.hist.state().wu;
+  WU.off = () => !!((typeof window !== 'undefined' && window.__warmupOff) || (G.debug && G.debug.noWarmup));
+  WU.done = () => !!G.state && wu().d === G.today();
+  WU.cur = () => cur;
+  WU.running = () => !!cur;
+  WU.skipToday = () => { if (G.state) { wu().d = G.today(); G.st.autosave(); } };
+  WU.skip = () => { if (cur) cur.skipped = true; };
+  const here = f => (G.zones ? G.zones.of(f.mapId) || G.zones.pathOf(f.mapId) || 'villa' : 'villa');
+
+  // ---------- when ----------
+  WU.wait = function (f) {
+    if (!G.state || !f) return 'none';
+    if (WU.off()) return 'off';
+    if (cur) return 'going';
+    if (WU.done()) return 'done';
+    const CH = G.chapters, F = G.state.flags;
+    if (!F.intro || !(CH && CH.openerDone && CH.openerDone())) return 'opener';
+    if (!G.pet || !G.pet.mine()) return 'no dog';
+    if (G.top() !== f || f.locked || G.fade.a > 0 || f.player.moving || f.player.hidden || f.evening) return 'busy';
+    if (CH.running && CH.running()) return 'story';
+    if (Object.keys(G.state.finds || {}).some(k => G.state.finds[k] && !G.state.finds[k].found)) return 'find';
+    if (CH.lost && CH.lost()) return 'dog away';
+    if (G.day && G.day.over && G.day.over()) return 'evening';
+    for (const h of WU.HOLDS) { try { if (h(f)) return 'held'; } catch (e) { console.error(e); } }
+    return null;
+  };
+  // the words it would bring now: due (G.review.due), met on an earlier day (today's too only when there are too few),
+  // with a picture; the latest first (days since last met or used, past its box's interval), then words from other
+  // places, a slipping word; never two that look the same
+  WU.pick = function (f, n = WU.MAX) {
+    if (!G.state) return [];
+    const Wd = G.words, td = G.today(), zone = f ? here(f) : 'villa';
+    const earlier = id => { const r = Wd.rec(id); return !!r && (r.how === 'old' || (r.mdate ? r.mdate !== td : r.ms < Wd.sess())); };
+    const due = G.review.due(1e9).filter(id => G.iconDrawn(id));
+    let L = due.filter(earlier);
+    if (L.length < WU.MIN) L = L.concat(due.filter(id => L.indexOf(id) < 0));
+    const late = id => { const r = Wd.rec(id), g = Wd.gapDays(id); return (g == null ? 3 : g) - (Wd.BOX_DAYS[Math.max(1, r.box | 0)] | 0); };
+    const score = id => late(id) + (G.zones && G.zones.ofWord(id) !== zone ? 2 : 0) + (Wd.slipping(id) ? 1 : 0) + (earlier(id) ? 5 : 0);
+    const sc = {}; L.forEach(id => { sc[id] = score(id); });
+    L.sort((a, b) => sc[b] - sc[a] || Wd.stage(a) - Wd.stage(b) || (Wd.rec(a).last || 0) - (Wd.rec(b).last || 0));
+    const out = [], forms = new Set();
+    for (const id of L) { const b = G.baseForm(id); if (forms.has(b)) continue; forms.add(b); out.push(id); if (out.length >= n) break; }
+    return out;
+  };
+
+  // ---------- every frame (field.js, after the story's own: a beat that starts by itself goes first) ----------
+  WU.update = function (f) {
+    if (!G.state || !f) return;
+    if (cur) {
+      if (cur.f === f && cur.phase !== 'party' && cur.phase !== 'ask' && G.top() === f && G.skipHit(...SKIP)) { G.input.eat(); cur.skipped = true; G.audio.sfx('cancel'); }
+      return;
+    }
+    if (WU.wait(f)) { freeT = 0; return; }
+    if (++freeT < WU.SETTLE) return;
+    freeT = 0;
+    const ids = WU.pick(f);
+    if (ids.length < WU.MIN) { const w = wu(); w.d = G.today(); w.none = (w.none | 0) + 1; G.st.autosave(); return; }
+    WU.start(f, ids);
+  };
+  WU.start = function (f, ids) {
+    f = f || G.field; if (!G.state || !f || cur) return false;
+    ids = (ids || WU.pick(f)).filter(id => G.words.met(id)); if (!ids.length) return false;
+    wu().d = G.today();
+    cur = { f, ids, i: -1, phase: 'bring', res: [], skipped: false, t0: G.frame, card: null };
+    if (G.vocabLog) G.vlog.ev({ ty: 'warmup', ids });
+    G.chapters.scene(f, run(f, cur));
+    G.st.autosave();
+    return true;
+  };
+
+  // ---------- the warm-up itself (a scene on the map: the map is locked) ----------
+  function* wait(c, k) { for (let i = 0; i < k && !c.skipped; i++) yield 1; }
+  // a dog animation (pet.js), to its end or until skipped
+  function* anim(c, n, k, o) {
+    const a = G.pet.anim(n, k, o);
+    while (n.pa === a && G.frame - a.f0 < a.len) { if (c.skipped && c.phase !== 'party') { n.pa = null; return; } yield 1; }
+    if (n.pa === a) n.pa = null;
+  }
+  const dogXY = (f, n) => [Math.round(n.x * T + n.ox + 12 - f.cam.x), Math.round(n.y * T + n.oy - f.cam.y)];
+  function* run(f, c) {
+    const P = G.pet;
+    const n = P.npc(f) || G.chapters.K.dog(f); // (not on this map: he comes along)
+    const ghost = n.ghost; c.n = n;
+    try {
+      n.busy = true; n.ghost = true;
+      for (let i = 0; i < 120 && (n.moving || n.slide) && !c.skipped; i++) yield 1;
+      if (P.sleeping(f)) { f.petAwake = true; yield* anim(c, n, 'wake'); }
+      if (!c.skipped) { P.place(f, n); yield* wait(c, 12); }
+      // 1. he brings a word card and drops it at your feet
+      if (!c.skipped) {
+        yield* anim(c, n, 'bring', { item: { id: 'tarjeta' } });
+        const p = f.player; c.card = [n.x * T + 12 + (p.x - n.x) * T * 0.5, n.y * T + 19 + (p.y - n.y) * T * 0.5 + 3]; // (where it landed: pet.js 'bring')
+        yield* wait(c, 14);
+      }
+      // 2. the cards, one by one
+      for (let i = 0; i < c.ids.length && !c.skipped; i++) {
+        c.i = i; c.phase = 'ask';
+        if (i === 0 && c.card) { const [x, y] = [c.card[0] - f.cam.x, c.card[1] - f.cam.y]; G.fx.burst(x, y - 4); G.audio.sfx('swing'); } // (the card jumps up into the question)
+        c.card = null;
+        const ok = yield* ask(c, c.ids[i]);
+        if (c.skipped) break;
+        c.res.push(ok ? 1 : 0);
+        c.phase = 'wag';
+        yield* anim(c, n, 'wag', { amp: ok ? 1 : 0.6 });
+      }
+      c.card = null;
+      if (c.skipped) { finish(c, false); return; }
+      // 3. the dog jumps for joy and gets a treat
+      c.phase = 'party';
+      const [dx, dy] = dogXY(f, n);
+      G.audio.jingle('item'); G.fx.confetti(dx - 34, dy + 14, -1, 16); G.fx.confetti(dx + 34, dy + 14, 1, 16);
+      yield* anim(c, n, 'jump');
+      yield* anim(c, n, 'eat', { item: 'hueso' });
+      finish(c, true);
+      if (G.hearts) { G.hearts.add('canelo', 1, 'care'); yield 16; yield* G.hearts.milestones('canelo'); }
+    } finally {
+      n.busy = false; n.ghost = ghost; n.home = [n.x, n.y];
+      if (n.pa && (n.pa.k === 'bring' || n.pa.k === 'wag')) n.pa = null;
+      cur = null; freeT = 0;
+      G.st.autosave();
+    }
+  }
+  function finish(c, completed) {
+    const w = wu(), right = c.res.filter(Boolean).length;
+    if (completed) w.n = (w.n | 0) + 1; else w.k = (w.k | 0) + 1;
+    w.last = { d: G.today(), ids: c.ids.slice(), right, of: c.res.length, skipped: !completed || null };
+  }
+  // one word, in the strongest form that fits its stage
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = G.r(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  function* ask(c, id) {
+    const Wd = G.words, st = Wd.stage(id), wd = G.data.words[id];
+    const extra = { who: 'canelo', cancel: true, cancelIcon: 'skip', onCancel: () => { c.skipped = true; }, drawExtra: (ctx, s) => drawCards(ctx, s, c), warmup: { k: c.i, n: c.ids.length } };
+    if (Wd.needsReintro(id)) return !!(yield* G.intro.again(id, { who: null, extra })); // (slipping: met again)
+    if (WU.FORMS[wd.topic]) return !!(yield* WU.FORMS[wd.topic](id, extra));
+    // two other met words: the same topic first, never one that sounds like another card (the mic hears them all)
+    const alike = (a, b) => G.speech && G.speech.score ? Math.max(G.speech.score(G.baseForm(a), G.baseForm(b)), G.speech.score(G.baseForm(b), G.baseForm(a))) >= 0.6 : false;
+    const met = shuffle(Wd.list(1).filter(k => k !== id && G.iconDrawn(k) && G.baseForm(k) !== G.baseForm(id)));
+    const pool = [];
+    for (const k of met.filter(k => G.data.words[k].topic === wd.topic).concat(met.filter(k => G.data.words[k].topic !== wd.topic))) {
+      if (pool.length >= 2) break;
+      if (![id].concat(pool).some(o => alike(o, k))) pool.push(k);
+    }
+    const ch = G.wordChoices(id, [id].concat(pool), pool.length + 1);
+    const q = st <= 1 ? { prompt: '¿[' + id + ']?', en: 'Which one? (listen, then tap it)' }
+      : { prompt: '¿Qué es?', en: 'What is it? Say it (the big mic), or tap its word.', show: id, micBig: true };
+    return !!(yield* G.ask(Object.assign({ choices: ch.choices, answer: ch.answer, layout: 'cards', review: true }, q, extra)));
+  }
+
+  // ---------- drawing ----------
+  // over a question: the dog's cards, one per word (done ones with their sprout, this one bobbing, the rest faded)
+  function drawCards(ctx, s, c) {
+    const ph = s.lines.length * 16 + 10 + (s.o.show ? 58 : 0), y = 8 + ph - 15;
+    c.ids.forEach((id, k) => {
+      const x = 40 + k * 12, now = k === c.i, bob = now ? Math.round(Math.abs(Math.sin(G.frame / 8)) * -2) : 0;
+      ctx.globalAlpha = k < c.i || now ? 1 : 0.35;
+      G.mic.cardGlyph(ctx, x, y + bob, 5);
+      if (k < c.i && c.res[k]) { ctx.fillStyle = '#f8d040'; ctx.fillRect(x + 3, y - 6, 2, 2); }
+      ctx.globalAlpha = 1;
+    });
+  }
+  // on the map: the card on the ground, and the skip button while the dog brings it
+  WU.draw = function (f, ctx) {
+    const c = cur; if (!c || c.f !== f) return;
+    if (c.card && G.pet.drawThing) G.pet.drawThing(ctx, Math.round(c.card[0] - f.cam.x), Math.round(c.card[1] - f.cam.y), 0, { id: 'tarjeta', big: true });
+    if (c.phase !== 'party' && G.top() === f) G.skipBtn(ctx, ...SKIP, G.frame - c.t0);
+  };
+  WU.skipXY = () => SKIP.slice();
+})();
+
+</script>
+<script>/* src/dashboard.js */
+// ===== Learning: the grown-ups' page of what the child actually knows and keeps (docs/LEARNING_PLAN_2.md, Phase 1) =====
+// The grown-ups menu's "Learning" row (behind the held gear, so English labels). Five tabs:
+//   Overview   days played, minutes (in all, today), words met / known / remembered / solid (each count includes the
+//              stronger ones), the share of practice said aloud, retention, slipping words, the last check, the warm-up
+//   Retention  right on the first try when a word comes back after a day or more (last 7 days, all time, with the
+//              counts), and a bar per day for the last two weeks (the goal band 70-80%)
+//   Words      by place (Villa Sol and the five zones, picture tabs): each word's picture, its Spanish, a strength bar
+//              (four stages, the box under it), said aloud (a mic), last met or used, slipping; scroll; tap: hear it
+//   Check      ten words to ask away from the game (some strong, some slipping or due): the picture, the Spanish and the
+//              English for the grown-up; tap right or not yet; the answers count as practice (history.js H.checkAnswer:
+//              right = a recall, not yet = a miss) and the last check's score shows
+//   Tonight    one simple Spanish question for dinner from today's words (or the last days'), only words the child
+//              has met, with its English and an answer to expect (templates per kind of word, below)
+// Share (top): the summary as text (the share sheet; else the clipboard; else a box to copy from), inside the tap.
+// API: G.dashboard.open() -> Wait; .tonight(k) the k-th question of tonight's list ({id, es, en, ans: {es, en}, why,
+//   words}); .tonights() the whole list; .shareText(); .TABS. The screen is 'LearningDash' (tests read .tab, .view()).
+'use strict';
+(function () {
+  const DB = G.dashboard = {};
+  const D = () => G.data, H = () => G.hist, Wd = () => G.words;
+  DB.TABS = ['Overview', 'Retention', 'Words', 'Check', 'Tonight'];
+  const COL = { yel: '#f8e060', dim: '#a8b0d8', white: '#ffffff', met: '#a8d8ff', known: '#70b0ff', gold: '#f8d860', solid: '#f8b030', slip: '#f8a040', good: '#60d070', bad: '#f07070', line: '#303a78' };
+  const STAGE_COL = [COL.met, COL.known, COL.gold, COL.solid];
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const fit = (s, w) => { s = String(s); if (G.textWidth(s) <= w) return s; while (s.length > 1 && G.textWidth(s + '..') > w) s = s.slice(0, -1); return s + '..'; };
+  const es = id => (D().words[id] ? D().words[id].es.split(' / ')[0] : id); // with its article: el oso
+  const en = id => (D().words[id] ? D().words[id].en : '');
+  const dateOf = key => { const n = Wd().numOf(key); if (n == null) return key || ''; const d = new Date(n * 864e5); return MONTHS[d.getUTCMonth()] + ' ' + d.getUTCDate(); };
+  const ago = n => (n == null ? '-' : n <= 0 ? 'today' : n === 1 ? 'yesterday' : n + ' days ago');
+  const hm = min => (min < 1 ? 'under a minute' : min < 60 ? min + ' min' : Math.floor(min / 60) + ' h ' + (min % 60 ? (min % 60) + ' min' : ''));
+  const pctS = r => (r.pct == null ? '--' : r.pct + '%');
+  const name = () => G.st.playerName();
+
+  // =====================================================================
+  //  Tonight's question: one line for dinner
+  // =====================================================================
+  // Templates by the kind of word; a question only uses words the child has met (and an answer she can give with
+  // them). The answer's English is for the grown-up.
+  const SOUND = { perro: 'guau', gato: 'miau', pato: 'cuac', rana: 'croac' };
+  const HOME = { perro: 'casa', gato: 'casa', pajaro: 'arbol', mariposa: 'flor', pez: 'agua', conejo: 'parque', rana: 'agua', pato: 'agua', gallina: 'granja', caballo: 'granja', cabra: 'granja',
+    cangrejo: 'arena', estrellamar: 'mar', tortuga: 'mar', gaviota: 'mar', medusa: 'mar', delfin: 'mar', pulpo: 'mar',
+    oso: 'cueva', ardilla: 'arbol', mapache: 'elbosque', venado: 'elbosque', zorro: 'elbosque', erizo: 'elbosque', buho: 'arbol', luciernaga: 'elbosque',
+    paloma: 'parque', catarina: 'flor', hormiga: 'parque', abeja: 'flor', lagartija: 'parque', grillo: 'parque', colibri: 'flor',
+    vaca: 'granja', cerdo: 'granja', oveja: 'granja', burro: 'granja', pavo: 'granja', raton: 'casa', gallo: 'granja', tlacuache: 'arbol',
+    llama: 'lamontana', marmota: 'lamontana', zorrillo: 'lamontana', carpintero: 'arbol', monarca: 'arbol', puma: 'lamontana', aguila: 'lamontana', lobo: 'lamontana' };
+  const COLOR = { manzana: 'rojo', platano: 'amarillo', leche: 'blanco', huevo: 'blanco', queso: 'amarillo', pelota: 'rojo', hoja: 'verde', rana: 'verde', arbol: 'verde',
+    mar: 'azul', nieve: 'blanco', nube: 'blanco', elsol: 'amarillo', oveja: 'blanco', cerdo: 'rosa', catarina: 'rojo', abeja: 'amarillo' };
+  const ACT = { corre: ['correr', 'run'], baila: ['bailar', 'dance'], salta: ['saltar', 'jump'], nadar: ['nadar', 'swim'], sube: ['subir', 'climb'], lanza: ['lanzar', 'throw'] };
+  const FOOD = ['comida', 'helado', 'chocolate', 'mora'];
+  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+  const fem = id => /^(la|las) /.test(es(id)), plural = id => /^(los|las) /.test(es(id)), noun = id => /^(el|la|los|las) /.test(es(id));
+  const bare = id => es(id).replace(/^(el|la|los|las) /, '');
+  const enBare = id => en(id).replace(/^the /, '');
+  const form = (id, k) => { const f = D().words[id].es.split(' / ').map(s => s.trim()); return f[Math.min(k, f.length - 1)]; };
+  const met = id => !!D().words[id] && Wd().met(id);
+  // [template, question builder]: each returns null or {es, en, ans: {es, en}, words: [ids it uses]}
+  const TPL = [
+    ['sound', id => SOUND[id] && met(SOUND[id]) ? { es: '¿Qué dice ' + es(id) + '?', en: 'What does ' + en(id) + ' say?', ans: { es: '¡' + cap(form(SOUND[id], 0)) + '!', en: cap(en(SOUND[id])) + '!' }, words: [id, SOUND[id]] } : null],
+    ['home', id => HOME[id] && met(HOME[id]) ? { es: '¿Dónde vive ' + es(id) + '?', en: 'Where does ' + en(id) + ' live?', ans: { es: 'En ' + es(HOME[id]) + '.', en: 'In ' + en(HOME[id]) + '.' }, words: [id, HOME[id]] } : null],
+    ['color', id => COLOR[id] && met(COLOR[id]) ? { es: '¿De qué color es ' + es(id) + '?', en: 'What color is ' + en(id) + '?', ans: { es: 'Es ' + form(COLOR[id], fem(id) ? 1 : 0) + '.', en: 'It\'s ' + en(COLOR[id]) + '.' }, words: [id, COLOR[id]] } : null],
+    ['dog', id => id === 'perro' ? { es: '¿Cómo se llama tu perro?', en: 'What is your dog\'s name?', ans: { es: G.fill('Se llama {dog}.'), en: G.fill('His name is {dog}.') }, words: [id] } : null],
+    ['body', id => D().words[id].topic === 'cuerpo' ? (plural(id) ? { es: '¿Dónde están tus ' + bare(id) + '?', en: 'Where are your ' + enBare(id) + '?', ans: { es: '¡Aquí están!', en: 'Here they are! (pointing)' }, words: [id] } : { es: '¿Dónde está tu ' + bare(id) + '?', en: 'Where is your ' + enBare(id) + '?', ans: { es: '¡Aquí está!', en: 'Here it is! (pointing)' }, words: [id] }) : null],
+    ['clothes', id => D().words[id].topic === 'ropa' ? (plural(id) ? { es: '¿De qué color son tus ' + bare(id) + '?', en: 'What color are your ' + enBare(id) + '?', ans: { es: 'Son... (the color)', en: 'They are... (a color word)' }, words: [id] } : { es: '¿De qué color es tu ' + bare(id) + '?', en: 'What color is your ' + enBare(id) + '?', ans: { es: 'Es... (the color)', en: 'It\'s... (a color word)' }, words: [id] }) : null],
+    ['family', id => id === 'abuela' || id === 'abuelo' ? { es: '¿Cómo se llama tu ' + bare(id) + '?', en: 'What is your ' + (id === 'abuela' ? 'grandma' : 'grandpa') + '\'s name?', ans: { es: 'Se llama... (a name)', en: 'Her / his name is... ' }, words: [id] } : null],
+    ['feel', id => (id === 'feliz' || id === 'triste' || id === 'cansado') ? { es: G.fill('¿Estás ' + (id === 'cansado' ? 'cansad{o/a}' : bare(id)) + '?'), en: 'Are you ' + en(id) + '?', ans: { es: met('si') ? '¡Sí! / No.' : 'Sí. / No.', en: 'Yes! / No.' }, words: [id] } : (id === 'bien' || id === 'comoestas') ? { es: '¿Cómo estás?', en: 'How are you?', ans: { es: met('bien') ? '¡Bien!' + (met('gracias') ? ' Gracias.' : '') : '¡Feliz!', en: 'Fine! (Thank you.)' }, words: [id].concat(met('bien') ? ['bien'] : []) } : null],
+    ['weather', id => id === 'frio' ? { es: '¿Tienes frío?', en: 'Are you cold?', ans: { es: 'Sí, tengo frío. / No.', en: 'Yes, I\'m cold. / No.' }, words: [id] } : D().words[id].topic === 'tiempo' ? { es: '¿Qué tiempo hace hoy?', en: 'What is the weather like today?', ans: { es: 'Hace sol. / Hace frío. / Llueve.', en: 'Sunny. / Cold. / Raining.' }, words: [id] } : null],
+    ['age', id => D().words[id].topic === 'numeros' ? { es: '¿Cuántos años tienes?', en: 'How old are you?', ans: { es: 'Tengo... años. (a number)', en: 'I\'m... (her age)' }, words: [id] } : null],
+    ['act', id => ACT[id] ? { es: '¿Te gusta ' + ACT[id][0] + '?', en: 'Do you like to ' + ACT[id][1] + '?', ans: { es: met('si') ? '¡Sí!' : '¡Sí! / No.', en: 'Yes! / No.' }, words: [id] } : null],
+    ['like', id => { const w = D().words[id]; if (!noun(id) || ['saludos', 'numeros', 'colores', 'sentir', 'acciones', 'cuerpo', 'familia', 'ropa'].includes(w.topic)) return null;
+      const food = FOOD.includes(w.topic) || FOOD.includes(id), n = plural(id) ? 'n' : '';
+      return { es: '¿Te gusta' + n + ' ' + es(id) + '?', en: 'Do you like ' + (food ? enBare(id) : en(id)) + '?', ans: { es: '¡Sí, me gusta' + n + '! / No, no me gusta' + n + '.', en: 'Yes, I like ' + (n ? 'them' : 'it') + '! / No, I don\'t.' }, words: [id] }; }],
+  ];
+  const SPECIFIC = ['sound', 'home', 'color', 'dog', 'body', 'clothes', 'feel', 'weather', 'family'];
+  // a little hash for the day's order (stable all day, a different order tomorrow)
+  const hash = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; };
+  DB.tonights = function () {
+    if (!G.state) return [];
+    const h = H(), today = h.day(), keys = h.days(), recent = {}; // word -> {days ago, how}
+    const note = (id, a, how) => { if (!recent[id] || a < recent[id].a) recent[id] = { a, how }; };
+    today.met.forEach(id => note(id, 0, 'met today'));
+    Object.keys(today.w).forEach(id => note(id, 0, 'practised today'));
+    for (const k of keys) { const d = h.state().d[k], a = Wd().dayNum() - d.n; if (a < 1 || a > 3) continue; d.met.forEach(id => note(id, a, 'met ' + ago(a))); Object.keys(d.w).forEach(id => note(id, a, 'practised ' + ago(a))); }
+    let ids = Object.keys(recent).filter(met);
+    if (!ids.length) { ids = Wd().list(1).sort((a, b) => (Wd().rec(b).met || 0) - (Wd().rec(a).met || 0)).slice(0, 12); ids.forEach(id => note(id, 9, 'one of her words')); }
+    const out = [], day = G.today();
+    for (const id of ids) {
+      for (const [tpl, fn] of TPL) {
+        let q = null; try { q = fn(id); } catch (e) { q = null; }
+        if (!q || !q.words.every(met)) continue;
+        const r = recent[id], sc = (r.a === 0 ? 6 : r.a <= 1 ? 3 : 1) + (r.how.indexOf('met') === 0 ? 2 : 0) + (SPECIFIC.includes(tpl) ? 3 : 0) + (q.words.length > 1 ? 1 : 0) + hash(day + id + tpl);
+        out.push(Object.assign({ id, tpl, why: r.how, sc }, q));
+      }
+    }
+    out.sort((a, b) => b.sc - a.sc);
+    // one question per word first, then the rest
+    const seen = new Set(), first = out.filter(q => !seen.has(q.id) && seen.add(q.id));
+    return first.concat(out.filter(q => first.indexOf(q) < 0));
+  };
+  DB.tonight = (k = 0) => { const L = DB.tonights(); return L.length ? L[((k % L.length) + L.length) % L.length] : null; };
+
+  // =====================================================================
+  //  The summary as text (Share)
+  // =====================================================================
+  DB.shareText = function () {
+    if (!G.state) return '';
+    const o = H().overview(), d = new Date(G.now()), L = [];
+    L.push('Club de Español: ' + name() + '\'s learning (' + MONTHS[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear() + ')');
+    L.push('Played ' + o.days + (o.days === 1 ? ' day' : ' days') + ', ' + hm(o.minutes) + ' in all' + (o.today ? ', ' + hm(o.today) + ' today' : '') + '.');
+    L.push('Words: ' + o.met + ' met, ' + o.known + ' known, ' + o.remembered + ' remembered, ' + o.solid + ' solid (of ' + o.all + ' in the game).');
+    L.push('Retention (right on the first try when a word comes back after a day or more): ' + (o.r7.n ? o.r7.pct + '% in the last 7 days (' + o.r7.right + ' of ' + o.r7.n + ')' : 'no words back after a day yet this week') + (o.ra.n ? ', ' + o.ra.pct + '% overall (' + o.ra.right + ' of ' + o.ra.n + ').' : '.'));
+    L.push('Said aloud: ' + (o.spoken.all ? o.spoken.pct + '% of practice (' + o.spoken.said + ' of ' + o.spoken.all + ').' : 'no practice recorded yet.'));
+    if (o.slipping.length) L.push('Slipping (' + o.slipping.length + '): ' + o.slipping.map(es).join(', ') + '.');
+    if (o.check) L.push('Last word check: ' + o.check.right + ' of ' + o.check.of + ' (' + dateOf(o.check.d) + ').');
+    const td = H().day().met; if (td.length) L.push('New today: ' + td.map(es).join(', ') + '.');
+    const q = DB.tonight(0); if (q) L.push('Tonight\'s question: ' + q.es + ' (' + q.en + ') A good answer: ' + q.ans.es);
+    return L.join('\n');
+  };
+
+  // =====================================================================
+  //  The screen
+  // =====================================================================
+  // a small text button (like the mic test's)
+  function textBtn(ctx, r, label, o = {}) {
+    const on = o.sel || G.input.holding(r.x, r.y, r.w, r.h) > 0;
+    ctx.fillStyle = '#000010'; ctx.fillRect(r.x + 1, r.y, r.w - 2, r.h); ctx.fillRect(r.x, r.y + 1, r.w, r.h - 2);
+    ctx.fillStyle = on ? '#f0d060' : (o.rim || '#8898e0'); ctx.fillRect(r.x + 1, r.y + 1, r.w - 2, r.h - 2);
+    ctx.fillStyle = on ? '#304cc0' : (o.fill || '#1c2c8c'); ctx.fillRect(r.x + 2, r.y + 2, r.w - 4, r.h - 4);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(r.x + 2, r.y + 2, r.w - 4, 3);
+    if (o.glyph) o.glyph(ctx, r);
+    G.textC(ctx, label, r.x + r.w / 2 + (o.dx || 0), r.y + (r.h >> 1) - 3, o.col || '#ffffff');
+  }
+  // a check mark and a cross, in pixels
+  function tick(ctx, x, y, col = COL.good, k = 1) { ctx.fillStyle = col; const R = (a, b, w, h) => ctx.fillRect(x + a * k, y + b * k, w * k, h * k); R(0, 4, 2, 2); R(1, 5, 2, 2); R(2, 6, 2, 2); R(3, 5, 2, 2); R(4, 4, 2, 2); R(5, 3, 2, 2); R(6, 2, 2, 2); R(7, 1, 2, 2); R(8, 0, 2, 2); }
+  function cross(ctx, x, y, col = COL.bad, k = 1) { ctx.fillStyle = col; for (let i = 0; i < 8; i++) { ctx.fillRect(x + i * k, y + i * k, 2 * k, 2 * k); ctx.fillRect(x + (7 - i) * k, y + i * k, 2 * k, 2 * k); } }
+  DB.tick = tick; DB.cross = cross;
+  // a word's strength: four stage blocks (met, known, remembered, solid) and its box under them (1-5)
+  function strength(ctx, x, y, st, box) {
+    for (let j = 0; j < 4; j++) { ctx.fillStyle = '#000010'; ctx.fillRect(x + j * 9 - 1, y - 1, 10, 8); ctx.fillStyle = j < st ? STAGE_COL[j] : COL.line; ctx.fillRect(x + j * 9, y, 8, 6); }
+    for (let j = 0; j < 5; j++) { ctx.fillStyle = j < box ? '#c8d0f0' : COL.line; ctx.fillRect(x + j * 7, y + 9, 5, 2); }
+  }
+  DB.strength = strength;
+
+  const ZONES = () => (G.zones ? G.zones.ids() : ['villa']);
+  class LearningDash {
+    constructor(w, o) {
+      G.toastT = 0; this.w = w; this.t = 0; this.tab = Math.max(0, DB.TABS.indexOf((o && o.tab) || 'Overview'));
+      this.zone = 'villa'; this.scroll = 0; this.drag = null; this.hi = null; this.tq = 0; this.note = ''; this.noteT = 0; this.lastShare = -1e9; this.adult = true;
+      this.rowsCache = null;
+    }
+    onEnter() { this.zoneTap = G.speech && G.speech.gestureTap ? G.speech.gestureTap(() => (G.top() === this && !this.text ? this.shareRect() : null), () => { this.shared = true; this.share(); }) : null; }
+    onExit() { if (this.zoneTap) this.zoneTap.off(); this.hideText(); }
+    // tap areas (shared with draw)
+    closeXY() { return [G.W - 26, 4]; }
+    shareRect() { return { x: G.W - 88, y: 4, w: 56, h: 20 }; }
+    tabRect(k) { return { x: 4 + k * 63, y: 27, w: 60, h: 16 }; }
+    zoneRect(k) { return { x: 6 + k * 29, y: 47, w: 26, h: 20 }; }
+    listBox() { return { x: 4, y: 80, w: 286, h: 126 }; }
+    rowRect(k) { const b = this.listBox(); return { x: b.x, y: b.y + k * 18 - this.scroll, w: b.w, h: 18 }; }
+    upXY() { return [294, 78]; }
+    downXY() { return [294, 188]; }
+    startRect() { return { x: 90, y: 112, w: 140, h: 26 }; }
+    yesRect() { return { x: 34, y: 170, w: 118, h: 30 }; }
+    noRect() { return { x: 168, y: 170, w: 118, h: 30 }; }
+    skipRect() { return { x: 248, y: 205, w: 64, h: 16 }; }
+    stopRect() { return { x: 8, y: 205, w: 64, h: 16 }; }
+    sayXY() { return [256, 64]; }
+    anotherRect() { return { x: 90, y: 192, w: 140, h: 22 }; }
+    tonightSayXY() { return [G.W - 34, 66]; }
+    rows() { if (!this.rowsCache || this.rowsCache.zone !== this.zone || this.rowsCache.t !== G.frame >> 5) { const L = H().zoneRows(this.zone); L.sort((a, b) => b.met - a.met); this.rowsCache = { zone: this.zone, t: G.frame >> 5, L }; } return this.rowsCache.L; } // (met words first, in notebook order)
+    maxScroll() { return Math.max(0, this.rows().length * 18 - this.listBox().h); }
+    notice(s) { this.note = s; this.noteT = 180; }
+    close() { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); }
+    setTab(k) { if (k === this.tab) return; this.tab = k; G.audio.sfx('cursor'); this.hi = null; }
+    // what the page shows (tests read it)
+    view() {
+      const o = H().overview();
+      return { tab: DB.TABS[this.tab], overview: o, r7: o.r7, ra: o.ra, byDay: H().retentionByDay(14), zone: this.zone, rows: this.rows(), check: H().checkCur(), last: H().checkLast(), tonight: DB.tonight(this.tq) };
+    }
+
+    update() {
+      this.t++; if (this.noteT > 0) this.noteT--;
+      if (this.text) { if (G.input.p('B') || G.input.p('A')) this.hideText(); return; }
+      const shared = this.shared; this.shared = false;
+      if (G.input.p('B') || G.closeHit(...this.closeXY())) { this.close(); return; }
+      if (G.tapIn(this.shareRect())) { if (!shared) this.share(); return; }
+      const k = DB.TABS.findIndex((n, k) => G.tapIn(this.tabRect(k)));
+      if (k >= 0) { this.setTab(k); return; }
+      const d = G.input.repDir(14, 6);
+      if (d === 'left' || d === 'right') this.setTab((this.tab + (d === 'left' ? DB.TABS.length - 1 : 1)) % DB.TABS.length);
+      const page = DB.TABS[this.tab];
+      if (page === 'Words') this.updWords(d);
+      else if (page === 'Check') this.updCheck();
+      else if (page === 'Tonight') this.updTonight();
+    }
+    updWords(d) {
+      const Z = ZONES(), zk = Z.findIndex((z, k) => G.tapIn(this.zoneRect(k)));
+      if (zk >= 0) { if (Z[zk] !== this.zone) { this.zone = Z[zk]; this.scroll = 0; this.rowsCache = null; G.audio.sfx('cursor'); } return; }
+      const step = 18 * 3, ptr = G.input.ptr, b = this.listBox();
+      if (G.btnHit(...this.upXY())) { this.scroll = Math.max(0, this.scroll - step); G.audio.sfx('cursor'); return; }
+      if (G.btnHit(...this.downXY())) { this.scroll = Math.min(this.maxScroll(), this.scroll + step); G.audio.sfx('cursor'); return; }
+      if (d === 'up') this.scroll = Math.max(0, this.scroll - 18);
+      if (d === 'down') this.scroll = Math.min(this.maxScroll(), this.scroll + 18);
+      // a finger dragged over the list scrolls it
+      if (ptr.down && ptr.sx >= b.x && ptr.sx < b.x + b.w && ptr.sy >= b.y && ptr.sy < b.y + b.h) {
+        if (!this.drag) this.drag = { y: ptr.y, s: this.scroll };
+        this.scroll = G.clamp(Math.round(this.drag.s - (ptr.y - this.drag.y)), 0, this.maxScroll());
+      } else this.drag = null;
+      const tap = G.input.tap();
+      if (tap && G.tapIn(b)) {
+        const L = this.rows(), i = Math.floor((tap.y - b.y + this.scroll) / 18);
+        if (L[i]) { this.hi = { id: L[i].id, t: this.t }; G.speak(G.baseForm(L[i].id)); }
+      }
+    }
+    updCheck() {
+      const c = H().checkCur();
+      if (!c) { if (G.tapIn(this.startRect()) || G.input.p('A')) { if (H().checkStart()) G.audio.sfx('ok'); else { G.audio.sfx('error'); this.notice('No words met yet'); } } return; }
+      const id = c.ids[c.i];
+      if (G.speakerHit(...this.sayXY()) || G.input.p('C')) { G.speak(G.baseForm(id)); return; }
+      if (G.tapIn(this.yesRect())) { H().checkAnswer(true); G.audio.sfx('chime'); this.hi = { id, ok: 1, t: this.t }; return; }
+      if (G.tapIn(this.noRect())) { H().checkAnswer(false); G.audio.sfx('boop'); this.hi = { id, ok: 0, t: this.t }; return; }
+      if (G.tapIn(this.skipRect())) { H().checkAnswer(null); G.audio.sfx('cursor'); return; }
+      if (G.tapIn(this.stopRect())) { H().checkStop(); G.audio.sfx('cancel'); }
+    }
+    updTonight() {
+      const q = DB.tonight(this.tq);
+      if (q && (G.speakerHit(...this.tonightSayXY()) || G.input.p('C'))) { G.speak(q.es); return; }
+      if (G.tapIn(this.anotherRect()) || G.input.p('A')) { this.tq++; G.audio.sfx('cursor'); const q2 = DB.tonight(this.tq); if (q2) G.speak(q2.es); }
+    }
+
+    // ---------- Share: the share sheet, else the clipboard, else a box to copy from (inside the tap when possible) ----------
+    share() {
+      const now = performance.now(); if (now - this.lastShare < 500) return; this.lastShare = now;
+      const txt = DB.shareText();
+      try {
+        if (navigator.share) {
+          navigator.share({ title: 'Club de Español: ' + name(), text: txt }).then(() => { this.notice('Shared'); G.audio.sfx('ok'); }, e => { if (!(e && e.name === 'AbortError')) this.clip(txt); });
+          return;
+        }
+      } catch (e) { }
+      this.clip(txt);
+    }
+    clip(txt) {
+      try {
+        const cb = navigator.clipboard;
+        if (cb && cb.writeText) { cb.writeText(txt).then(() => { this.notice('Copied: paste it in a message'); G.audio.sfx('ok'); }, () => this.showText(txt, 'Copying was blocked. Select the text below and copy it.')); return; }
+      } catch (e) { }
+      this.showText(txt, 'Select the text below and copy it.');
+    }
+    showText(txt, why) {
+      this.hideText();
+      const d = this.text = document.createElement('div'); d.id = 'learntext';
+      d.style.cssText = 'position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;gap:8px;padding:12px;box-sizing:border-box;background:rgba(8,12,48,.96);color:#f0f0ff;font:15px sans-serif';
+      const p = document.createElement('div'); p.textContent = why;
+      const ta = document.createElement('textarea'); ta.readOnly = true; ta.value = txt;
+      ta.style.cssText = 'flex:1;width:100%;box-sizing:border-box;font:14px sans-serif;background:#000;color:#e8e8f8;border:2px solid #8898e0;user-select:text;-webkit-user-select:text;-webkit-touch-callout:default;touch-action:auto';
+      const b = document.createElement('button'); b.textContent = 'Done';
+      b.style.cssText = 'align-self:flex-end;font:bold 16px sans-serif;padding:10px 28px;border-radius:8px;border:2px solid #f0f0ff;background:#304cc0;color:#fff';
+      b.addEventListener('click', () => this.hideText());
+      d.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') this.hideText(); });
+      d.append(p, ta, b); document.body.appendChild(d);
+      try { ta.focus(); ta.setSelectionRange(0, txt.length); } catch (e) { }
+    }
+    hideText() { if (this.text) { this.text.remove(); this.text = null; try { G.canvas.focus(); } catch (e) { } } }
+
+    // ---------- drawing ----------
+    draw(ctx) {
+      G.win(ctx, 0, 0, G.W, G.H, { alpha: 1 });
+      G.text(ctx, 'LEARNING', 8, 9, COL.yel);
+      G.text(ctx, fit(name(), 120), 8 + G.textWidth('LEARNING') + 8, 9, COL.white);
+      textBtn(ctx, this.shareRect(), navigator.share ? 'Share' : 'Copy');
+      G.closeBtn(ctx, ...this.closeXY());
+      DB.TABS.forEach((n, k) => {
+        const r = this.tabRect(k), on = k === this.tab;
+        G.win(ctx, r.x, r.y, r.w, r.h, on ? { fill1: '#3a56c8', fill2: '#1c2c8c', alpha: 1 } : { fill1: '#18205e', fill2: '#10164a', alpha: 1 });
+        G.textC(ctx, n, r.x + r.w / 2, r.y + 5, on ? COL.yel : COL.dim);
+      });
+      ctx.fillStyle = '#6070b0'; ctx.fillRect(6, 44, G.W - 12, 1);
+      const page = DB.TABS[this.tab];
+      if (page === 'Overview') this.drawOverview(ctx);
+      else if (page === 'Retention') this.drawRetention(ctx);
+      else if (page === 'Words') this.drawWords(ctx);
+      else if (page === 'Check') this.drawCheck(ctx);
+      else this.drawTonight(ctx);
+      if (this.noteT > 0) { const w = G.textWidth(this.note) + 16; G.win(ctx, (G.W - w) / 2, 196, w, 18, { fill1: '#2a6a3a', fill2: '#103a1c', alpha: 1 }); G.textC(ctx, this.note, G.W / 2, 201, COL.yel); }
+    }
+    drawOverview(ctx) {
+      const o = H().overview();
+      [['met', o.met, STAGE_COL[0]], ['known', o.known, STAGE_COL[1]], ['remembered', o.remembered, STAGE_COL[2]], ['solid', o.solid, STAGE_COL[3]]].forEach(([lab, n, col], k) => {
+        const x = 8 + k * 77;
+        G.win(ctx, x, 49, 73, 38, { fill1: '#202a78', fill2: '#121a50', alpha: 1 });
+        G.bigText(ctx, String(n), x + 36, 56, 2, col);
+        G.textC(ctx, lab, x + 36, 75, col);
+      });
+      // every word of the game, by stage (unmet grey)
+      const bx = 8, by = 92, bw = G.W - 16, all = Math.max(1, o.all), segs = [[o.solid, STAGE_COL[3]], [o.remembered - o.solid, STAGE_COL[2]], [o.known - o.remembered, STAGE_COL[1]], [o.met - o.known, STAGE_COL[0]]];
+      ctx.fillStyle = '#000010'; ctx.fillRect(bx - 1, by - 1, bw + 2, 7); ctx.fillStyle = COL.line; ctx.fillRect(bx, by, bw, 5);
+      let x = bx; for (const [n, col] of segs) { const w = Math.round(bw * Math.max(0, n) / all); ctx.fillStyle = col; ctx.fillRect(x, by, w, 5); x += w; }
+      G.textR(ctx, o.met + ' of ' + o.all + ' words met', G.W - 8, 100, COL.dim);
+      const lines = [
+        ['Played', o.days + (o.days === 1 ? ' day, ' : ' days, ') + hm(o.minutes) + ' in all, ' + (o.today ? hm(o.today) : 'nothing yet') + ' today'],
+        ['Retention', o.r7.n ? pctS(o.r7) + ' last 7 days (' + o.r7.right + ' of ' + o.r7.n + ')' + (o.ra.n ? ', ' + pctS(o.ra) + ' in all' : '') : o.ra.n ? pctS(o.ra) + ' in all (' + o.ra.right + ' of ' + o.ra.n + ')' : 'no word back after a day yet'],
+        ['Said aloud', o.spoken.all ? o.spoken.pct + '% of practice (' + o.spoken.said + ' of ' + o.spoken.all + ')' : 'no practice yet'],
+        ['Slipping', o.slipping.length ? o.slipping.length + ': ' + o.slipping.map(es).join(', ') : 'none'],
+        ['Last check', o.check ? o.check.right + ' of ' + o.check.of + ', ' + ago(o.check.ago) : 'none yet (the Check tab)'],
+        ['Warm-up', this.warmLine(o.warmup)],
+      ];
+      lines.forEach(([a, b], k) => {
+        const y = 112 + k * 14;
+        G.text(ctx, a, 10, y, COL.dim);
+        G.text(ctx, fit(b, G.W - 92), 82, y, k === 3 && o.slipping.length ? COL.slip : COL.white);
+      });
+      G.text(ctx, 'Each count includes the stronger words: a solid word', 10, 198, '#8890c0');
+      G.text(ctx, 'is also remembered, known and met.', 10, 208, '#8890c0');
+    }
+    warmLine(w) {
+      const today = w && w.d === G.today(), L = w && w.last;
+      if (today && L && L.d === G.today()) return G.fill('{dog} brought ' + (L.skipped ? L.ids.length : L.of) + ' words today' + (L.skipped ? ' (skipped after ' + L.of + ')' : ', ' + L.right + ' right first try') + '; ' + (w.n | 0) + ' in all');
+      if (today) return 'not today (fewer than 2 words were due)';
+      return 'not yet today; ' + (w ? w.n | 0 : 0) + ' in all' + (w && w.k ? ', ' + w.k + ' skipped' : '');
+    }
+    drawRetention(ctx) {
+      const r7 = H().retention({ days: 7 }), ra = H().retention({ all: true });
+      G.textC(ctx, 'Right on the first try when a word comes back', G.W / 2, 50, COL.dim);
+      G.textC(ctx, 'after a day or more away', G.W / 2, 60, COL.dim);
+      [[r7, 'last 7 days', 88], [ra, 'all time', 232]].forEach(([r, lab, cx]) => {
+        G.bigText(ctx, pctS(r), cx, 73, 3, r.pct == null ? COL.dim : r.pct >= 70 ? COL.gold : COL.met);
+        G.textC(ctx, lab, cx, 97, COL.white);
+        G.textC(ctx, r.n ? r.right + ' of ' + r.n + ' words' : 'no data yet', cx, 107, COL.dim);
+      });
+      // the last 14 days: a bar for each (its retention), the goal band 70-80%
+      const L = H().retentionByDay(14), x0 = 36, base = 184, top = base - 46, hgt = p => Math.round(46 * p / 100), sw = 19, cw = 14 * sw;
+      G.text(ctx, 'Last 14 days', 10, 119, COL.dim);
+      ctx.fillStyle = COL.line; ctx.fillRect(x0 - 4, base + 1, cw + 2, 1);
+      ctx.globalAlpha = 0.22; ctx.fillStyle = COL.good; ctx.fillRect(x0 - 4, base - hgt(80), cw + 2, hgt(80) - hgt(70)); ctx.globalAlpha = 1;
+      ctx.fillStyle = COL.line; ctx.fillRect(x0 - 4, top, cw + 2, 1);
+      G.textR(ctx, '100%', x0 - 7, top - 3, '#6070b0'); G.textR(ctx, 'goal', x0 - 7, base - hgt(80) - 1, COL.good); G.textR(ctx, '0', x0 - 7, base - 6, '#6070b0');
+      L.forEach((d, k) => {
+        const x = x0 + k * sw, today = k === L.length - 1;
+        if (d.n) {
+          const h = Math.max(2, hgt(d.pct)), col = d.pct >= 70 ? COL.gold : COL.met;
+          ctx.fillStyle = '#000010'; ctx.fillRect(x - 1, base - h - 1, 14, h + 1);
+          ctx.fillStyle = col; ctx.fillRect(x, base - h, 12, h);
+          ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x, base - h, 12, 1);
+          G.textC(ctx, String(d.n), x + 6, base - h - 9, COL.dim);
+        } else if (d.practice || d.sec) { ctx.fillStyle = '#6070b0'; ctx.fillRect(x + 4, base - 2, 4, 2); } // (played, nothing came back after a day)
+        const dt = new Date(d.num * 864e5).getUTCDate();
+        G.textC(ctx, String(dt), x + 6, base + 3, today ? COL.yel : '#8890c0');
+      });
+      G.wrap('Each bar: that day\'s words back after a day or more (how many on top). Goal 70-80%; a day with few is jumpy.', G.W - 20).slice(0, 2).forEach((l, i) => G.text(ctx, l, 10, 198 + i * 10, '#8890c0'));
+    }
+    drawWords(ctx) {
+      const Z = ZONES(), rows = this.rows(), b = this.listBox();
+      Z.forEach((z, k) => {
+        const r = this.zoneRect(k), on = z === this.zone, zd = G.zones ? G.zones.def(z) : null;
+        G.win(ctx, r.x, r.y, r.w, r.h, on ? { fill1: '#3a56c8', fill2: '#1c2c8c', alpha: 1 } : { fill1: '#18205e', fill2: '#10164a', alpha: 1 });
+        if (on) { ctx.fillStyle = COL.yel; ctx.fillRect(r.x + 2, r.y + r.h - 3, r.w - 4, 1); }
+        G.drawIcon16(ctx, zd ? zd.icon : 'sol', r.x + 5, r.y + 2);
+      });
+      const zd = G.zones ? G.zones.def(this.zone) : null, nm = rows.filter(r => r.met).length, ns = rows.filter(r => r.slip).length;
+      G.text(ctx, fit(zd ? zd.name : 'Villa Sol', 130), 184, 49, COL.white);
+      G.text(ctx, nm + ' of ' + rows.length + ' met' + (ns ? ', ' + ns + ' slipping' : ''), 184, 59, ns ? COL.slip : COL.dim);
+      G.text(ctx, 'Word', 30, 70, '#8890c0'); G.text(ctx, 'Stage', 116, 70, '#8890c0'); G.text(ctx, 'Said', 160, 70, '#8890c0'); G.text(ctx, 'Last met/used', 190, 70, '#8890c0');
+      ctx.save(); ctx.beginPath(); ctx.rect(b.x, b.y, b.w, b.h); ctx.clip();
+      rows.forEach((w, k) => {
+        const r = this.rowRect(k); if (r.y + r.h < b.y || r.y > b.y + b.h) return;
+        const hi = this.hi && this.hi.id === w.id && this.t - this.hi.t < 40;
+        if (hi) { ctx.fillStyle = 'rgba(248,224,96,0.18)'; ctx.fillRect(r.x, r.y, r.w, r.h); }
+        else if (k % 2) { ctx.fillStyle = 'rgba(136,152,224,0.08)'; ctx.fillRect(r.x, r.y, r.w, r.h); }
+        ctx.globalAlpha = w.met ? 1 : 0.35; G.drawIcon16(ctx, w.id, 10, r.y + 1); ctx.globalAlpha = 1;
+        const lab = G.baseForm(w.id), col = !w.met ? '#6870a0' : w.st >= 3 ? COL.gold : COL.met;
+        G.text(ctx, fit(lab, 82), 30, r.y + 6, col);
+        if (!w.met) { G.text(ctx, 'not met yet', 116, r.y + 6, '#5a6290'); return; }
+        strength(ctx, 116, r.y + 3, w.st, w.box);
+        if (w.said) { G.mic.glyph(ctx, 164, r.y + 5, '#58c8d8'); if (w.said > 1) G.text(ctx, String(Math.min(99, w.said)), 173, r.y + 6, '#58c8d8'); }
+        G.text(ctx, ago(w.ago), 190, r.y + 6, w.ago != null && w.ago >= 7 ? '#c8a0a0' : COL.white);
+        if (w.slip) { ctx.fillStyle = COL.slip; ctx.fillRect(257, r.y + 5, 3, 5); ctx.fillRect(256, r.y + 9, 5, 1); ctx.fillRect(257, r.y + 10, 3, 1); ctx.fillRect(258, r.y + 11, 1, 1); G.text(ctx, 'slip', 264, r.y + 6, COL.slip); }
+      });
+      ctx.restore();
+      if (!rows.length) G.textC(ctx, 'No words here', b.x + b.w / 2, b.y + 40, COL.dim);
+      // scrolling: arrows and a bar
+      const ms = this.maxScroll();
+      if (ms > 0) {
+        G.iconBtn(ctx, 'back', ...this.upXY()); G.iconBtn(ctx, 'next', ...this.downXY());
+        arrowGlyph(ctx, this.upXY(), -1); arrowGlyph(ctx, this.downXY(), 1);
+        const tx = 302, ty = 102, th = 82, kh = Math.max(10, Math.round(th * b.h / (b.h + ms))), ky = ty + Math.round((th - kh) * this.scroll / ms);
+        ctx.fillStyle = COL.line; ctx.fillRect(tx, ty, 4, th); ctx.fillStyle = '#c8d0f0'; ctx.fillRect(tx, ky, 4, kh);
+      }
+      G.text(ctx, 'Tap a word to hear it. Dashes: its review box (1-5).', 8, 210, '#8890c0');
+    }
+    drawCheck(ctx) {
+      const c = H().checkCur(), last = H().checkLast();
+      if (!c) {
+        G.text(ctx, fit('Ask ' + name() + ' ' + H().CHECK_N + ' words, away from the game.', G.W - 20), 10, 52, COL.white);
+        G.wrap('Show each picture, or say the English ("How do you say the dog?"), and listen for the Spanish. Tap right or not yet: the answers count as practice.', G.W - 22).forEach((l, i) => G.text(ctx, l, 10, 66 + i * 11, COL.dim));
+        textBtn(ctx, this.startRect(), last ? 'Start a new check' : 'Start the check', { fill: '#2a7a3a', rim: '#a8e8b0' });
+        if (!last) return;
+        G.text(ctx, 'Last check: ' + last.right + ' of ' + last.of + ' right, ' + ago(last.ago) + ' (' + dateOf(last.d) + ')', 10, 146, COL.yel);
+        last.ids.forEach((id, k) => { // the words, two columns, with how they went
+          const x = 10 + (k % 2) * 154, y = 158 + Math.floor(k / 2) * 10, v = last.r[k];
+          if (v === 1) tick(ctx, x, y + 1, COL.good, 0.7); else if (v === 0) cross(ctx, x + 1, y + 1, COL.bad, 0.7); else G.text(ctx, '-', x + 2, y, COL.dim);
+          G.text(ctx, fit(es(id), 136), x + 12, y, v === 0 ? '#f0b0b0' : COL.white);
+        });
+        const L = H().checks(); if (L.length > 1) G.textR(ctx, 'Before: ' + L.slice(-6, -1).map(x => H().checkScore(x).right + '/' + H().checkScore(x).of).join('  '), G.W - 10, 210, COL.dim);
+        return;
+      }
+      const id = c.ids[c.i], wd = D().words[id];
+      G.text(ctx, 'Word ' + (c.i + 1) + ' of ' + c.ids.length, 10, 50, COL.white);
+      c.ids.forEach((x, k) => { const v = c.r[k], px = G.W - 10 - (c.ids.length - k) * 9; ctx.fillStyle = '#000010'; ctx.fillRect(px - 1, 49, 8, 8); ctx.fillStyle = k === c.i ? COL.yel : v === 1 ? COL.good : v === 0 ? COL.bad : k < c.i ? '#6070b0' : COL.line; ctx.fillRect(px, 50, 6, 6); });
+      G.win(ctx, 24, 60, G.W - 48, 104, { fill1: '#fffaf0', fill2: '#f0e4c8', alpha: 1 });
+      G.drawIcon16(ctx, wd, 36, 72, 3, 'card');
+      const sx = 190;
+      G.bigText(ctx, fit(es(id), 108), sx, 84, 2, '#a06008', '#f8e8b0');
+      G.textC(ctx, fit(wd.en, 160), sx, 106, '#4a3a2a', null);
+      G.textC(ctx, fit('Ask: "How do you say ' + wd.en + '?"', 176), sx, 128, '#8a7050', null);
+      G.textC(ctx, 'or show the picture', sx, 140, '#8a7050', null);
+      G.speakerBtn(ctx, ...this.sayXY());
+      textBtn(ctx, this.yesRect(), 'Right', { fill: '#2a7a3a', rim: '#a8e8b0', dx: 8, glyph: (cx, r) => tick(cx, r.x + 14, r.y + 10, '#ffffff') });
+      textBtn(ctx, this.noRect(), 'Not yet', { fill: '#902838', rim: '#f0a8b0', dx: 8, glyph: (cx, r) => cross(cx, r.x + 14, r.y + 10, '#ffffff') });
+      textBtn(ctx, this.skipRect(), 'Skip', { fill: '#24308a' });
+      textBtn(ctx, this.stopRect(), 'Stop', { fill: '#24308a' });
+      if (this.hi && this.hi.ok != null && this.t - this.hi.t < 30) { const a = 1 - (this.t - this.hi.t) / 30; ctx.globalAlpha = a; if (this.hi.ok) tick(ctx, G.W / 2 - 18, 62, COL.good, 4); else cross(ctx, G.W / 2 - 18, 62, COL.bad, 4); ctx.globalAlpha = 1; }
+    }
+    drawTonight(ctx) {
+      const q = DB.tonight(this.tq);
+      G.text(ctx, 'Tonight\'s question, for dinner', 10, 50, COL.yel);
+      if (!q) { G.wrap('Nothing yet: after a little play, a question from the day\'s words shows up here.', G.W - 24).forEach((l, i) => G.text(ctx, l, 10, 70 + i * 12, COL.dim)); return; }
+      G.drawIcon16(ctx, q.id, 12, 66, 2, 'card');
+      // the Spanish, big (on two lines if it's long)
+      const cx = 172, mw = 230;
+      if (G.textWidth(q.es) * 2 <= mw) G.bigText(ctx, q.es, cx, 74, 2, COL.gold);
+      else { const w = q.es.split(' '), h = Math.ceil(w.length / 2); G.bigText(ctx, w.slice(0, h).join(' '), cx, 66, 2, COL.gold); G.bigText(ctx, w.slice(h).join(' '), cx, 86, 2, COL.gold); }
+      G.speakerBtn(ctx, ...this.tonightSayXY());
+      G.textC(ctx, fit(q.en, G.W - 30), G.W / 2, 108, COL.white);
+      G.text(ctx, 'A good answer:', 10, 126, COL.dim);
+      G.text(ctx, fit(q.ans.es, G.W - 110), 96, 126, COL.gold);
+      G.text(ctx, fit('(' + q.ans.en + ')', G.W - 110), 96, 138, COL.dim);
+      G.text(ctx, fit('From ' + name() + '\'s words: ' + es(q.id) + ' (' + q.why + ')', G.W - 20), 10, 154, COL.dim);
+      G.wrap('Ask it in Spanish. An answer in English? Say it back in Spanish, with a smile.', G.W - 20).slice(0, 2).forEach((l, i) => G.text(ctx, l, 10, 166 + i * 10, '#8890c0'));
+      textBtn(ctx, this.anotherRect(), 'Another question');
+    }
+  }
+  function arrowGlyph(ctx, [x, y], dir) { // over the iconBtn's own arrow: an up / down triangle
+    ctx.fillStyle = '#1c2c8c'; ctx.fillRect(x + 2, y + 2, 16, 16);
+    ctx.fillStyle = '#f0f0ff';
+    for (let i = 0; i < 5; i++) { const w = 1 + i * 2, yy = dir < 0 ? y + 7 + i : y + 12 - i; ctx.fillRect(x + 10 - i, yy, w, 1); }
+  }
+  G.LearningDash = LearningDash;
+  DB.open = function (o) { const w = new G.Wait(); G.push(new LearningDash(w, o)); return w; };
 })();
 
 </script>

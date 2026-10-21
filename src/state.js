@@ -35,6 +35,8 @@
       ch: {},             // the story's chapters (chapters.js): the beat each one is on, their own data, when they began
       world: {},          // the open world (zones.js): zones visited, the one asked for on the map, the dog's spots done
       dogName: null,      // the dog's name, chosen by the child in the opener (G.dogName(): "Canelo" until then)
+      hist: {},           // the learning history (history.js): per day the minutes played, words met, every retrieval
+                          // (compact, no audio, the last 60 days); the parent checks; the dog's warm-up (warmup.js)
     };
   }
   function devicePrefs(s) {
@@ -61,7 +63,9 @@
   S.learn = function (id) { const r = WM().rec(id, true); if (!r || r.st >= 3) return false; if (r.st < 1) WM().meet(id, 'learn'); r.st = 3; r.learned = true; r.s3 = WM().day(); S.autosave(); if (G.vocabLog) G.vlog('learned', id); return true; };
   S.practiced = (id, firstTry) => (firstTry ? WM().answerRight(id, { firstTry: true }) : WM().answerWrong(id));
   // said out loud with the mic (mic.js): its card grows the most (cards.js); still counted in stars (for the diploma); S.micStars() is the speaking stars so far
-  S.said = function (id) { const w = WM().rec(id, true); if (!w) return; w.said = (w.said | 0) + 1; WM().encounter(id); G.state.stars++; if (G.cards) G.cards.grow(id, 'say'); S.autosave(); if (G.vocabLog) G.vlog('said', id, { via: G.top() && G.top().constructor.name }); };
+  // The learning history records it (history.js): o.cued = said right after hearing it (an echo: the gold card's mic);
+  // a question's answer that follows (words.js answerRight, said) makes it that answer's event instead of a second one.
+  S.said = function (id, o) { const w = WM().rec(id, true); if (!w) return; if (G.hist && w.st >= 1) G.hist.event(id, o && o.cued ? 'E' : 'S', { said: true }); w.said = (w.said | 0) + 1; WM().encounter(id); G.state.stars++; if (G.cards) G.cards.grow(id, 'say'); S.autosave(); if (G.vocabLog) G.vlog('said', id, { via: G.top() && G.top().constructor.name }); };
   S.saidCount = id => (G.state.words[id] && G.state.words[id].said) | 0;
   S.micStars = (s = G.state) => Object.keys(s.words).reduce((n, id) => n + ((s.words[id] && s.words[id].said) | 0), 0);
   // 0..3 stars per word: its stage (known 1, remembered 2, solid 3)

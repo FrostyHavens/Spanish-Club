@@ -25,7 +25,8 @@
 //      sometimes leaves something to pick up (carry.js). Every zone has one: the dog always has something to do)
 //   indoor: true (no bus driving in: a ride from the menu just fades)
 // Map edges: G.zones.edge(x, y, to, tx, ty, dir) is an exit on a path tile at the map's edge (no door sound).
-// API: G.zones.add(def), .def(id), .ids(), .of(map) (its zone id, null on a path), .pathOf(map), .area(map) (the
+// API: G.zones.add(def), .def(id), .ids(), .of(map) (its zone id, null on a path), .ofWord(id) / .ofTopic(topic) (the
+//   place a word belongs to: where its notebook page's puzzle is), .pathOf(map), .area(map) (the
 //   "nearby" unit for the guide: the zone, or 'path:<zone>'), .visited(id), .visitedIds(), .visit(id), .want() (a zone
 //   the child asked for on the map and hasn't reached), .route(fromMap, toMap) (the exit to take next, over every map's
 //   exits), .travel(f, id) / .ride(f, id) (the bus), .worldMap(o) -> Wait (G.worldMap), .enter(f) (field.js onEnter),
@@ -52,6 +53,18 @@
   Z.pathOf = m => (G.maps[m] && G.maps[m].path) || null;
   Z.area = m => Z.of(m) || ('path:' + Z.pathOf(m));
   Z.name = id => { const z = Z.def(id); return z ? z.name : ''; };
+  // the place a word belongs to (the grown-ups' Learning page, the dog's warm-up: words from other places first): where
+  // its notebook page's puzzle is (content/es/words.js pagePlaces: a map, so a zone), else Villa Sol
+  let topicZone = null, topicN = -1;
+  Z.ofTopic = function (t) {
+    if (!topicZone || topicN !== Z.LIST.length) {
+      topicZone = {}; topicN = Z.LIST.length;
+      const P = G.data.pagePlaces || {};
+      for (const m in P) for (const k in P[m]) { const pg = G.data.pages[P[m][k]]; if (pg && !topicZone[pg.topic]) topicZone[pg.topic] = Z.of(m) || 'villa'; }
+    }
+    return topicZone[t] || 'villa';
+  };
+  Z.ofWord = id => { const w = G.data.words[id]; return w ? Z.ofTopic(w.topic) : null; };
   // a time of day for rare animals (animals.js: a map's animals entry with when): 'manana' (the first minutes of a
   // session: the morning), 'noche' (after sunset), 'dia' (before sunset), or a function
   Z.timeOk = function (w) {

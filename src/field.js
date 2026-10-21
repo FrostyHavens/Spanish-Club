@@ -273,6 +273,7 @@
       if (G.animals) G.animals.update(this); // ducks, hens, the fish, the frog, the rabbit, the horse, the goat (animals.js)
       if (G.errands) G.errands.update(this); // Round B errands: who stands where, Canelo lost, Nico tagging along (errands.js)
       if (G.chapters) G.chapters.update(this); // the story: a chapter's moments that start by themselves (chapters.js)
+      if (G.warmup) G.warmup.update(this); // the dog's warm-up, the first time you're free each day (warmup.js; after the story's own)
       if (G.seek) G.seek.update(this); // hide-and-seek: who hides where, Canelo sniffing out a trail (seek.js)
       if (G.guide) G.guide.update(this); // the next thing to do, always in sight; Canelo trots that way (guide.js)
       const ct = this.camTarget(); this.cam.x += (ct.x - this.cam.x) * 0.3; this.cam.y += (ct.y - this.cam.y) * 0.3;
@@ -343,6 +344,7 @@
       }
       if (G.chapters) G.chapters.draw(this, ctx, 'top'); // a chapter's bubbles and pointing arrow (chapters.js)
       if (G.guide) G.guide.draw(this, ctx); // the arrow over the next thing to do, or at the screen's edge (guide.js)
+      if (G.warmup) G.warmup.draw(this, ctx); // the dog's warm-up: the card he dropped, the skip button (warmup.js)
       if (G.world) G.world.draw(this, ctx); // the word bubble of a thing just named, and its say-it-back mic (over the arrow: it's short-lived)
       if (this.banner && G.top() !== this) this.banner.t = Math.min(this.banner.t, 0); // a talk or a card opened over the map: the name has done its job
       if (this.banner && this.banner.t > 0) {

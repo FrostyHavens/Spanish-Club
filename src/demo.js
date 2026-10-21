@@ -14,6 +14,8 @@
 //   bus      a bus stop on screen once you've been to two places: the hand taps the stop (zones.js)
 //   worldmap the world map open: the hand taps a place you've been to (the bus goes there), or a "?" one (walk there)
 //   dogspot  the dog's paw-print bubble on screen (his thing to do in this zone): the hand taps it
+//   warmup   the dog's daily warm-up (warmup.js), its first question: the hand taps the big mic and a mouth talks (say
+//            it!), or, without the mic, glides over the cards and taps one (never the answer)
 //   (zones)  a zone's own new action (G.zones.demos: {kind, find(f) -> tile}): the beach's 'fillpail' (the empty pail
 //            in your hands: the hand taps the water's edge)
 // The map's demos wait for a moment of standing about (DM.IDLE, so they don't get in the way of a child who is busy).
@@ -22,7 +24,7 @@
 'use strict';
 (function () {
   const DM = G.demo = {}, T = G.TILE;
-  DM.KINDS = ['answer', 'mic', 'canelo', 'pickup', 'give', 'putdown', 'puzzle', 'seek', 'bus', 'worldmap', 'dogspot'];
+  DM.KINDS = ['answer', 'mic', 'canelo', 'pickup', 'give', 'putdown', 'puzzle', 'seek', 'bus', 'worldmap', 'dogspot', 'warmup'];
   DM.IDLE = 90;    // frames standing about on the map before a map demo (1.5 s)
   DM.cur = null;
   let idle = 0, scan = 0;
@@ -58,6 +60,19 @@
   // ---------- when each one comes up ----------
   function onQuestion(s) {
     const n = name(s);
+    if (n === 'Choice' && s.o.warmup && s.cards && s.o.answer != null && !s.won && s.t >= 14 && !DM.shown('warmup')) { // the dog's warm-up (warmup.js): say it, or tap
+      const m = s.mic;
+      if (m && m.shown && m.shown() && m.can && m.can()) {
+        const r = m.o.rect(); book().mic = book().mic || G.frame || 1; // (the mic shown here: no second mic demo)
+        start('warmup', [{ x: r.x + r.w / 2, y: r.y + r.h / 2 + 2, move: 22, act: 'tap', hold: 4 }, { x: r.x + r.w / 2, y: r.y + r.h / 2 + 2, move: 1, act: 'talk', hold: 70 }], { mic: r });
+        return true;
+      }
+      const R = s.rects(), ks = R.map((r, k) => k).filter(k => k !== s.o.answer), k = ks.length ? ks[Math.floor(Math.random() * ks.length)] : 0;
+      const steps = R.map(r => ({ x: r.x + r.w / 2, y: r.y + r.h * 0.55, move: 14, hold: 4 }));
+      steps.push({ x: R[k].x + R[k].w / 2, y: R[k].y + R[k].h * 0.55, move: 12, act: 'tap', hold: 16 });
+      book().answer = book().answer || G.frame || 1;
+      start('warmup', steps); return true;
+    }
     if (n === 'Choice' && s.cards && s.o.answer != null && !s.won && s.t >= 14 && !DM.shown('answer')) {
       const R = s.rects(), k = Math.floor(Math.random() * R.length), steps = R.map(r => ({ x: r.x + r.w / 2, y: r.y + r.h * 0.55, move: 14, hold: 4 }));
       steps.push({ x: R[k].x + R[k].w / 2, y: R[k].y + R[k].h * 0.55, move: 12, act: 'tap', hold: 16 });

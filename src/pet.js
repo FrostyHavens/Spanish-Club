@@ -22,7 +22,8 @@
 //   G.pet.teach(id, who) generator (the teaching scene), G.pet.practice(id) generator (one good try: the question, then
 //   Canelo's attempt), G.pet.command(id, o) generator (a G.ask "¡Dile a Canelo!" for any trick, then he does it: for
 //   shows; o.prompt, o.pool), G.pet.trick(id) generator (he just does it), G.pet.play(kind, o) generator (any animation:
-//   sit come paw jump spin huh eat drink fetch pet dance wake), G.pet.menu() generator (the pet menu),
+//   sit come paw jump spin huh eat drink fetch pet dance wake; bring (o.item: {id: 'tarjeta'}: he fetches a word card and
+//   drops it at your feet) and wag (a happy wiggle): the dog's warm-up, warmup.js), G.pet.menu() generator (the pet menu),
 //   G.pet.npc(f) (Canelo on this map), G.pet.sleeping(f).
 // Saved: G.state.pet = {tricks: {id: good tries 0..3}, learning: id | null, sleep: bool}, flags.petStart.
 'use strict';
@@ -97,14 +98,14 @@
 
   // ---------- Canelo's animations (time from G.frame, so they play under any screen) ----------
   // n.pa = {k, f0, len, amp, sx, sy (away direction), D (px away), ev: fired events, item}
-  const LEN = { sniff: 84, sit: 80, come: 120, paw: 92, jump: 72, spin: 76, huh: 56, eat: 112, drink: 96, fetch: 168, pet: 104, dance: 64, wake: 30 };
+  const LEN = { sniff: 84, sit: 80, come: 120, paw: 92, jump: 72, spin: 76, huh: 56, eat: 112, drink: 96, fetch: 168, pet: 104, dance: 64, wake: 30, bring: 132, wag: 40 };
   const DIRS = ['down', 'right', 'up', 'left'];
   const ease = u => 1 - (1 - u) * (1 - u);
   // the free distance (tiles, up to max) from n's tile going (dx, dy): walls stop it
   function room(f, n, dx, dy, max) { let k = 0; while (k < max) { const x = n.x + dx * (k + 1), y = n.y + dy * (k + 1); const t = G.TERRAIN[f.map.get(x, y)] || G.TERRAIN['.']; if (x < 0 || y < 0 || x >= f.map.w || y >= f.map.h || t.block || t.wall) break; k++; } return k; }
   function start(f, n, k, o = {}) {
     const p = f.player, a = { k, f0: G.frame, len: LEN[k] || 60, amp: o.amp == null ? 1 : o.amp, ev: {}, item: o.item || null, px: p.x, py: p.y };
-    if (k === 'come' || k === 'fetch') { // run away from you along the roomier side, 3 tiles at most
+    if (k === 'come' || k === 'fetch' || k === 'bring') { // run away from you along the roomier side, 3 tiles at most
       const side = n.x < p.x ? -1 : n.x > p.x ? 1 : (room(f, n, 1, 0, 4) >= room(f, n, -1, 0, 4) ? 1 : -1);
       let dx = side, dy = 0, r = room(f, n, dx, dy, 3);
       if (r < 2) { const r2 = room(f, n, -dx, 0, 3); if (r2 > r) { dx = -dx; r = r2; } }
@@ -202,6 +203,34 @@
       }
       case 'dance': { o.dir = DIRS[Math.floor(t / 6) % 4]; o.z = Math.abs(Math.sin(t / 6 * Math.PI)) * 6; ev(2, () => P.sound('bark')); ev(34, () => P.sound('bark')); if (t % 10 === 0) puff('spark', wx + (Math.random() - 0.5) * 20, wy + Math.random() * 10, { life: 20 }); break; }
       case 'wake': o.z = Math.sin(Math.min(1, t / 20) * Math.PI) * 6; o.dir = 'down'; ev(2, () => P.sound('bark')); break;
+      case 'bring': { // the dog's warm-up (warmup.js): he runs off, noses about, finds a word card ("!"), trots back with it
+        // in his mouth, drops it at your feet and wags (o.item: the card, drawn in his mouth and then on the ground)
+        const D = a.D;
+        if (t < 20) { const u = ease(t / 20); o.dx = a.sx * D * u; o.dy = a.sy * D * u; o.dir = dirOf(a.sx, a.sy); o.fr = (t >> 2) & 1; if (t % 7 === 0) puff('dust', wx + o.dx, wy + o.dy + 22, { life: 16, vy: -0.2 }); }
+        else if (t < 42) { // nose to the ground, left and right: found one!
+          o.dx = a.sx * D; o.dy = a.sy * D + 2; o.sy = 0.9; o.fr = (t >> 2) & 1; o.dir = t < 34 ? ((t >> 3) & 1 ? 'left' : 'right') : dirOf(-a.sx, -a.sy);
+          if (t % 8 === 0 && t < 34) puff('dust', wx + o.dx + (o.dir === 'left' ? -9 : 9), wy + o.dy + 19, { life: 14, vy: -0.25 });
+          ev(34, () => { puff('ex', wx + o.dx, wy + o.dy - 10, { life: 30 }); P.sound('bark'); });
+          if (t >= 36) o.mouth = true;
+        } else if (t < 82) {
+          const u = (t - 42) / 40; o.dx = a.sx * D * (1 - u); o.dy = a.sy * D * (1 - u); o.dir = dirOf(-a.sx, -a.sy); o.fr = (t >> 2) & 1; o.mouth = true;
+          o.z = Math.abs(Math.sin(t / 3)) * 2; if (t % 7 === 0) puff('dust', wx + o.dx, wy + o.dy + 22, { life: 16, vy: -0.2 });
+        } else { // at your feet: the card drops between you, then a wag
+          o.dir = towardP(n, a);
+          const cx = (a.px - n.x) * T * 0.5, cy = (a.py - n.y) * T * 0.5 + 3, u = Math.min(1, (t - 82) / 8);
+          o.ball = [cx * u, cy * u, (1 - u) * 9 + Math.sin(u * Math.PI) * 4]; o.big = u >= 1;
+          ev(90, () => { P.sound('bounce'); puff('spark', wx + cx, wy + 18 + cy, { life: 22 }); });
+          if (t > 92) { o.rot = Math.sin(t / 2) * 0.07; o.wag = true; }
+          ev(96, () => { P.sound('bark'); puff('heart', wx, wy - 2, { life: 50, vy: -0.35 }); });
+        }
+        break;
+      }
+      case 'wag': { // happy: a little hop, his whole body wagging, a heart (warmup.js: a word remembered)
+        o.dir = towardP(n, a); o.wag = true;
+        o.rot = Math.sin(t / 2) * 0.08 * A; o.z = t < 14 ? Math.sin(t / 14 * Math.PI) * 6 * A : 0;
+        ev(2, () => { P.sound('bark'); puff('heart', wx, wy - 2, { life: 46, vy: -0.4 }); });
+        break;
+      }
     }
     return o;
   }
@@ -227,9 +256,14 @@
       ctx.fillStyle = '#f0a0a8'; ctx.fillRect(px - 1, py, 2, 2); ctx.fillRect(px - 3, py - 2, 1, 1); ctx.fillRect(px, py - 3, 1, 1); ctx.fillRect(px + 2, py - 2, 1, 1);
       if (o.paw > 0.9) { ctx.fillStyle = '#fff8b0'; ctx.fillRect(px + side * 6, py - 4, 1, 3); ctx.fillRect(px + side * 7, py, 2, 1); ctx.fillRect(px + side * 5, py + 4, 1, 1); } // a little "ta-da"!
     }
-    const thing = a && a.k === 'fetch' ? a.item : null; // (carry.js: the ball or the stick you threw)
+    const thing = a && (a.k === 'fetch' || a.k === 'bring') ? a.item : null; // (carry.js: the ball or the stick you threw; warmup.js: a word card)
+    if (o.wag) { // his tail going: little marks beside it, flickering
+      const k = (G.frame >> 2) & 1, sides = o.dir === 'right' ? [-1] : o.dir === 'left' ? [1] : [-1, 1], ty = by + 13 - Math.round(o.z);
+      ctx.fillStyle = '#ffffff';
+      for (const sd of sides) { const tx = bx + 12 + sd * (12 + k); ctx.fillRect(tx, ty - 3, 1, 2); ctx.fillRect(tx + sd, ty, 1, 2); ctx.fillRect(tx, ty + 3, 1, 2); }
+    }
     if (o.mouth) drawBall(ctx, bx + 12 + (o.dir === 'left' ? -7 : o.dir === 'right' ? 7 : 0), by + 15 - Math.round(o.z), 0, thing);
-    if (o.ball) drawBall(ctx, bx - o.dx + 12 + o.ball[0], by - o.dy + 22 + o.ball[1] - o.ball[2], o.ball[2], thing);
+    if (o.ball) drawBall(ctx, bx - o.dx + 12 + o.ball[0], by - o.dy + 22 + o.ball[1] - o.ball[2], o.ball[2], o.big && thing ? Object.assign({}, thing, { big: true }) : thing);
     if (o.hand) { const hx = bx + 10, hy = by + 1 - Math.round(o.hand * 4); ctx.fillStyle = '#1a1420'; ctx.fillRect(hx - 1, hy - 1, 9, 6); ctx.fillStyle = G.st.playerSpec().map.skin || '#f0c8a0'; ctx.fillRect(hx, hy, 7, 4); ctx.fillRect(hx + 7, hy + 1, 1, 2); }
     if (sl) for (let i = 0; i < 3; i++) { const k = ((G.frame + i * 40) % 120) / 120; ctx.globalAlpha = 1 - k; G.text(ctx, 'z', bx + 16 + Math.round(k * 8 + Math.sin(k * 6) * 2), by + 6 - Math.round(k * 18), '#ffffff', '#303060'); ctx.globalAlpha = 1; }
     return true;
@@ -238,6 +272,24 @@
   function drawBall(ctx, x, y, z, thing) {
     x = Math.round(x); y = Math.round(y);
     if (z > 1) { ctx.fillStyle = 'rgba(16,28,8,0.3)'; ctx.fillRect(x - 2, y + Math.round(z) + 3, 4, 1); }
+    if (thing && thing.id === 'tarjeta' && thing.big) { // the card on the ground (warmup.js): bigger, a little shine
+      ctx.fillStyle = 'rgba(16,28,8,0.35)'; ctx.fillRect(x - 5, y + 7, 12, 2);
+      ctx.fillStyle = '#1a1420'; ctx.fillRect(x - 6, y - 8, 13, 16); ctx.fillRect(x - 5, y - 9, 11, 18);
+      ctx.fillStyle = '#f0c030'; ctx.fillRect(x - 5, y - 8, 11, 16);
+      ctx.fillStyle = '#fffaf0'; ctx.fillRect(x - 4, y - 7, 9, 14);
+      ctx.fillStyle = '#3c9a3c'; ctx.fillRect(x, y - 4, 1, 6); ctx.fillStyle = '#58c048'; ctx.fillRect(x - 2, y - 4, 2, 1); ctx.fillRect(x + 1, y - 3, 2, 1); ctx.fillRect(x - 2, y - 1, 2, 1);
+      ctx.fillStyle = '#d87038'; ctx.fillRect(x - 2, y + 2, 5, 1); ctx.fillStyle = '#b0582c'; ctx.fillRect(x - 1, y + 3, 3, 2);
+      if (((G.frame >> 3) & 3) === 0) { ctx.fillStyle = '#ffffff'; ctx.fillRect(x + 4, y - 11, 1, 3); ctx.fillRect(x + 3, y - 10, 3, 1); }
+      return;
+    }
+    if (thing && thing.id === 'tarjeta') { // a word card (the dog's warm-up): a gold rim, a sprout in its pot
+      ctx.fillStyle = '#1a1420'; ctx.fillRect(x - 4, y - 5, 9, 11);
+      ctx.fillStyle = '#f0c030'; ctx.fillRect(x - 3, y - 4, 7, 9);
+      ctx.fillStyle = '#fffaf0'; ctx.fillRect(x - 2, y - 3, 5, 7);
+      ctx.fillStyle = '#3c9a3c'; ctx.fillRect(x, y - 2, 1, 3); ctx.fillStyle = '#58c048'; ctx.fillRect(x - 1, y - 2, 1, 1); ctx.fillRect(x + 1, y - 1, 1, 1);
+      ctx.fillStyle = '#b0582c'; ctx.fillRect(x - 1, y + 1, 3, 2);
+      return;
+    }
     if (thing && thing.id === 'palo') { // a stick, crosswise
       ctx.fillStyle = '#1a1420'; ctx.fillRect(x - 6, y - 2, 13, 4); ctx.fillStyle = '#a87038'; ctx.fillRect(x - 5, y - 1, 11, 2); ctx.fillStyle = '#6a4018'; ctx.fillRect(x - 5, y, 11, 1); ctx.fillStyle = '#58b048'; ctx.fillRect(x + 3, y - 3, 2, 1);
       return;
@@ -247,6 +299,7 @@
     ctx.fillStyle = col; ctx.fillRect(x - 2, y - 2, 4, 5); ctx.fillRect(x - 3, y - 1, 6, 3);
     ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 1, y - 2, 1, 1); ctx.fillStyle = '#f8e060'; ctx.fillRect(x - 3, y, 6, 1);
   }
+  P.drawThing = drawBall; // (warmup.js: the word card on the ground)
   function drawBowl(ctx, x, y, what, left) {
     x = Math.round(x); y = Math.round(y);
     const el = (rx, ry, c, dy = 0) => { ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(x, y + dy, rx, ry, 0, 0, Math.PI * 2); ctx.fill(); };

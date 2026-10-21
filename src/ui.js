@@ -466,6 +466,22 @@
     }
     ctx.drawImage(spr, x + 10 - (spr.width >> 1), y + 10 - (spr.height >> 1));
   };
+  // the skip button: a bigger picture button, two white arrows (fast forward: "not now"), for something the child may
+  // skip (the dog's warm-up, warmup.js). 26 x 22 game px at x, y; the tap area is padded by 6; t: a frame counter (the
+  // arrows nudge forward now and then)
+  G.SKIP_W = 26; G.SKIP_H = 22;
+  G.skipHit = (x, y) => G.tapIn(x - 6, y - 6, G.SKIP_W + 12, G.SKIP_H + 12);
+  G.skipBtn = function (ctx, x, y, t = 0) {
+    x = Math.round(x); y = Math.round(y);
+    const w = G.SKIP_W, h = G.SKIP_H, on = G.input.holding(x - 6, y - 6, w + 12, h + 12) > 0;
+    ctx.fillStyle = '#000010'; ctx.fillRect(x + 1, y, w - 2, h); ctx.fillRect(x, y + 1, w, h - 2);
+    ctx.fillStyle = on ? '#f0d060' : '#b8f0e0'; ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+    ctx.fillStyle = on ? '#1c6a5a' : '#2a9a7a'; ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+    ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(x + 2, y + 2, w - 4, 4);
+    const u = t % 150, nudge = u < 24 ? Math.round(Math.sin(u / 24 * Math.PI) * 2) : 0;
+    const tri = (tx, ty, col) => { ctx.fillStyle = col; for (let i = 0; i < 6; i++) ctx.fillRect(tx + i, ty + i, 1, 12 - 2 * i); };
+    for (const k of [0, 7]) { tri(x + 7 + k + nudge, y + 6, '#0c3a30'); tri(x + 6 + k + nudge, y + 5, '#ffffff'); }
+  };
   G.closeBtn = (ctx, x = G.W - 26, y = 6) => G.iconBtn(ctx, 'close', x, y);
   G.closeHit = (x = G.W - 26, y = 6) => G.btnHit(x, y);
   G.speakerBtn = (ctx, x, y) => G.iconBtn(ctx, 'speaker', x, y);
