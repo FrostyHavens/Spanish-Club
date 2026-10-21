@@ -623,6 +623,20 @@ that needs a little structure:
     voice goes.
 15. **Is a 15-minute "day" with sunset at about 12-13 minutes right**, or are her sittings longer?
 
+### 4.3 Your answers so far (2026-10-21)
+| # | Answer | What it changes |
+| --- | --- | --- |
+| 1 | **5 days a week** | This confirms the planning calendar (about 181 hours; sections 1.1 and 2.1). The content math, the year-by-year build list and the pace (1.5-2.5 new items a play day) stay as written. |
+| 2 | **Yes: she has a real-life Spanish club** | The right-hand column of the can-do table (section 1.2) becomes the realistic target, not a stretch: asking questions back, retelling a short picture story, everyday scenes. The game should feed the club: words and phrases she can use there (greetings, introducing herself, likes, family), and the Learning page can show "words to try at Spanish club". |
+| 3 | **The same way as now** (AI coding sessions, you decide what goes in) | No change: units are built in sessions, checked by the tests and the native-speaker pass, and released in small steps (audit 4.10). |
+| 4 | **Yes, a native Mexican-Spanish speaker can check lines** | Every new unit's lines go through a monthly check before release. Sprint 1's Spanish fixes (audit 1.9) come with a before → after list for them to check first. |
+| 12 | **Finish at 10** | The end goal stays El Gran Viaje at 10, then a keep-it-alive mode (new festivals on real dates, the album, the club). Nothing is planned for 10-12. |
+
+Still open: 5 (budget), 6 (AI conversation), 7 (family circle), 8 (Windows play), 9 (siblings), 10 (home-screen
+app), 11 (school topics), 13 (Mexican Spanish only), 14 (iPad model), 15 (sitting length). Sprint 1 goes ahead with
+sunset at about 12-13 minutes (15), Mexican Spanish only (13), and backup and restore that also moves a game between
+the iPad and Windows (8, 10).
+
 ---
 
 ## 5. What we'd plan next
@@ -641,8 +655,8 @@ that needs a little structure:
 - **Build in steps, not all at once:** keep a few months of units ready ahead of her measured pace, and let finished
   units wait in the game until she's ready (3.11).
 - **Lay out the Year 1 calendar**: 4 seasons and about 6 festivals on real dates, built once.
-- **Answer the questions in 4.2**, especially play days, real conversation time, who builds, the native speaker, AI,
-  the family circle and the ending age.
+- **Answer the rest of the questions in 4.2** (4.3 has the answers so far), especially budget, AI,
+  the family circle, Windows play and the iPad model.
 - **After 3 months of her real play**, re-fit the simulation's memory settings to her Learning-page numbers
   (`tools/sim-3year.js`) and re-check the pace (1.5-2.5 items a day) and the size of the build list before committing
   to Year 2.
