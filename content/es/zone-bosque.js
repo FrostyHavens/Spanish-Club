@@ -132,7 +132,7 @@
         yield 30;
         if (met(a.kind)) return;
         CH.point(a.x, a.y - 14);
-        try { yield* G.intro.show(a.kind, { who: 'lola', prompt: '¡Mira! ¡[' + a.kind + ']!', en: 'Look! ' + EN[a.kind], known: othersFor(a.kind, KINDS) }); } finally { CH.point(null); }
+        try { yield* G.intro.show(a.kind, { who: 'lola', prompt: G.requests.LINES.mira(a.kind), en: 'Look! ' + EN[a.kind], known: othersFor(a.kind, KINDS) }); } finally { CH.point(null); }
       })());
     }
     if (f && Z.of(f.mapId) === 'bosque' && a.kind === 'luciernaga' && jarOn()) jarCatch(f, a);
@@ -294,7 +294,7 @@
     if (p.n === 2 && met('dos')) yield* quiz('lupe', '¿Cuántas?', 'How many bushes have you picked?', 'dos', ['tres', 'uno'], { show: { icon: 'mora', count: 2 } });
     if (p.n >= 4) {
       const n = npcAt(f, 'lupe'); if (n) CH.pointNpc(n);
-      try { yield* sayShow('lupe', { icon: 'canastamoras' }, T('¡' + (met('cuatro') ? '[cuatro:Cuatro]' : 'Cuatro') + '! ¡Al pay!', 'Four! Now bring the basket to Doña Lupe.')); } finally { CH.point(null); }
+      try { yield* sayShow('lupe', { icon: 'canastamoras' }, T('¡' + (met('cuatro') ? '[cuatro:Cuatro]' : 'Cuatro') + '! ¡A hacer el pay!', 'Four! Now bring the basket to Doña Lupe.')); } finally { CH.point(null); }
     }
     void nums;
   }
@@ -567,8 +567,8 @@
       AN.cry('oso'); G.fx.shake = 6; yield 20;
       c.data.mama = G.frame; AN.cry('oso');
       yield 50;
-      yield* G.intro.watch('grande', { who: 'elena', prompt: '¡Mamá [oso]! ¡[grande]!', en: 'Mama bear! She is BIG!', act: function* () { c.data.tall = G.frame; AN.cry('oso'); G.fx.shake = 8; yield 50; c.data.tall = 0; },
-        ask: 'Mamá [oso] es...', askEn: 'Mama bear is... (big or small?)', known: othersFor('grande', ['pequeno', 'oso', 'feliz']) });
+      yield* G.intro.watch('grande', { who: 'elena', prompt: '¡Mamá [oso:osa]! ¡[grande]!', en: 'Mama bear! She is BIG!', act: function* () { c.data.tall = G.frame; AN.cry('oso'); G.fx.shake = 8; yield 50; c.data.tall = 0; },
+        ask: 'Mamá [oso:osa] es...', askEn: 'Mama bear is... (big or small?)', known: othersFor('grande', ['pequeno', 'oso', 'feliz']) });
       c.data.hug = G.frame; G.audio.jingle('item');
       yield 50;
       yield* quiz('elena', '¿Y el osito?', 'And the little cub? How is it?', 'pequeno', ['grande', 'oso'], { show: cub });
@@ -616,7 +616,7 @@
         yield* meetW('bellota', { who: 'lupe', prompt: '¿Y sus [bellota:bellotas]?', en: 'Where are its acorns? They are lost!', show: 'bellota', known: othersFor('bellota', ['ardilla', 'arbol', 'manzana', 'flor']) });
       } finally { CH.point(null); }
       c.data.piles = 1;
-      yield* sayShow('lupe', { icon: 'bellota', count: 3 }, T('¡Tres! ¡Bajo las... !', 'Three acorns! Look under the piles of leaves in the clearing.'));
+      yield* sayShow('lupe', { icon: 'bellota', count: 3 }, T('¡Tres! ¡Bajo las...!', 'Three acorns! Look under the piles of leaves in the clearing.'));
     } },
     { spots: PILES.map((at, i) => ({ map: 'bosque', at, quiet: true, off: c => !!(c.data.done || {})[i] })), hint: (f, c) => PILES.filter((p, i) => !(c.data.done || {})[i]).map(([x, y]) => ({ x: x * TL + 12, y: y * TL + 12, spot: 'pile' })),
       run: function* (f, c, i) {
@@ -643,7 +643,7 @@
       for (let k = 0; k < 3; k++) CK.puff('heart', OAK[0] * TL + 8 + k * 5, OAK[1] * TL, { life: 50, vy: -0.4 });
       yield* quiz('lupe', '¿Qué es?', 'Who got its acorns back?', 'ardilla', ['erizo', 'oso', 'conejo']);
       bag().add('bellota'); G.audio.sfx('chime');
-      yield* sayShow('lupe', 'bellota', T('¡Una [bellota]... ¡para ti!', 'And one acorn... for you! Thank you, {name}!'));
+      yield* sayShow('lupe', 'bellota', T('Una [bellota]... ¡para ti!', 'And one acorn... for you! Thank you, {name}!'));
       c.data.up = G.frame; CK.confetti();
     } },
   ], {

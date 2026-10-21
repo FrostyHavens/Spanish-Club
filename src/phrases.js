@@ -636,6 +636,7 @@
   const albumMet = () => (G.animals ? G.animals.list().filter(a => G.animals.met(a) && G.animals.KINDS[a] && metW(G.animals.KINDS[a].word)).map(a => G.animals.KINDS[a].word) : []);
   P.favReady = () => P.on() && !P.fav() && albumMet().length >= 3;
   P.favBubble = () => ({ icon: 'gracias' });
+  G.requests.LINES['lola.fav'] = id => '¡' + G.requests.the(id, { cap: 1 }) + '! ¡A mí también me gusta!'; // ¡La [tortuga]! (the word's own article)
   // Lola, once she has said hello in this place today: "¿Qué animal te gusta?" (any album animal she has met)
   P.favTalk = function* (f) {
     if (!P.favReady() || !f || !(G.zones && G.zones.lolaTalked && G.zones.lolaTalked(f.mapId)) || (G.chapters && G.chapters.alert('lola'))) return false;
@@ -644,7 +645,7 @@
       onGet: function* (k, res) {
         const w = res.slot.word || res.slot.id; st().fav = { id: w, d: day() }; G.st.autosave();
         G.audio.jingle('item');
-        yield say('lola', w, TT('¡El [' + w + ']! ¡A mí también me gusta!', 'The ' + (D().words[w] ? D().words[w].en.replace('the ', '') : w) + '! I like it too! (it\'s in your album now, with a heart)'));
+        yield say('lola', w, TT(G.requests.LINES['lola.fav'](w), 'The ' + (D().words[w] ? D().words[w].en.replace('the ', '') : w) + '! I like it too! (it\'s in your album now, with a heart)'));
       } });
     return r != null;
   };

@@ -157,7 +157,7 @@
         const want = G.intro.seeking('mama'), at = want && G.state.finds[want] && G.state.finds[want].at.split(',').map(Number);
         if (at && G.chapters) G.chapters.point(at[0] * G.TILE + 12, at[1] * G.TILE);
         try {
-          if (want) yield G.say([T('¡{name}! ¿Y el [' + want + ']?', '{name}! Wait! Where did the ' + W(want).en.replace('the ', '') + ' go? (find him first)')], { portrait: G.portraitOf('mama'), name: G.nameOf('mama'), who: 'mama' });
+          if (want) yield G.say([T('¡{name}! ¿Y ' + G.requests.the(want) + '?', '{name}! Wait! Where did the ' + W(want).en.replace('the ', '') + ' go? (find him first)')], { portrait: G.portraitOf('mama'), name: G.nameOf('mama'), who: 'mama' });
           else yield* say('mama', T('¡{name}! ¡Espera!', '{name}! Wait a moment! (stay with Mamá)'));
         } finally { if (G.chapters) G.chapters.point(null); }
         return false;

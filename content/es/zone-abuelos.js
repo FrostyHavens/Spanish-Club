@@ -10,7 +10,7 @@
 // used again right away), so the grandparents' can be the very first place a child explores.
 //   What you WEAR shows: the clothes you put on (from the clothesline, the trunk, Abuelo's jacket) are worn by your
 //     character on every map (G.abuelos.wear: a cosmetic over the creator's look, saved), and the mirror shows them.
-//   The body is DONE: "¡Toca tu nariz!" and your character (Abuelo, the baby) touches it (G.abuelos.act).
+//   The body is DONE: "¡Tócate la nariz!" and your character (Abuelo, the baby) touches it (G.abuelos.act).
 //   The album (8): la vaca and el burro (the paddock), el cerdo (in the mud), la oveja (the meadow), el pavo (the
 //     turkeys' yard; they flap off), el ratón (in the kitchen), el gallo (rare: at dawn, on the henhouse), el
 //     tlacuache (rare: at night in the orchard; tapped, it plays dead). Tapping one whose word isn't met: Lola names it.
@@ -29,6 +29,10 @@
   const Z = G.zones, K = G.mapKit, MD = G.MAPDATA, CH = G.chapters, CK = CH.K, T = CK.T, TL = G.TILE, AN = G.animals;
   const P = (m, tag) => MD[m].pos[tag];
   const met = id => !!(G.words && G.words.met(id));
+  const RQ = G.requests, LN = RQ.LINES; // (the lines built from a word: G.requests.the)
+  // Simón dice: "¡Tócate los [ojos]!", "¡Simón dice: tócate la [nariz]!" (the article from the word: G.requests.the)
+  LN['simon.intro'] = id => '¡Tócate ' + RQ.the(id) + '!';
+  LN['simon.says'] = id => '¡Simón dice: tócate ' + RQ.the(id) + '!';
   const say = CK.say, sayShow = CK.sayShow, ask = CK.ask;
   const day = () => (G.words ? G.words.day() : 0);
   const meetW = (id, o) => Z.meetW(id, o);
@@ -299,7 +303,7 @@
         yield 30;
         if (met(a.kind)) return;
         CH.point(a.x, a.y - 14);
-        try { yield* G.intro.show(a.kind, { who: 'lola', prompt: '¡Mira! ¡[' + a.kind + ']!', en: 'Look! ' + EN[a.kind], known: othersFor(a.kind, KINDS) }); } finally { CH.point(null); }
+        try { yield* G.intro.show(a.kind, { who: 'lola', prompt: G.requests.LINES.mira(a.kind), en: 'Look! ' + EN[a.kind], known: othersFor(a.kind, KINDS) }); } finally { CH.point(null); }
       })());
     }
     return r;
@@ -410,14 +414,13 @@
   MD.abuelos.rows.forEach((r, y) => { for (let x = 0; x < r.length; x++) if (r[x] === 'ñ' && VEG_KIND[(x * 7 + y * 3) % 4] && !(x === AB_AT[0] && y === AB_AT[1] - 1)) BEDS.push([x, y, VEG_KIND[(x * 7 + y * 3) % 4]]); });
   const W_ = id => G.data.words[id];
   const vegPl = (v, cap) => { const f = W_(v).pl; return '[' + v + ':' + (cap ? f[0].toUpperCase() + f.slice(1) : f) + ']'; }; // [zanahoria:zanahorias]
-  const fem = v => /^la /.test(W_(v).es);
   const VEG_EN = { zanahoria: ['a carrot', 'carrots'], elote: ['corn on the cob', 'ears of corn'], jitomate: ['a tomato', 'tomatoes'] };
   // today's vegetable: the first not met yet, else one in turn
   const vegOfDay = () => VEGS.find(v => !met(v)) || VEGS[day() % VEGS.length];
   const gardenVeg = () => { const g = garden(); if (!g.v || VEGS.indexOf(g.v) < 0) g.v = VEGS.find(met) ? vegOfDay() : 'zanahoria'; return g.v; };
   AB.gardenVeg = () => (G.state ? gardenVeg() : null);
   function* meetVeg(f, v) { // its one-unknown puzzle, Abuelo holding it up
-    yield* meetW(v, { who: 'abuelo', prompt: '¡Mira! ¡' + (fem(v) ? 'Una' : 'Un') + ' [' + v + ']!', en: 'Look! ' + VEG_EN[v][0][0].toUpperCase() + VEG_EN[v][0].slice(1) + ' from my garden!', show: { icon: v }, known: othersFor(v, VEGS.concat(['manzana', 'huevo', 'flor', 'pan'])) });
+    yield* meetW(v, { who: 'abuelo', prompt: LN.mira(v), en: 'Look! ' + VEG_EN[v][0][0].toUpperCase() + VEG_EN[v][0].slice(1) + ' from my garden!', show: { icon: v }, known: othersFor(v, VEGS.concat(['manzana', 'huevo', 'flor', 'pan'])) });
   }
   const garden = () => daily('garden');
   const basket = () => bag().list().find(it => it.id === 'canastaverduras' && it.q === 'huerto') || null;
@@ -470,9 +473,9 @@
     bag().take('canastaverduras', { q: 'huerto' }); G.audio.jingle('item');
     yield* sayShow('abuelo', { icon: 'canastaverduras' }, T('¡Qué bien! ¡[gracias:Gracias]!', 'How lovely! Thank you!'));
     const v = gardenVeg();
-    if (met('cuatro')) yield* quiz('abuelo', '¿Cuánt' + (fem(v) ? 'as' : 'os') + ' ' + vegPl(v) + '?', 'How many ' + VEG_EN[v][1] + ' did you pick?', 'cuatro', ['tres', 'cinco'], { show: { icon: v, count: 4 } });
+    if (met('cuatro')) yield* quiz('abuelo', '¿Cuánt' + RQ.o(v, true) + ' ' + vegPl(v) + '?', 'How many ' + VEG_EN[v][1] + ' did you pick?', 'cuatro', ['tres', 'cinco'], { show: { icon: v, count: 4 } });
     g.done = true; st().gardens = (st().gardens | 0) + 1; CK.confetti(); G.audio.jingle('promote'); G.st.autosave();
-    yield* sayShow('abuelo', { icon: v }, T((fem(v) ? '¡Una' : '¡Uno') + ' para ti!', VEG_EN[v][0][0].toUpperCase() + VEG_EN[v][0].slice(1) + ' for you! ' + (v === 'zanahoria' ? '(the donkey loves carrots... and so does {dog})' : '(Abuela makes soup with them)')));
+    yield* sayShow('abuelo', { icon: v }, T('¡Un' + RQ.o(v) + ' para ti!', VEG_EN[v][0][0].toUpperCase() + VEG_EN[v][0].slice(1) + ' for you! ' + (v === 'zanahoria' ? '(the donkey loves carrots... and so does {dog})' : '(Abuela makes soup with them)')));
     if (!held()) bag().add(v);
   }
   // Simón dice: Abuelo touches his nose, his head... you do it too; then you are Simón
@@ -482,19 +485,19 @@
     // the body words not met yet: one at a time, Abuelo shows it, then you (one unknown each)
     for (const id of ['ojos', 'boca', 'cabeza'].filter(k => !met(k))) {
       let k = 0;
-      yield* G.intro.watch(id, { who: 'abuelo', prompt: '¡Toca tus [' + id + ']!'.replace('tus [cabeza]', 'tu [cabeza]').replace('tus [boca]', 'tu [boca]'), en: { ojos: 'Touch your eyes!', boca: 'Touch your mouth!', cabeza: 'Touch your head!' }[id], known: othersFor(id, AB.BODY),
+      yield* G.intro.watch(id, { who: 'abuelo', prompt: LN['simon.intro'](id), en: { ojos: 'Touch your eyes!', boca: 'Touch your mouth!', cabeza: 'Touch your head!' }[id], known: othersFor(id, AB.BODY),
         act: function* () { k++; if (k === 1) { if (ab) yield* AB.act(f, ab, id); else yield 20; } else yield* AB.all(f, id); } });
       if (k < 2) yield* AB.all(f, id);
     }
-    // listen: "¡Simón dice: toca tu nariz!" -> pick its picture -> you do it
+    // listen: "¡Simón dice: tócate la nariz!" -> pick its picture -> you do it
     const vs = AB.BODY.filter(met).sort(() => G.rand() - 0.5).slice(0, 3);
     for (const w of vs) {
-      yield* ask('abuelo', '¡Simón dice: toca tu [' + w + ']!', 'Simon says: touch your...! Which one? (listen)', w, AB.bodyFor(w), { pic: true });
+      yield* ask('abuelo', LN['simon.says'](w), 'Simon says: touch your...! Which one? (listen)', w, AB.bodyFor(w), { pic: true });
       yield* AB.all(f, w);
     }
     // and now you are Simón: say a part, Abuelo (and the dog) do it
     yield* sayShow('abuelo', null, T('¡Ahora tú eres Simón!', 'Now YOU are Simón! Tell me what to touch.'));
-    for (let r = 0; r < 2; r++) { const v = yield* chooseBody(f, { prompt: '¡Simón dice: toca tu...!', en: 'Simon says: touch your...! (say a body part, or tap one)', who: 'abuelo' }); if (!v) break; }
+    for (let r = 0; r < 2; r++) { const v = yield* chooseBody(f, { prompt: '¡Simón dice: tócate...!', en: 'Simon says: touch your...! (say a body part, or tap one)', who: 'abuelo' }); if (!v) break; }
     daily('simon').done = true; st().simons = (st().simons | 0) + 1; CK.confetti(); G.audio.jingle('promote'); G.st.autosave();
     yield* sayShow('abuelo', null, T('¡Qué divertido, {name}!', 'What fun, {name}! Again tomorrow?'));
     void p;
@@ -795,7 +798,7 @@
     bag().take(h.id, { q: null }); G.audio.jingle('item');
     if (G.cards && met(h.id)) G.cards.grow(h.id, 'give');
     st().vegs = (st().vegs | 0) + 1; G.st.autosave();
-    yield* sayShow(who, { icon: h.id }, T('¡' + (fem(h.id) ? 'Una' : 'Un') + ' [' + h.id + ']! ¡Para la sopa!', VEG_EN[h.id][0][0].toUpperCase() + VEG_EN[h.id][0].slice(1) + '! For the soup! Thank you, {name}!'));
+    yield* sayShow(who, { icon: h.id }, T(LN.un(h.id) + ' ¡Para la sopa!', VEG_EN[h.id][0][0].toUpperCase() + VEG_EN[h.id][0].slice(1) + '! For the soup! Thank you, {name}!'));
     if (G.hearts) { G.hearts.add(who, 1, 'care'); yield 20; yield* G.hearts.milestones(who); }
     return true;
   };

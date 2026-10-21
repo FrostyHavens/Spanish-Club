@@ -145,11 +145,11 @@
     const kinds = L.map(h => h.kind).filter((k, i, a) => a.indexOf(k) === i);
     if (G.phrase && (yield* G.phrase.donde(who, kinds, function* (k) {
       const h = L.find(x => x.kind === kinds[k]) || L[0], sp = spot(h.spot);
-      yield sayShow(who, { icon: sp.place }, TT('¡' + (W(h.kind).es.split(' ')[0] === 'la' ? 'La' : 'El') + ' [' + h.kind + ']! ¡Mira!', 'There! Look near this place!'));
+      yield sayShow(who, { icon: sp.place }, TT('¡' + G.requests.the(h.kind, { cap: 1 }) + '! ¡Mira!', 'There! Look near this place!'));
     }))) return;
     const p = f && f.player, d = h => { const sp = spot(h.spot); return (sp.map === f.mapId ? 0 : 100) + (p ? Math.abs(sp.at[0] - p.x) + Math.abs(sp.at[1] - p.y) : 0); };
-    const h = L.slice().sort((a, b) => d(a) - d(b))[0], sp = spot(h.spot), art = W(h.kind).es.split(' ')[0];
-    yield sayShow(who, { icon: sp.place }, TT('¿Y ' + art + ' [' + h.kind + ']? ¡Mira!', 'Where is it hiding? Look near this place!'));
+    const h = L.slice().sort((a, b) => d(a) - d(b))[0], sp = spot(h.spot);
+    yield sayShow(who, { icon: sp.place }, TT('¿Y ' + G.requests.the(h.kind) + '? ¡Mira!', 'Where is it hiding? Look near this place!'));
   }
 
   // ---------- where a hider is, how much of it shows ----------

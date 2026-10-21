@@ -27,6 +27,15 @@
   const sayShow = (who, show, ...pages) => G.say(pages, { portrait: G.portraitOf(who), name: G.nameOf(who), who, show });
   const known = id => !!W(id) && G.words.stage(id) >= 2;
   const ch = id => !!G.chapters && G.chapters.done(id);
+  // the lines built from the word: its article from the word (G.requests.the), never "la [parque]" or "el [cabra]"
+  const RQ = G.requests, the = (id, o) => RQ.the(id, o), L = RQ.LINES;
+  L['fav.tomas'] = id => '¡{name}! Una [carta]... ¡para ' + the(id) + '! ¿[porfavor]?';   // ¡para el [parque]!
+  L['fav.gomez'] = id => '¡{name}! ¿Me ayudas? ¡' + the(id, { pre: 'a', cap: 1 }) + '!';   // ¡Al [parque]! ¡A la [fuente]!
+  L['fav.find'] = id => '¡Un juego! ¿Y ' + the(id) + '? ¡Búsca' + RQ.lo(id) + '!';           // ¿Y la [cabra]? ¡Búscala!
+  L['fav.count'] = id => '¿Cuánt' + RQ.o(id, true) + '?';                                    // (manzanas) ¿Cuántas?
+  L['fav.remindTomas'] = id => '¿La [carta]? ¡Para ' + the(id) + '!';
+  L['fav.remindGomez'] = id => '¡Vamos ' + the(id, { pre: 'a' }) + '!';
+  L['fav.remindFind'] = id => '¿Y ' + the(id) + '?';
   FV.ready = () => !!G.state && ch('c7') && !!G.pet && G.pet.mine();
 
   // ---------- what each person can ask about ----------
@@ -125,20 +134,20 @@
   const KIND = FV.KIND = {
     *go(v) {
       const p = PLACES[v.word];
-      yield say(v.who, v.who === 'tomas' ? TT('¡{name}! Una [carta]... ¡para la [' + v.word + ']! ¿[porfavor]?', 'A letter... for this place! Take it there, please? (the word only: remember where it is)')
-        : TT('¡{name}! ¿Me ayudas? ¡Al [' + v.word + ']!', 'Can you help me? Go to this place! (remember where it is)'));
+      yield say(v.who, v.who === 'tomas' ? TT(L['fav.tomas'](v.word), 'A letter... for this place! Take it there, please? (the word only: remember where it is)')
+        : TT(L['fav.gomez'](v.word), 'Can you help me? Go to this place! (remember where it is)'));
       v.on = true; G.st.autosave();
       if (v.who === 'tomas') G.errands.bag.add('carta', { q: 'fav' });
       void p;
     },
     *find(v) {
-      yield say(v.who, TT('¡Un juego! ¿Y el [' + v.word + ']? ¡Búscalo!', 'A game! Where is this animal? Find it and tap it!'));
+      yield say(v.who, TT(L['fav.find'](v.word), 'A game! Where is this animal? Find it and tap it!'));
       v.on = true; G.st.autosave();
     },
     *count(v) {
       const n = NUMS.indexOf(v.word) + 1, thing = COUNT_OF[v.who] || 'manzana';
       yield say(v.who, TT('¡{name}! ¿Me ayudas a contar?', 'Can you help me count?'));
-      yield* ask(v.who, '¿Cuántos?', 'How many are there? (count them)', v.word, others(v.word, NUMS).filter(k => !(v.word === 'tres' && k === 'seis') && !(v.word === 'seis' && k === 'tres')), { show: { icon: W(thing) ? W(thing).icon : thing, count: n } });
+      yield* ask(v.who, L['fav.count'](thing), 'How many are there? (count them)', v.word, others(v.word, NUMS).filter(k => !(v.word === 'tres' && k === 'seis') && !(v.word === 'seis' && k === 'tres')), { show: { icon: W(thing) ? W(thing).icon : thing, count: n } });
       reward(v); yield say(v.who, TT('¡[gracias], {name}!', 'Thank you, {name}!'));
     },
     *colour(v) {
@@ -168,8 +177,8 @@
     },
   };
   function* remind(v) {
-    if (v.kind === 'go') yield say(v.who, TT('¿La [carta]? ¡La [' + v.word + ']!', 'The letter? To this place!'));
-    else yield say(v.who, TT('¿Y el [' + v.word + ']?', 'Where is it? Find it and tap it!'));
+    if (v.kind === 'go') yield say(v.who, v.who === 'tomas' ? TT(L['fav.remindTomas'](v.word), 'The letter? To this place!') : TT(L['fav.remindGomez'](v.word), 'Let\'s go to this place! (remember where it is)'));
+    else yield say(v.who, TT(L['fav.remindFind'](v.word), 'Where is it? Find it and tap it!'));
   }
 
   // ---------- going there, finding it (every frame, taps on animals) ----------

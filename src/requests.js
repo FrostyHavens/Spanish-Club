@@ -1,5 +1,6 @@
 // ===== The request maker: listen-and-do instructions built only from words she knows (docs/LEARNING_PLAN_2.md, Phase 3) =====
-// A friend asks for something and she does it: "Dame tres conchas." "Dame la manzana roja." "Toca el perro grande."
+// (and the grammar of every line built by code from a word: RQ.the, below: "¿Y la [cabra]? ¡Búscala!")
+// A friend asks for something and she does it: "Dame tres conchas." "Dame la manzana roja." "Toca al perro grande."
 // "¿Dónde está el oso pequeño?" "¿Cuántas conchas azules hay?" Later two details at once: "Dame dos flores amarillas."
 // Every vocabulary word in a request is KNOWN (stage 2+, src/words.js); the rest is plain grammar (Dame, Toca, la, un,
 // hay...), always correct Mexican Spanish:
@@ -11,10 +12,11 @@
 //   colour and size        rojo / roja / rojos / rojas, amarillo, blanco, rosado, pequeño; azul -> azules, verde ->
 //                          verdes, grande -> grandes (no gender)
 //   numbers                uno -> un / una before the noun (Dame una concha. Dame un plátano.)
+//   the personal a         an animal or a person touched: "Toca al perro grande." "Toca a la vaca pequeña." (RQ.animate)
 // The templates (one detail; two details once she gets several right first try: the ramp, RQ.level):
 //   num      count into the basket        "Dame tres conchas."               (number + thing)
 //   col      tap the right one            "Dame la manzana roja."            (colour + thing)
-//   size     tap the right one            "Toca el perro grande." / "¿Dónde está el oso pequeño?" / "Dame el hongo grande."
+//   size     tap the right one            "Toca al perro grande." / "¿Dónde está el oso pequeño?" / "Dame el hongo grande."
 //   howmany  count, then say or tap it    "¿Cuántas conchas hay?"            (the number is HER answer: the mic fits here)
 //   numcol   (two details) count          "Dame dos flores amarillas."
 //   numsize  (two details) count          "Dame tres hongos pequeños."
@@ -37,6 +39,7 @@
 //     or a number word)
 //   RQ.level() 1 | 2   RQ.result(req, first) the ramp after a request (src/history.js keeps it: G.state.hist.ld)
 //   RQ.SPECS   who asks for what (content: add a person's board here or from a zone file)
+//   RQ.the(id, o) a word with its article (any line built by code)   RQ.lo / RQ.o (¡Búscalo! ¿Cuántas?)   RQ.LINES
 'use strict';
 (function () {
   const RQ = G.requests = {};
@@ -96,7 +99,7 @@
   RQ.pluralAdj = s => (/[aeiouáéó]$/.test(s) ? s + 's' : /z$/.test(s) ? s.slice(0, -1) + 'ces' : s + 'es');
   // a noun word: {id, g, sg (null for a plural-only word: los guantes), pl, plOnly}, or null (not a noun)
   RQ.noun = function (id) {
-    const w = WD(id); if (!w) return null;
+    const w = WD(id) || (RQ.PICS[id] ? { es: RQ.PICS[id] } : null); if (!w) return null;
     const m = /^(el|la|los|las) (.+)$/.exec(w.es.split(' / ')[0].trim()); if (!m) return null;
     const plOnly = m[1] === 'los' || m[1] === 'las', elFem = RQ.FEM_EL.includes(id);
     const g = m[1] === 'la' || m[1] === 'las' || elFem ? 'f' : 'm';
@@ -105,6 +108,42 @@
   // the article: definite (el, la, los, las) or not (un, una, unos, unas); el / un for el águila
   RQ.art = (n, plural, def) => (def ? (plural ? (n.g === 'f' ? 'las' : 'los') : (n.g === 'f' && !n.elFem ? 'la' : 'el'))
     : (plural ? (n.g === 'f' ? 'unas' : 'unos') : (n.g === 'f' && !n.elFem ? 'una' : 'un')));
+  // ---------- a word with its article: every line built by code takes its grammar from here ----------
+  // (src/favores.js, the finale, Lola, Mateo, Simón dice, "¡Mira! ¡Una llama!"...): the gender and the number come from
+  // the word (content/es/words.js), never from the template, so "el [cabra]" or "tu [ojos]" can't be made.
+  //   RQ.the('cabra') 'la [cabra]'   RQ.the('parque', {pre: 'a'}) 'al [parque]'   RQ.the('fuente', {pre: 'a'}) 'a la [fuente]'
+  //   RQ.the('nube', {pl: 1}) 'las [nube:nubes]'   RQ.the('ojos', {my: 'tu'}) 'tus [ojos]'   RQ.the('llama', {un: 1, cap: 1})
+  //   'Una [llama]'   RQ.the('agua', {un: 1}) '[agua]' (a mass noun: ¡Agua!)   RQ.the('elsol', {un: 1}) 'el [elsol]' (there's
+  //   one: ¡El sol!)   RQ.the('salta') '[salta]' (not a noun: as it is; the page writes a sentence's first word with a capital)
+  //   o: un (un / una / unos / unas), pl (the plural), pre (a preposition: 'a' and 'de' make al and del; 'en', 'para'...),
+  //   my ('tu' | 'mi': tu / tus, mi / mis), cap (a capital first letter: a sentence's start), bang (in ¡...!, unless the
+  //   word has its own marks: ¿cómo estás?)
+  RQ.PICS = { estrella: 'la estrella' };  // pictures that aren't words, for their gender (Luna's stars: "¿Cuántas?")
+  RQ.ONLY = ['elsol', 'mar', 'elbosque', 'viento', 'lluvia', 'familia']; // there's one: "the" even when "a" is asked
+  RQ.ANIMATE = ['animales', 'granja', 'mar', 'fauna', 'bichos', 'rancho', 'faunamontana', 'familia']; // animals and people
+  RQ.animate = id => !!WD(id) && RQ.ANIMATE.includes(WD(id).topic) && !!RQ.noun(id); // (the personal a: Toca AL perro)
+  const isMass = id => ((D() && D().mass) || []).includes(id);
+  RQ.the = function (id, o = {}) {
+    const n = RQ.noun(id), w = WD(id), pl = !!n && (n.plOnly || !!o.pl);
+    let t = '[' + id + ']', art = '';
+    if (n) {
+      if (pl && !n.plOnly) t = '[' + id + ':' + n.pl + ']';
+      if (o.my) art = o.my + (pl ? 's' : '');                                 // tu / tus, mi / mis
+      else if (!(o.un && !pl && isMass(id))) art = RQ.art(n, pl, !o.un || RQ.ONLY.includes(id));
+    }
+    const head = o.pre && art === 'el' && (o.pre === 'a' || o.pre === 'de') ? o.pre + 'l' : [o.pre, art].filter(Boolean).join(' ');
+    let s = head ? head + ' ' + t : t;
+    if (o.cap && head) s = s[0].toUpperCase() + s.slice(1);
+    if (o.bang && !(w && /^[¡¿]/.test(w.es))) s = '¡' + s + '!';
+    return s;
+  };
+  // the pronoun and the ending that agree with the word: ¡Búsca-lo! ¡Búsca-la! ¿Cuánt-os? ¿Cuánt-as?
+  const gn = (id, pl) => { const n = RQ.noun(id); return [n && n.g === 'f' ? 'f' : 'm', !!n && (n.plOnly || !!pl)]; };
+  RQ.lo = (id, pl) => { const [g, p] = gn(id, pl); return (g === 'f' ? 'la' : 'lo') + (p ? 's' : ''); };
+  RQ.o = (id, pl) => { const [g, p] = gn(id, pl); return (g === 'f' ? 'a' : 'o') + (p ? 's' : ''); };
+  // every line built by code from a word, by name: fn(id) -> rich text. tools/test-spanish.js runs every word through
+  // each one (a module adds its own: G.requests.LINES['fav.find'] = id => '¿Y ' + RQ.the(id) + '?'...)
+  RQ.LINES = {};
   // a colour or size word agreeing with its noun
   RQ.adj = function (id, g, plural) {
     const w = WD(id); if (!w) return id;
@@ -124,19 +163,23 @@
     parts.push([r.thing, many ? n.pl : n.sg]);
     if (r.size) parts.push([r.size, RQ.adj(r.size, n.g, many)]);
     if (r.col) parts.push([r.col, RQ.adj(r.col, n.g, many)]);
+    if (r.pre) { if (!parts[0][0] && parts[0][1] === 'el') parts[0][1] = r.pre + 'l'; else parts.unshift([null, r.pre]); } // (a + el: al)
     return { text: parts.map(([id, f]) => (id ? tok(id, f) : f)).join(' '), plain: parts.map(p => p[1]).join(' '), many, g: n.g };
   };
   const cap = s => s.replace(/^([¿¡]?)(\S)/, (m, a, b) => a + b.toUpperCase());
   const VERB = { give: 'Dame', bring: 'Tráeme', touch: 'Toca' };
-  // the whole sentence: {text, say}. r.verb: 'give' | 'bring' | 'touch' | 'where' | 'howmany'; r.polite: ", por favor"
+  // the whole sentence: {text, say}. r.verb: 'give' | 'bring' | 'touch' | 'where' | 'howmany'; r.polite: ", por favor".
+  // An animal or a person touched takes the personal a: "Toca al perro grande." "Toca a la vaca pequeña."
   RQ.sentence = function (r) {
-    const np = RQ.np(Object.assign({}, r, r.verb === 'howmany' ? { def: false, plural: true, num: null } : {})); if (!np) return null;
+    const base = Object.assign({}, r, r.verb === 'howmany' ? { def: false, plural: true, num: null } : {}, { pre: null });
+    const np = RQ.np(base); if (!np) return null;
+    const obj = r.verb === 'touch' && RQ.animate(r.thing) ? RQ.np(Object.assign(base, { pre: 'a' })) : np;
     let text, say;
     if (r.verb === 'howmany') { const q = np.g === 'f' ? 'Cuántas' : 'Cuántos'; text = '¿' + q + ' ' + np.text + ' hay?'; say = '¿' + q + ' ' + np.plain + ' hay?'; }
     else if (r.verb === 'where') { const v = np.many ? 'están' : 'está'; text = '¿Dónde ' + v + ' ' + np.text + '?'; say = '¿Dónde ' + v + ' ' + np.plain + '?'; }
     else {
       const v = VERB[r.verb] || 'Dame', pol = r.polite ? ', por favor' : '';
-      text = v + ' ' + np.text + pol + '.'; say = v + ' ' + np.plain + pol + '.';
+      text = v + ' ' + obj.text + pol + '.'; say = v + ' ' + obj.plain + pol + '.';
     }
     return { text: cap(text), say: cap(say), np: '¡' + cap(np.plain) + '!' };
   };
@@ -145,10 +188,12 @@
   //  Who asks for what: a person's board (the things of their place)
   // =====================================================================
   // things: { word id: {cols: [colour word ids it comes in], count: 1 (it can be counted: piles, "¿cuántas?"), sizes: 1
-  //   (big and small), animal: 1 (touched or looked for: "Toca el perro grande", never handed over)} }; carry: 1 (a world
-  // request: the things are scattered on the map to pick up and bring, src/listen.js); places: { zone: things } (Lola:
-  // the board of the place she's in)
+  //   (big and small), animal: 1 (touched or looked for: "Toca al perro grande", never handed over), noHold: 1 (a thing
+  //   you can't hold: the sun, a cloud, a snowman: touched or looked for too, "Toca la nube grande", never "Dame el sol")}
+  //   }; carry: 1 (a world request: the things are scattered on the map to pick up and bring, src/listen.js); places:
+  //   { zone: things } (Lola: the board of the place she's in)
   const A = { sizes: 1, count: 1, animal: 1 };
+  RQ.holds = d => !!d && !d.animal && !d.noHold; // (a thing she can hand over: "Dame...", counted into the basket)
   const FRUIT = { manzana: { cols: ['rojo', 'verde', 'amarillo'], count: 1 }, platano: { cols: ['amarillo', 'verde'], count: 1 }, naranja: { count: 1 } };
   const COLS = ['rojo', 'azul', 'amarillo', 'verde', 'rosa', 'blanco'];
   RQ.SPECS = {
@@ -168,8 +213,9 @@
     // zanahorias." "Dame el elote blanco." "Dame tres jitomates rojos."), his orchard and henhouse, and his animals
     abuelo: { things: Object.assign({ zanahoria: { count: 1 }, elote: { cols: ['amarillo', 'blanco'], count: 1 }, jitomate: { cols: ['rojo', 'verde'], count: 1 } },
       { huevo: { count: 1 } }, { manzana: FRUIT.manzana }, { vaca: A, cerdo: A, oveja: A, burro: A, pavo: A, gallo: A }) },
-    // La montaña: Mateo's weather things (clouds, the sun, snowmen: big and small) and the clothes for the cold
-    mateo: { things: { nube: { sizes: 1, count: 1 }, elsol: { sizes: 1 }, muneco: { sizes: 1 }, gorro: { cols: COLS }, bufanda: { cols: COLS }, guantes: { cols: COLS } } },
+    // La montaña: Mateo's weather things (clouds, the sun, snowmen: big and small, to touch or find, never handed over)
+    // and the clothes for the cold
+    mateo: { things: { nube: { sizes: 1, count: 1, noHold: 1 }, elsol: { sizes: 1, noHold: 1 }, muneco: { sizes: 1, noHold: 1 }, gorro: { cols: COLS }, bufanda: { cols: COLS }, guantes: { cols: COLS } } },
     // the dog's warm-up (src/warmup.js): his own things, and every board above (RQ.spec('dog'))
     dog: { things: { pelota: { cols: COLS }, hueso: { count: 1 } } },
   };
@@ -211,12 +257,12 @@
     for (const t of Object.keys(th)) {
       const d = th[t], n = RQ.noun(t); if (!n || !RQ.known(t) || !drawable(t)) continue;
       const cols = (d.cols || []).filter(RQ.known), canCount = !!d.count && !n.plOnly;
-      if (tpl === 'num' && canCount && !d.animal) nums.filter(k => k !== 'uno' || o.focus === 'uno' || o.one).forEach(num => out.push({ tpl, thing: t, num })); // ("una": now and then, RQ.ONE)
+      if (tpl === 'num' && canCount && RQ.holds(d)) nums.filter(k => k !== 'uno' || o.focus === 'uno' || o.one).forEach(num => out.push({ tpl, thing: t, num })); // ("una": now and then, RQ.ONE)
       if (tpl === 'col' && cols.length && d.cols.length >= 2) cols.forEach(col => out.push({ tpl, thing: t, col }));
       if (tpl === 'size' && d.sizes && !carry) sizes.forEach(size => out.push({ tpl, thing: t, size }));
       if (tpl === 'howmany' && canCount && !carry) nums.filter(k => RQ.numOf(k) <= 4).forEach(k => out.push({ tpl, thing: t, answerNum: k }));
-      if (tpl === 'numcol' && canCount && !d.animal && cols.length && d.cols.length >= 2) cols.forEach(col => nums.filter(k => RQ.numOf(k) >= 2).forEach(num => out.push({ tpl, thing: t, col, num })));
-      if (tpl === 'numsize' && canCount && !d.animal && d.sizes && !carry) sizes.forEach(size => nums.filter(k => RQ.numOf(k) >= 2 && RQ.numOf(k) <= 4).forEach(num => out.push({ tpl, thing: t, size, num })));
+      if (tpl === 'numcol' && canCount && RQ.holds(d) && cols.length && d.cols.length >= 2) cols.forEach(col => nums.filter(k => RQ.numOf(k) >= 2).forEach(num => out.push({ tpl, thing: t, col, num })));
+      if (tpl === 'numsize' && canCount && RQ.holds(d) && d.sizes && !carry) sizes.forEach(size => nums.filter(k => RQ.numOf(k) >= 2 && RQ.numOf(k) <= 4).forEach(num => out.push({ tpl, thing: t, size, num })));
       if (tpl === 'howmany2' && canCount && !carry) {
         nums.filter(k => RQ.numOf(k) <= 3).forEach(k => {
           if (cols.length && d.cols.length >= 2) cols.forEach(col => out.push({ tpl, thing: t, col, answerNum: k }));
@@ -273,7 +319,7 @@
     r.level = o.level; r.carry = !!o.carry; r.who = spec.who || null;
     r.kind = /^howmany/.test(r.tpl) ? 'howmany' : /^num/.test(r.tpl) ? 'count' : 'pick';
     r.n = r.num ? RQ.numOf(r.num) : r.kind === 'pick' ? 1 : null;
-    const cols = (d.cols || []).slice(), others = Object.keys(th).filter(t => t !== r.thing && drawable(t) && RQ.noun(t) && !(r.kind === 'count' && th[t].animal));
+    const cols = (d.cols || []).slice(), others = Object.keys(th).filter(t => t !== r.thing && drawable(t) && RQ.noun(t) && !(r.kind === 'count' && !RQ.holds(th[t])));
     const otherCol = c => shuffle(cols.filter(x => x !== c));
     const sizeO = s => (s === 'grande' ? 'pequeno' : 'grande');
     const otherThing = need => shuffle(others.filter(t => need(th[t])));
@@ -297,7 +343,7 @@
       add({ col: r.col || null, size: r.size || null, n: r.n + extra, right: true });
       if (r.col) { const c2 = otherCol(r.col)[0]; if (c2) add({ col: c2, n: Math.max(r.n, 2) + Math.floor(rnd() * 2) }); const t2 = metFirst(otherThing(x => x.count && (x.cols || []).includes(r.col)))[0]; if (t2 && !o.carry) add({ thing: t2, col: r.col, n: 2 + Math.floor(rnd() * 3) }); }
       if (r.size) { add({ size: sizeO(r.size), n: Math.max(r.n, 2) + Math.floor(rnd() * 2) }); }
-      if (!o.carry) for (const t of metFirst(otherThing(x => !x.animal))) { if (cells.length >= (r.col || r.size ? 4 : 3)) break; add({ thing: t, col: r.col && (th[t].cols || []).length ? th[t].cols[0] : null, size: r.size ? r.size : null, n: 2 + Math.floor(rnd() * 3) }); }
+      if (!o.carry) for (const t of metFirst(otherThing(RQ.holds))) { if (cells.length >= (r.col || r.size ? 4 : 3)) break; add({ thing: t, col: r.col && (th[t].cols || []).length ? th[t].cols[0] : null, size: r.size ? r.size : null, n: 2 + Math.floor(rnd() * 3) }); }
       else if (r.col) { const c3 = otherCol(r.col)[1]; if (c3) add({ col: c3, n: 1 + Math.floor(rnd() * 2) }); }
     } else { // howmany: single pictures to count (the answer's number of them), with ones that differ in a detail
       const k = RQ.numOf(r.answerNum), detail = { col: r.col || null, size: r.size || null };
@@ -326,7 +372,7 @@
     if (r.kind !== 'howmany') { shuffle(cells); r.answer = cells.findIndex(c => c.right); }
     else shuffle(cells);
     r.tray = cells;
-    r.verb = o.verb || (r.kind === 'howmany' ? 'howmany' : o.carry ? 'bring' : d.animal ? (rnd() < 0.5 ? 'touch' : 'where') : 'give');
+    r.verb = o.verb || (r.kind === 'howmany' ? 'howmany' : o.carry ? 'bring' : !RQ.holds(d) ? (rnd() < 0.5 ? 'touch' : 'where') : 'give');
     r.polite = r.verb !== 'where' && r.verb !== 'howmany' && r.verb !== 'touch' && RQ.known('porfavor') && rnd() < 0.5;
     r.words = [r.num, r.thing, r.size, r.col].filter(Boolean);
     const s = RQ.sentence(r); if (!s) return null;

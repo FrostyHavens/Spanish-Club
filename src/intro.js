@@ -40,6 +40,12 @@
   const TT = (t, en) => ({ t, en });
   const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = G.r(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   const sayAs = (who, pages, o) => G.say(pages, Object.assign({ portrait: G.portraitOf(who), name: G.nameOf(who), who }, o || {}));
+  // a word held up or called out, with its article from the word (G.requests.the): "¡Mira! ¡Una [llama]!", "¡Un [conejo]!",
+  // "¡Mira! ¡[salta]!" (not a noun), "¿Y mi [pelota]?" / "¿Y mis [zapatos]?"
+  const L = G.requests.LINES, the = (id, o) => G.requests.the(id, o);
+  L.un = id => the(id, { un: 1, cap: 1, bang: 1 });
+  L.mira = id => '¡Mira! ' + L.un(id);
+  L['intro.mine'] = id => '¿Y ' + the(id, { my: 'mi' }) + '?';
 
   // ---------- the small celebration: a new card ----------
   // The word's card pops up where it was met (cards.js: its picture, its word, a seed in its pot), the word is said, and
@@ -75,7 +81,7 @@
   // ---------- show and name ----------
   I.show = function* (id, o = {}) {
     if (!D().words[id]) return false;
-    yield sayAs(o.who, [TT(o.prompt || '¡Mira! ¡[' + id + ']!', o.en || 'Look!')], { show: id });
+    yield sayAs(o.who, [TT(o.prompt || L.mira(id), o.en || 'Look!')], { show: id });
     if (Wd().met(id)) return true;
     const known = o.known || I.known(id, 2);
     if (!known.length) { I.meet(id, o.how || 'show', { who: o.who }); yield 40; return true; }
@@ -87,7 +93,7 @@
   // ---------- watch and do ----------
   I.watch = function* (id, o = {}) {
     if (!D().words[id]) return false;
-    yield sayAs(o.who, [TT(o.prompt || '¡Mira! ¡[' + id + ']!', o.en || 'Watch!')]);
+    yield sayAs(o.who, [TT(o.prompt || L.mira(id), o.en || 'Watch!')]);
     if (o.act) yield* o.act();
     const known = o.known || I.known(id, 2);
     if (known.length && !Wd().met(id)) {
@@ -117,7 +123,7 @@
     if (!D().words[id] || !Wd().met(id)) return false;
     Wd().reintroduced(id);
     if (G.vocabLog) G.vlog('shown', id, { via: 'again', who: o.who || null });
-    yield sayAs(o.who, [TT(o.prompt || '¡Mira! ¡[' + id + ']!', o.en || 'Look! (this word again: listen, then find it)')], { show: id });
+    yield sayAs(o.who, [TT(o.prompt || L.mira(id), o.en || 'Look! (this word again: listen, then find it)')], { show: id });
     const known = G.iconDrawn(id) ? I.known(id, 2) : [];
     if (known.length < 2) return true;
     const q = ask(id, Object.assign({ how: 'again', ask: '¿[' + id + ']?', askEn: 'Which one? (listen)' }, o), [{ word: id, look: 'pic' }].concat(known.map(k => ({ word: k, look: 'pic' }))), Object.assign({ mask: [id], reintro: true }, o.extra || {}));
@@ -132,7 +138,7 @@
     finds()[id] = { who: o.who || null, map: o.map, at: key(...o.at), wrong: (o.wrong || []).map(p => key(...p)), found: false, how: o.how || 'find', pics: o.pics || null };
     S().autosave();
     if (G.vocabLog) G.vlog('find-start', id, { who: o.who || null });
-    if (!o.silent) yield sayAs(o.who, [TT(o.prompt || '¿Y mi [' + id + ']?', o.en || 'Where is my...? (find it and tap it)')]);
+    if (!o.silent) yield sayAs(o.who, [TT(o.prompt || L['intro.mine'](id), o.en || 'Where is my...? (find it and tap it)')]);
     return true;
   };
   // o.pics: [[x, y, icon], ...] picture bubbles over the places to choose from (places: the right one shows its own

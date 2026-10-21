@@ -249,7 +249,7 @@
   Z.meetW = function* (id, o = {}) {
     const K = G.chapters.K;
     if (!met(id)) { yield* G.intro.show(id, Object.assign({ how: 'show' }, o)); return true; }
-    yield* K.sayShow(o.who, o.showPic || o.show || id, K.T(o.prompt || '¡[' + id + ']!', o.en || ''));
+    yield* K.sayShow(o.who, o.showPic || o.show || id, K.T(o.prompt || G.requests.LINES.un(id), o.en || ''));
     yield* G.review.ask(id, { who: o.who });
     return false;
   };

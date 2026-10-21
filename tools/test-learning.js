@@ -214,7 +214,7 @@ async function slipping(browser) {
     const before = await g.ev(() => { const r = G.words.rec('pato'); return { box: r.box, st: r.st }; });
     await g.ev(() => { window.__r = null; G.field.tasks.add((function* () { window.__r = yield* G.review.ask('pato', { who: 'nico' }); })()); });
     await g.until(() => G.top().constructor.name === 'TextBox', null, 'the word held up');
-    check('slipping: the review question is now an introduction: "¡Mira! ¡pato!" with its picture held up', await g.ev(() => { const s = G.top(); return s.pages[0].t.indexOf('[pato]') >= 0 && s.opts.show === 'pato'; }));
+    check('slipping: the review question is now an introduction: "¡Mira! ¡Un pato!" with its picture held up', await g.ev(() => { const s = G.top(); return s.pages[0].t.indexOf('[pato]') >= 0 && s.opts.show === 'pato'; }));
     await g.until(() => G.top().shown >= G.top().chars(0, 3), null, 'the line'); await still(g, 'slip_shown');
     await g.tap(110, 120);
     await g.until(() => G.top().constructor.name === 'Choice' && G.top().t > 10 && G.input.ready(), null, 'its one-unknown puzzle');

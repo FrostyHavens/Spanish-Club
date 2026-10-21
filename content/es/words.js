@@ -64,7 +64,7 @@
     pelota: { es: 'la pelota', en: 'the ball', topic: 'mascota', icon: 'pelota', col: '#e03028' },
     cama: { es: 'la cama', en: 'the bed', topic: 'mascota', icon: 'cama' },
     pata: { es: 'dame la pata', en: 'shake! (give me your paw)', topic: 'mascota', icon: 'pata', alt: 'la pata / pata / dame la patita' },
-    salta: { es: 'salta', en: 'jump!', topic: 'mascota', icon: 'salta', alt: 'brinca / salte' },
+    salta: { es: 'salta', en: 'jump!', topic: 'mascota', icon: 'salta', alt: 'brinca' },
     busca: { es: 'busca', en: 'find it! (sniff)', topic: 'mascota', icon: 'busca', alt: 'búscalo / búscala / busca busca' },
     gira: { es: 'gira', en: 'spin!', topic: 'mascota', icon: 'gira', alt: 'gira gira / da la vuelta / vuelta' },
     // ---- Los animales ----
@@ -74,7 +74,7 @@
     conejo: { es: 'el conejo', en: 'the rabbit', topic: 'animales', icon: 'conejo', pl: 'conejos', alt: 'conejito' },
     rana: { es: 'la rana', en: 'the frog', topic: 'animales', icon: 'rana', pl: 'ranas', alt: 'ranita' },
     pajaro: { es: 'el pájaro', en: 'the bird', topic: 'animales', icon: 'pajaro', pl: 'pájaros', alt: 'pajarito' },
-    pez: { es: 'el pez', en: 'the fish', topic: 'animales', icon: 'pez', pl: 'peces', alt: 'pescado / pescadito / pecesito' },
+    pez: { es: 'el pez', en: 'the fish', topic: 'animales', icon: 'pez', pl: 'peces', alt: 'pescado / pescadito / pececito' },
     // ---- ¿Qué dicen? (the cries of the bird and the goat, pío and bee, are sounds, not words) ----
     guau: { es: 'guau', en: 'woof', topic: 'sonidos', icon: 'guau', alt: 'guau guau / wow / guao' },
     miau: { es: 'miau', en: 'meow', topic: 'sonidos', icon: 'miau', alt: 'miau miau / meow' },
@@ -165,9 +165,9 @@
     ardilla: { es: 'la ardilla', en: 'the squirrel', topic: 'fauna', icon: 'ardilla', pl: 'ardillas', alt: 'ardillita' },
     mapache: { es: 'el mapache', en: 'the raccoon', topic: 'fauna', icon: 'mapache', pl: 'mapaches', alt: 'mapachito' },
     venado: { es: 'el venado', en: 'the deer', topic: 'fauna', icon: 'venado', pl: 'venados', alt: 'venadito / ciervo' },
-    zorro: { es: 'el zorro', en: 'the fox', topic: 'fauna', icon: 'zorro', pl: 'zorros', alt: 'zorrito / zorra' },
-    erizo: { es: 'el erizo', en: 'the hedgehog', topic: 'fauna', icon: 'erizo', pl: 'erizos', alt: 'erizito' },
-    buho: { es: 'el búho', en: 'the owl', topic: 'fauna', icon: 'buho', pl: 'búhos', alt: 'tecolote / buhito' },
+    zorro: { es: 'el zorro', en: 'the fox', topic: 'fauna', icon: 'zorro', pl: 'zorros', alt: 'zorrito' },
+    erizo: { es: 'el erizo', en: 'the hedgehog', topic: 'fauna', icon: 'erizo', pl: 'erizos', alt: 'ericito' },
+    buho: { es: 'el búho', en: 'the owl', topic: 'fauna', icon: 'buho', pl: 'búhos', alt: 'tecolote / buhíto' },
     luciernaga: { es: 'la luciérnaga', en: 'the firefly', topic: 'fauna', icon: 'luciernaga', pl: 'luciérnagas', alt: 'luciernaguita' },
     // ---- ¡A jugar! (content/es/zone-juegos.js): action words, said to make someone DO it; Mexican Spanish ----
     // (salta and gira are the dog's tricks, met in Villa Sol or here: the park meets whichever isn't met yet)

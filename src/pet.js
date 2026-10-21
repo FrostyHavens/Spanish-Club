@@ -423,7 +423,7 @@
     // learned!
     p.learning = null; S.autosave();
     P.sound('tada'); G.fx.confetti(x - 30, y + 10, -1, 16); G.fx.confetti(x + 30, y + 10, 1, 16);
-    G.fx.say('¡' + G.baseForm(id).replace(/^¡|!$/g, '') + '!', x, y - 30, '#f8e060', true);
+    G.fx.say('¡' + G.baseForm(id).replace(/^¡|!$/g, '').replace(/^\S/, c => c.toUpperCase()) + '!', x, y - 30, '#f8e060', true); // (¡Siéntate!)
     if (G.hearts) G.hearts.add('canelo', 1, 'trick');
     yield 50;
     yield G.learnWords([id]);

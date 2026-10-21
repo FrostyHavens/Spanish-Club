@@ -224,7 +224,7 @@
       B.take(it.id, { col: it.col, q: null });
       G.audio.jingle('item');
       if (G.cards) G.cards.grow(it.id, 'give', { x: G.W / 2, y: G.H / 2 }); // giving it grows its card (cards.js)
-      yield* say(who, TT('¡[' + it.id + ']! ¡[gracias], {name}!', 'Thank you, {name}!'));
+      yield* say(who, TT(G.requests.LINES.un(it.id) + ' ¡[gracias], {name}!', 'Thank you, {name}!')); // ¡Una [flor]! ¡Gracias!
       if (egg) { G.hearts.add('rosa', 1, 'care'); jobStar(G.field, 'huevo', G.W / 2, 90); }
       else G.hearts.add(who, 1, 'gift');
       yield 30;
@@ -252,13 +252,13 @@
     const items = SHOP[who].filter(k => !B.has(k, { q: null }) && G.words.met(k)); if (!items.length) return false; // (a word not met yet waits for its chapter)
     yield* say(who, TT('¡[hola]! ¿Qué quieres?', 'Hello! What would you like?'));
     // Quiero ___ (src/phrases.js): say it to get it (or build it from the cards); the back button: nothing today
-    const ph = G.phrase ? yield* G.phrase.quiero(who, items, { cancel: true, onGet: function* (k) { B.add(items[k]); yield* say(who, TT('¡Aquí tienes! ¡[' + items[k] + ']!', 'Here you are!')); } }) : null;
+    const ph = G.phrase ? yield* G.phrase.quiero(who, items, { cancel: true, onGet: function* (k) { B.add(items[k]); yield* say(who, TT('¡Aquí tienes! ' + G.requests.LINES.un(items[k]), 'Here you are!')); } }) : null;
     if (ph) { if (ph.cancel) yield* say(who, TT('¡[adios]!', 'Bye!')); return true; }
     const r = yield G.choose({ prompt: '¿Qué quieres?', en: 'What would you like? (or "no")', choices: words(...items, 'no'), layout: 'cards', mic: true, cancel: true });
     const k = r.result;
     if (k < 0 || k >= items.length) { yield* say(who, TT('¡[adios]!', 'Bye!')); return true; }
     B.add(items[k]);
-    yield* say(who, TT('¡Aquí tienes! ¡[' + items[k] + ']!', 'Here you are!'));
+    yield* say(who, TT('¡Aquí tienes! ' + G.requests.LINES.un(items[k]), 'Here you are!'));
     return true;
   }
 
