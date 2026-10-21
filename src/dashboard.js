@@ -344,7 +344,7 @@
     }
     warmLine(w) {
       const today = w && w.d === G.today(), L = w && w.last;
-      if (today && L && L.d === G.today()) return G.fill('{dog} brought ' + (L.skipped ? L.ids.length : L.of) + ' words today' + (L.skipped ? ' (skipped after ' + L.of + ')' : ', ' + L.right + ' right first try') + '; ' + (w.n | 0) + ' in all');
+      if (today && L && L.d === G.today()) { const rq = L.ids.indexOf('_ld') >= 0 ? 1 : 0, nw = (L.skipped ? L.ids.length : L.of) - rq; return G.fill('{dog} brought ' + nw + (nw === 1 ? ' word' : ' words') + (rq ? ' and a request' : '') + ' today' + (L.skipped ? ' (skipped after ' + L.of + ')' : ', ' + L.right + ' right first try') + '; ' + (w.n | 0) + ' in all'); } // (_ld: a listen-and-do request, warmup.js)
       if (today) return 'not today (fewer than 2 words were due)';
       return 'not yet today; ' + (w ? w.n | 0 : 0) + ' in all' + (w && w.k ? ', ' + w.k + ' skipped' : '');
     }

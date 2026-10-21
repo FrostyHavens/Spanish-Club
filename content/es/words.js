@@ -1,4 +1,4 @@
-// ===== Spanish content: the 73 words, their notebook pages, and the 21 chapters (docs/CURRICULUM.md) =====
+// ===== Spanish content: the words (177: 73 for the 21 chapters, the rest for the zones), their notebook pages, the phrases, and the 21 chapters (docs/CURRICULUM.md) =====
 // Loaded by index.html BEFORE src/data.js, which copies everything here into G.data (G.data.words, .topics, .pages,
 // .chapters...), so the code reads G.data as before. Pictures live in src/icons.js (`icon`), the chapters' scripts in
 // content/es/story-*.js (G.chapters.script), the chapter engine in src/chapters.js.

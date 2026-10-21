@@ -4,6 +4,13 @@ Engagement is working (a 7-year-old named her dog and found the bear in the cave
 how fast she learns. It builds on `LEARNING_DESIGN.md` (the word model: stages, Leitner boxes, review) and
 `WORLD_PLAN.md` (Villa Sol and five zones, 177 words). Decisions made with the parent are marked **[decided]**.
 
+**Status of the plan (2026-10-21): all three phases are built.** Phase 1 (measure and review: the learning history,
+the dog's warm-up, slipping words, the grown-ups' Learning page), Phase 2 (phrases, "say it to get it": six patterns,
+the big mic and the builder; the key word alone is neutral for the phrase) and Phase 3 (listen and do: a request maker
+from the words she knows, the tray scene, favours in every place, world requests to bring, one in the dog's warm-up).
+Each has an "as built" section below with what changed on the way. What's left to watch is "How we'll know it works"
+(the Learning page shows it), and the open questions at the end of Phase 3.
+
 ## Phase 1: measure and review: **built** (2026-10-21; DEVLOG)
 1. **Learning history in the save** (compact, on the device only, no audio): per day, minutes played, words met, and
    every retrieval: recognized (picked), recalled (word-only cards, page match), said aloud, missed; with the gap since
@@ -73,7 +80,10 @@ how fast she learns. It builds on `LEARNING_DESIGN.md` (the word model: stages, 
   too while it's only met). Saying the whole phrase: both the phrase's card and the word's card grow, they do it.
   **Only the key word: they still do it**, then her bubble shows the whole sentence (frame card + word card) and she is
   invited to say it: one try, a bonus if she does (the phrase's card and +3 on the word's), a go-on button, never in
-  the way; the key word alone is a miss of the phrase in the model (3 of them: the pattern is modelled again). The frame
+  the way. **The key word alone is neutral for the phrase [decided, after Phase 2]**: no miss and no right (only an
+  encounter), the word in the slot still gets its credit, and the invitation stays; the whole phrase said after the
+  invitation is an echo in the history (E: just read aloud for her, never a retention test). (It used to be a miss of
+  the phrase, and three of them modelled the pattern again; a phrase slipping from an older save still is.) The frame
   alone lights it up with "¿...?" over the slot; a wrong thing (Tengo: not what she holds) wobbles and greys out; nothing
   heard: ¡Otra vez!. **The builder** (taps): the frame card and a word card fly into her bubble, the sentence is read
   aloud; it counts as built (productive, but it can't make a phrase gold: only saying it does).
@@ -103,11 +113,80 @@ how fast she learns. It builds on `LEARNING_DESIGN.md` (the word model: stages, 
 - Phrases are off in the tests unless they ask (`{phrases: true}` in the harness, or `PHRASES=1`), and with phrases off
   every moment does exactly what it did before.
 
-## Phase 3: listen and do
+## Phase 3: listen and do: **built** (2026-10-21; DEVLOG)
 1. A request maker from words she already knows (stage 2+): number + thing ("Dame tres conchas"), colour + thing
    ("Trae la manzana roja"), size + animal ("Toca el perro grande"), later two details ("Dame dos flores amarillas"),
    with correct agreement. No picture hints; a wrong pick shows and says the right one.
 2. In the world: favours, the daily warm-up, requests between zones.
+
+**As built** (`src/requests.js` `G.requests`, `src/listen.js` `G.listen` and the scene `ListenDo`; `tools/test-listen.js`),
+and what changed on the way:
+- **The request maker** builds every request only from words at stage 2+ (the thing, the colour, the size, the number;
+  "por favor" at the end once it's known too); the rest is grammar, always right: articles by gender (el / la / los /
+  las / un / una; *el águila*, *un águila* for the feminine nouns with "el"), plurals (the word's own `pl`, else the
+  rules: *conchas, flores, peces, lápices, ratones, jóvenes, árboles, colibríes, los lunes, estrellas de mar*), colour
+  and size agreement (*roja, rojos, rojas; amarilla; blancos; rosadas; azules; verdes; pequeñas; grandes*), *un / una*
+  for one. Templates: **num** "Dame tres conchas." (count into a basket), **col** "Dame la manzana roja.", **size**
+  "Toca el perro grande." / "¿Dónde está el oso pequeño?" / "Dame el hongo grande.", **howmany** "¿Cuántas conchas
+  hay?" (her answer is the number: **said with the mic** or tapped), and two details: **numcol** "Dame dos flores
+  amarillas.", **numsize** "Dame tres hongos pequeños.", **howmany2** "¿Cuántas conchas azules hay?" / "¿Cuántos osos
+  pequeños hay?". The word that's due comes first (the review engine's), and counting *one* is rare (it's easy).
+- **The ramp**: one detail until she gets **4 right on the first try** (any requests), then two details are mixed in
+  (about 60%); two two-detail misses in a row step back to one detail, and two more first-try rights bring them back
+  (`G.state.hist.ld`).
+- **The tray tests every word it credits.** A word is *tested* only when a picture on the tray differs from the right
+  one in that word alone (a red and a green apple test *roja*; a red apple and a red flower test *manzana*; a pile is
+  always bigger than the number asked); a word the tray doesn't need (all apples: *manzana*) is only heard. So the
+  credit is honest: **one 'listen' retrieval per tested word per request** (the first answer; not one per shell
+  counted), in the model (`answerRight(id, {mode: 'listen'})`: it moves the box like a pick; it can't make a word gold,
+  which stays for recalling the form or saying it) and in the history as a new letter, **L** (l after a miss; it counts
+  as practice, and for retention when it's the word's first event on a day it comes back). A wrong first answer is a
+  miss only for the word whose detail was wrong (*la manzana roja* → the green apple: *rojo* m, *manzana* L). A
+  "¿Cuántas?" right: the thing and detail L, the number S (said) or R (its word tapped: a recall); wrong: a miss of
+  the number.
+- **The scene** (`ListenDo`): the friend's face and the request at the top, **spoken** as it opens, **written with no
+  pictures for its words** (`G.richLayout(..., {noPic})`: plain blue or gold text; a TextBox takes `noPic` too), a
+  speaker to hear it again (a ring pulses on it until she has; a tap on the words works too), and a wooden tray of 3-6
+  pictures with no labels (a big one is twice the little one's size, standing on the same ground). Tap the right one:
+  it flies to the friend, who lights up, hearts, "¡Gracias!" (said), and the tested words' cards grow (from the bottom
+  of the screen, so the request stays in sight). Counting: each tap on a pile puts one thing in the **basket** (no
+  counting voice: that would give the number away); an arrow goes up from the basket to the friend; a tap on the
+  basket (or the friend) gives it. Wrong, gently: what she did wobbles and greys out, then **the right one glows and is
+  said** ("¡La manzana roja!"); a wrong count goes back to the piles and the right number is counted into the basket
+  out loud ("Una... Dos... ¡Dos moras!"); a wrong number: the right pictures glow one by one, counted, and the right
+  card glows. Then one more try (she gives it: they're happy) or the go-on arrow: never blocked. The number cards say
+  *una* for a feminine thing. Ghost hands the first time (`listen`: the speaker, then over the pictures to one that
+  isn't the answer; `listencount`: a pile, then the basket); the mic demo on a "¿Cuántas?".
+- **Favours** (`src/favores.js` gained pluggable kinds: `FV.KIND / BUBBLE / ON / REMIND / TARGETS / PICK / OFF / GROUP /
+  CAP`): an **ear** in the bubble; **at most two a day** in all (listen + carry); a due word of the person's board picks
+  the day's. *listen* (two requests on the tray, then a star and a heart): **Don Pepe** (fruit by colour and number:
+  apples red / green / yellow, green and yellow bananas, oranges), **Nico** (Villa Sol's animals big and small, how
+  many), **Doña Lupe** (blackberries, acorns, mushrooms big and small, leaves by colour), **Elena** (the forest's
+  animals big and small), **Abuelo** (his apples and eggs, and his animals: the game has no vegetable words yet, so his
+  board is his orchard and henhouse; a vegetable word added later can join it), **Mateo** (clouds, the sun and
+  snowmen big and small, the cap, scarf and mittens by colour). *carry* (a world request): **Lola** wherever she is
+  (shells on the beach, leaves in the forest, apples at the grandparents'; none in the park or the mountain) and
+  **Lucía** (flowers, after her chapter): she says "¡Mira! ¡Escucha!", the things appear around her on the map **one per
+  tile, in little clusters** (so they can be counted: the right ones, more than asked, and others), then the request
+  (a TextBox, `noPic`). She picks them up (three at most of a kind: world requests ask for 1-3) and brings them; the
+  outermost talk of every person (wrapped after all the content loads) checks what she holds before anything else (a
+  present, Lola's shell collection), unless the story has something for them. Right: they take them, a star and a
+  heart. Wrong: "¡Casi!", the right ones held up as a picture and said ("¡Dos conchas rosadas!"), one more try; the
+  second try ends it kindly either way. Talking to them without the thing: the request again. The guide's hint (after
+  a while: a favour's word is being remembered) is every pile still lying about, never only the right one; holding
+  the thing, the friend.
+- **The dog's warm-up** brings one request once she knows enough (`G.warmup.LD`, before a due phrase; the dog's own
+  board is his ball by colour, bones to count, and every board above): "Dame dos huesos." / "Toca el pato grande."
+  It never brings the warm-up by itself (it still needs two due words).
+- **The grown-ups**: the Overview has a "Listen & do" line (requests, % right first try, today), and Share a sentence;
+  the warm-up line says "N words and a request".
+- **Requests between zones** (Lola asking in the forest for something from the beach) were left for later: a world
+  request is always about the place you're in.
+- Listen and do is **off in the tests unless they ask** (`{listen: true}` in the harness, or `LISTEN=1`; `drive()` does
+  each request right); with it off, every favour and warm-up is exactly as before.
+- **Open questions for the parent**: is two favours a day + one in the warm-up the right amount? Should listen-and-do
+  ever make a word gold (now only recalling or saying it does)? Vegetable words for Abuelo's garden (la zanahoria, el
+  elote, el jitomate)?
 
 ## How we'll know it works
 - Retention after a day or more: 70-80% first try.

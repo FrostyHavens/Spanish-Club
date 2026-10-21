@@ -2,6 +2,53 @@
 
 A running record of what changed in Club de Español and why. Newest first.
 
+## 2026-10-21 — Learning plan 2, Phase 3: listen and do
+She can pick and say words; now she hears a whole request with no pictures and does it. `docs/LEARNING_PLAN_2.md`
+Phase 3, built (`src/requests.js` `G.requests`, `src/listen.js` `G.listen` and its scene `ListenDo`):
+- **The request maker** (`G.requests`) builds every request only from words at stage 2+ (the thing, the colour, the
+  size, the number; "por favor" once it's known too) and the grammar is always right: articles by gender (*el águila*,
+  *un águila*), plurals from the word's `pl` or the rules (*conchas, peces, lápices, ratones, jóvenes, colibríes, los
+  lunes, estrellas de mar*), colour and size agreement (*rojas, rosadas, blancos, pequeñas, azules*), *un / una* for one
+  (`uno` got `alt: 'una'`). Templates: "Dame tres conchas." (count into a basket), "Dame la manzana roja.", "Toca el
+  perro grande." / "¿Dónde está el oso pequeño?", "¿Cuántas conchas hay?" (her answer: said with the mic or tapped), and
+  two details: "Dame dos flores amarillas.", "Dame tres hongos pequeños.", "¿Cuántas conchas azules hay?". **The ramp**:
+  one detail until 4 right on the first try, then two details mixed in; two two-detail misses in a row step back
+  (`G.state.hist.ld`). Each person has a board (`RQ.SPECS`: Don Pepe's fruit, Nico's and Elena's animals, Doña Lupe's
+  berries, acorns and mushrooms, Abuelo's apples, eggs and animals, Mateo's weather and winter clothes, the dog's ball and
+  bones; Lola's and Lucía's things to bring).
+- **Honest credit.** The tray (3-6 pictures, no labels) tests a word only when a picture differs from the right one in
+  that word alone (a red and a green apple test *roja*); each tested word gets **one 'listen' retrieval per request**
+  (the first answer, never one per shell counted): `answerRight(id, {mode: 'listen'})` moves the box like a pick but
+  never makes a word gold, and the history has a new letter, **L** (l after a miss; `history.js`, `words.js`). A wrong
+  first answer is a miss only of the word whose detail was wrong. Cards grow +2 (`C.GROW.listen`).
+- **The scene** (`ListenDo`): the friend's face, the request spoken as it opens and written **without the pictures of
+  its words** (`noPic` in `G.wordLook`, `G.richLayout`, `TextBox`: plain blue or gold text), a speaker to hear it again,
+  the tray; tap the right one, or count things into the basket and give it; the friend lights up, "¡Gracias!", the cards
+  grow from the bottom of the screen. Wrong, gently: it wobbles, the right one glows and is said; a wrong count is
+  counted into the basket out loud ("Una... Dos... ¡Dos moras!"); then one more try or the go-on arrow: never blocked.
+  Ghost hands the first time (`demo.js` 'listen', 'listencount'); the mic demo on a "¿Cuántas?".
+- **In the world.** `src/favores.js` got pluggable kinds (`FV.KIND / BUBBLE / ON / REMIND / TARGETS / PICK / OFF /
+  GROUP / CAP`). Listen favours have an ear in the bubble, **at most two a day in all**, and the day's due word picks
+  them: two requests on the tray for Don Pepe, Nico, Doña Lupe, Elena, Abuelo and Mateo; **carry requests** for Lola
+  (shells on the beach, leaves in the forest, apples at the grandparents') and Lucía (flowers, after her chapter): "¡Mira!
+  ¡Escucha!", the things appear around them on the map one per tile in little clusters (`G.carry.place`), she picks the
+  right ones up and brings them; every person's talk (wrapped once the content has loaded) checks what she holds first.
+  Wrong: "¡Casi!", the right ones held up as a picture and said, one more try. The guide's hint points at every pile,
+  never only the right one. **The dog's warm-up** brings one request once she knows enough (`G.warmup.LD`).
+- **The key word alone is now neutral for a phrase** (Phase 2 follow-up, decided): saying only "helado" to *Quiero ___*
+  still works and still invites the whole sentence, but it is neither a right nor a miss of the phrase (the slot word
+  keeps its credit; `phrases.js`); `test-phrases.js` checks it.
+- **The grown-ups**: the Overview has a "Listen & do" line (requests, % right the first time, today), Share a sentence,
+  the warm-up line "N words and a request" (`dashboard.js`).
+- Tests: `tools/test-listen.js` (new: plurals, agreement and a must-pass list of sentences in Node, trays that test each
+  word, only known words, the ramp; the scene: no pictures, the demo, replay, right and wrong picks and counts and their
+  credit and history, "¿Cuántas?" by voice and a wrong number, two details after the ramp, the grown-ups' counts; the
+  world: two favours a day, Don Pepe in Villa Sol and Doña Lupe in the forest, Lola's shells on the beach, the warm-up's
+  request). The harness keeps listen-and-do off unless a test asks (`{listen: true}`, `LISTEN=1`); `drive()` does each
+  request right (smoke passes with `LISTEN=1`). Two timing checks made robust: in `test-zone-playa` the ice cream for
+  the dog and in `test-world` the dog's digging spot are tapped again (up to three times) when a tap under load lands
+  as the dog trots off his tile or before the map is ready for it.
+
 ## 2026-10-21 — Learning plan 2, Phase 2: phrases, "say it to get it"
 She knows lots of single words; now she says whole sentences to make things happen. `docs/LEARNING_PLAN_2.md` Phase 2,
 built (`src/phrases.js`, `G.phrase`):

@@ -177,10 +177,16 @@ async function zone(browser) {
     // the dog's spot: tap it, he digs, something to pick up
     const sp = await g.ev(() => G.field.def.dogSpots[0].at);
     check('zone: the dog\'s spot has its paw-print bubble', await g.ev(() => G.zones.dogReady(G.field.def.dogSpots[0]) && !!G.zones.dogSpotAt(G.field, ...G.field.def.dogSpots[0].at)));
-    await g.ev(sp => { const p = G.field.player; p.x = sp[0] - 1; p.y = sp[1] + 2; G.field.snapCam(); }, sp);
-    await g.tapTile(sp[0], sp[1]);
-    await g.until(() => !G.zones.dogReady(G.field.def.dogSpots[0]), null, 'the dog digging', 30000);
-    await g.until(() => !G.field.locked, null, 'done digging');
+    // (under load the first tap can come before the map is ready for it: tap the spot again, up to three times)
+    for (let k = 0; k < 3 && await g.ev(() => G.zones.dogReady(G.field.def.dogSpots[0])); k++) {
+      await g.until(() => G.top() === G.field && !G.field.locked && !G.field.player.moving && G.fade.a === 0, null, 'free to tap the spot', 20000);
+      await g.ev(sp => { const p = G.field.player; p.x = sp[0] - 1; p.y = sp[1] + 2; G.field.route = null; G.field.snapCam(); }, sp);
+      await g.frames(4);
+      await g.tapTile(sp[0], sp[1]);
+      await g.until(() => !G.zones.dogReady(G.field.def.dogSpots[0]), null, 'the dog digging', 15000).catch(() => {});
+    }
+    await g.until(() => !G.zones.dogReady(G.field.def.dogSpots[0]), null, 'the dog digging', 15000);
+    await g.until(() => !G.field.locked, null, 'done digging', 40000);
     await g.shot('dug');
     check('zone: the dog dug there and left something to pick up', await g.ev(() => G.carry.state().ground.some(it => it.map === 'juegos' && (it.id === 'palo' || it.id === 'pelota'))));
     // Lola

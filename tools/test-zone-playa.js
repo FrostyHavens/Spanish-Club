@@ -293,10 +293,16 @@ async function dog(browser) {
     await g.until(() => !G.carry.held(), null, 'putting it down');
     check('carry: tap yourself: put down on the sand (saved)', await g.ev(() => G.carry.state().ground.some(it => it.map === 'playa' && it.id === 'concha')));
     // an ice cream for the dog: he eats it
-    await g.ev(() => { G.words.meet('helado', 't'); G.errands.bag.add('helado'); const n = G.pet.npc(G.field), p = G.field.player; n.x = p.x + 1; n.y = p.y; n.home = [n.x, n.y]; });
-    await g.frames(4);
-    await g.tapTile(...await g.ev(() => { const n = G.pet.npc(G.field); return [n.x, n.y]; }));
-    await g.until(() => !G.carry.held(), null, 'the dog eating the ice cream', 30000);
+    await g.ev(() => { G.words.meet('helado', 't'); G.errands.bag.add('helado'); });
+    // (under load a tap can land just as the dog trots off his tile: tap him again, up to three times)
+    for (let k = 0; k < 3 && await g.ev(() => !!G.carry.held()); k++) {
+      await g.until(() => G.top() === G.field && !G.field.locked && !G.field.player.moving, null, 'free to give it', 20000);
+      await g.ev(() => { const n = G.pet.npc(G.field), p = G.field.player; n.x = p.x + 1; n.y = p.y; n.ox = n.oy = 0; n.moving = false; n.home = [n.x, n.y]; });
+      await g.frames(4);
+      await g.tapTile(...await g.ev(() => { const n = G.pet.npc(G.field); return [n.x, n.y]; }));
+      await g.until(() => !G.carry.held(), null, 'the dog eating the ice cream', 15000).catch(() => {});
+    }
+    await g.until(() => !G.carry.held(), null, 'the dog eating the ice cream', 15000);
     check('carry: give the dog an ice cream: he eats it', true);
     check('dog: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }

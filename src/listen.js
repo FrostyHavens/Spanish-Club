@@ -161,7 +161,8 @@
       else this.cardWon = k;
       G.audio.sfx('chime'); G.audio.jingle('item'); if (this.mic && this.said) this.mic.win();
       const [fx, fy] = this.faceXY(); G.fx.burst(fx, fy);
-      G.fx.say(PRAISE[G.r(PRAISE.length)], G.W / 2, this.box().y + this.box().h + 4, '#f8e060', true);
+      const praise = PRAISE[G.r(PRAISE.length)];
+      G.fx.say(praise, G.W / 2, this.box().y + this.box().h + 4, '#f8e060', true); G.speak(praise); // (the friend says it)
       this.closeT = 84;
       this.result = { ok: true, first: !!(this.first && this.first.ok) };
     }
@@ -507,13 +508,16 @@
     FV.PICK.listen = FV.PICK.carry = (who, pool, ok) => pickFor(who, ok);
     FV.KIND.listen = function* (v, f) {
       const spec = L.boardHere(v.who, f) || RQ().spec(v.who);
+      if (!RQ().make(spec, { focus: v.word })) { v.done = true; G.st.autosave(); return; } // (nothing she knows to ask for after all)
       yield say(v.who, { icon: 'escucha' }, TT('¡{name}! ¿Me ayudas? ¡Escucha!', 'Can you help me? Listen to what I ask, then do it.'));
       yield* L.round(spec, { who: v.who, focus: v.word, n: 2 });
       FV.reward(v);
       yield say(v.who, null, TT('¡[gracias:Gracias], {name}!', 'Thank you, {name}!'));
     };
     FV.KIND.carry = function* (v, f) {
-      if (!(yield* L.carryStart(v, f))) yield say(v.who, null, TT('¡Hola, {name}!', 'Hi, {name}!')); // (nothing she knows to ask for here)
+      if (yield* L.carryStart(v, f)) return;
+      v.done = true; G.st.autosave(); // (nothing she knows to ask for here after all: no bubble that leads nowhere)
+      yield say(v.who, null, TT('¡Hola, {name}!', 'Hi, {name}!'));
     };
     FV.REMIND.carry = function* (v, f) { yield* L.carryRemind(v, f); };
     FV.TARGETS.carry = (f, v) => L.carryTargets(f, v);

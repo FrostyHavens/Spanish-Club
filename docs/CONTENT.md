@@ -191,7 +191,8 @@ words only ("¡Al parque!"): the next beat's trigger is what the arrow points at
   asks its name), Nico asks you to find an animal and tap it, Pepe / Marta / Rosa / Luna have a heap to count, Lucía
   and Sofía a flower or a ribbon (*¿De qué color?*), Nico an animal's sound, Mamá and Lucía a face (*¿Cómo está?*),
   and the shopkeepers one of their things (*¿Qué es?*, sometimes it goes in your bag as a present). A new kind is an
-  entry in `OFFERS` (who, kind, the pool of words) and a generator in `KIND`.
+  entry in `OFFERS` (who, kind, the pool of words) and a generator in `KIND`. Listen-and-do favours (an ear in the
+  bubble: a tray of pictures, or things to bring) are below, in *Listen and do*.
 - **Palabra del día**: from chapter 8, once a day, Profesora Luna holds up a picture of a due word: say it or pick
   its word from four.
 - **Inés's library**: from chapter 16 she offers one notebook page puzzle that is ready, once a day.
@@ -265,11 +266,53 @@ yield* G.phrase.request('f_gusta', { who: 'lola', slots: ['oso', 'pato', 'rana']
   `free: true`: any slot is right; `answer: i`: only that one (the others wobble). `more: [ids]`: heard too, without a
   card (Lola's question: any album animal). `show: id`: a picture held up over the question.
 - The first time a pattern comes up anywhere, `G.phrase.ready` (inside `request`) shows the two friends modelling it and
-  "¡Ahora tú!"; a pattern missed 3 times (the key word alone counts as a miss of the phrase) is modelled again.
+  "¡Ahora tú!"; a pattern missed 3 times is modelled again (the key word alone is neutral for the phrase: neither right
+  nor a miss; the slot word keeps its credit).
 - The mic's matching is `G.speech.matchPhrase(frameId, slotTargets, alternatives)`. A new way to say a frame goes in its
   `say`; add a line to the must-pass (or must-fail) list in `tools/test-phrases.js`.
 - Tests keep phrases off unless they ask: `open(browser, name, touch, { phrases: true })` (`tools/harness.js`) or
   `PHRASES=1`; `drive()` plays a request through (taps the frame card and a word card) and taps through a modelling strip.
+
+## Listen and do (`src/requests.js`, `src/listen.js`, `docs/LEARNING_PLAN_2.md` Phase 3)
+A friend asks for something out loud ("Dame dos flores amarillas.", "Toca el perro grande.", "¿Cuántas conchas hay?"),
+written with no pictures for its words, and she does it on a tray of pictures (a tap, or counting into a basket) or, for
+a world request, picks the things up on the map and brings them. Requests are made by `G.requests` from the words she
+knows (stage 2+), so content only says **who asks about what**: a person's **board** in `G.requests.SPECS` (a zone file
+can add one):
+```js
+G.requests.SPECS.rosa = { things: {             // Rosa's farm: each thing (a word id) and what can vary
+  huevo: { count: 1 },                          // counted: "Dame tres huevos.", "¿Cuántos huevos hay?"
+  flor: { cols: ['rojo', 'amarillo', 'blanco'], count: 1 },   // its colours (colour word ids): "Dame la flor amarilla."
+  gallina: { sizes: 1, animal: 1 },             // big and small: "Toca la gallina grande."
+} };
+G.requests.SPECS.lola = { carry: 1, places: { playa: { concha: { cols: [...], count: 1 } }, bosque: {...} } };
+// carry: 1  a world request (the things appear on the map around them; 1-3 of a kind: the hands hold three)
+// places    a board per zone (the board of the place she's in; none elsewhere)
+// a thing:  cols (colours), sizes: 1 (big and small: "el hongo grande"), count: 1 (numbers), animal: 1 (Toca... /
+//           ¿Dónde está...? instead of Dame)
+```
+- **Then offer it as a favour**: `G.favores.OFFERS.push(['rosa', 'listen', null, () => cond])` (two requests on the
+  tray, a star and a heart) or `'carry'` (a world request); the 4th entry is an optional condition (a zone visited, a
+  chapter done). The day's due word of the board picks it; listen and carry favours are two a day at most, in all (an
+  ear in the bubble). The kinds are plugged into `src/favores.js` by `src/listen.js` (`FV.KIND / BUBBLE / ON / REMIND /
+  TARGETS / PICK / OFF / GROUP / CAP`): a new kind of favour plugs in the same way.
+- **In a talk script**, a round on a board: `yield* G.listen.round(G.requests.spec('rosa'), { who: 'rosa', focus: 'huevo',
+  n: 2 })`; one request: `const req = G.requests.make(spec, { focus, tpl: 'col' }); const res = yield* G.listen.run(req,
+  { who: 'rosa' })` (`res.ok`, `res.first`; `null` from `make` when she doesn't know enough of the board yet: do
+  something else).
+- **The grammar is the word's**: the gender from its article in `es` (*la manzana*; *los guantes* is plural-only), the
+  plural from its `pl` if the rules would get it wrong (they know *peces, lápices, ratones, jóvenes, colibríes, los
+  lunes, estrellas de mar*), a feminine noun with "el" in `G.requests.FEM_EL` (*el águila*, *un águila*), a colour's
+  feminine after the slash (*rojo / roja*); *uno* is *un* / *una* before a noun (its `alt` lets the mic hear *una*). A new sentence shape: add it to
+  the must-pass list in `tools/test-listen.js`.
+- **A coloured thing needs a picture that takes a colour**: its icon reads `w.col` (`src/icons.js`: *manzana*,
+  *platano*, *concha*, *hoja*, *flor*, *gorro*...). Big and small are drawn by the tray (twice the size).
+- **What counts**: the tray is built so each word is needed (a word is *tested* only when a picture differs from the
+  right one in that word alone); each tested word gets one 'listen' retrieval per request (`answerRight(id, {mode:
+  'listen'})`, history letter **L**, l after a miss; it never makes a word gold); a wrong answer is a miss only of the
+  word whose detail was wrong. Content never credits by hand.
+- Tests keep listen-and-do off unless they ask: `open(browser, name, touch, { listen: true })` (`tools/harness.js`) or
+  `LISTEN=1`; `drive()` does each request right (taps the right picture, counts into the basket, taps the right number).
 
 ## Side jobs, presents and the shops (`src/errands.js`)
 1. A side job is a place in `SPOTS`: `{ id, map, at: [x, y], icon: () => picture or null when inactive, run: function* (f) {...} }`
