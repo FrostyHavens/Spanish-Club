@@ -34,7 +34,7 @@ const SENTENCES = [
   [{ verb: 'give', thing: 'manzana', col: 'rojo' }, 'Dame la manzana roja.'],
   [{ verb: 'bring', thing: 'manzana', col: 'rojo' }, 'Tráeme la manzana roja.'],
   [{ verb: 'give', thing: 'concha', col: 'azul' }, 'Dame la concha azul.'],
-  [{ verb: 'touch', thing: 'perro', size: 'grande' }, 'Toca el perro grande.'],
+  [{ verb: 'touch', thing: 'perro', size: 'grande' }, 'Toca al perro grande.'],
   [{ verb: 'where', thing: 'oso', size: 'pequeno' }, '¿Dónde está el oso pequeño?'],
   [{ verb: 'give', thing: 'flor', num: 'dos', col: 'amarillo' }, 'Dame dos flores amarillas.'],
   [{ verb: 'bring', thing: 'concha', num: 'tres', col: 'rosa' }, 'Tráeme tres conchas rosadas.'],
@@ -50,9 +50,10 @@ const SENTENCES = [
   [{ verb: 'give', thing: 'guantes', col: 'rojo' }, 'Dame los guantes rojos.'],
   [{ verb: 'give', thing: 'calcetines', col: 'blanco' }, 'Dame los calcetines blancos.'],
   [{ verb: 'give', thing: 'zapatos', col: 'azul' }, 'Dame los zapatos azules.'],
-  [{ verb: 'touch', thing: 'vaca', size: 'pequeno' }, 'Toca la vaca pequeña.'],
+  [{ verb: 'touch', thing: 'vaca', size: 'pequeno' }, 'Toca a la vaca pequeña.'],
   [{ verb: 'where', thing: 'gallina', size: 'grande' }, '¿Dónde está la gallina grande?'],
-  [{ verb: 'touch', thing: 'aguila', size: 'pequeno' }, 'Toca el águila pequeña.'],
+  [{ verb: 'touch', thing: 'aguila', size: 'pequeno' }, 'Toca al águila pequeña.'],
+  [{ verb: 'touch', thing: 'abuelo' }, 'Toca al abuelo.'],
   [{ verb: 'give', thing: 'aguila', num: 'uno' }, 'Dame un águila.'],
   [{ verb: 'give', thing: 'aguila', num: 'dos', col: 'blanco' }, 'Dame dos águilas blancas.'],
   [{ verb: 'howmany', thing: 'concha', col: 'azul' }, '¿Cuántas conchas azules hay?'],
@@ -64,13 +65,14 @@ const SENTENCES = [
   [{ verb: 'give', thing: 'lombriz', num: 'tres' }, 'Dame tres lombrices.'],
   [{ verb: 'give', thing: 'colibri', num: 'dos' }, 'Dame dos colibríes.'],
   [{ verb: 'give', thing: 'arbol', num: 'dos' }, 'Dame dos árboles.'],
-  [{ verb: 'give', thing: 'muneco', size: 'grande' }, 'Dame el muñeco de nieve grande.'],
-  [{ verb: 'give', thing: 'elsol', size: 'pequeno' }, 'Dame el sol pequeño.'],
+  [{ verb: 'touch', thing: 'muneco', size: 'grande' }, 'Toca el muñeco de nieve grande.'],
+  [{ verb: 'where', thing: 'elsol', size: 'pequeno' }, '¿Dónde está el sol pequeño?'],
+  [{ verb: 'touch', thing: 'nube', size: 'grande' }, 'Toca la nube grande.'],
   [{ verb: 'give', thing: 'estrellamar', num: 'dos', col: 'rojo' }, 'Dame dos estrellas de mar rojas.'],
   [{ verb: 'give', thing: 'concha', num: 'dos', polite: true }, 'Dame dos conchas, por favor.'],
   [{ verb: 'give', thing: 'pelota', col: 'verde' }, 'Dame la pelota verde.'],
   [{ verb: 'give', thing: 'hueso', num: 'cuatro' }, 'Dame cuatro huesos.'],
-  [{ verb: 'give', thing: 'nube', num: 'dos', size: 'grande' }, 'Dame dos nubes grandes.'],
+  [{ verb: 'howmany', thing: 'nube', size: 'grande' }, '¿Cuántas nubes grandes hay?'],
   [{ verb: 'give', thing: 'zanahoria', num: 'dos' }, 'Dame dos zanahorias.'],
   [{ verb: 'give', thing: 'zanahoria', num: 'uno' }, 'Dame una zanahoria.'],
   [{ verb: 'give', thing: 'elote', col: 'blanco' }, 'Dame el elote blanco.'],
@@ -128,6 +130,16 @@ async function node() {
   const none = nodeMaker(['hola']);
   check('make: nothing she knows on a board: no request', Object.keys(none.RQ.SPECS).every(w => !none.RQ.make(none.RQ.spec(w))));
   check('make: the word that\'s due comes first (a request about it when one can be made)', [...Array(10)].every(() => { const r = RQ.make(RQ.spec('lupe'), { focus: 'bellota' }); return r.words.includes('bellota'); }) && [...Array(10)].every(() => { const r = RQ.make(RQ.spec('pepe'), { focus: 'verde' }); return r.words.includes('verde'); }));
+  // what she can't hold is never handed over (Mateo's clouds, sun and snowmen: touched or found), and an animal touched
+  // takes the personal a ("Toca al perro grande", "Toca a la vaca pequeña")
+  const handed = [], noA = [], seen = new Set();
+  for (const who of ['mateo', 'nico', 'elena', 'abuelo', 'dog']) for (let i = 0; i < 160; i++) {
+    const r = RQ.make(RQ.spec(who), { level: 1 + (i % 2) }); if (!r) continue; seen.add(r.say);
+    if (['nube', 'elsol', 'muneco'].includes(r.thing) && /^(Dame|Tráeme)/.test(r.say)) handed.push(r.say);
+    if (r.verb === 'touch' && RQ.animate(r.thing) && !/^Toca (al|a la|a los|a las) /.test(r.say)) noA.push(r.say);
+  }
+  check('make: nothing she can\'t hold is handed over ("Toca la nube grande", "¿Dónde está el sol pequeño?", never "Dame el sol")', !handed.length && [...seen].some(t => /nube|sol |muñeco/.test(t)), handed.slice(0, 4).join(' | '));
+  check('make: an animal touched takes the personal a ("Toca al perro grande")', !noA.length && [...seen].some(t => /^Toca (al|a la) /.test(t)), noA.slice(0, 4).join(' | '));
   // Abuelo's garden on his board: carrots to count, corn and tomatoes by colour
   const veg = { zanahoria: [], elote: [], jitomate: [] };
   for (const v of Object.keys(veg)) for (let i = 0; i < 12; i++) { const r = RQ.make(RQ.spec('abuelo'), { focus: v, level: 1 + (i % 2) }); if (r && r.words.includes(v)) veg[v].push(r.say); }

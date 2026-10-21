@@ -12,6 +12,7 @@
   const say = K.say, sayShow = K.sayShow, tell = K.tell, ask = K.ask, siNo = K.siNo;
   const V = tag => G.MAPDATA.villa.pos[tag];
   const W = id => G.data.words[id];
+  G.requests.LINES['finale.food'] = id => '¿Y para ' + G.requests.the(id) + '?'; // (the finale: ¿Y para la [cabra]?)
   const found = id => () => G.intro.found(id);
   const tile = (x, y) => ({ x: x * TL + 12, y: y * TL });
   const bag = () => G.errands.bag;
@@ -314,14 +315,14 @@
       const n = dog(f); G.pet.anim(n, 'huh');
       yield* ask('nico', '¿Qué quiere {dog}?', '{dog} licks his lips at the pail. What does he want?', 'leche', ['agua', 'pan'], { point: n });
       if (horse) horse.pin = null; if (goat) goat.pin = null;
-      yield* tell(T('Y el [agua]... ¡la [fuente]!', 'And the water... from the fountain!'));
+      yield* tell(T('Y el [agua]... ¡de la [fuente]!', 'And the water... from the fountain!'));
       release(f, 'nico');
     } },
     { spot: { map: 'villa', at: V('fuente'), icon: 'agua' }, part: 'agua', run: function* (f, c) {
       yield* CH.banner('fuente', ['banco', 'granja']);
       yield* ask(null, '¿Qué es?', 'You fill Rosa\'s bottle. What is it?', 'agua', ['leche', 'queso'], { point: tile(...V('fuente')) });
       got(c, 'agua');
-      yield* tell(T('¡Todo! ¡A Rosa!', 'Everything! Back to Rosa!'));
+      yield* tell(T('¡Todo! ¡Vamos con Rosa!', 'Everything! Back to Rosa!'));
     } },
     { who: 'rosa', bubble: true, part: 'canasta', run: function* (f, c) { // cinco; the picnic in the park; seis
       yield* say('rosa', T('¡Mi canasta! [uno], [dos], [tres], [cuatro]... ¡[cinco]!', 'My basket! One, two, three, four... five!'));
@@ -506,7 +507,7 @@
       c.data.fly = 2; const n = dog(f); yield 40; G.pet.anim(n, 'huh');
       yield* ask(null, '¿Qué es?', 'It lands on {dog}\'s nose! What is it?', 'mariposa', ['cabra', 'gato'], { point: n });
       c.data.fly = 3; G.pet.sound('whine');
-      yield* tell(T('¡Ja, ja! ¡A Lucía!', 'Ha ha! Back to Lucía with the flowers!'));
+      yield* tell(T('¡Ja, ja! ¡Vamos con Lucía!', 'Ha ha! Back to Lucía with the flowers!'));
     } },
     { who: 'lucia', bubble: () => flower(YELLOW), part: 'flor', run: function* (f) { // the bouquet; happy Lucía
       bag().take('flor', { col: 'rosa', q: 'c15' }); bag().take('flor', { col: 'amarillo', q: 'c15' });
@@ -1049,7 +1050,7 @@
       yield* say('luna', T('¡La comida para los animales!', 'Food for the animals! What does each one eat?'));
       for (const [k, food, others] of [['caballo', 'manzana', ['pan', 'leche']], ['pato', 'pan', ['queso', 'agua']], ['cabra', 'platano', ['naranja', 'pan']]]) {
         G.animals.cry(k);
-        yield* ask('luna', '¿Y para el [' + k + ']?', 'And for this one?', food, others, { show: k });
+        yield* ask('luna', G.requests.LINES['finale.food'](k), 'And for this one?', food, others, { show: k });
       }
       G.pet.anim(n, 'jump');
       yield* ask('luna', '¡{dog}! ¿Qué tiene?', '{dog} sneaked something off the table! What has he got?', 'queso', ['pan', 'leche'], { point: n });

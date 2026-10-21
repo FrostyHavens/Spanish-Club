@@ -31,6 +31,9 @@
   const Z = G.zones, K = G.mapKit, MD = G.MAPDATA, CH = G.chapters, CK = CH.K, T = CK.T, TL = G.TILE, AN = G.animals;
   const P = (m, tag) => MD[m].pos[tag];
   const met = id => !!(G.words && G.words.met(id));
+  const RQ = G.requests, LN = RQ.LINES; // (the lines built from a word: G.requests.the)
+  // Mateo loves today's weather: "¡Me encanta la [nieve]!", "¡Me encantan las [nube:nubes]!" (a thing you count: all of them)
+  LN['mateo.love'] = id => { const n = RQ.noun(id), pl = !!n && (n.plOnly || !!G.data.words[id].pl); return '¡Me encanta' + (pl ? 'n ' : ' ') + RQ.the(id, { pl }) + '!'; };
   const say = CK.say, sayShow = CK.sayShow, ask = CK.ask;
   const day = () => (G.words ? G.words.day() : 0);
   const meetW = (id, o) => Z.meetW(id, o);
@@ -301,7 +304,7 @@
         yield 30;
         if (met(a.kind)) return;
         CH.point(a.x, a.y - a.z - 14);
-        try { yield* G.intro.show(a.kind, { who: 'lola', prompt: '¡Mira! ¡[' + a.kind + ']!', en: 'Look! ' + EN[a.kind], known: othersFor(a.kind, KINDS.concat(['perro', 'gato', 'pajaro', 'conejo'])) }); } finally { CH.point(null); }
+        try { yield* G.intro.show(a.kind, { who: 'lola', prompt: LN.mira(a.kind), en: 'Look! ' + EN[a.kind], known: othersFor(a.kind, KINDS.concat(['perro', 'gato', 'pajaro', 'conejo'])) }); } finally { CH.point(null); }
       })());
     }
     return r;
@@ -328,7 +331,7 @@
   }
   function* mateoLine(f) {
     const k = MT.weather();
-    if (met(k)) yield* sayShow('mateo', k, T('¡Me encanta [' + k + ']!', 'I love this weather!'));
+    if (met(k)) yield* sayShow('mateo', k, T(LN['mateo.love'](k), 'I love this weather!'));
     else yield* say('mateo', T('¡Hola, {name}! ¡Soy Mateo!', 'Hi, {name}! I\'m Mateo. I love the weather!'));
   }
 
@@ -509,7 +512,7 @@
     const [hx, hy] = tr.hide; CH.point(hx * TL + 12, hy * TL - 6);
     try {
       yield 30;
-      if (!met(tr.kind)) yield* meetW(tr.kind, { who: 'lola', prompt: '¡Un[a] [' + tr.kind + ']!'.replace('Un[a] ', tr.kind === 'marmota' ? 'Una ' : 'Un '), en: 'It was ' + EN[tr.kind], known: othersFor(tr.kind, KINDS.concat(['conejo', 'gato', 'perro'])) });
+      if (!met(tr.kind)) yield* meetW(tr.kind, { who: 'lola', prompt: LN.un(tr.kind), en: 'It was ' + EN[tr.kind], known: othersFor(tr.kind, KINDS.concat(['conejo', 'gato', 'perro'])) });
       else yield* quiz('lola', '¿Quién es?', 'Who made the tracks? (say it!)', tr.kind, KINDS.concat(['conejo', 'gato', 'perro', 'llama']).filter(k => k !== tr.kind && met(k)).sort(() => G.rand() - 0.5), { show: { icon: 'huella' } });
     } finally { CH.point(null); }
     AN.meet(tr.kind); s.done = true; st().trails = (st().trails | 0) + 1; CK.confetti(); G.audio.jingle('promote'); G.st.autosave();
@@ -890,7 +893,7 @@
       yield 20;
       const lu = npcAt(f, 'lucho');
       if (lu) CH.pointNpc(lu); else CH.point(DOOR[0] * TL + 12, DOOR[1] * TL);
-      try { yield* sayShow('mateo', { icon: 'zanahoria' }, T('¿Y la nariz? ¡Don Lucho tiene!', 'And his nose? A carrot! Don Lucho has carrots for his llamas.')); } finally { CH.point(null); }
+      try { yield* sayShow('mateo', { icon: 'zanahoria' }, T('¿Y la nariz? ¡Don Lucho tiene una!', 'And his nose? A carrot! Don Lucho has carrots for his llamas.')); } finally { CH.point(null); }
     } },
     { who: 'lucho', bubble: { icon: 'zanahoria' }, run: function* (f, c) { // a carrot (the llamas love them), an old cap and scarf
       yield* sayShow('lucho', { icon: 'zanahoria' }, T('¡Una [zanahoria]! ¡Tómala!', 'A carrot for the snowman\'s nose! (my llamas would love it too)')); // (the word of Abuelo's garden: written once it's met)

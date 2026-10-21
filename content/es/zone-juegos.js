@@ -280,7 +280,7 @@
     const demo = o.demo || (function* () { const n = npcAt(f, o.who); if (n) yield* JG.act(f, n, id); else yield 20; });
     if (!met(id)) {
       let k = 0;
-      yield* G.intro.watch(id, { who: o.who, prompt: o.prompt || '¡[' + id + ']!', en: o.en || 'Watch!', known: o.known || othersFor(id, ['pelota', 'columpio', 'papalote', 'arbol', 'flor', 'perro']),
+      yield* G.intro.watch(id, { who: o.who, prompt: o.prompt || G.requests.LINES.un(id), en: o.en || 'Watch!', known: o.known || othersFor(id, ['pelota', 'columpio', 'papalote', 'arbol', 'flor', 'perro']),
         act: function* () { k++; if (k === 1) yield* demo(); else yield* act(); } });
       if (k < 2) yield* act();
       return true;
@@ -350,7 +350,7 @@
   const rideCount = k => { const r = ridesToday(); r[k] = (r[k] | 0) + 1; st().rideAll = (st().rideAll | 0) + 1; G.st.autosave(); };
   JG.ridesToday = ridesToday;
   function* nameIt(f, id, who, x, y) { // the thing's word, the first time: met here (Ana or Pablo names it)
-    if (!met(id)) { CH.point(x * TL + 12, y * TL); try { yield* meetW(id, { who, prompt: '¡[' + id + ']!', en: { columpio: 'The swing!', resbaladilla: 'The slide!', subibaja: 'The seesaw!' }[id] || '', known: othersFor(id, ['pelota', 'arbol', 'flor', 'banco']) }); } finally { CH.point(null); } }
+    if (!met(id)) { CH.point(x * TL + 12, y * TL); try { yield* meetW(id, { who, prompt: '¡' + G.requests.the(id, { cap: 1 }) + '!', en: { columpio: 'The swing!', resbaladilla: 'The slide!', subibaja: 'The seesaw!' }[id] || '', known: othersFor(id, ['pelota', 'arbol', 'flor', 'banco']) }); } finally { CH.point(null); } }
   }
   const named = (id, x, y) => { if (G.world && met(id)) G.world.name(id, x * TL + 12, y * TL - 4); }; // (after the ride: its word, and the say-it-back mic)
   JG.playSwing = function* (f, i) {
@@ -408,7 +408,7 @@
         yield 30;
         if (met(a.kind)) return;
         CH.point(a.x, a.y - 14);
-        try { yield* G.intro.show(a.kind, { who: 'lola', prompt: '¡Mira! ¡[' + a.kind + ']!', en: 'Look! ' + EN[a.kind], known: othersFor(a.kind, KINDS) }); } finally { CH.point(null); }
+        try { yield* G.intro.show(a.kind, { who: 'lola', prompt: G.requests.LINES.mira(a.kind), en: 'Look! ' + EN[a.kind], known: othersFor(a.kind, KINDS) }); } finally { CH.point(null); }
       })());
     }
     return r;

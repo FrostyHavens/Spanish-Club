@@ -47,7 +47,7 @@
   const HOME = { perro: 'casa', gato: 'casa', pajaro: 'arbol', mariposa: 'flor', pez: 'agua', conejo: 'parque', rana: 'agua', pato: 'agua', gallina: 'granja', caballo: 'granja', cabra: 'granja',
     cangrejo: 'arena', estrellamar: 'mar', tortuga: 'mar', gaviota: 'mar', medusa: 'mar', delfin: 'mar', pulpo: 'mar',
     oso: 'cueva', ardilla: 'arbol', mapache: 'elbosque', venado: 'elbosque', zorro: 'elbosque', erizo: 'elbosque', buho: 'arbol', luciernaga: 'elbosque',
-    paloma: 'parque', catarina: 'flor', hormiga: 'parque', abeja: 'flor', lagartija: 'parque', grillo: 'parque', colibri: 'flor',
+    paloma: 'parque', catarina: 'flor', hormiga: 'parque', lagartija: 'parque', grillo: 'parque', colibri: 'arbol', // (no bee: bees live in a hive, not one of her words)
     vaca: 'granja', cerdo: 'granja', oveja: 'granja', burro: 'granja', pavo: 'granja', raton: 'casa', gallo: 'granja', tlacuache: 'arbol',
     llama: 'lamontana', marmota: 'lamontana', zorrillo: 'lamontana', carpintero: 'arbol', monarca: 'arbol', puma: 'lamontana', aguila: 'lamontana', lobo: 'lamontana' };
   const COLOR = { manzana: 'rojo', platano: 'amarillo', leche: 'blanco', huevo: 'blanco', queso: 'amarillo', pelota: 'rojo', hoja: 'verde', rana: 'verde', arbol: 'verde',

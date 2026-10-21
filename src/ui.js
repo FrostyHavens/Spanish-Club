@@ -37,11 +37,21 @@
   G.baseForm = id => { const w = G.data.words[id]; return w ? w.es.split(' / ')[0].replace(/^(el|la|los|las) /, '') : G.phrase && G.data.phrases && G.data.phrases[id] ? G.phrase.label(id) : id; }; // (a phrase: its frame, phrases.js)
   G.richIds = s => { const out = []; String(s).replace(TOK, (m, id) => { out.push(id); return m; }); return out; };
   G.plain = s => String(s).replace(TOK, (m, id, shown) => shown || G.baseForm(id));
+  // a word that starts a sentence is written with a capital, whatever its form ("¡[hola], {name}!" -> ¡Hola, Luz!): at
+  // the line's start, after . ! ? (not after "...": the sentence goes on) or after "Luna: ¿" (what someone says). A word
+  // with its own marks (¿cómo estás?) inside the same marks isn't doubled ("¿[comoestas]?" -> ¿Cómo estás?).
+  const startsSentence = before => { const b = before.replace(/[ \t¡¿«"“(]+$/, ''); return !b || /\n$/.test(b) || (/[.!?…]$/.test(b) && !/(\.\.|…)$/.test(b)) || (/:$/.test(b) && /[¡¿]\s*$/.test(before)); };
+  const capFirst = t => t.replace(/^([¡¿]?)(\p{Ll})/u, (m, a, b) => a + b.toUpperCase());
+  function tokenText(s, i, id, shown) { // the text of the word token at s[i]: its form, no doubled marks, a capital at a sentence's start
+    let t = shown || G.baseForm(id); const before = s.slice(0, i);
+    if (/^[¡¿]/.test(t) && before.slice(-1) === t[0]) t = t.slice(1).replace(/[!?]$/, '');
+    return startsSentence(before) ? capFirst(t) : t;
+  }
   function items(s) { // -> [{text, id?, gap}]  gap: a space precedes this item (wrapping happens only at gaps)
     const out = []; let gap = false, last = 0, m;
     const text = t => { for (const part of t.split(/(\s+)/)) { if (!part) continue; if (/^\s+$/.test(part)) { gap = true; continue; } out.push({ text: part, gap }); gap = false; } };
     TOK.lastIndex = 0;
-    while ((m = TOK.exec(s))) { text(s.slice(last, m.index)); out.push({ text: m[2] || G.baseForm(m[1]), id: m[1], gap }); gap = false; last = TOK.lastIndex; }
+    while ((m = TOK.exec(s))) { text(s.slice(last, m.index)); out.push({ text: tokenText(s, m.index, m[1], m[2]), id: m[1], gap }); gap = false; last = TOK.lastIndex; }
     text(s.slice(last));
     return out;
   }

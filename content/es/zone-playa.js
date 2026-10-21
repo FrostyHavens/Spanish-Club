@@ -107,7 +107,7 @@
   // not met: its one-unknown puzzle (G.intro.show: held up, then "which word is this?"); met: a question about it
   function* meetW(id, o = {}) {
     if (!met(id)) { yield* G.intro.show(id, Object.assign({ how: 'show' }, o)); return true; }
-    yield* sayShow(o.who, o.showPic || id, T(o.prompt || '¡[' + id + ']!', o.en || ''));
+    yield* sayShow(o.who, o.showPic || id, T(o.prompt || G.requests.LINES.un(id), o.en || ''));
     yield* G.review.ask(id, { who: o.who });
     return false;
   }
@@ -128,7 +128,7 @@
         if (met(a.kind)) return;
         const e = { cangrejo: 'A crab!', gaviota: 'A seagull!', estrellamar: 'A starfish!', tortuga: 'A turtle!', medusa: 'A jellyfish!', delfin: 'A dolphin!', pulpo: 'An octopus!' }[a.kind];
         CH.point(a.x, a.y - 14);
-        try { yield* G.intro.show(a.kind, { who: 'lola', prompt: '¡Mira! ¡[' + a.kind + ']!', en: 'Look! ' + e, known: othersFor(a.kind, KINDS) }); } finally { CH.point(null); }
+        try { yield* G.intro.show(a.kind, { who: 'lola', prompt: G.requests.LINES.mira(a.kind), en: 'Look! ' + e, known: othersFor(a.kind, KINDS) }); } finally { CH.point(null); }
       })());
     }
     return r;
@@ -335,13 +335,13 @@
     // Quiero un helado (src/phrases.js): say it to get it; else the question as before
     const ph = G.phrase ? yield* G.phrase.quiero('nieves', ['helado'], { onGet: function* () { bag().add('helado'); G.st.autosave(); yield* sayShow('nieves', 'helado', T('¡Un [helado]! ¡Aquí tienes!', 'An ice cream! Here you are!')); } }) : null;
     if (!ph) { yield* quiz('nieves', '¿Qué quieres?', 'What would you like? (an ice cream!)', 'helado', ['concha', 'elsol', 'arena', 'cubetaarena'], { show: 'helado' }); bag().add('helado'); G.st.autosave(); }
-    yield* sayShow('nieves', { face: hotWho() }, T('¡Para ' + G.nameOf(hotWho()).replace(/^(Don|Doña) /, '') + '! ¡Qué [caliente]!', 'Take it to ' + G.nameOf(hotWho()) + ': they are so hot!'));
+    yield* sayShow('nieves', { face: hotWho() }, T('¡Para ' + G.nameOf(hotWho()).replace(/^(Don|Doña) /, '') + '! ¡Tiene mucho [caliente:calor]!', 'Take it to ' + G.nameOf(hotWho()) + ': they are so hot!'));
     return true;
   }
   function* hotSide(who) {
     if (hotWho() !== who || hotDone()) return false;
     const h = iceHeld();
-    if (!h) { yield* sayShow(who, { icon: 'caliente' }, T('¡Uf! ¡Qué [caliente]!', 'Phew! So hot! (an ice cream from Doña Nieves would help)')); return true; }
+    if (!h) { yield* sayShow(who, { icon: 'caliente' }, T('¡Uf! ¡Qué [caliente:calor]!', 'Phew! So hot! (an ice cream from Doña Nieves would help)')); return true; }
     bag().take('helado', { q: null }); st().hot.d = day(); G.audio.jingle('item'); G.st.autosave();
     const f = G.field, n = f && npcAt(f, who); if (n) for (let k = 0; k < 3; k++) CK.puff('heart', n.x * TL + 8 + k * 5, n.y * TL - 6, { life: 50, vy: -0.4 });
     G.state.stars++; G.audio.sfx('star');
@@ -649,11 +649,11 @@
     { auto: 'playa', when: c => allIn(c), run: function* (f, c) { // they swim away
       c.data.swim = G.frame;
       yield* G.intro.watch('nadar', { who: 'marina', prompt: '¡A [nadar]!', en: 'Off they swim!', act: function* () { G.audio.sfx('swing'); yield 50; },
-        ask: '¡Las [tortuga:tortuguitas]... ¡...!', askEn: 'The baby turtles... what are they doing?', known: othersFor('nadar', ['caliente', 'arena', 'mar']) });
+        ask: 'Las [tortuga:tortuguitas]... ¡...!', askEn: 'The baby turtles... what are they doing?', known: othersFor('nadar', ['caliente', 'arena', 'mar']) });
       const sp = (f.def.dogSpots || []).find(s => s.id === 'playa_olas'), n = CK.dog(f);
       if (sp && n) { yield* CK.walk(f, n, sp.at[0], sp.at[1], 5); n.dir = 'down'; yield* G.pet.play('jump'); for (let i = 0; i < 10; i++) CK.puff('drop', n.x * TL + 12 + (Math.random() - 0.5) * 14, n.y * TL + 10, { vy: -1.5 - Math.random(), vx: (Math.random() - 0.5) * 1.6, g: 0.12, life: 36 }); G.audio.sfx('swing'); }
       yield* quiz('marina', '¿Y {dog}?', 'And {dog}? What is he doing?', 'nadar', ['caliente', 'arena', 'elsol']);
-      yield* sayShow('marina', 'mar', T(met('adios') ? '¡[adios:Adiós], [tortuga:tortuguitas]!' : '¡Bye, bye, [tortuga:tortuguitas]!', 'Bye, little turtles! They are safe in the sea.'));
+      yield* sayShow('marina', 'mar', T('¡[adios:Adiós], [tortuga:tortuguitas]!', 'Bye, little turtles! They are safe in the sea.'));
       CK.confetti();
     } },
   ], {

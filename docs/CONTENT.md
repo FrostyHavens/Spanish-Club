@@ -50,6 +50,12 @@ Write dialogue as `T('Spanish', 'English')`. The English only shows with the par
 - Keep it to a few words. Let pictures and actions carry the meaning.
 - Mark vocabulary words with `[id]`, or `[id:shown form]` for a plural or other form: `'[tres] [manzana:manzanas], ¿[porfavor]?'`. How it's drawn follows the word model (`src/words.js`): a word the child hasn't **met** is only its picture (the voice still says it), a met word is its picture plus the blue word, a known word just the blue word, a remembered one the gold word. Appearing in a line (or on a card, in the bag, on a banner) never meets a word: only an introduction does (below).
 - Plain words (grammar, names) are fine. They're understood from context.
+- A word that starts a sentence is drawn with a capital (`'¡[hola], {name}!'` shows ¡Hola, Ana!), so write the token as it is.
+- A line built by code around a word (`'¿Y ' + ... + '?'`) never hard-codes the article: `G.requests.the(id, o)` takes
+  it from the word (`'¿Y ' + G.requests.the(k) + '?'` -> ¿Y la [cabra]?; `{pre: 'a'}` al / a la, `{un: 1}` un / una,
+  `{pl: 1}` the plural, `{my: 'tu'}` tu / tus, `{cap: 1}` a capital), `G.requests.lo(id)` / `.o(id, pl)` give ¡Búscalo! /
+  ¡Búscala! and ¿Cuántos? / ¿Cuántas?. Register the line in `G.requests.LINES` so `tools/test-spanish.js` runs every
+  word through it.
 - Write `{name}` for the player's name and `{boy form/girl form}` for words that change with the character's gender: `'¡Bienvenid{o/a}, {name}!'`, `'Eres un{/a} gran carter{o/a}.'` These work in dialogue, questions and the English text.
 
 ## The word model (`src/words.js`, `docs/LEARNING_DESIGN.md`)
