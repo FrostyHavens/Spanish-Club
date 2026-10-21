@@ -40,6 +40,7 @@
   H.ZONE = { paco: 'playa', marina: 'playa', nieves: 'playa', tere: 'playa', elena: 'bosque', lupe: 'bosque', ana: 'juegos', pablo: 'juegos', chuy: 'juegos',
     abuela: 'abuelos', abuelo: 'abuelos', bebe: 'abuelos', lucho: 'montana', mateo: 'montana', lola: '*' };
   H.WHO = H.TOWN.concat(Object.keys(H.ZONE));
+  H.FEM = ['mama', 'luna', 'rosa', 'sofia', 'marta', 'ines', 'lucia', 'marina', 'nieves', 'tere', 'elena', 'lupe', 'ana', 'abuela', 'bebe', 'lola']; // for "amigas"
   H.zoneOf = npc => H.ZONE[npc] || (H.TOWN.includes(npc) ? 'villa' : null);
   H.inZone = z => (z === 'villa' ? H.TOWN.slice() : Object.keys(H.ZONE).filter(n => H.ZONE[n] === z));
   // what each friend likes as a gift (word ids; Lucía: a pink flower). The zones' people like things to carry from
@@ -304,7 +305,7 @@
         ctx.fillStyle = '#88c8f8'; ctx.fillRect(cx - 58, cy - 36, 116, 64);
         H.face(ctx, 'player', cx - 56, cy - 34, 56, this.t); H.face(ctx, this.npc, cx, cy - 34, 56, this.t);
         G.text(ctx, '\u0003', cx - 3, cy - 40 + 2, '#f04878', null);
-        G.textC(ctx, G.fill('¡Mejores amigos!'), cx, cy + 34, '#a05020', null);
+        G.textC(ctx, G.fill(G.st.isGirl() && H.FEM.includes(this.npc) ? '¡Mejores amigas!' : '¡Mejores amigos!'), cx, cy + 34, '#a05020', null);
       }
       ctx.restore();
       const nm = G.nameOf(this.npc) || G.dogName();

@@ -973,7 +973,7 @@
       c.data.gone = 1; const bb = f.npc('bebe'); if (bb) bb.hidden = true;
       AN.tone('sine', 700, 900, 0.2, 0.05); AN.tone('sine', 800, 1000, 0.2, 0.05, 0.25);
       yield* meetW('bebe', { who: 'abuela', prompt: '¿Y el [bebe:bebé]?', en: 'And where is the baby? She was on the rug a moment ago!', show: 'bebe', known: othersFor('bebe', ['abuela', 'abuelo', 'familia', 'perro']) });
-      yield* sayShow('abuela', { icon: 'huella' }, T('¡Búscalo, {name}!', 'Find her, {name}! She crawled outside... (follow the little hand prints)'));
+      yield* sayShow('abuela', { icon: 'huella' }, T('¡Búscalo, {name}!', 'Find the baby, {name}! She crawled outside... (follow the little hand prints)'));
     } },
     { spot: { map: 'abuelos', at: BABY_AT, icon: 'bebe' }, run: function* (f, c) { // by the pond with the ducks, giggling
       G.audio.sfx('select'); AN.cry('pato');
