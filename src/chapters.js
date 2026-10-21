@@ -30,6 +30,8 @@
 //    asks 5 of them (.needsReview(), .review(who)), but nothing waits for it)
 //   'morning'   a morning chapter opens only as the first chapter of a session (a new day, a night at home)
 //   'evening'   an evening chapter opens only in the evening at home (after C8 the sunset comes ~5 minutes later)
+//   (a chapter done whose line then waits for the morning, or has no more, is the day's story: after 6 minutes of
+//    play the sun sets a minute later: G.day.storyDone)
 // A started chapter can always be finished. While the next chapter waits, its giver shows a night-blue moon bubble
 // with "z z" floating up out of it ({icon: 'dormir', wait: true, sleep: true}: after the night; 'evening': the moon alone,
 // {icon: 'noche', night: true}: tonight); the hint hand and the guide pass it by (the guide points to the day's play,
@@ -142,6 +144,7 @@
     const sc = scripts[id]; if (sc && sc.o.after) yield* sc.o.after(f, CH.ctx(id)); // (the last chapter: the diploma)
     const nx = CH.next(CH.lineOf(id));
     if (nx && CH.def(nx).when === 'evening' && !CH.gate(nx, { evening: true }) && G.day && G.day.bring) G.day.bring(300); // (C9: the sunset comes sooner)
+    else if ((!nx || ['morning', 'unwritten'].includes(CH.gate(nx))) && G.day && G.day.storyDone) G.day.storyDone(); // (the day's story is done: the evening comes soon, day.js)
     restage(f);
     S.autosave();
   }

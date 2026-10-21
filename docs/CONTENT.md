@@ -15,7 +15,9 @@ in `content/es/words.js` (pictures in `src/icons.js`) and its animals (`G.animal
 (`G.maps.<id>`: exits with `G.zones.edge(...)`, `posts`, `dogSpots`, `animals`, `npcs` with `G.zones.lola`,
 `G.zones.nico`, `G.mapKit.canelo`), its things to pick up (`G.carry.SOURCES`), its hiding places (`G.seek.SPOTS`), its
 favours (`G.favores.OFFERS`), its zone (`G.zones.add({ id, name, icon, music, pos, maps, path, bus, entry, animals,
-habitat, rare })`) and its story as its own quest line (`G.chapters.add({ id, line: '<zone>', ... })` and
+habitat, rare })`; every map's and zone's `music` is a song that loops in `src/music.js`, never a jingle such as `inn`,
+and `tools/test-day.js` checks them all; a `rare` animal at `'noche'` is what the night walk after the Hoy card goes
+to see, `src/day.js`) and its story as its own quest line (`G.chapters.add({ id, line: '<zone>', ... })` and
 `G.chapters.script(...)`: never waiting for Villa Sol's chapters). The full pattern, step by step, with the rules (any
 zone can be visited first: only universal words or the zone's own, introduced there), is "How to build a zone" in
 `docs/WORLD_PLAN.md`. Every zone is built (La playa, El bosque, El parque de juegos, La casa de los abuelos, La montaña:

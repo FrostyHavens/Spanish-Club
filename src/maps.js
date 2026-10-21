@@ -142,7 +142,7 @@
 
   // ---------- Mi casa ----------
   G.maps.casa = {
-    name: 'Mi casa', icon: 'casa', rows: MD.casa.rows, music: 'headquarters',
+    name: 'Mi casa', icon: 'casa', rows: MD.casa.rows, music: 'headquarters', indoor: true, // (a bus ride from home just fades: zones.js)
     things: { at: { '7,5': 'cama' } }, // world.js: the beds say "la cama" (yours, and Canelo's cushion)
     // after sunset your bed is where the day ends (the guide's arrow is on it, guide.js): a tap and it's good night
     poke: (f, x, y) => { if (f.map.get(x, y) !== 'j' || !(G.day && G.day.over()) || f.evening) return false; f.tasks.add(G.day.evening(f)); return true; },
