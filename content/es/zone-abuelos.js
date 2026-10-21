@@ -733,7 +733,7 @@
   // Abuela is in her kitchen; for the photo (chapter 3, once you've found the baby) she waits on the porch
   const photoTime = () => { const c = CH.ctx('abuelos3'); return CH.active('abuelos3') && c && c.data && c.data.gone; };
   G.maps.abuelos = {
-    name: 'La casa de los abuelos', icon: 'abuelos', rows: MD.abuelos.rows, music: 'inn',
+    name: 'La casa de los abuelos', icon: 'abuelos', rows: MD.abuelos.rows, music: 'rancho',
     exits: [Z.edge(IN[0], 0, 'camino_abuelos', 6, 22, 'up'), { x: DOOR[0], y: DOOR[1], to: 'abuelos_casa', tx: CDOOR[0], ty: CDOOR[1] - 1, dir: 'up' }],
     posts: [{ at: P('abuelos', 'post'), zone: 'abuelos' }],
     // the dog's things to do: dig in the garden (a carrot), snatch a sock off the line (a tug of war), chase the turkeys
@@ -1054,7 +1054,7 @@
   // =====================================================================
   const bus = P('abuelos', 'bus'), busIn = P('abuelos', 'busIn');
   Z.add({
-    id: 'abuelos', name: 'La casa de los abuelos', en: 'the grandparents\' house', icon: 'abuelos', music: 'inn', pos: [78, 176],
+    id: 'abuelos', name: 'La casa de los abuelos', en: 'the grandparents\' house', icon: 'abuelos', music: 'rancho', pos: [78, 176],
     maps: ['abuelos', 'abuelos_casa'], path: 'camino_abuelos',
     bus: { map: 'abuelos', at: bus }, entry: { map: 'abuelos', x: busIn[0], y: busIn[1], dir: 'down' },
     animals: KINDS, // the album page, in order

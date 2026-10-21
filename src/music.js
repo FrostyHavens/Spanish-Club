@@ -385,6 +385,33 @@
   }
 
   // =====================================================================
+  // RANCHO — G major waltz (3/4), warm and homey: the grandparents' ranch and the barn. A 8 | B 8 | A' 8
+  // (flute tune, the harp strumming like a guitar on 2 and 3, a borrowed Cm for a cosy turn)
+  // =====================================================================
+  {
+    const pA = prog('G | D/F# | Em | C | G | Am | D | D7', 3);
+    const pB = prog('G | G7 | C | Cm | G | D | G | D7', 3);
+    const pA2 = prog('G | D/F# | Em | C | G | Am | D | G', 3);
+    const P = cat(pA, pB, pA2);
+    const a6 = 'o4 b4 o5 d4 g4 | o5 f+4. e8 d4 | o5 e4 d4 o4 b4 | o5 c2 e4 | o5 d4. o4 b8 g4 | o5 c4 e4 a4 |';
+    const mel = a6 + 'o5 g4 f+4 e4 | o5 d2 c4 |' +
+      'o4 b4 o5 d4 g4 | o5 f2 d4 | o5 e4 g4 o6 c4 | o5 e-2 c4 | o5 d4 o4 b4 o5 d4 | o5 a4. g8 f+4 | o5 g2. | o5 c4 o4 a4 f+4 |' +
+      a6 + 'o4 a4 o5 d4 f+4 | o5 g2. |';
+    const strum = voices(P, 3, 60, 'x4 n4 n4');
+    const beats = P.reduce((a, s) => a + s.beats, 0);
+    S.rancho = {
+      tempo: 92, loop: true, bpb: 3, tracks: [
+        { inst: 'flute', mml: 'v12 q7 ' + mel },
+        { inst: 'harp', mml: 'v8 ' + strum[2] },
+        { inst: 'harp', mml: 'v7 ' + strum[1] },
+        { inst: 'harp', mml: 'v6 ' + strum[0] },
+        { inst: 'bass', mml: 'v11 q6 ' + pat(P, 'R:4 x:4 2:4', 43) },
+      ],
+    };
+    if (Math.abs(beats - 72) > 1e-6) throw new Error('rancho length');
+  }
+
+  // =====================================================================
   // Jingles (loop: false)
   // =====================================================================
   S.victory = { // C major fanfare, 8 beats @132 ≈ 3.6 s
