@@ -309,7 +309,7 @@
       if (this.mic && (!won || won.spoken)) this.mic.draw(ctx);
     }
   }
-  G.choose = function (opts) { const w = new G.Wait(); const s = new Choice(opts, w); w.scene = s; G.push(s); return w; };
+  G.choose = function (opts) { const a = opts.choices && opts.choices[opts.answer]; G.saidNote(opts.who || '', '? ' + (opts.prompt || '') + ' ' + ((a && a.word) || '')); const w = new G.Wait(); const s = new Choice(opts, w); w.scene = s; G.push(s); return w; };
 
   // ---------- Ask until right ----------
   // q: {prompt, en, show, choices, answer: index, layout, learn, who, display, mask, intro, review, credit, reintro}

@@ -227,7 +227,7 @@
     const eu = G.errands.update, et = G.errands.targets, ew = G.errands.waitsIn;
     G.errands.update = function (f) { eu(f); FV.update(f); };
     G.errands.targets = function (f) { return et(f).concat(FV.targets(f)); };
-    G.errands.waitsIn = m => ew(m) || FV.waitsIn(m);
+    G.errands.waitsIn = (m, o) => ew(m, o) || FV.waitsIn(m);
   }
 
   // ---------- Luna's palabra del día ----------

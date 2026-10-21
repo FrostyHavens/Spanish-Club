@@ -73,6 +73,7 @@
   CH.def = id => (D().chapters || []).find(c => c.id === id) || null;
   CH.script = function (id, beats, opts) { scripts[id] = { beats, o: opts || {} }; };
   CH.written = id => !!scripts[id];
+  CH.scriptOf = id => scripts[id] || null; // (tests: a chapter's beats, its places)
   CH.writtenIds = () => CH.ids().filter(CH.written);
   // the badge rows (Misiones, the diploma): the chapters (and any older errands still listed in tailOrder: none now)
   // (Villa Sol's line: the diploma's story; a zone's chapters show their badge when done but don't join these rows)
@@ -394,13 +395,15 @@
     if (b.door === f.mapId) { const ex = (f.def.exits || [])[0]; if (ex) out.push({ x: ex.x * T + 12, y: ex.y * T + 12, door: true, ch: L.id }); }
     return out;
   };
-  // does something wait inside map m (for the hand at a door)?
-  CH.waitsIn = function (m) {
+  // does something wait inside map m (for the hand at a door)? o.started: only a chapter going on (the guide: a chapter
+  // not started yet is only a suggestion, offered by its own rules, so it never sends you through a door for one:
+  // docs/AUDIT_2026-10.md C1, in and out of the front door for Mamá's puppy game after "go explore")
+  CH.waitsIn = function (m, o = {}) {
     if (CH.needsReview() && m === (CH.reviewer() === 'luna' ? 'escuela' : 'casa')) return true;
     if (m === 'villa' && G.field && G.field.mapId !== 'villa' && !(G.pet && G.pet.npc(G.field)) && CH.nudge()) return true; // (Canelo waits outside with his "?")
-    return lives().some(L => { if (!when(L)) return false;
+    return lives().some(L => { if (!when(L) || (o.started && !L.started)) return false;
     const b = L.b, def = G.maps[m];
-    if (spotsOf(b).some(sp => sp.map === m)) return true;
+    if (spotsOf(b).some(sp => sp.map === m && !(sp.off && sp.off(CH.ctx(L.id))))) return true; // (a place that's off: nothing there, as CH.targets)
     if (CH.autoOf(L) === m || b.door === m) return true;
     if (b.who && def && (def.npcs || []).some(n => n.id === b.who && (!n.cond || n.cond()))) return true;
     return false; });

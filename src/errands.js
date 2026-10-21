@@ -147,7 +147,7 @@
   E.runSpot = function* (f, sp) { yield* sp.run(f, sp); };
   E.spots = f => E.SPOTS.filter(sp => sp.map === f.mapId && spotIcon(sp));
   const hinted = sp => !sp.quiet && !(sp.nohint && sp.nohint()); // (a bubble that only says "not yet": no hand)
-  E.waitsIn = map => !!G.state && (E.SPOTS.some(sp => sp.map === map && hinted(sp) && spotIcon(sp)) || (!!G.chapters && G.chapters.waitsIn(map)));
+  E.waitsIn = (map, o) => !!G.state && (E.SPOTS.some(sp => sp.map === map && hinted(sp) && spotIcon(sp)) || (!!G.chapters && G.chapters.waitsIn(map, o))); // (o: chapters.js waitsIn)
   // where the hint hand may point (world px): the story's places, animals and people first (chapters.js), then side jobs
   E.targets = function (f) {
     if (!G.state || !f) return [];

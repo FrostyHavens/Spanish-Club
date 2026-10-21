@@ -289,23 +289,37 @@
     pagina: f => { const p = pageAt(f); return p ? Object.assign({ why: 'a page puzzle' }, p) : null; },
   };
   C.ORDER = ['pelota', 'manzana', 'flor', 'hueso', 'palo', 'huevo', 'carta', 'patos', 'pagina'];
+  // is play p here, in the part of the world you're in (the zone, or Villa Sol with its houses; Canelo: with you)?
+  const areaOf = m => (G.zones ? G.zones.area(m) : 'villa');
+  C.here = function (f, p) {
+    if (!p || !f) return false;
+    if (p.dog) return !!(G.pet && G.pet.npc(f));
+    if (p.who) { for (const m in G.maps) if (areaOf(m) === areaOf(f.mapId) && (G.maps[m].npcs || []).some(n => n.id === p.who && (!n.cond || n.cond()))) return true; return false; }
+    return !p.map || areaOf(p.map) === areaOf(f.mapId);
+  };
+  // the day's play: the first one that's here (in a zone, its own things and Canelo before anything back in town:
+  // AUDIT L9, the arrow vanished in La montaña when the play was in Villa Sol); none here: the first one anywhere, far
+  // (the guide shows the way there)
   C.plan = function (f) {
     if (!G.state || !f || !G.errands) return null;
-    const h = C.held();
+    const h = C.held(), far = [];
+    const here = g => { if (!g) return null; if (C.here(f, g)) return g; far.push(g); return null; };
+    let g = null;
     if (h) { // what you hold, to whoever would love it
-      const w = C.likerFor(h.it); if (w) return { why: 'give ' + h.id + ' to ' + w, who: w, icon: pic(h.id, h.col) };
-      if (h.id === 'carta' && !st().play.n.carta && reach('tomas')) return { why: 'the letter to Tomás', who: 'tomas', icon: pic('carta') };
-      if (h.id === 'huevo' && !G.errands.jobDone('huevo') && reach('rosa')) return { why: 'the egg to Rosa', who: 'rosa', icon: pic('huevo') };
-      if (h.id === 'pan' && chDone('c6') && !G.errands.jobDone('patos')) return { why: 'bread for the ducks', map: 'villa', at: [37, 21], icon: 'pato' };
-      if (C.DOG[h.id] && fetchOk() && (C.DOG[h.id] !== 'fetch' || (st().play.n[h.id] | 0) < 5)) return { why: (C.DOG[h.id] === 'fetch' ? 'throw it for Canelo' : 'Canelo: ' + h.id), dog: true, icon: pic(h.id, h.col) };
+      const w = C.likerFor(h.it); if (w && (g = here({ why: 'give ' + h.id + ' to ' + w, who: w, icon: pic(h.id, h.col) }))) return g;
+      if (h.id === 'carta' && !st().play.n.carta && reach('tomas') && (g = here({ why: 'the letter to Tomás', who: 'tomas', icon: pic('carta') }))) return g;
+      if (h.id === 'huevo' && !G.errands.jobDone('huevo') && reach('rosa') && (g = here({ why: 'the egg to Rosa', who: 'rosa', icon: pic('huevo') }))) return g;
+      if (h.id === 'pan' && chDone('c6') && !G.errands.jobDone('patos') && (g = here({ why: 'bread for the ducks', map: 'villa', at: [37, 21], icon: 'pato' }))) return g;
+      if (C.DOG[h.id] && fetchOk() && (C.DOG[h.id] !== 'fetch' || (st().play.n[h.id] | 0) < 5) && (g = here({ why: (C.DOG[h.id] === 'fetch' ? 'throw it for Canelo' : 'Canelo: ' + h.id), dog: true, icon: pic(h.id, h.col) }))) return g;
     }
     const k0 = day() % C.ORDER.length;
     for (let i = 0; i < C.ORDER.length; i++) {
       const id = C.ORDER[(k0 + i) % C.ORDER.length]; if (h && h.id === id) continue;
-      let g = null; try { g = C.PLAYS[id](f); } catch (e) { if (!C.err) { C.err = 1; console.error(e); } }
-      if (g) return g;
+      try { g = C.PLAYS[id](f); } catch (e) { g = null; if (!C.err) { C.err = 1; console.error(e); } }
+      if ((g = here(g))) return g;
     }
-    return C.more(f, h);
+    if ((g = here(C.more(f, h)))) return g;
+    return far.length ? Object.assign({ far: true }, far[0]) : null;
   };
   // When the day's plays are all done: not endless fetch, but the next of these in turn (the one played least today
   // first, ties in an order that turns each day): a trick for Canelo, petting him, water or a cookie for him, another

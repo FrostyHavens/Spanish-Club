@@ -16,6 +16,24 @@ async function newGame(g, o = {}) {
   g.explore = !!o.explore; g.dogName = o.dog == null ? null : o.dog;
 }
 const ZONES = ['playa', 'bosque', 'juegos', 'abuelos', 'montana'];
+// a child who only follows the guide's arrow for up to `sec` seconds of play (or until done() in the page): taps where
+// it points, plays whatever comes up -> the maps she went through (the one she started on first)
+async function followArrow(g, sec, done) {
+  const maps = [await g.ev(() => G.field.mapId)], f0 = await g.ev(() => G.frame);
+  while ((await g.ev(() => G.frame)) - f0 < sec * 60 && !(await g.ev(done))) {
+    await g.drive(() => G.top() === G.field && !G.field.locked && G.fade.a === 0, 'a scene on the way');
+    const m = await g.ev(() => G.field.mapId); if (m !== maps[maps.length - 1]) maps.push(m);
+    if (await g.ev(done)) break;
+    const a = await g.ev(() => { const a = G.guide.at; return a && !a.hidden ? { x: a.edge ? a.x : a.tx, y: a.edge ? a.y : a.ty } : null; });
+    if (!a) { await g.frames(30); continue; }
+    await g.tap(a.x, a.y);
+    await g.until(() => G.top() !== G.field || G.field.locked || G.fade.a > 0 || (!G.field.route && !G.field.player.moving), null, 'the walk', 30000);
+    await g.frames(6); // (through a door: the fade has begun)
+    await g.until(() => G.fade.a === 0 || G.top() !== G.field, null, 'the next map', 10000);
+    const m2 = await g.ev(() => G.field.mapId); if (m2 !== maps[maps.length - 1]) maps.push(m2);
+  }
+  return maps;
+}
 
 async function naming(browser) {
   const { ctx, g } = await open(browser, 'world-name', true);
@@ -51,7 +69,11 @@ async function skip(browser) {
     await g.until(() => G.field.mapId === 'villa' && G.fade.a === 0, null, 'out in town');
     await g.page.keyboard.up('ArrowDown');
     check('skip: the door opens: out in Villa Sol, the dog following', await g.ev(() => !!G.pet.npc(G.field)));
-    check('skip: in town the guide suggests exploring (a road out), never the puppy tutorial', await g.ev(() => { const w = (G.guide.goal(G.field) || {}).why || ''; return !/c1:/.test(w); }), await g.ev(() => (G.guide.goal(G.field) || {}).why));
+    check('skip: in town the guide suggests exploring (a road out), never the puppy tutorial nor back in the house', await g.ev(() => /^explore /.test((G.guide.goal(G.field) || {}).why || '')), await g.ev(() => (G.guide.goal(G.field) || {}).why));
+    // and a child who follows it gets out of town: never in and out of the front door (docs/AUDIT_2026-10.md C1: "job in
+    // casa" for the puppy's game nobody started, 49 door trips a minute)
+    const walked = await followArrow(g, 40, () => /^camino_/.test(G.field.mapId));
+    check('skip: following the arrow leads out of town onto a path, through no door twice (' + walked.join(' > ') + ')', /^camino_/.test(walked[walked.length - 1] || '') && new Set(walked).size === walked.length && walked.length <= 3, walked.join(' > '));
     // later, at home: Mamá's puppy game is still there
     await g.ev(() => G.goto('casa', 4, 4, 'up')); await g.fieldIdle('casa');
     await g.tapTile(3, 2);
@@ -259,6 +281,72 @@ async function album(browser) {
   } finally { await ctx.close(); }
 }
 
+// nothing the arrow points at hides under a corner button (docs/AUDIT_2026-10.md H10: the grandparents' bus stop under the
+// deck of cards, a tap where the arrow pointed opened the menu). Every map's ways out, bus stops, the dog's spots,
+// people, side jobs, hiding places, things to pick up and the story's places, seen from every tile she can stand on
+// with it on screen: wherever it falls under a corner button, the arrow is drawn clear of the button and a tap on the
+// target goes to the target (guide.js wins); and no bus stop is under one while she walks along its row
+async function corners(browser) {
+  const { ctx, g } = await open(browser, 'world-corners', true);
+  try {
+    await fresh(g); await g.fieldIdle('villa');
+    const r = await g.ev(() => {
+      const T = G.TILE, targets = {}, add = (m, at, kind) => { if (G.maps[m] && Array.isArray(at)) (targets[m] = targets[m] || []).push({ x: at[0], y: at[1], kind }); };
+      for (const m in G.maps) {
+        const d = G.maps[m];
+        for (const e of d.exits || []) if (e.to) add(m, [e.x, e.y], 'the way to ' + e.to);
+        for (const sp of d.dogSpots || []) add(m, sp.at, 'dog spot ' + sp.id);
+        for (const n of d.npcs || []) if (n.id !== 'canelo') add(m, [n.x, n.y], n.id);
+      }
+      for (const z of G.zones.LIST) if (z.bus) add(z.bus.map, z.bus.at, 'bus stop');
+      for (const sp of G.errands.SPOTS) add(sp.map, sp.at, 'job ' + sp.id);
+      for (const sp of G.seek.SPOTS) add(sp.map, sp.at, 'hiding place ' + sp.id);
+      for (const s of G.carry.SOURCES) add(s.map, s.at, 'thing ' + s.id);
+      for (const id of G.chapters.ids()) { const sc = G.chapters.scriptOf(id); if (sc) for (const b of sc.beats) for (const sp of b.spots || (b.spot ? [b.spot] : [])) add(sp.map, sp.at, 'story ' + id); }
+      const out = { n: 0, maps: 0, under: 0, row: [], bad: [] }, hit = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+      for (const m in targets) {
+        const f = G.goto(m, 1, 1, 'down'); G.fade.a = 0; G.fade.target = 0; out.maps++;
+        const walk = (x, y) => { if (y < 0 || y >= f.map.h || x < 0 || x >= f.map.w) return false; const t = G.TERRAIN[f.map.get(x, y)] || G.TERRAIN['.']; return !(t.block || t.wall); };
+        const R = f.corners();
+        for (const t of targets[m]) {
+          out.n++;
+          for (let py = t.y - 9; py <= t.y + 9; py++) for (let px = t.x - 14; px <= t.x + 14; px++) {
+            if (!walk(px, py)) continue;
+            Object.assign(f.player, { x: px, y: py }); f.snapCam();
+            const sx = t.x * T + 12 - Math.round(f.cam.x), sy = t.y * T + 12 - Math.round(f.cam.y);
+            const box = { x: sx - 12, y: sy - 32, w: 24, h: 44 }, c = R.find(q => hit(box, q)); // (its spot: the tile and the sign or head over it)
+            if (!c || sx < 0 || sx >= G.W || sy < 0 || sy >= G.H) continue;
+            out.under++;
+            if (t.kind === 'bus stop' && Math.abs(py - t.y) <= 1) out.row.push(m + ' (' + t.x + ',' + t.y + ') from ' + px + ',' + py);
+            const a = G.guide.at = G.guide.place(f, { why: 'test', pts: [{ x: t.x * T + 12, y: t.y * T + 12, lift: 24 }] });
+            const tap = { x: Math.round((Math.max(box.x, c.x) + Math.min(box.x + box.w, c.x + c.w)) / 2), y: Math.round((Math.max(box.y, c.y) + Math.min(box.y + box.h, c.y + c.h)) / 2) };
+            const drawn = a.edge ? null : { x: a.x - 8, y: a.up ? a.y : a.y - 20, w: 16, h: 20 };
+            if (a.edge && sy >= 6) out.bad.push(m + ' ' + t.kind + ' from ' + px + ',' + py + ': an edge arrow for a target on screen');
+            else if (drawn && R.some(q => hit(drawn, q))) out.bad.push(m + ' ' + t.kind + ' from ' + px + ',' + py + ': the arrow on a corner button');
+            else if (!a.edge && !G.guide.wins(f, tap)) out.bad.push(m + ' ' + t.kind + ' from ' + px + ',' + py + ': a tap at ' + tap.x + ',' + tap.y + ' goes to the button');
+          }
+        }
+      }
+      G.guide.at = null;
+      return out;
+    });
+    console.log('    ' + r.n + ' places on ' + r.maps + ' maps; under a corner button from ' + r.under + ' spots');
+    check('corners: no bus stop sits under a corner button while she walks along its row (the grandparents\' stop moved down)', !r.row.length, r.row.join('; '));
+    check('corners: wherever a place falls under a corner button, the arrow is drawn clear of it and a tap on the place goes to the place', !r.bad.length, r.bad.slice(0, 8).join('; '));
+    // for real: the way out at the top of the grandparents' place (under the deck when she's a few steps to its left),
+    // the arrow on it (the beach asked for on the world map): a tap there walks out, the menu stays shut
+    await g.ev(() => { delete G.state.world.visited.playa; G.zones.visit('abuelos'); G.state.world.want = 'playa'; G.goto('abuelos', 24, 1, 'right'); });
+    await g.fieldIdle('abuelos'); await g.frames(10);
+    const a = await g.ev(() => { const a = G.guide.at, r = G.field.corners()[0]; return a && { why: a.why, tx: a.tx, ty: a.ty, x: a.x, y: a.y, up: a.up, under: a.tx >= r.x && a.tx < r.x + r.w && a.ty >= r.y && a.ty < r.y + r.h }; });
+    check('corners: the arrow points at the way out, under the deck of cards', !!a && /explore playa/.test(a.why) && a.under && a.up && a.y > 30, JSON.stringify(a));
+    await g.shot('exit_under_deck');
+    await g.tap(a.tx, a.ty);
+    await g.until(() => G.top().constructor.name === 'FieldMenu' || G.field.mapId === 'camino_abuelos', null, 'the tap on the way out', 20000);
+    check('corners: the tap went to the way out (not the menu)', await g.ev(() => G.field.mapId === 'camino_abuelos' && G.top().constructor.name !== 'FieldMenu'));
+    check('corners: no console errors', !g.errors.length, g.errors.join('\n'));
+  } finally { await ctx.close(); }
+}
+
 async function saves(browser) {
   const { ctx, g } = await open(browser, 'world-save', true);
   try {
@@ -277,4 +365,5 @@ async function saves(browser) {
   } finally { await ctx.close(); }
 }
 
-run('the open world', [['naming the dog', naming], ['skip: go explore', skip], ['no word budget', budget], ['paths to every zone', paths], ['bus and world map', bus], ['in a zone', zone], ['the album by zone', album], ['save and load', saves]]);
+const ONLY = (process.env.ONLY || '').split(',').filter(Boolean); // (ONLY=corners,skip: some sections)
+run('the open world', [['naming the dog', naming], ['skip: go explore', skip], ['no word budget', budget], ['paths to every zone', paths], ['bus and world map', bus], ['nothing under the corner buttons', corners], ['in a zone', zone], ['the album by zone', album], ['save and load', saves]].filter(([n]) => !ONLY.length || ONLY.some(o => n.includes(o))));

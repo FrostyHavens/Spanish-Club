@@ -328,15 +328,19 @@
   G.story.world = function () { const w = new G.Wait(); G.push(new WorldPage(w)); return w; };
 
   // ---------- the world map: three stars over each place, the letter over the place it's going to ----------
+  // (its picture is part of that place: a tap on it takes the bus there; the guide's arrow is over that place: AUDIT M5)
+  P.letterZone = () => { const it = P.letter(); return it ? P.zoneOf(it.to) : null; };
+  const letterAt = m => { const tz = P.letterZone(), n = tz && m.node(tz); return n ? { id: tz, x: n.x - n.r - 16, y: n.y - 2, w: 22, h: 22 } : null; };
+  Z.MAPTAPS.push(m => { const r = letterAt(m); return r ? [{ id: r.id, x: r.x - 4, y: r.y - 4, w: r.w + 8, h: r.h + 8 }] : []; });
+  Z.MAPGOAL.push(m => { const r = letterAt(m); return r && Z.visited(r.id) ? r.id : null; });
   Z.MAPDRAW.push(function (ctx, m) {
     for (const id of Z.ids()) {
       const n = m.node(id); if (!n || !(id === 'villa' || Z.visited(id))) continue;
       PR.drawStars(ctx, id, n.x, n.y - n.r - 11);
     }
-    const it = P.letter(); if (!it) return;
-    const tz = P.zoneOf(it.to), n = tz && m.node(tz); if (!n) return;
+    const it = P.letter(), r = letterAt(m); if (!it || !r) return;
     const b = Math.round(Math.sin(m.t / 7) * 2);
-    G.win(ctx, n.x - n.r - 16, n.y - 2 + b, 22, 22, { fill1: '#fffaf0', fill2: '#f0e4c8', alpha: 1 });
-    G.drawIcon16(ctx, { icon: 'carta', letter: it.to }, n.x - n.r - 13, n.y + 1 + b);
+    G.win(ctx, r.x, r.y + b, r.w, r.h, { fill1: '#fffaf0', fill2: '#f0e4c8', alpha: 1 });
+    G.drawIcon16(ctx, { icon: 'carta', letter: it.to }, r.x + 3, r.y + 3 + b);
   });
 })();

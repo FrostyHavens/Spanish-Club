@@ -9,11 +9,12 @@
 //   idle ~4 s      Canelo trots a few tiles toward the goal, barks and looks back at you
 // The goal, most important first: (on a night walk after the Hoy card, day.js: the night animal she came to see) >
 // the story's chapter (its beat: a person, a place, an animal, a door, a find-it puzzle; the next chapter's giver; a
-// review day's teacher) > home at sunset > a favour going on or offered > Tomás's
-// letter in your hands (to whoever it's for; another place: the bus stop, src/connect.js) > a zone's task > Nico's
+// review day's teacher) > home at sunset > a favour going on or offered > a place she asked for on the world map >
+// Tomás's letter in your hands (to whoever it's for; another place: the bus stop, src/connect.js; it waits while she's
+// in a place she picked herself) > a zone's task > Nico's
 // hide-and-seek (only the edge arrow: the peeking ears are the game; the arrow over one after a long wait) > Canelo's
 // "?", Luna's palabra del día, Inés's pages, a side job, anyone else with a bubble > (the next chapter, then Tomás's
-// letter of the day, exploring) > the day's play (src/carry.js: what
+// letter of the day, exploring, a letter that waited) > the day's play (src/carry.js, this part of the world first: what
 // you hold to whoever would love it, or Canelo; empty-handed, today's next play: fetch, an apple for Luna, a flower for
 // Mamá, the bone, an egg for Rosa, bread for the ducks, a page puzzle... and a game of fetch is always there). So there
 // is never a dead end: between chapters, while today's new words are used up, before the evening chapter, the arrow
@@ -21,9 +22,16 @@
 // home your bed. A favour that sends you to a place or an animal named only by its word is the word being
 // remembered: its arrow (and Canelo's trot) only come as a hint, after ~10 s of standing about.
 // The hint hand (hint.js) taps on the same goal after a few seconds of doing nothing, when it's on screen.
+// Following the arrow never goes round in circles (docs/AUDIT_2026-10.md C1-C3): "go in there" and "do this" come from the
+// same rules (a door is shown for something only when the arrow would show that thing inside: the waitsIn of a map
+// counts a chapter only once it's going on; a bubble shows only when its talk can run, src/phrases.js canRun), and a
+// safety net below sets aside a goal that led nowhere anyway. Nothing it points at hides under a corner button: the
+// arrow is never drawn on one, and a tap on its target there goes to the target (wins, field.js).
 // API: G.guide.goal(f) -> {why, map, pts: [{x, y, lift, npc?, icon?}] (world px; several = a choice), soft, via: 'door'}
 //   or null; G.guide.at (what is drawn now, screen px: {x, y, edge, dir, why, marks}: tests and tools/naivebot.js read
-//   it); G.guide.handAt(f) (hint.js); G.guide.update(f) / .draw(f, ctx) (field.js).
+//   it); G.guide.handAt(f) (hint.js); G.guide.update(f) / .draw(f, ctx) (field.js); .wins(f, tap) (field.js: the
+//   target under a corner button wins the tap); .loops (the safety net's log: tools/test-live.js); .place(f, g) (where
+//   the arrow for goal g goes now, tests); .arrow(ctx, x, y, small, col, up) (the arrow itself: the world map, zones.js).
 'use strict';
 (function () {
   const GD = G.guide = {}, T = G.TILE;
@@ -40,7 +48,7 @@
   const area = m => (G.zones ? G.zones.area(m) : 'villa');
   const curArea = () => (G.field ? area(G.field.mapId) : 'villa');
   const near = m => !m || area(m) === curArea();
-  const mapOfNpc = who => { const L = []; for (const m in G.maps) if ((G.maps[m].npcs || []).some(n => n.id === who && (!n.cond || n.cond()))) L.push(m); return L.find(near) || null; };
+  const mapOfNpc = (who, far) => { const L = []; for (const m in G.maps) if ((G.maps[m].npcs || []).some(n => n.id === who && (!n.cond || n.cond()))) L.push(m); return L.find(near) || (far && L[0]) || null; }; // (far: anywhere, the day's play from a zone)
   const mapOfAnimal = kind => { for (const m in G.maps) if ((G.maps[m].animals || []).some(a => a.kind === kind) && near(m)) return m; return null; };
   // a person as a goal (world px of their middle; lift: how far above it the arrow goes, over the head and the bubble)
   const person = (n, why) => ({ x: n.x * T + (n.ox || 0) + 12, y: n.y * T + (n.oy || 0) + 12, lift: alerting(n) ? 44 : 24, npc: n, why });
@@ -141,22 +149,26 @@
     const Lc = G.chapters && G.chapters.live(), later = Lc && !Lc.started && Lc.b && Lc.b.who; // (the next chapter's giver: a suggestion for later, chapterLater)
     const p = f.player, ns = f.npcs.filter(n => n.spec && !n.hidden && alerting(n) && !alerting(n).later && n.id !== later).sort((a, b) => Math.abs(a.x - p.x) + Math.abs(a.y - p.y) - Math.abs(b.x - p.x) - Math.abs(b.y - p.y));
     if (ns.length) return { why: 'bubble ' + ns[0].id, pts: [person(ns[0])] };
-    if (E && E.waitsIn) for (const m in G.maps) if (m !== f.mapId && E.waitsIn(m)) return { why: 'job in ' + m, map: m, badge: { icon: G.maps[m].icon || 'pregunta' } };
+    // something inside another map: only what its own arrow would show there (a chapter not started yet is chapterLater's
+    // to offer, by its own rules: counting it here sent "go explore" in and out of the front door, AUDIT C1)
+    if (E && E.waitsIn) for (const m in G.maps) if (m !== f.mapId && E.waitsIn(m, { started: true })) return { why: 'job in ' + m, map: m, badge: { icon: G.maps[m].icon || 'pregunta' } };
     return null;
   }
-  // the day's play (carry.js): never a dead end
+  // the day's play (carry.js): never a dead end. Something in this part of the world first (carry.js plan); only when
+  // there is nothing here, the way to it (far: from a zone back to Villa Sol), so the arrow never just disappears
   function playGoal(f) {
     const C = G.carry; if (!C || !C.plan) return null;
     const p = C.plan(f); if (!p) return null;
-    const why = 'play: ' + p.why;
-    if (p.dog) { const n = G.pet && G.pet.npc(f); return n ? { why, play: true, pts: [Object.assign(person(n), { icon: p.icon })] } : { why, play: true, map: 'villa', badge: { icon: 'perro' } }; }
-    if (p.who) { const n = here(f, p.who); return n ? { why, play: true, pts: [person(n)] } : { why, play: true, map: mapOfNpc(p.who), badge: { who: p.who } }; }
+    const why = 'play: ' + p.why, far = !!p.far;
+    if (p.dog) { const n = G.pet && G.pet.npc(f); return n ? { why, play: true, pts: [Object.assign(person(n), { icon: p.icon })] } : { why, play: true, map: 'villa', far: true, badge: { icon: 'perro' } }; }
+    if (p.who) { const n = here(f, p.who); return n ? { why, play: true, pts: [person(n)] } : { why, play: true, map: mapOfNpc(p.who, far), far, badge: { who: p.who } }; }
     if (p.map === f.mapId) return { why, play: true, pts: [tileP(p.at[0], p.at[1], 20, { icon: p.icon })] };
-    return { why, play: true, map: p.map, badge: { icon: p.icon } };
+    return { why, play: true, map: p.map, far, badge: { icon: p.icon } };
   }
-  // the next chapter of Villa Sol's story, not started yet: offered after the things going on here (never a must)
-  // (chapter 1 after "go explore" in the opener: the puppy's games at home are the very last suggestion, never a pull)
-  const puppyLater = () => !!G.state && !!G.state.flags.dogSkip && !G.chapters.current() && G.chapters.next() === 'c1';
+  // the next chapter of the story here, not started yet: offered after the things going on here (never a must)
+  // (chapter 1 after "go explore" in the opener: the puppy's games at home are the very last suggestion, never a pull.
+  // That's Villa Sol's own line only: in a zone, its story's next chapter is offered as usual, AUDIT C3)
+  const puppyLater = () => { if (!G.state || !G.state.flags.dogSkip) return false; const L = G.chapters.live(); return !!L && L.id === 'c1' && !L.started; };
   function chapterLater(f) { if (puppyLater()) return null; GD.laterChapter = true; try { return chapterGoal(f); } finally { GD.laterChapter = false; } }
   function puppyGoal(f) { if (!puppyLater()) return null; GD.laterChapter = true; try { return chapterGoal(f); } finally { GD.laterChapter = false; } }
   // the zone's own things: the dog's spot, ... (zones.js); the way to a place asked for on the world map, or not
@@ -166,18 +178,23 @@
   const zoneTask = f => (G.zones && G.zones.task ? G.zones.task(f) : null);
   const wantGoal = f => (G.zones && G.zones.want() ? G.zones.exploreGoal(f) : null);
   const exploreGoal = f => (G.zones ? G.zones.exploreGoal(f) : null);
-  // Tomás's letter in your hands (connect.js): to whoever it's for; in another place, by the bus (or the way there)
-  const postGoal = f => (G.post && G.post.goal ? G.post.goal(f) : null);
+  // Tomás's letter in your hands (connect.js): to whoever it's for; in another place, by the bus (or the way there).
+  // Her own pick on the world map comes first (AUDIT M5: the open world listens to her): the place she asked for leads
+  // (wantGoal, before the letter), and while she's on her way to a place she picked, or in it, the letter waits until
+  // the things to do there are done (postLater), never dragging her back to the bus stop
+  const waits = () => { const z = G.zones && G.zones.picked ? G.zones.picked() : null; return !!z && !!G.post && !!G.post.letter() && G.post.letterZone() !== z; };
+  const postGoal = f => (G.post && G.post.goal && !waits() ? G.post.goal(f) : null);
+  const postLater = f => (G.post && G.post.goal && waits() ? G.post.goal(f) : null);
   const postOffer = f => (G.post && G.post.offerGoal ? G.post.offerGoal(f) : null); // (Tomás's letter of the day: after the story's next chapter)
   // the night walk after the Hoy card (day.js): the arrow on the night animal she came to see, before anything else
   const nightWalk = f => (G.day && G.day.walkGoal ? G.day.walkGoal(f) : null);
-  const TIERS = [nightWalk, chapterGoal, sunsetGoal, favourGoal, postGoal, zoneTask, seekGoal, wantGoal, reviewGoal, zoneGoal, chapterLater, postOffer, exploreGoal, playGoal, puppyGoal];
+  const TIERS = [nightWalk, chapterGoal, sunsetGoal, favourGoal, wantGoal, postGoal, zoneTask, seekGoal, reviewGoal, zoneGoal, chapterLater, postOffer, exploreGoal, postLater, playGoal, puppyGoal];
 
   // on another map: the door that leads there (from town, its door; from a building, the way out)
   function viaDoor(f, g) {
     const e = G.zones ? G.zones.route(f.mapId, g.map) : null;
     if (!e) return null;
-    return Object.assign({}, g, { via: 'door', pts: [tileP(e.x, e.y, e.edge ? 16 : f.mapId === 'villa' ? 28 : 16, { door: true })] });
+    return Object.assign({}, g, { via: 'door', to: e.to, pts: [tileP(e.x, e.y, e.edge ? 16 : f.mapId === 'villa' ? 28 : 16, { door: true })] });
   }
   GD.goal = function (f) {
     if (!G.state || !f) return null;
@@ -185,11 +202,55 @@
       let g = null;
       try { g = tier(f); } catch (e) { if (!GD.err) { GD.err = true; console.error(e); } }
       if (!g) continue;
-      if (g.pts && g.pts.length) return g;
-      if (g.map && g.map !== f.mapId && (g.home || g.far || near(g.map))) { const d = viaDoor(f, g); if (d) return d; }
+      if (g.pts && g.pts.length) { if (aside(f, g)) continue; return g; }
+      if (g.map && g.map !== f.mapId && (g.home || g.far || near(g.map))) { const d = viaDoor(f, g); if (d && !aside(f, d)) return d; }
     }
     return null;
   };
+
+  // ---------- the safety net: never round in circles ----------
+  // Whatever the tiers say, following the arrow must not loop. Two ways it could, if one part of the game ever promised
+  // what another can't give: a round trip (the arrow sent you through a door for a goal and, without pointing at a
+  // single thing on the maps in between, brought you back to where that same goal sends you through that door again: the
+  // front door, AUDIT C1), or the same talk (the arrow led you to someone, and after their talk it's straight back on
+  // them for the same reason, and the talk was word for word the one before: Lola's hello, AUDIT C2; a talk that gets
+  // something done moves the arrow on, so a shell given or a pail poured is never one). That goal is set aside for a few
+  // minutes (the next tier leads) and GD.loops logs it: tools/test-live.js fails if it ever fires, so it's a net for her,
+  // never a cover for a bug.
+  GD.ASIDE = 3 * 60 * 60; // frames a goal stays set aside (~3 minutes of play)
+  GD.loops = [];
+  const set = {}, said = {}; // set aside: map|why -> frame; the last talk the arrow led to: map|why -> its lines
+  let trip = null, prevMap = null, lastDoor = null, talk = null, ended = null, shown = null;
+  function aside(f, g) { const k = f.mapId + '|' + g.why, t = set[k]; if (t == null) return false; if (G.frame - t > GD.ASIDE) { delete set[k]; return false; } return true; }
+  function loop(kind, f, why) { set[f.mapId + '|' + why] = G.frame; GD.loops.push({ kind, map: f.mapId, why, frame: G.frame }); if (GD.loops.length > 20) GD.loops.shift(); }
+  // a round trip: g is the goal shown now (free on the map) -> true when it was set aside (look again)
+  function tripCheck(f, g) {
+    if (f.mapId !== prevMap) { // a new map: through the door the arrow showed, or your own way (that ends the trip)
+      if (!(lastDoor && lastDoor.map === prevMap && lastDoor.to === f.mapId)) trip = null; else if (trip) trip.away = true;
+      prevMap = f.mapId; lastDoor = null;
+    }
+    if (!g) return false;
+    const p = g.pts && g.pts.length === 1 ? g.pts[0] : null, ex = p && p.door ? f.exitAt(Math.floor(p.x / T), Math.floor(p.y / T)) : null;
+    if (!ex || !ex.to) { trip = null; return false; } // (the arrow points at something here, not a way out: whatever comes next is new)
+    lastDoor = { map: f.mapId, to: ex.to };
+    if (trip && trip.away && trip.from === f.mapId && trip.why === g.why) { loop('trip', f, g.why); trip = null; return true; }
+    if (!trip || (!trip.away && trip.from === f.mapId)) trip = { from: f.mapId, why: g.why, away: false };
+    return false;
+  }
+  // the same talk: a talk begins (the map locked) with the person the arrow was on; it ends (free again) -> ended
+  function talkCheck(f, free) {
+    if (!free) { if (!talk && shown && f.talkWith && shown.pts && shown.pts.length === 1 && shown.pts[0].npc === f.talkWith) talk = { k: f.mapId + '|' + shown.why, why: shown.why, npc: f.talkWith, n0: G.said.n }; return; }
+    if (talk) { const lines = G.saidSince(talk.n0).join(' | '); if (lines) ended = Object.assign(talk, { lines }); talk = null; }
+    f.talkWith = null;
+  }
+  // ...and the goal right after it (g): back on the same person for the same reason, and word for word the last talk
+  // there? -> true when it was set aside (look again)
+  function againCheck(f, g) {
+    const e = ended; ended = null; if (!e) return false;
+    if (!(g && g.pts && g.pts.length === 1 && g.pts[0].npc === e.npc && f.mapId + '|' + g.why === e.k)) { delete said[e.k]; return false; } // (the arrow moved on: something got done)
+    if (said[e.k] === e.lines) { delete said[e.k]; loop('talk', f, e.why); return true; }
+    said[e.k] = e.lines; return false;
+  }
 
   // ---------- every frame (field.js, after the map's update) ----------
   const busy = () => G.input.ptr.down || !!G.input.tap() || Object.keys(G.pressed).length > 0 || Object.keys(G.keys).some(k => G.keys[k]);
@@ -200,8 +261,11 @@
     if (trotCool > 0) trotCool--;
     const dog = trotted && trotted.n;
     if (dog && (f.player.moving || f.locked) && dog.amb && dog.amb.hold > 0 && !dog.busy) { dog.amb.hold = 0; trotted = null; } // you're off: he follows again
-    const g = free(f) ? GD.goal(f) : null;
-    lastGoal = g;
+    const fr = free(f);
+    talkCheck(f, fr);
+    let g = fr ? GD.goal(f) : null;
+    if (fr) { const a = againCheck(f, g), b = tripCheck(f, g); if (a || b) g = GD.goal(f); } // (both keep their books)
+    lastGoal = g; if (g) shown = g;
     if (g) GD.lastWhy = g.why; // (kept while the map is locked: Canelo's menu asks what the day's play wanted, carry.js petWant)
     if (!g) { GD.at = null; shownT = 0; return; }
     shownT++;
@@ -209,13 +273,18 @@
     if (idle >= GD.IDLE_TROT && !trotCool && !g.soft && !g.choice && !(g.quiz && idle < GD.IDLE_SOFT)) trot(f, g);
   };
   // where the arrow (or arrows) go on screen now
+  // the corner buttons (field.js corners: the deck top-right, what you hold top-left): an arrow is never drawn on one
+  const corners = f => (f.corners ? f.corners() : []);
+  const hits = (R, x, y, w, h) => R.some(r => x < r.x + r.w && x + w > r.x && y < r.y + r.h && y + h > r.y);
   function layout(f, g) {
-    const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
-    const scr = (p, small) => { // (too near the top of the screen for the arrow: under it, pointing up)
-      const tx = Math.round(p.x - cx), ty = Math.round(p.y - cy), y = ty - (p.lift || 20);
-      return y < (small ? 11 : 16) ? { x: tx, y: ty + 14, tx, ty, up: true } : { x: tx, y, tx, ty };
+    const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y), R = corners(f);
+    const scr = (p, small) => { // (too near the top of the screen for the arrow, or over a corner button: under it, pointing up)
+      const tx = Math.round(p.x - cx), ty = Math.round(p.y - cy), y = ty - (p.lift || 20), h = small ? 14 : 20; // (its height with the bob)
+      if (y >= (small ? 11 : 16) && !hits(R, tx - 8, y - h, 16, h)) return { x: tx, y, tx, ty };
+      let uy = ty + 14; for (const r of R) if (hits([r], tx - 8, uy, 16, h)) uy = Math.max(uy, r.y + r.h + 2); // (pointing up from under the button, never on it)
+      return { x: tx, y: uy, tx, ty, up: true };
     };
-    const on = s => s.tx >= 6 && s.tx <= G.W - 6 && s.ty >= 14 && s.ty <= G.H - 4;
+    const on = s => s.tx >= 6 && s.tx <= G.W - 6 && s.ty >= 6 && s.ty <= G.H - 4; // (a way out on a map's top row is on screen, over the arrow: as an edge arrow under it, a tap there walked nowhere)
     if (g.choice) {
       const marks = g.pts.map(p => scr(p, true)).filter(on);
       if (marks.length) return { why: g.why, choice: true, marks, x: marks[0].x, y: marks[0].y, tx: marks[0].tx, ty: marks[0].ty };
@@ -240,6 +309,16 @@
     const a = GD.at; if (!a || a.edge || a.choice || a.soft || a.hidden || !free(f)) return null;
     return { x: a.tx, y: a.ty };
   };
+  // a tap on what the arrow points at, where a corner button covers it (a bus stop at the top of a map, under the deck):
+  // the target wins the tap, not the button (field.js asks before the buttons; AUDIT H10). Its spot: the tile and the
+  // sign or head drawn above it
+  GD.wins = function (f, tap) {
+    const a = GD.at; if (!a || !tap || a.edge || a.hidden || !free(f)) return false;
+    const R = corners(f).filter(r => tap.x >= r.x && tap.x < r.x + r.w && tap.y >= r.y && tap.y < r.y + r.h); if (!R.length) return false;
+    return (a.marks || [a]).some(m => tap.x >= m.tx - 16 && tap.x < m.tx + 16 && tap.y >= m.ty - 34 && tap.y < m.ty + 16 && hits(R, m.tx - 12, m.ty - 32, 24, 44));
+  };
+  GD.place = (f, g) => layout(f, g); // (tests: where the arrow for goal g would be drawn now)
+  GD.arrow = (ctx, x, y, small, col, up) => down(ctx, x, y, small, col || '#f8e060', up); // (the world map's arrow, zones.js)
 
   // ---------- Canelo trots toward the goal when you stand about ----------
   function trot(f, g) {
