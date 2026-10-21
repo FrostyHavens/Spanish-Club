@@ -1,0 +1,413 @@
+# Club de Español: 3-year intake model (sim.js output)
+
+Seeds: 4 per point (means shown); n grid: 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 3, 3.5, 4, 5, 6 new items per play day; runtime 257s.
+Engines: **game** = as built (8-day cap, a miss + right re-ask restores the box, ~15 engine-chosen reviews a session, quests ask random words of the zones visited); **ladder** = game + boxes 16/32/64/128 d; **steered** = game intervals but every practice moment can go to a due item; **proposed** = long ladder + honest lapses + steering.
+Policies: **content-first** = the open world as built (new items whenever the content has them); **review-first** = new items only once <= 5 due items are left.
+
+## Calibration (one average word, reviewed exactly when due, never missed; P(right) includes 3-card guessing on taps)
+
+- **game**: day 1: R 0.69, P(right) 0.76 -> S 1.3; day 3: R 0.86, P(right) 0.89 -> S 3.0; day 7: R 0.87, P(right) 0.90 -> S 5.9; day 15: R 0.87, P(right) 0.90 -> S 11.1; day 23: R 0.93, P(right) 0.94 -> S 15.9; day 31: R 0.95, P(right) 0.96 -> S 20.3; day 39: R 0.96, P(right) 0.97 -> S 24.6; day 47: R 0.97, P(right) 0.97 -> S 28.8; day 55: R 0.97, P(right) 0.98 -> S 32.8
+- **long**: day 1: R 0.69, P(right) 0.76 -> S 1.3; day 3: R 0.86, P(right) 0.89 -> S 3.0; day 7: R 0.87, P(right) 0.90 -> S 5.9; day 15: R 0.87, P(right) 0.90 -> S 11.1; day 31: R 0.86, P(right) 0.89 -> S 20.7; day 63: R 0.85, P(right) 0.89 -> S 38.1; day 127: R 0.84, P(right) 0.88 -> S 70.0; day 255: R 0.83, P(right) 0.87 -> S 128.3; day 383: R 0.90, P(right) 0.92 -> S 181.0
+
+## Play days by calendar
+
+| calendar | pattern | yr 1 | yr 2 | yr 3 | 3 yrs | per week | hours of play / yr |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| ideal | every day, no breaks | 365 | 366 | 365 | 1096 | 7.0 | 91 |
+| steady | weekdays 95%, weekends 75%, a 2-week summer trip, 1 week off at Christmas | 305 | 304 | 307 | 916 | 5.9 | 76 |
+| realistic | weekdays 90%, weekends 60%, 6-week summer (15%), 2-week winter (30%), a 3-7 day gap every ~60 days | 241 | 236 | 248 | 724 | 4.6 | 60 |
+| patchy | weekdays 75%, weekends 45%, 9-week summer (5%), 2-week winter (20%), a 4-12 day gap every ~35 days, a March lull (15%) | 150 | 146 | 145 | 441 | 2.8 | 37 |
+
+## Sustainable intake n* (new items per play day), realistic calendar
+
+content-first: recallable/met at month 36 >= 80% and retention months 25-36 >= 75%; review-first: year-3 normal-day intake >= 85% and retention months 25-36 >= 75%. Cell: n* (items/yr at n*; met -> recallable at month 36).
+
+| policy | engine | practice 40% | practice 55% | practice 70% | peak recallable mo 36 at 55% (n) |
+| --- | --- | --- | --- | --- | --- |
+| content-first | game | **1.25** (302/yr; 905 -> 744) | **1.5** (362/yr; 1086 -> 932) | **1.75** (422/yr; 1267 -> 1093) | 1031 (n 2) |
+| content-first | ladder | **1.5** (362/yr; 1086 -> 903) | **2** (483/yr; 1449 -> 1162) | **2.25** (543/yr; 1629 -> 1342) | 1162 (n 2) |
+| content-first | steered | **1.25** (302/yr; 905 -> 769) | **1.75** (422/yr; 1267 -> 1053) | **2.25** (543/yr; 1629 -> 1359) | 1108 (n 2.25) |
+| content-first | proposed | **1.25** (302/yr; 905 -> 821) | **2** (483/yr; 1449 -> 1183) | **2.5** (604/yr; 1811 -> 1486) | 1183 (n 2) |
+| review-first | game | < 0.5 | < 0.5 | < 0.5 | 191 (n 6) |
+| review-first | ladder | **0.75** (181/yr; 489 -> 476) | **0.75** (181/yr; 496 -> 484) | **0.75** (181/yr; 496 -> 486) | 943 (n 6) |
+| review-first | steered | < 0.5 | < 0.5 | < 0.5 | 368 (n 6) |
+| review-first | proposed | **1** (241/yr; 658 -> 637) | **1.5** (362/yr; 960 -> 928) | **1.75** (422/yr; 1142 -> 1105) | 1364 (n 5) |
+
+### The absorption ceiling: review first, then fill the rest of the practice time with new items (target 6 a play day)
+
+| calendar | engine | practice | new items yr 1 | yr 2 | yr 3 | per play day yr 1 / 2 / 3 | met mo 36 | recallable mo 36 | durable mo 36 | retention mo 25-36 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| ideal | proposed | 40% | 691 | 495 | 401 | 1.89 / 1.35 / 1.10 | 1587 | 1517 | 1478 | 90% |
+| ideal | ladder | 40% | 655 | 407 | 278 | 1.79 / 1.11 / 0.76 | 1340 | 1273 | 1235 | 92% |
+| ideal | proposed | 55% | 950 | 684 | 542 | 2.60 / 1.87 / 1.48 | 2176 | 2081 | 2028 | 90% |
+| ideal | ladder | 55% | 688 | 428 | 280 | 1.88 / 1.17 / 0.77 | 1396 | 1345 | 1321 | 95% |
+| ideal | proposed | 70% | 1210 | 875 | 690 | 3.31 / 2.39 / 1.89 | 2774 | 2651 | 2583 | 90% |
+| ideal | ladder | 70% | 711 | 432 | 277 | 1.95 / 1.18 / 0.76 | 1420 | 1373 | 1358 | 95% |
+| steady | proposed | 40% | 578 | 416 | 333 | 1.90 / 1.37 / 1.08 | 1327 | 1273 | 1244 | 90% |
+| steady | ladder | 40% | 536 | 329 | 233 | 1.76 / 1.08 / 0.76 | 1098 | 1050 | 1035 | 92% |
+| steady | proposed | 55% | 803 | 562 | 458 | 2.64 / 1.85 / 1.49 | 1822 | 1748 | 1707 | 90% |
+| steady | ladder | 55% | 588 | 339 | 260 | 1.93 / 1.11 / 0.84 | 1186 | 1144 | 1133 | 94% |
+| steady | proposed | 70% | 1003 | 701 | 581 | 3.29 / 2.30 / 1.89 | 2284 | 2191 | 2156 | 90% |
+| steady | ladder | 70% | 614 | 347 | 255 | 2.02 / 1.14 / 0.83 | 1216 | 1178 | 1166 | 95% |
+| realistic | proposed | 40% | 447 | 319 | 275 | 1.86 / 1.35 / 1.11 | 1042 | 998 | 977 | 89% |
+| realistic | ladder | 40% | 413 | 260 | 211 | 1.72 / 1.10 / 0.85 | 884 | 847 | 832 | 91% |
+| realistic | proposed | 55% | 612 | 423 | 374 | 2.54 / 1.79 / 1.51 | 1409 | 1352 | 1320 | 89% |
+| realistic | ladder | 55% | 471 | 283 | 222 | 1.96 / 1.20 / 0.90 | 976 | 943 | 932 | 94% |
+| realistic | proposed | 70% | 783 | 538 | 480 | 3.25 / 2.28 / 1.94 | 1800 | 1730 | 1705 | 89% |
+| realistic | ladder | 70% | 492 | 285 | 229 | 2.04 / 1.21 / 0.93 | 1006 | 973 | 963 | 94% |
+| patchy | proposed | 40% | 285 | 198 | 157 | 1.90 / 1.36 / 1.08 | 640 | 618 | 587 | 88% |
+| patchy | ladder | 40% | 260 | 167 | 127 | 1.73 / 1.15 / 0.87 | 554 | 533 | 501 | 89% |
+| patchy | proposed | 55% | 387 | 261 | 210 | 2.57 / 1.79 / 1.44 | 857 | 828 | 792 | 88% |
+| patchy | ladder | 55% | 307 | 179 | 141 | 2.04 / 1.23 / 0.97 | 626 | 607 | 573 | 92% |
+| patchy | proposed | 70% | 492 | 336 | 273 | 3.28 / 2.31 / 1.88 | 1101 | 1064 | 1016 | 88% |
+| patchy | ladder | 70% | 324 | 190 | 150 | 2.15 / 1.31 / 1.03 | 663 | 646 | 611 | 92% |
+
+### Full grid at 55% practice
+
+| policy | engine | n | met mo 36 | recallable mo 36 | kept | durable mo 36 | "solid" (st 4) mo 36 | retention all | retention mo 25-36 | intake yr 1/2/3 (normal days) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| content-first | game | 0.5 | 362 | 358 | 99% | 347 | 361 | 98% | 98% | 100% / 100% / 100% |
+| content-first | game | 0.75 | 543 | 528 | 97% | 501 | 542 | 96% | 96% | 100% / 100% / 100% |
+| content-first | game | 1 | 724 | 685 | 95% | 633 | 723 | 95% | 93% | 100% / 100% / 100% |
+| content-first | game | 1.25 | 905 | 829 | 92% | 742 | 902 | 92% | 90% | 100% / 100% / 100% |
+| content-first | game | 1.5 | 1086 | 932 | 86% | 802 | 1084 | 90% | 87% | 100% / 100% / 100% |
+| content-first | game | 1.75 | 1267 | 998 | 79% | 810 | 1264 | 87% | 83% | 100% / 100% / 100% |
+| content-first | game | 2 | 1449 | 1031 | 71% | 780 | 1445 | 84% | 80% | 100% / 100% / 100% |
+| content-first | game | 2.25 | 1629 | 1020 | 63% | 711 | 1623 | 81% | 75% | 100% / 100% / 100% |
+| content-first | game | 2.5 | 1811 | 1007 | 56% | 616 | 1800 | 79% | 73% | 100% / 100% / 100% |
+| content-first | game | 3 | 2173 | 816 | 38% | 286 | 2153 | 75% | 72% | 100% / 100% / 100% |
+| content-first | game | 3.5 | 2535 | 564 | 22% | 42 | 2457 | 70% | 65% | 100% / 100% / 100% |
+| content-first | game | 4 | 2897 | 380 | 13% | 13 | 2629 | 66% | 57% | 100% / 100% / 100% |
+| content-first | game | 5 | 3621 | 121 | 3% | 0 | 1810 | 35% | 24% | 100% / 100% / 100% |
+| content-first | game | 6 | 4295 | 82 | 2% | 0 | 926 | 25% | 23% | 100% / 99% / 98% |
+| content-first | ladder | 0.5 | 362 | 356 | 98% | 347 | 361 | 97% | 97% | 100% / 100% / 100% |
+| content-first | ladder | 0.75 | 543 | 529 | 97% | 509 | 542 | 96% | 96% | 100% / 100% / 100% |
+| content-first | ladder | 1 | 724 | 702 | 97% | 667 | 723 | 95% | 94% | 100% / 100% / 100% |
+| content-first | ladder | 1.25 | 905 | 862 | 95% | 810 | 903 | 93% | 92% | 100% / 100% / 100% |
+| content-first | ladder | 1.5 | 1086 | 1004 | 92% | 899 | 1084 | 91% | 90% | 100% / 100% / 100% |
+| content-first | ladder | 1.75 | 1267 | 1108 | 87% | 866 | 1265 | 89% | 86% | 100% / 100% / 100% |
+| content-first | ladder | 2 | 1449 | 1162 | 80% | 730 | 1446 | 87% | 83% | 100% / 100% / 100% |
+| content-first | ladder | 2.25 | 1629 | 1141 | 70% | 601 | 1625 | 84% | 80% | 100% / 100% / 100% |
+| content-first | ladder | 2.5 | 1811 | 1061 | 59% | 425 | 1803 | 80% | 76% | 100% / 100% / 100% |
+| content-first | ladder | 3 | 2173 | 808 | 37% | 146 | 2155 | 75% | 71% | 100% / 100% / 100% |
+| content-first | ladder | 3.5 | 2535 | 577 | 23% | 49 | 2456 | 70% | 64% | 100% / 100% / 100% |
+| content-first | ladder | 4 | 2897 | 380 | 13% | 13 | 2629 | 66% | 57% | 100% / 100% / 100% |
+| content-first | ladder | 5 | 3621 | 121 | 3% | 0 | 1810 | 35% | 24% | 100% / 100% / 100% |
+| content-first | ladder | 6 | 4295 | 82 | 2% | 0 | 926 | 25% | 23% | 100% / 99% / 98% |
+| content-first | steered | 0.5 | 362 | 359 | 99% | 345 | 361 | 98% | 98% | 100% / 100% / 100% |
+| content-first | steered | 0.75 | 543 | 532 | 98% | 508 | 540 | 96% | 96% | 100% / 100% / 100% |
+| content-first | steered | 1 | 724 | 699 | 97% | 661 | 722 | 95% | 94% | 100% / 100% / 100% |
+| content-first | steered | 1.25 | 905 | 850 | 94% | 792 | 902 | 93% | 91% | 100% / 100% / 100% |
+| content-first | steered | 1.5 | 1086 | 973 | 90% | 876 | 1082 | 90% | 87% | 100% / 100% / 100% |
+| content-first | steered | 1.75 | 1267 | 1053 | 83% | 905 | 1261 | 87% | 82% | 100% / 100% / 100% |
+| content-first | steered | 2 | 1449 | 1105 | 76% | 906 | 1439 | 84% | 78% | 100% / 100% / 100% |
+| content-first | steered | 2.25 | 1629 | 1108 | 68% | 852 | 1618 | 82% | 75% | 100% / 100% / 100% |
+| content-first | steered | 2.5 | 1811 | 1080 | 60% | 750 | 1795 | 79% | 72% | 100% / 100% / 100% |
+| content-first | steered | 3 | 2173 | 891 | 41% | 425 | 2148 | 75% | 71% | 100% / 100% / 100% |
+| content-first | steered | 3.5 | 2535 | 632 | 25% | 72 | 2487 | 74% | 71% | 100% / 100% / 100% |
+| content-first | steered | 4 | 2897 | 366 | 13% | 10 | 2632 | 65% | 56% | 100% / 100% / 100% |
+| content-first | steered | 5 | 3621 | 121 | 3% | 0 | 1810 | 35% | 24% | 100% / 100% / 100% |
+| content-first | steered | 6 | 4295 | 82 | 2% | 0 | 926 | 25% | 23% | 100% / 99% / 98% |
+| content-first | proposed | 0.5 | 362 | 356 | 98% | 348 | 361 | 98% | 97% | 100% / 100% / 100% |
+| content-first | proposed | 0.75 | 543 | 530 | 98% | 512 | 542 | 96% | 96% | 100% / 100% / 100% |
+| content-first | proposed | 1 | 724 | 703 | 97% | 682 | 723 | 95% | 94% | 100% / 100% / 100% |
+| content-first | proposed | 1.25 | 905 | 873 | 96% | 846 | 901 | 93% | 93% | 100% / 100% / 100% |
+| content-first | proposed | 1.5 | 1086 | 1031 | 95% | 990 | 1072 | 91% | 89% | 100% / 100% / 100% |
+| content-first | proposed | 1.75 | 1267 | 1147 | 90% | 1104 | 1207 | 89% | 87% | 100% / 100% / 100% |
+| content-first | proposed | 2 | 1449 | 1183 | 82% | 1148 | 1278 | 88% | 87% | 100% / 100% / 100% |
+| content-first | proposed | 2.25 | 1629 | 1158 | 71% | 1118 | 1300 | 87% | 87% | 100% / 100% / 100% |
+| content-first | proposed | 2.5 | 1811 | 1139 | 63% | 1091 | 1328 | 87% | 88% | 100% / 100% / 100% |
+| content-first | proposed | 3 | 2173 | 1020 | 47% | 957 | 1302 | 87% | 88% | 100% / 100% / 100% |
+| content-first | proposed | 3.5 | 2535 | 881 | 35% | 806 | 1266 | 87% | 88% | 100% / 100% / 100% |
+| content-first | proposed | 4 | 2897 | 733 | 25% | 651 | 1175 | 86% | 88% | 100% / 100% / 100% |
+| content-first | proposed | 5 | 3621 | 448 | 12% | 355 | 911 | 86% | 87% | 100% / 100% / 100% |
+| content-first | proposed | 6 | 4298 | 207 | 5% | 124 | 483 | 85% | 88% | 100% / 99% / 98% |
+| review-first | game | 0.5 | 156 | 156 | 100% | 155 | 156 | 99% | 100% | 87% / 34% / 16% |
+| review-first | game | 0.75 | 164 | 163 | 100% | 163 | 163 | 99% | 100% | 72% / 16% / 9% |
+| review-first | game | 1 | 169 | 168 | 100% | 168 | 168 | 99% | 100% | 59% / 10% / 5% |
+| review-first | game | 1.25 | 173 | 172 | 100% | 172 | 172 | 99% | 100% | 50% / 8% / 4% |
+| review-first | game | 1.5 | 173 | 173 | 100% | 172 | 172 | 99% | 100% | 43% / 6% / 3% |
+| review-first | game | 1.75 | 177 | 177 | 100% | 176 | 177 | 99% | 100% | 38% / 5% / 3% |
+| review-first | game | 2 | 177 | 177 | 100% | 177 | 177 | 99% | 100% | 35% / 3% / 2% |
+| review-first | game | 2.25 | 180 | 180 | 100% | 179 | 180 | 99% | 100% | 31% / 3% / 2% |
+| review-first | game | 2.5 | 180 | 180 | 100% | 180 | 180 | 99% | 100% | 29% / 3% / 1% |
+| review-first | game | 3 | 183 | 183 | 100% | 183 | 183 | 99% | 100% | 25% / 2% / 1% |
+| review-first | game | 3.5 | 186 | 186 | 100% | 186 | 186 | 99% | 100% | 21% / 2% / 1% |
+| review-first | game | 4 | 191 | 191 | 100% | 189 | 190 | 99% | 100% | 19% / 2% / 1% |
+| review-first | game | 5 | 190 | 189 | 100% | 189 | 189 | 99% | 100% | 15% / 1% / 1% |
+| review-first | game | 6 | 192 | 191 | 100% | 191 | 192 | 99% | 100% | 13% / 1% / 0% |
+| review-first | ladder | 0.5 | 352 | 346 | 98% | 336 | 351 | 98% | 97% | 100% / 100% / 99% |
+| review-first | ladder | 0.75 | 496 | 484 | 98% | 469 | 495 | 96% | 96% | 100% / 97% / 91% |
+| review-first | ladder | 1 | 611 | 595 | 97% | 575 | 611 | 96% | 95% | 99% / 91% / 80% |
+| review-first | ladder | 1.25 | 688 | 669 | 97% | 653 | 686 | 95% | 95% | 95% / 83% / 66% |
+| review-first | ladder | 1.5 | 747 | 725 | 97% | 709 | 747 | 95% | 95% | 92% / 72% / 58% |
+| review-first | ladder | 1.75 | 794 | 770 | 97% | 757 | 793 | 94% | 95% | 87% / 64% / 52% |
+| review-first | ladder | 2 | 833 | 808 | 97% | 802 | 832 | 94% | 95% | 82% / 60% / 45% |
+| review-first | ladder | 2.25 | 858 | 832 | 97% | 823 | 858 | 93% | 94% | 79% / 52% / 40% |
+| review-first | ladder | 2.5 | 885 | 857 | 97% | 847 | 885 | 93% | 94% | 73% / 49% / 38% |
+| review-first | ladder | 3 | 924 | 892 | 97% | 879 | 924 | 93% | 94% | 64% / 41% / 32% |
+| review-first | ladder | 3.5 | 941 | 910 | 97% | 904 | 940 | 92% | 94% | 56% / 37% / 28% |
+| review-first | ladder | 4 | 952 | 921 | 97% | 917 | 952 | 92% | 94% | 51% / 32% / 24% |
+| review-first | ladder | 5 | 962 | 927 | 96% | 919 | 962 | 92% | 93% | 41% / 25% / 20% |
+| review-first | ladder | 6 | 976 | 943 | 97% | 932 | 976 | 92% | 94% | 36% / 22% / 16% |
+| review-first | steered | 0.5 | 227 | 226 | 100% | 223 | 227 | 99% | 99% | 93% / 65% / 42% |
+| review-first | steered | 0.75 | 278 | 277 | 100% | 275 | 277 | 98% | 99% | 87% / 49% / 29% |
+| review-first | steered | 1 | 300 | 299 | 100% | 297 | 300 | 98% | 99% | 80% / 35% / 18% |
+| review-first | steered | 1.25 | 317 | 316 | 100% | 315 | 317 | 98% | 99% | 72% / 27% / 13% |
+| review-first | steered | 1.5 | 330 | 328 | 100% | 327 | 329 | 98% | 99% | 67% / 20% / 10% |
+| review-first | steered | 1.75 | 338 | 337 | 100% | 335 | 337 | 98% | 99% | 62% / 17% / 8% |
+| review-first | steered | 2 | 343 | 342 | 100% | 341 | 343 | 98% | 99% | 56% / 15% / 6% |
+| review-first | steered | 2.25 | 353 | 352 | 100% | 350 | 352 | 98% | 99% | 53% / 12% / 6% |
+| review-first | steered | 2.5 | 353 | 352 | 100% | 350 | 352 | 98% | 99% | 49% / 9% / 5% |
+| review-first | steered | 3 | 360 | 359 | 100% | 359 | 359 | 98% | 99% | 43% / 7% / 4% |
+| review-first | steered | 3.5 | 366 | 365 | 100% | 365 | 365 | 98% | 99% | 39% / 5% / 3% |
+| review-first | steered | 4 | 364 | 364 | 100% | 363 | 364 | 98% | 99% | 35% / 4% / 2% |
+| review-first | steered | 5 | 367 | 366 | 100% | 366 | 366 | 98% | 99% | 28% / 3% / 1% |
+| review-first | steered | 6 | 369 | 368 | 100% | 368 | 369 | 98% | 99% | 24% / 3% / 1% |
+| review-first | proposed | 0.5 | 361 | 354 | 98% | 345 | 360 | 98% | 97% | 100% / 100% / 100% |
+| review-first | proposed | 0.75 | 532 | 520 | 98% | 502 | 531 | 96% | 96% | 100% / 100% / 99% |
+| review-first | proposed | 1 | 693 | 673 | 97% | 652 | 691 | 95% | 95% | 100% / 100% / 96% |
+| review-first | proposed | 1.25 | 838 | 811 | 97% | 787 | 835 | 94% | 94% | 100% / 97% / 92% |
+| review-first | proposed | 1.5 | 960 | 928 | 97% | 906 | 957 | 93% | 93% | 99% / 94% / 86% |
+| review-first | proposed | 1.75 | 1059 | 1021 | 96% | 999 | 1055 | 92% | 92% | 98% / 90% / 79% |
+| review-first | proposed | 2 | 1145 | 1104 | 96% | 1083 | 1140 | 91% | 91% | 95% / 86% / 72% |
+| review-first | proposed | 2.25 | 1217 | 1172 | 96% | 1146 | 1213 | 91% | 90% | 93% / 80% / 67% |
+| review-first | proposed | 2.5 | 1264 | 1216 | 96% | 1199 | 1260 | 90% | 90% | 89% / 74% / 62% |
+| review-first | proposed | 3 | 1341 | 1289 | 96% | 1258 | 1337 | 89% | 90% | 83% / 65% / 52% |
+| review-first | proposed | 3.5 | 1372 | 1318 | 96% | 1294 | 1367 | 88% | 89% | 74% / 56% / 46% |
+| review-first | proposed | 4 | 1395 | 1340 | 96% | 1313 | 1392 | 88% | 89% | 67% / 49% / 40% |
+| review-first | proposed | 5 | 1422 | 1364 | 96% | 1336 | 1414 | 88% | 89% | 54% / 40% / 33% |
+| review-first | proposed | 6 | 1409 | 1352 | 96% | 1320 | 1403 | 88% | 89% | 45% / 33% / 27% |
+
+## Cumulative items (realistic calendar, 55% practice)
+
+
+### proposed, open world (content-first), n = 2
+
+| month | met | known (st 2+) | remembered (st 3+) | "solid" (st 4) | recallable now (sum R) | R >= 0.8 now | durable (R >= 0.8 after 30 more days) | retention that month |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 3 | 127 | 127 | 126 | 123 | 123 | 126 | 77 | 92% |
+| 6 | 264 | 264 | 264 | 260 | 251 | 262 | 181 | 91% |
+| 9 | 354 | 354 | 351 | 343 | 298 | 282 | 227 | 90% |
+| 12 | 482 | 482 | 480 | 476 | 452 | 475 | 379 | 88% |
+| 18 | 733 | 733 | 731 | 723 | 683 | 720 | 621 | 89% |
+| 24 | 953 | 953 | 937 | 906 | 858 | 890 | 814 | 86% |
+| 30 | 1221 | 1221 | 1195 | 1143 | 1068 | 1110 | 1012 | 86% |
+| 36 | 1449 | 1447 | 1391 | 1278 | 1183 | 1202 | 1148 | 88% |
+
+### game as built, open world, n = 1.5
+
+| month | met | known (st 2+) | remembered (st 3+) | "solid" (st 4) | recallable now (sum R) | R >= 0.8 now | durable (R >= 0.8 after 30 more days) | retention that month |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 3 | 95 | 95 | 95 | 93 | 92 | 93 | 58 | 94% |
+| 6 | 197 | 197 | 197 | 196 | 192 | 195 | 150 | 95% |
+| 9 | 265 | 265 | 265 | 264 | 230 | 215 | 182 | 85% |
+| 12 | 361 | 361 | 361 | 359 | 341 | 336 | 291 | 92% |
+| 18 | 549 | 549 | 549 | 548 | 511 | 502 | 440 | 91% |
+| 24 | 715 | 715 | 714 | 712 | 646 | 619 | 558 | 88% |
+| 30 | 915 | 915 | 915 | 913 | 806 | 754 | 695 | 87% |
+| 36 | 1086 | 1086 | 1085 | 1084 | 932 | 872 | 802 | 85% |
+
+### game as built, open world, n = 3 (new content at about today's pace, all 3 years)
+
+| month | met | known (st 2+) | remembered (st 3+) | "solid" (st 4) | recallable now (sum R) | R >= 0.8 now | durable (R >= 0.8 after 30 more days) | retention that month |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 3 | 190 | 190 | 189 | 185 | 164 | 139 | 66 | 82% |
+| 6 | 395 | 395 | 393 | 389 | 325 | 268 | 166 | 82% |
+| 9 | 531 | 531 | 529 | 525 | 335 | 209 | 165 | 59% |
+| 12 | 722 | 722 | 720 | 716 | 485 | 317 | 212 | 75% |
+| 18 | 1100 | 1100 | 1098 | 1091 | 623 | 369 | 274 | 75% |
+| 24 | 1430 | 1430 | 1427 | 1417 | 692 | 390 | 294 | 72% |
+| 30 | 1832 | 1832 | 1828 | 1816 | 797 | 398 | 305 | 71% |
+| 36 | 2173 | 2173 | 2167 | 2153 | 816 | 383 | 286 | 70% |
+
+### proposed, gated (review-first), n = 1.5
+
+| month | met | known (st 2+) | remembered (st 3+) | "solid" (st 4) | recallable now (sum R) | R >= 0.8 now | durable (R >= 0.8 after 30 more days) | retention that month |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 3 | 94 | 94 | 94 | 91 | 91 | 94 | 60 | 94% |
+| 6 | 195 | 195 | 194 | 193 | 189 | 195 | 145 | 94% |
+| 9 | 257 | 257 | 257 | 255 | 234 | 243 | 206 | 90% |
+| 12 | 348 | 348 | 347 | 345 | 334 | 346 | 293 | 93% |
+| 18 | 520 | 520 | 519 | 518 | 499 | 520 | 460 | 93% |
+| 24 | 661 | 661 | 661 | 659 | 636 | 659 | 611 | 94% |
+| 30 | 834 | 834 | 833 | 832 | 799 | 830 | 760 | 93% |
+| 36 | 960 | 960 | 959 | 957 | 928 | 958 | 906 | 94% |
+
+### proposed, gated, then fill the rest with new items (target 6)
+
+| month | met | known (st 2+) | remembered (st 3+) | "solid" (st 4) | recallable now (sum R) | R >= 0.8 now | durable (R >= 0.8 after 30 more days) | retention that month |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 3 | 199 | 199 | 197 | 192 | 187 | 197 | 97 | 86% |
+| 6 | 375 | 375 | 372 | 366 | 351 | 371 | 237 | 87% |
+| 9 | 474 | 474 | 472 | 467 | 401 | 390 | 293 | 87% |
+| 12 | 612 | 612 | 611 | 606 | 569 | 603 | 485 | 87% |
+| 18 | 858 | 858 | 856 | 852 | 803 | 846 | 734 | 87% |
+| 24 | 1035 | 1035 | 1033 | 1029 | 984 | 1029 | 949 | 88% |
+| 30 | 1271 | 1271 | 1269 | 1265 | 1203 | 1262 | 1150 | 89% |
+| 36 | 1409 | 1409 | 1407 | 1403 | 1352 | 1393 | 1320 | 90% |
+
+### proposed, open world, n = 2, exponential forgetting
+
+| month | met | known (st 2+) | remembered (st 3+) | "solid" (st 4) | recallable now (sum R) | R >= 0.8 now | durable (R >= 0.8 after 30 more days) | retention that month |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 3 | 127 | 127 | 126 | 123 | 121 | 123 | 69 | 90% |
+| 6 | 264 | 264 | 263 | 259 | 252 | 263 | 175 | 91% |
+| 9 | 354 | 354 | 350 | 344 | 295 | 282 | 223 | 89% |
+| 12 | 482 | 482 | 479 | 475 | 451 | 472 | 377 | 88% |
+| 18 | 733 | 733 | 725 | 713 | 671 | 707 | 596 | 83% |
+| 24 | 953 | 953 | 932 | 884 | 823 | 851 | 783 | 86% |
+| 30 | 1221 | 1220 | 1185 | 1112 | 1015 | 1055 | 963 | 85% |
+| 36 | 1449 | 1447 | 1379 | 1255 | 1134 | 1163 | 1094 | 88% |
+
+## Daily practice minutes over time (per play day; the practice budget is 8.25 min at 55%)
+
+
+### proposed, open world (content-first), n = 2
+
+| months | play days | due at start | due reviews done | review min | intro min | other practice min | due left over | new items/day |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1-3 | 63 | 13.0 | 12.3 | 2.5 | 2.4 | 3.5 | 0.7 | 2.00 |
+| 4-6 | 69 | 18.4 | 17.6 | 3.7 | 2.5 | 2.2 | 0.8 | 2.00 |
+| 7-9 | 45 | 28.7 | 21.6 | 4.4 | 2.4 | 1.6 | 7.0 | 2.00 |
+| 10-12 | 64 | 34.9 | 24.1 | 5.0 | 2.4 | 0.9 | 10.7 | 2.00 |
+| 13-18 | 126 | 39.3 | 24.5 | 5.2 | 2.5 | 0.7 | 14.7 | 2.00 |
+| 19-24 | 110 | 82.2 | 27.0 | 5.7 | 2.5 | 0.1 | 55.2 | 2.00 |
+| 25-30 | 134 | 124.9 | 26.3 | 5.7 | 2.7 | 0.0 | 98.7 | 2.00 |
+| 31-36 | 114 | 250.3 | 26.6 | 5.7 | 2.7 | 0.0 | 223.8 | 2.00 |
+
+### game as built, open world, n = 1.5
+
+| months | play days | due at start | due reviews done | review min | intro min | other practice min | due left over | new items/day |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1-3 | 63 | 13.8 | 10.1 | 2.0 | 1.8 | 4.5 | 3.8 | 1.49 |
+| 4-6 | 69 | 59.0 | 19.0 | 3.7 | 1.8 | 2.9 | 40.0 | 1.50 |
+| 7-9 | 45 | 139.4 | 22.0 | 4.3 | 1.8 | 2.2 | 117.4 | 1.50 |
+| 10-12 | 64 | 212.9 | 22.9 | 4.6 | 1.8 | 1.9 | 190.0 | 1.50 |
+| 13-18 | 126 | 350.0 | 23.4 | 4.8 | 1.9 | 1.7 | 326.6 | 1.50 |
+| 19-24 | 110 | 532.8 | 23.7 | 5.0 | 2.0 | 1.4 | 509.2 | 1.50 |
+| 25-30 | 134 | 706.7 | 23.4 | 5.1 | 2.0 | 1.3 | 683.3 | 1.50 |
+| 31-36 | 114 | 898.2 | 23.4 | 5.2 | 2.0 | 1.1 | 874.8 | 1.50 |
+
+### game as built, open world, n = 3 (new content at about today's pace, all 3 years)
+
+| months | play days | due at start | due reviews done | review min | intro min | other practice min | due left over | new items/day |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1-3 | 63 | 54.5 | 14.8 | 3.2 | 3.6 | 1.5 | 39.8 | 3.00 |
+| 4-6 | 69 | 228.0 | 18.4 | 4.1 | 3.6 | 0.7 | 209.6 | 3.00 |
+| 7-9 | 45 | 404.1 | 18.8 | 4.3 | 3.6 | 0.5 | 385.4 | 3.00 |
+| 10-12 | 64 | 566.9 | 18.6 | 4.3 | 3.6 | 0.4 | 548.3 | 3.00 |
+| 13-18 | 126 | 855.7 | 17.4 | 4.2 | 3.8 | 0.3 | 838.3 | 3.00 |
+| 19-24 | 110 | 1212.8 | 17.5 | 4.3 | 3.8 | 0.2 | 1195.3 | 3.00 |
+| 25-30 | 134 | 1579.8 | 16.1 | 4.1 | 4.1 | 0.2 | 1563.7 | 3.00 |
+| 31-36 | 114 | 1956.3 | 16.1 | 4.2 | 4.0 | 0.2 | 1940.3 | 3.00 |
+
+### proposed, gated (review-first), n = 1.5
+
+| months | play days | due at start | due reviews done | review min | intro min | other practice min | due left over | new items/day |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1-3 | 63 | 9.0 | 9.0 | 1.8 | 1.7 | 4.8 | 0.0 | 1.48 |
+| 4-6 | 69 | 12.6 | 12.6 | 2.5 | 1.8 | 4.1 | 0.0 | 1.48 |
+| 7-9 | 45 | 17.6 | 16.6 | 3.3 | 1.6 | 3.5 | 1.1 | 1.37 |
+| 10-12 | 64 | 15.9 | 15.2 | 3.0 | 1.7 | 3.6 | 0.7 | 1.42 |
+| 13-18 | 126 | 17.8 | 16.9 | 3.4 | 1.7 | 3.2 | 0.9 | 1.37 |
+| 19-24 | 110 | 22.5 | 19.8 | 4.0 | 1.6 | 2.7 | 2.7 | 1.28 |
+| 25-30 | 134 | 20.4 | 18.9 | 3.9 | 1.7 | 2.7 | 1.5 | 1.29 |
+| 31-36 | 114 | 33.7 | 22.8 | 4.8 | 1.5 | 2.1 | 10.8 | 1.11 |
+
+### proposed, gated, then fill the rest with new items (target 6)
+
+| months | play days | due at start | due reviews done | review min | intro min | other practice min | due left over | new items/day |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1-3 | 63 | 22.2 | 20.9 | 4.4 | 3.9 | 0.2 | 1.4 | 3.15 |
+| 4-6 | 69 | 26.4 | 24.6 | 5.1 | 3.1 | 0.2 | 1.8 | 2.57 |
+| 7-9 | 45 | 35.0 | 27.0 | 5.6 | 2.6 | 0.2 | 8.0 | 2.18 |
+| 10-12 | 64 | 36.2 | 27.0 | 5.7 | 2.6 | 0.2 | 9.1 | 2.16 |
+| 13-18 | 126 | 36.4 | 27.4 | 5.8 | 2.5 | 0.2 | 9.0 | 1.96 |
+| 19-24 | 110 | 45.2 | 29.7 | 6.3 | 2.1 | 0.1 | 15.6 | 1.61 |
+| 25-30 | 134 | 37.9 | 28.0 | 6.0 | 2.4 | 0.1 | 9.9 | 1.76 |
+| 31-36 | 114 | 72.2 | 31.7 | 6.7 | 1.6 | 0.1 | 40.5 | 1.21 |
+
+## Today's content (186 items met at ~5 a play day, then nothing new; content-first)
+
+| engine | met mo 1 | mo 2 | mo 3 | recallable mo 6 | mo 12 | mo 36 | "solid" mo 36 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| game | 121 | 186 | 186 | 183 | 185 | 186 | 186 |
+| proposed | 121 | 186 | 186 | 182 | 184 | 185 | 186 |
+
+## Breaks (summer Jul 1 - Aug 11)
+
+| run | summer | recallable before -> after | lost | durable before -> after | retention 10 play days before | first 5 play days back | due on day 1 back | review min day 1 back | play days to clear the backlog |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| proposed, open world (content-first), n = 2 | 2027 | 325 -> 303 | 7% | 248 -> 243 | 90% | 83% | 121 | 6.3 | >10 |
+| proposed, open world (content-first), n = 2 | 2028 | 769 -> 726 | 6% | 701 -> 633 | 86% | 91% | 245 | 6.0 | >10 |
+| game as built, open world, n = 1.5 | 2027 | 248 -> 236 | 5% | 202 -> 187 | 92% | 87% | 250 | 5.4 | >10 |
+| game as built, open world, n = 1.5 | 2028 | 573 -> 540 | 6% | 494 -> 469 | 90% | 86% | 618 | 6.1 | >10 |
+| game as built, open world, n = 3 (new content at about today's pace, all 3 years) | 2027 | 389 -> 338 | 13% | 196 -> 154 | 80% | 71% | 530 | 4.4 | >10 |
+| game as built, open world, n = 3 (new content at about today's pace, all 3 years) | 2028 | 680 -> 590 | 13% | 309 -> 271 | 77% | 66% | 1253 | 4.5 | >10 |
+| proposed, gated (review-first), n = 1.5 | 2027 | 245 -> 241 | 2% | 199 -> 225 | 94% | 93% | 55 | 7.2 | 1.8 |
+| proposed, gated (review-first), n = 1.5 | 2028 | 561 -> 542 | 3% | 516 -> 508 | 93% | 89% | 101 | 8.4 | 3.0 |
+| proposed, gated, then fill the rest with new items (target 6) | 2027 | 434 -> 406 | 7% | 334 -> 327 | 87% | 84% | 148 | 8.4 | 6.0 |
+| proposed, gated, then fill the rest with new items (target 6) | 2028 | 886 -> 851 | 4% | 815 -> 766 | 89% | 86% | 206 | 8.4 | 7.8 |
+| proposed, open world, n = 2, exponential forgetting | 2027 | 326 -> 296 | 9% | 245 -> 233 | 90% | 82% | 122 | 6.0 | 9.0 |
+| proposed, open world, n = 2, exponential forgetting | 2028 | 750 -> 702 | 6% | 673 -> 610 | 85% | 86% | 252 | 5.6 | >10 |
+
+### By calendar (55% practice)
+
+| calendar | play days / yr | game open-world n* | items/yr | recallable mo 36 | proposed open-world n* | items/yr | recallable mo 36 | proposed gated n* | items/yr | recallable mo 36 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| ideal | 365 | 1.5 | 548 | 1365 | 2 | 731 | 1819 | 1.75 | 639 | 1732 |
+| steady | 305 | 1.5 | 458 | 1172 | 2 | 611 | 1507 | 1.5 | 458 | 1212 |
+| realistic | 241 | 1.5 | 362 | 932 | 2 | 483 | 1183 | 1.5 | 362 | 928 |
+| patchy | 147 | 1.75 | 257 | 628 | 2 | 294 | 719 | 1.5 | 221 | 550 |
+
+## Sensitivity (realistic calendar, 55% practice unless the row changes it): n* and recallable items at month 36 at n*
+
+| variant | game open-world n* | recallable mo 36 | proposed open-world n* | recallable mo 36 | durable mo 36 | proposed gated n* | recallable mo 36 | proposed peak recallable (n) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| base | 1.5 | 932 | 2 | 1183 | 1148 | 1.5 | 928 | 1183 (2) |
+| practice share 40% | 1.25 | 744 | 1.25 | 821 | 791 | 1 | 637 | 863 (1.5) |
+| practice share 70% | 1.75 | 1093 | 2.5 | 1486 | 1430 | 1.75 | 1105 | 1486 (2.5) |
+| retrieval 6 s | 2 | 1219 | 2.5 | 1662 | 1609 | 2.25 | 1410 | 1688 (3) |
+| retrieval 15 s | 1.25 | 753 | 1.25 | 816 | 783 | 1 | 626 | 859 (1.5) |
+| introduction 30 s | 1.75 | 1024 | 2 | 1267 | 1226 | 1.5 | 938 | 1281 (2.25) |
+| introduction 60 s | 1.5 | 905 | 1.75 | 1084 | 1043 | 1.25 | 804 | 1084 (1.75) |
+| forgets faster (S0 x0.5: next-day recall 53%) | 1.5 | 899 | 1.75 | 1099 | 1064 | 1.25 | 807 | 1113 (2) |
+| forgets slower (S0 x1.5: 77%) | 1.5 | 944 | 2 | 1208 | 1161 | 1.5 | 926 | 1208 (2) |
+| consolidates slower (gain a x0.67) | 1.25 | 776 | 1.75 | 1059 | 960 | 1.25 | 784 | 1064 (2) |
+| consolidates faster (gain a x1.33) | 1.75 | 1068 | 2 | 1234 | 1205 | 1.5 | 951 | 1237 (2.25) |
+| exponential forgetting (harsh on gaps) | 1.25 | 773 | 1.75 | 1112 | 1072 | 1.5 | 924 | 1134 (2) |
+| harder items (difficulty sd 0.6) | 1.5 | 909 | 2 | 1166 | 1111 | 1.5 | 923 | 1166 (2) |
+| spoken 15% (more 3-card guessing) | 1.5 | 945 | 2 | 1209 | 1165 | 1.5 | 934 | 1209 (2) |
+| spoken 60% | 1.5 | 923 | 1.75 | 1132 | 1085 | 1.25 | 807 | 1144 (2) |
+| all words (no phrases / patterns) | 1.75 | 1065 | 2.25 | 1351 | 1299 | 1.5 | 955 | 1351 (2.25) |
+| phrase-heavy (50% phrases+patterns by yr 3) | 1.5 | 906 | 1.75 | 1105 | 1067 | 1.25 | 804 | 1105 (1.75) |
+| quests revisit old zones more (pNewZone 0.3) | 1.75 | 1017 | 2 | 1187 | 1145 | 1.5 | 930 | 1187 (2) |
+| game channels reach 8 due items/session | 1.5 | 873 | 2 | 1183 | 1148 | 1.5 | 928 | 1183 (2) |
+| game channels reach 30 due items/session | 1.75 | 1059 | 2 | 1183 | 1148 | 1.5 | 928 | 1183 (2) |
+| 10-minute sessions | 1 | 646 | 1.25 | 789 | 761 | 1 | 620 | 795 (1.5) |
+| 20-minute sessions | 2 | 1192 | 2.5 | 1548 | 1490 | 2 | 1239 | 1553 (3) |
+| audit-matched density (70% practice, 8 s: ~5 prompts/min like tools/vocab-audit.js) | 2 | 1222 | 3 | 1769 | 1703 | 2.25 | 1410 | 1769 (3) |
+| pessimistic memory (S0 x0.5, gain x0.67, exponential) | 0.75 | 491 | 1.5 | 904 | 816 | 1.25 | 768 | 904 (1.5) |
+| optimistic memory (S0 x1.5, gain x1.33) | 1.75 | 1081 | 2 | 1266 | 1246 | 1.5 | 947 | 1276 (2.25) |
+
+## Content-volume implications (55% practice)
+
+Authored first-play minutes per new item: Villa Sol measured ~2.5 (tools/vocab-audit.js: 73 words in 181 min of bot play, incl. free-play days); a real child is slower (README: 5-10 min per errand of 3-5 words), ~3.5.
+
+| calendar | engine / policy | n* | play days / yr | new items / yr | 3-yr total | zones / yr at 15 / 20 / 25 items | play hours / yr | of which not practice (story, exploring) | authored first-play hours / yr at 2.5 / 3.5 min per item | share of all play |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| ideal | game, open world | 1.5 | 365 | 548 | 1644 | 37 / 27 / 22 | 91 | 41 | 23 / 32 | 25% - 35% |
+| ideal | proposed, open world | 2 | 365 | 731 | 2192 | 49 / 37 / 29 | 91 | 41 | 30 / 43 | 33% - 47% |
+| ideal | proposed, gated | 1.75 | 365 | 639 | 1814 | 43 / 32 / 26 | 91 | 41 | 27 / 37 | 29% - 41% |
+| steady | game, open world | 1.5 | 305 | 458 | 1374 | 31 / 23 / 18 | 76 | 34 | 19 / 27 | 25% - 35% |
+| steady | proposed, open world | 2 | 305 | 611 | 1832 | 41 / 31 / 24 | 76 | 34 | 25 / 36 | 33% - 47% |
+| steady | proposed, gated | 1.5 | 305 | 458 | 1260 | 31 / 23 / 18 | 76 | 34 | 19 / 27 | 25% - 35% |
+| realistic | game, open world | 1.5 | 241 | 362 | 1086 | 24 / 18 / 14 | 60 | 27 | 15 / 21 | 25% - 35% |
+| realistic | proposed, open world | 2 | 241 | 483 | 1449 | 32 / 24 / 19 | 60 | 27 | 20 / 28 | 33% - 47% |
+| realistic | proposed, gated | 1.5 | 241 | 362 | 960 | 24 / 18 / 14 | 60 | 27 | 15 / 21 | 25% - 35% |
+| patchy | game, open world | 1.75 | 147 | 257 | 772 | 17 / 13 / 10 | 37 | 17 | 11 / 15 | 29% - 41% |
+| patchy | proposed, open world | 2 | 147 | 294 | 882 | 20 / 15 / 12 | 37 | 17 | 12 / 17 | 33% - 47% |
+| patchy | proposed, gated | 1.5 | 147 | 221 | 565 | 15 / 11 / 9 | 37 | 17 | 9 / 13 | 25% - 35% |
+
+(results.json written; 257s)

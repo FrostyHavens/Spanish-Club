@@ -1,0 +1,150 @@
+{
+ "summary": "Visual, audio and feel audit, done on the live code (branch claude/zen-sagan-mr8xwf). I took about 120 screenshots on an iPad-size screen (1024x768 touch) and a phone (390x844), plus raw 320x224 frames, and measured contrast, text widths, brightness and music behaviour in the running page.\n\n**Strengths.** The 16-bit look is consistent in Villa Sol and the outdoor zones: crisp pixel tiles, a readable 5x7 bitmap font that is 21 px tall on the iPad, and sprites drawn in one style. The UI (picture cards, notebook, album/Pokédex, listen-and-do tray, warm-up, grown-ups' Learning page) is clean and touch-friendly at 3x. The snow zone, the weather, the sunset over Villa Sol and the night/Hoy card have real charm.\n\n**Biggest weaknesses, most noticeable to the child first:**\n1. **Audio is the weakest layer.** The grandparents' whole zone and three Villa Sol buildings go silent after 2.7 s, because a short non-looping jingle is used as their map music. Only 7 looping songs, all taken from the earlier RPG (*Embers of Aldmere*), cover 21 maps. The music restarts from the first bar after every door and after every reward jingle. The beach plays a slow minor-key \"story\" theme, and the playground plays the title song.\n2. **Word labels get squeezed until they can't be read.** 75 of 180 word cards (42%), plus the album's long animal names, are compressed sideways or spill into the next cell. These are the screens she loves and learns from.\n3. **Interiors and zones look the same.** Almost every building uses one tavern-style \"inn\" room kit: the school and library are laid out like a church, and the bakery has a bar counter with bottles. Grass covers 66-88% of the screen in the forest, park, farm and all five paths.\n4. **Smaller rough edges:** an alarming \"talking mouth\" drawn over her own face the first time she's asked to say a phrase, night that skips the beach and the paths, a hard-to-see bear in the cave, uneven text sizes on answer cards, and a tiny letterboxed game on a phone in portrait.",
+ "findings": [
+  {
+   "title": "Grandparents' farm, the barn, the bakery and Rosa's house go silent after 2.7 seconds",
+   "severity": "high",
+   "evidence": "maps.js:190 (granja), :239 (rosa), :247 (panaderia) and content/es/zone-abuelos.js:736 (the abuelos outdoor zone) all set music: 'inn'. 'inn' is a jingle (music.js:438, 4 beats at 90 bpm, loop:false, 2.7 s). In the page, songName 0.5 s after entering = 'inn'; 6.5 s after = null (no song) for abuelos, granja, panaderia and rosa. The other maps checked (villa, bosque, montana, juegos, playa) still had music at 6.5 s. Script: scratchpad/audit2/visual/scripts/s3-screens.js, step 'music'.",
+   "impact": "The grandparents' zone is one of the biggest, and the child plays there a lot (the garden, the family photo, cookies). It plays a short lullaby and then dead silence, which feels broken. Silence also takes the place's mood away.",
+   "fix": "Short term: point these 4 maps at a looping track (e.g. 'headquarters' or 'town'), and keep 'inn' only for the bedtime lullaby (day.js:118). Better: write a 'rancho' loop for the abuelos zone (gentle 6/8 or 3/4, guitar-like harp plus flute) and an 'interior' loop for small homes and shops.",
+   "effort": "S"
+  },
+  {
+   "title": "7 RPG loops for 21 maps, restarting from the first bar on every door and reward jingle",
+   "severity": "high",
+   "evidence": "Only 10 loops exist in music.js, all from 'Embers of Aldmere' (title, battle, boss, field, town, church, headquarters, story, sad, castle); battle, boss and sad are never used. How the maps share them:\n- field: the 5 paths and La montaña\n- castle: biblioteca, bosque and the cave\n- headquarters: casa, Doña Lupe's cabin, the grandparents' house and the refuge\n- title: El parque de juegos, so the playground plays the title-screen song\n- story: La playa, a C-minor 84 bpm cutscene theme (Cm-Ab-Fm-G-Db) on a sunny beach\n- church: escuela\n\nLoops last 32-55 s, so in a 15-minute session Villa Sol's 41.5 s loop repeats about 20 times. Measured in the page: town was at 5.1 s in, played an 'item' jingle, and 2.5 s later town had restarted at 0.6 s. Going into the house and back out restarted town at 0.4 s. A.play() calls A.stop() with no fade (audio.js:174), and A.jingle (audio.js:209) calls A.play(prev, true) when the jingle ends. Jingles fire from 79 call sites: words turning gold, letters, page puzzles, hearts, listen-and-do right answers, the warm-up end.",
+   "impact": "In a session she mostly hears the same first 8-10 seconds of each track, cut off sharply. Over the planned three years of 15 minutes a day this will be grating. Parents usually mute it, which also mutes the rewarding sound effects. The minor-key beach and the reused title song also make the zones feel less like distinct places.",
+   "fix": "(1) Remember each song's position (AudioContext time offset) and resume it after a jingle or a door; crossfade 0.3-0.5 s instead of a hard cut. (2) Play jingles over the music, ducked about 50%, instead of stopping it. (3) Compose 5 new zone themes in the existing MML system (playa: bright major with steel-drum-like bells; bosque: woodwinds; juegos: bouncy; montaña: airy; abuelos: ranchera-like waltz). Give the paths a lighter mix of the destination's theme. (4) Add a night variant (slower, fewer instruments) for after sunset.",
+   "effort": "M"
+  },
+  {
+   "title": "42% of word-card labels are squeezed sideways until they can't be read (deck, Hoy card, phrase cards)",
+   "severity": "high",
+   "evidence": "cards.js:215 draws the label with ctx.scale(sq, 1), where sq = min(1, 34 px / label width), applied to a 1-px bitmap font. Measured over all 180 words: 75 are squeezed. Worst cases:\n- pájaro carpintero: 96 px squeezed to 35%\n- mariposa monarca: 91 px, 37%\n- muñeco de nieve: 41%\n- estrella de mar: 42%\n- buenas noches: 45%\n- ¿cómo estás?: 49%\n- resbaladilla: 54%\n- buenos días: 56%\n\nScreenshots: scratchpad/audit2/visual/ipad/s_deck.png ('arcoíris' renders as an unreadable 'ercɔ́ʼis', 'amarillo' as 'amarillc'); s_evening_2_TodayCard.png (the 'buenas noches' card reads as garbage on the bedtime Hoy card). Phrase cards squeeze the same way (cards.js:254).",
+   "impact": "The card is the core learning object: picture and word together. A 7-year-old learning to read Spanish sees broken letter shapes on nearly half her collection, and the words she most often meets every night ('buenas noches', 'buenos días') are the illegible ones.",
+   "fix": "Never scale the bitmap font by a non-integer. Wrap onto two lines at the space (phrases.js already has fit(), labelLines() exists in cards.js), drop the article on the card, or use a 4-px-wide narrow font for labels over 34 px. For single long words (resbaladilla, luciérnaga, biblioteca), widen the card to 48 px or allow a two-line label with a hyphen.",
+   "effort": "S"
+  },
+  {
+   "title": "Album (Pokédex) names spill into the next cell: 'la gaviotala estrella de m…', 'el zorrilel pájaro carpinter…'",
+   "severity": "high",
+   "evidence": "Album cells are 70 px wide; album.js:170-171 draws the name and cry with textC and no fitting. 4 animals are too wide:\n- la estrella de mar: 95 px\n- el pájaro carpintero: 110 px (its cry '¡Toc, toc, toc!' is 71 px)\n- la mariposa monarca: 105 px\n- la luciérnaga: 69 px\n\nScreenshots: ipad/s_album_playa.png (gaviota and estrella de mar collide), ipad/s_album_montana.png (zorrillo and pájaro carpintero overlap; 'mariposa monarca' runs off its cell to the left).",
+   "impact": "The album is the child's favourite screen and the main collecting reward. Overlapping names look broken exactly where she looks most, and the longest names are the rare animals she is proudest of.",
+   "fix": "Wrap long names onto two lines (cry on a third line, or drop the cry when the name wraps), or drop the article in the album. Add a CI check that every name and cry is at most cell width minus 4 px (the measurement script is in scratchpad/audit2/visual/scripts/metrics.js).",
+   "effort": "S"
+  },
+  {
+   "title": "The first phrase request draws a huge red mouth with blue arcs over the child's own face, so it looks like she is crying or screaming",
+   "severity": "medium",
+   "evidence": "demo.js:75 starts the 'phrasesay' demo with mouth placed at her portrait's chin and mouthK 0.75. mouth() (demo.js:202) draws large lips plus cyan sound-wave arcs, scaled by 0.75 (a non-integer scale, so the edges are anti-aliased and blurry). Screenshot: ipad/s_phrase_ask.png and the close-up ipad/crop_phrase_face.png. The cyan arcs run down both cheeks like tear streaks.",
+   "impact": "The first 'say it to get it' moment is a key new feature. Her own avatar suddenly looks upset or scary, which is confusing or off-putting for a 7-year-old, and the blurry drawing breaks the pixel style.",
+   "fix": "Draw a small pixel speech-wave icon or a tiny 'talking' mouth sprite beside the portrait (not on it), at an integer scale. Or animate the portrait's own mouth (open and close 2 px) with sound-wave pixels outside the frame.",
+   "effort": "S"
+  },
+  {
+   "title": "Phone and iPad-portrait layout: in portrait the phone game fills 22% of the screen, with 7-px text and 20-px buttons",
+   "severity": "medium",
+   "evidence": "core.js:23-26 scales the 320x224 canvas in 0.25 steps, rounded down. Measured:\n- Phone portrait 390x844: scale 1.0, canvas 320x224 CSS px, 22% of the screen; text cap height 7 px, icon buttons 20 px (Apple's minimum touch target is 44 pt). See phone/m_phone1.png.\n- Phone landscape 844x390: scale 1.5, 49% coverage, text 10.5 px, buttons 30 px.\n- iPad portrait 768x1004: scale 2.25, 47% coverage.\n- iPad Pro landscape 1180x760: scale 3.25.\n\nNon-integer device-pixel ratios (2.25 x DPR 2 = 4.5) make pixel columns uneven (4 and 5 device px). There is no 'turn your device' prompt.",
+   "impact": "On a phone the child can barely read the words or hit the cards, and a wrong tap counts as a wrong answer. Holding an iPad in portrait halves the game's size with nothing telling her to rotate.",
+   "fix": "Show a 'gira tu tableta' / rotate overlay (a pixel phone turning) when the screen is taller than it is wide. In landscape, fill the screen: choose the scale so canvas width x devicePixelRatio is a whole number, or allow any scale that is a whole number of device pixels. Optionally widen the internal canvas (e.g. 360 px) on wider aspect ratios.",
+   "effort": "M"
+  },
+  {
+   "title": "Interiors reuse one tavern room kit: the school and library look like a church, the bakery has no bread, homes are copies",
+   "severity": "medium",
+   "evidence": "Montages: ipad/m_int1.png, m_int2.png, m_int3.png.\n- escuela and biblioteca: red-carpet centre aisle with rows of pews (the church layout; escuela even uses music: 'church'). No blackboard, desks or reading nook.\n- panadería: a long bar counter with coloured bottles and two fireplaces. No ovens, bread shelves or display case.\n- Mi casa, La casa de Rosa, Doña Lupe's 'log cabin' and El refugio: the same plank floor, the same 2 bookshelves, stone fireplace, plant pot and crates. The log cabin is plank-floored inside.\n- 8 of 10 interiors use the identical floor tile.\n- Small rooms float in black: casa is 9x7 tiles (216x168 px) in a 320x224 screen, about 49% black (ipad/w_casa_1.png).",
+   "impact": "Children love going into buildings, and a 7-year-old will notice that 'la escuela' isn't a school and 'la panadería' has no bread. It also undercuts vocabulary: rooms should show the words for their places (pan, pizarrón, libros).",
+   "fix": "Make 4-5 room themes:\n- school: blackboard, kids' desks, map, alphabet strip\n- bakery: oven, bread racks (pan, galleta, pastel visible)\n- library: tall stacks, reading rug, globe\n- log cabin: log walls, quilt, rocking chair\n- refuge: skis, mugs\n\nFrame small rooms with a wall or outside view (a dark wood surround, or walls drawn to the screen edge) instead of black.",
+   "effort": "L"
+  },
+  {
+   "title": "Zones look alike: green grass fills most of the screen, the forest reads as a park, and the paths are one template",
+   "severity": "medium",
+   "evidence": "Share of strongly green pixels in raw frames:\n- juegos: 82/86/88%\n- abuelos: 82/67/66%\n- bosque: 73/40/87%\n- camino_bosque/juegos/abuelos/montana: 74-83%\n- montaña meadow: 82%\n\nScreenshots ipad/m_bosque3_juegos.png and m_abuelos.png show the same flat grass, dirt-path cross and small round trees. El bosque is mostly open meadow with scattered single trees and no canopy (w_bosque_1.png). All 4 paths in m_paths.png are a straight dirt road between walls of one repeating bush tile, with a single pond. The playa path's sand and the wheat fields are hard-edged rectangles.",
+   "impact": "Exploring is one of the child's favourite things, and arrival is the payoff. When the forest, park and farm look the same, each new place feels smaller, and the world will feel repetitive as content grows over the years.",
+   "fix": "Give each zone its own ground palette and texture: forest floor darker with leaves and roots, park lawn brighter with mown stripes, farm with dry grass, crops and hay. Add dense tree canopies that overlap the top of the screen in El bosque. Give each path a landmark (a bridge, a sign, a fallen log, a windmill). Blend the edges of sand and wheat patches.",
+   "effort": "L"
+  },
+  {
+   "title": "Night skips the beach and all paths: they stay in full daylight while the night-only octopus and moon bubbles appear",
+   "severity": "medium",
+   "evidence": "Mean frame luminance by day vs after sunset:\n- camino_playa: 115 vs 115\n- camino_bosque: 114 vs 115\n- camino_montana: 129 vs 129\n- playa: 107 vs 107\n- bosque: 78 vs 59\n- montaña: 126 vs 82\n\nDarkening is done per zone (zone-bosque.js:426, zone-juegos.js:741, zone-abuelos.js:705, zone-montana.js:721); zone-playa.js has none, and none of the paths have it. Screenshot ipad/m_sunset1.png: bright midday beach with a moon bubble over Tere; Villa Sol behind it is orange.",
+   "impact": "Walking from an orange-sunset Villa Sol into a bright midday path and beach, then into a dark forest, breaks the 'time to go home' cue the game relies on, and makes the night animals (octopus at the beach) feel arbitrary.",
+   "fix": "Move the darkening into field.js as one shared pass for all outdoor maps (warm wash then blue dark, using G.day.glow()), with per-zone strength. Add moonlight sparkle on the beach water.",
+   "effort": "S"
+  },
+  {
+   "title": "The sleeping bear in the cave is a flat brown blob that almost disappears into the cave floor",
+   "severity": "medium",
+   "evidence": "Raw frame ipad/w_bosque_cueva_1_raw.png, close-up crop_bear2.png. Bear body averages rgb(70,42,24); the floor beside it rgb(29,25,36): a luminance contrast of 1.32:1, under a 0.62 darkness overlay (zone-bosque.js:426). The sprite is a lozenge with a tiny face and no visible ears, legs or breathing.",
+   "impact": "Finding the bear is one of the child's favourite moments (per the playtests). Making it read like a log or a sack wastes the payoff and makes the cub's story ('big and small') weaker.",
+   "fix": "Light the bear with a soft glow from the mushrooms or fireflies; add an outline, a rounded ear and a paw, and a slow 2-frame breathing animation with 'z z' on top; lighten the floor around the den.",
+   "effort": "S"
+  },
+  {
+   "title": "Word-only answer cards use different text sizes, so short words stand out (bias in quizzes)",
+   "severity": "medium",
+   "evidence": "learn.js:287: big = textWidth(label)*2 <= cw-6 (52 px). 4-letter words draw at 2x, longer words at 1x. Screenshot ipad/m_warmup.png (bottom-left): 'cabra' and 'caballo' small, 'pato' (the right answer) at double size. The same happens with gato, pato, pan and oso against longer distractors.",
+   "impact": "The child can 'pick the big one' instead of recalling the word, which inflates retention data. The cards also look inconsistent.",
+   "fix": "Size every card in a question the same way: use 2x only if all labels fit at 2x, otherwise all at 1x (or wrap all of them).",
+   "effort": "S"
+  },
+  {
+   "title": "Missing and wrong sound effects: 'bounce' plays nothing, and a sword whoosh is used for water, rain and wind",
+   "severity": "medium",
+   "evidence": "audio.js A.sfx has no 'bounce' case, so sfx('bounce') is silent at 4 call sites (zone-juegos.js:168 jumping course, :363 slide landing, :515 ball landing, :793 poke). 'swing' (a noise sweep at 5 kHz, the RPG's sword swing) has 39 call sites, among them:\n- splashes: zones.js:212, 223\n- rain and wind: zone-montana.js:185\n- washing the pigs: zone-abuelos.js:238\n- card flights: cards.js:141\n- the cat running off: story-c01-c10.js:249\n\nOne footstep noise covers grass, sand, snow, wood and ice (field.js:107). There are no ambient beds: no waves at the beach, no birds in the forest, no wind on the peaks. Unused combat effects (hit, crit, die, fire, bolt) remain in the switch.",
+   "impact": "Kids learn from feedback sounds. The slide and the ball landing in silence feel dead, and the water and weather sound like sword swings. The beach and forest, her favourite places, feel quieter than they look.",
+   "fix": "Add synth recipes for bounce (pitch-down sine boing), splash (noise burst plus a falling bandpass), rain (looping filtered noise), wind (slow-moving bandpass noise), and footsteps per terrain (G.TERRAIN tag to filter frequency). Add a quiet per-zone ambient loop: waves using an LFO on noise gain, birds as random chirps from the existing 'bell' instrument.",
+   "effort": "M"
+  },
+  {
+   "title": "Snowy peaks read as a repeating egg-crate pattern, and the snow line steps along the tile grid",
+   "severity": "medium",
+   "evidence": "tiles.js:641-660 and 2177 ('ï' Peaks): each tile is one pyramid plus shared corner pyramids, so a row of tiles forms a regular diamond lattice (ipad/crop_peaks.png). The snow/grass edge follows the 24-px grid in stair steps (crop_snowline.png). A boulder tile carries a hard-edged square of snow into the meadow (crop_rock_snowtile.png). The refuge's snowy roof is a flat untextured pale slab with no ridge or eaves (crop_refuge_roof.png).",
+   "impact": "La montaña is the newest and most dramatic zone. The repeating peaks and square snow patches make it look tiled rather than majestic, and are noticeable at the top of every snow screen.",
+   "fix": "Draw the mountain backdrop as one large multi-tile mural (varied peak heights, light side and shadow side), not a per-tile pattern. Blend snow edges with transition tiles, or let a noise-based edge cross tile boundaries. Give rock tiles a ground variant for the surrounding terrain. Shade the roof snow with a ridge line and an overhang with icicles.",
+   "effort": "M"
+  },
+  {
+   "title": "Props are out of scale: flowers, letters, eggs and acorns are as big as the child; the horse is child-sized",
+   "severity": "low",
+   "evidence": "ipad/w_villa_1.png and w_villa_2.png: pickup flowers and the letter on the ground take about 1 tile, bigger than the player's head; the stick is about 1.5 tiles. m_int2.png (barn): eggs about 14x17 px, as big as hay bales, while the horse is about 20x14 px, the same height as the player. m_playa_bosque.png: the acorn is larger than the squirrel.",
+   "impact": "Mixed scales make the world look like a sticker sheet rather than a place, and can confuse what a word means (a giant flower next to a tiny horse).",
+   "fix": "Draw ground pickups at about 60% of a tile, with a soft shadow and the existing sparkle so they stay tappable (keep the 24-px tap area). Redraw the horse and cows at about 1.5x the player's height.",
+   "effort": "M"
+  },
+  {
+   "title": "World map and ¡Mi mundo! look like placeholders next to the in-game art",
+   "severity": "low",
+   "evidence": "ipad/s_worldmap.png: a flat 2-colour ellipse island and triangle mountains (crop_map_vector.png). The place medallions are canvas arcs with anti-aliased edges: 46 distinct colours in a 140x200 px patch of the island edge. Bus icons overlap the medallions, and '8/8' counts overlap the circles. ipad/s_diploma_1.png: the lower 40% of the diploma is empty, and '90' touches the notebook icon.",
+   "impact": "The bus map is a hub she opens often. Its vector-flat style is the one place the game stops looking hand-made, so it feels less like a treasure map than it could.",
+   "fix": "Draw the world map as a pixel-art illustrated map: tiled coast, little pixel versions of each zone's landmark, dotted roads, and the bus on the road. Snap medallions to pixel circles. Fill the diploma's empty space with the album's favourite animal and Canelo.",
+   "effort": "M"
+  },
+  {
+   "title": "Low-contrast '¡Completo!' and small HUD overlaps",
+   "severity": "low",
+   "evidence": "album.js:145: '¡Completo!' is #c08000 on the #e8a020 bar, a contrast of 1.5:1 (ipad/s_album_playa.png). Long place banners run under the card-count box ('El camino a la casa de los abuelos', crop_banner_overlap.png). A white bubble corner from the player peeks behind the middle answer card in every centred question (crop_q_glitch.png). The bus-stop pole draws through Lucía's head (w_villa_1.png).",
+   "impact": "Small, but '¡Completo!' is a reward moment the child should be able to read. The overlaps look sloppy on screens she sees constantly.",
+   "fix": "Draw '¡Completo!' in white with a dark outline, or on a ribbon above the bar. Shorten banners or shift them left by the HUD width. Hide map bubbles while a Choice is open. Depth-sort the bus-stop sign with characters (draw the pole behind a character whose feet are below it).",
+   "effort": "S"
+  },
+  {
+   "title": "Per-frame cost spikes: up to 28 ms frames on desktop; first entry to Villa Sol takes 114 ms",
+   "severity": "low",
+   "evidence": "Headless Chromium on this machine, step+draw measured over 60 frames per map: averages 2.3-9.2 ms, with spikes up to 25-28 ms (villa, playa, juegos), i.e. dropped frames at 60 fps. First step+draw after G.goto:\n- villa: 114 ms\n- montaña: 66 ms\n- bosque: 57 ms\n- playa: 48 ms\n\nG.win (gfx.js:102) creates a new linear gradient on every call; a Choice with 3 cards calls it 4+ times per frame, and DY.drawField creates two gradients every frame at sunset. Script: scratchpad/audit2/visual/scripts/perf.js.",
+   "impact": "On an older iPad the spikes may show as walk stutter, especially at sunset or with menus open. The first-entry cost is mostly hidden by the fade.",
+   "fix": "Cache window backgrounds by size (an offscreen canvas per w,h,colours, like G.cached). Pre-render the sunset gradient once per glow step. Warm the tile caches of neighbouring maps during idle frames. Measure on the actual iPad with the Safari timeline before investing more.",
+   "effort": "M"
+  },
+  {
+   "title": "The title screen doesn't show Canelo or any animal: it reuses the RPG's town battle background with a church",
+   "severity": "low",
+   "evidence": "main.js:79 and :151 call G.drawBattleBG(ctx, 'town'): a European plaza with a church spire and cross behind the logo (ipad/01_title.png). The same backdrop is behind the slot screen and the creator.",
+   "impact": "The first thing the child sees every day doesn't show what she loves (her dog, animals, the world), so the game reads as generic at first glance.",
+   "fix": "Make a title scene: Villa Sol's fountain plaza with Canelo wagging next to the logo, and a few album animals peeking in, cycling through the ones she has found. Show the named dog on the slot cards.",
+   "effort": "M"
+  }
+ ],
+ "metrics": "**Screens and scale** (measured canvas size and coverage per viewport)\n\n| Viewport | Scale | Canvas (CSS px) | Screen used | Text cap height | Icon button |\n|---|---|---|---|---|---|\n| iPad landscape 1024x768 | 3.0 | 960x672 | 82% | 21 px | 60 px |\n| Phone portrait 390x844 | 1.0 | 320x224 | 22% | 7 px | 20 px |\n| Phone landscape 844x390 | 1.5 | 480x336 | 49% | 10.5 px | 30 px |\n| iPad portrait 768x1004 | 2.25 | 720x504 | 47% | 15.75 px | 45 px |\n| iPad Pro landscape 1180x760 | 3.25 | 1040x728 | 84% | 22.75 px | 65 px |\n\n**Text fitting**\n- 75 of 180 word-card labels are squeezed sideways (card label area is 34 px). Worst: pájaro carpintero 35%, mariposa monarca 37%, muñeco de nieve 41%, estrella de mar 42%, buenas noches 45%, ¿cómo estás? 49%.\n- 4 of 50 album names are wider than the 70-px cell: estrella de mar 95 px, pájaro carpintero 110 px (cry 71 px), mariposa monarca 105 px, luciérnaga 69 px.\n\n**Contrast**\n- '¡Completo!' on the album bar: 1.5:1\n- Unmet '? ? ?' on an unmet card: 1.36:1\n- Cave bear vs cave floor: 1.32:1\n- Album numbers: 3.2:1\n- Blue word on a card: 6.1:1\n\n**Music**\n- 10 loops (all from the earlier RPG); 7 used across 21 maps.\n- Loop lengths: title 42.9 s, field 32.0 s, town 41.5 s, church 54.9 s, headquarters 43.6 s, story 45.7 s, castle 40.0 s.\n- 'inn' is a 2.7 s non-looping jingle used as map music for 4 maps; they are silent 6.5 s after entering.\n- Which maps share which song:\n  - field: 5 paths + montana\n  - castle: biblioteca, bosque, cave\n  - headquarters: casa, cabana, abuelos_casa, refugio\n  - inn: granja, rosa, panaderia, abuelos\n  - title: juegos\n  - story: playa\n  - church: escuela\n  - town: villa\n- The music restarts after a jingle (it was 5.1 s in, then back at 0.6 s) and after a door (back at 0.4 s).\n- Jingles are called from 79 places; 'swing' sound from 39; 'bounce' from 4 (it is undefined, so silent).\n\n**Night: frame brightness, day vs after sunset**\n- Villa Sol 87 → 88 (warm tint, not darker)\n- Paths 114-129 → unchanged\n- Playa 107 → 107\n- Bosque 78 → 59\n- Montaña 126 → 82\n\n**Same-looking zones: share of strongly green pixels**\n- juegos 82-88%\n- abuelos 66-82%\n- bosque 40-87%\n- paths 74-83%\n- Villa Sol 44-61%\n\n**Frame cost (headless desktop)**\n- step+draw averages 2.3-9.2 ms, with spikes up to 28 ms.\n- First entry: villa 114 ms, montaña 66 ms, bosque 57 ms.\n\n**Files**\n\nScreenshots and scripts are in /tmp/claude-0/-home-user-Spanish-Club/56c6d0c5-5673-5d69-87f4-ad0ff9c7afaf/scratchpad/audit2/visual/\n- ipad/ and phone/: the full screenshots\n- ipad/m_*.png: montages\n- ipad/crop_*.png: close-ups\n- scripts/: s1-opener.js, s2-world.js, s3-screens.js, s4-extra.js, s5-phrase.js, metrics.js, perf.js, dusk.js, day.js, jing.js, mus.js, sizes.js"
+}

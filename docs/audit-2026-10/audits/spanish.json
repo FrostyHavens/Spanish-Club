@@ -1,0 +1,158 @@
+{
+ "summary": "Read-only audit of the player-facing Spanish under /home/user/Spanish-Club, done as a native Mexican-Spanish children's-education editor. I pulled out 2,084 Spanish-looking string literals and 429 T('es','en') pairs, read all of them, generated every request sentence and checked the dashboard and phrase templates.\n\nSTRENGTHS\n- Hand-written lines are clean. No missing accents in about 2,000 strings. The tú form is consistent; the only ustedes line is \"¡Digan 'whisky'!\", which is right for a group.\n- Gender placeholders like {o/a} are used correctly.\n- The Mexican vocabulary is well chosen: papalote, resbaladilla, catarina, cubeta, chamarra, jitomate, elote, tlacuache, zorrillo, pay, lodo, ¡Jala!, ¡Ahorita!, cada quien, día de campo, and \"whisky\" for the photo.\n- The request maker in src/requests.js produced 646 unique sentences, all grammatical, and its Node tests pass (104/104).\n- The dashboard's \"tonight's questions\" are grammatical.\n\nBIGGEST WEAKNESSES\n1. Code-built sentences that hard-code an article (\"el [x]\", \"la [x]\", \"tu [x]\") give wrong gender or number. Found in src/favores.js (daily favours), the finale (story-c11-c21.js:1052), Lola's favourite animal (phrases.js:647), Mateo's line (zone-montana.js:331) and Abuelo's Simón dice (zone-abuelos.js:492). These teach exactly the mistakes a learner picks up.\n2. A daily beach line uses \"¡Qué caliente!\" for a person who feels hot. In Mexico the natural phrase is \"¡Qué calor!\", and \"caliente\" said of a person has a sexual meaning.\n3. Every word is reviewed with \"¿Qué es?\", even actions, colours, feelings, numbers and greetings.\n4. Vocabulary balance: 28% of the 180 words are animals. Core early words are missing: mamá, papá, tortilla, frijoles, negro, café, numbers 11-20, and most body parts, food and home items. Some words are odd for Mexico (erizo, marmota, llama, bellota).\n5. Smaller issues: a few regionalisms (rosado instead of rosa, Profesora instead of Maestra, cinta instead of listón, show instead of concurso), inconsistent capitals (147 sentence-start words render in lowercase), a few short phrases with a missing article, and three punctuation typos.",
+ "findings": [
+  {
+   "title": "Favours (daily) build sentences with the wrong article for half the words",
+   "severity": "high",
+   "evidence": "Every output below was confirmed by running the templates against content/es/words.js.\n- src/favores.js:128 (Tomás): '¡para la [' + v.word + ']!' gives '¡para la parque!'.\n- src/favores.js:129 (Gómez): '¡Al [' + v.word + ']!' gives '¡Al fuente!'.\n- src/favores.js:135 (Nico): '¿Y el [' + v.word + ']? ¡Búscalo!'. Three of Nico's five animals are feminine, giving '¿Y el cabra? ¡Búscalo!', '¿Y el rana?' and '¿Y el gallina?'.\n- src/favores.js:171 (reminder, used for both Tomás and Gómez): '¿La carta? ¡La [x]!' gives '¡La parque!', '¡La banco!' and '¡La árbol!'. Gómez never handed over a letter, so '¿La carta?' is also wrong for him.\n- src/favores.js:172: '¿Y el [x]?' gives '¿Y el rana?'.",
+   "impact": "Favours are the main daily review loop in Villa Sol. The child hears and reads 'el cabra' or 'la parque' next to a card that says 'la cabra' or 'el parque'. Wrong noun gender is exactly what a beginner absorbs and later repeats.",
+   "fix": "Take the article from the word itself: const a = W(v.word).es.split(' ')[0].\n- Tomás: 'para ' + a + ' [x]'.\n- Gómez: a === 'el' ? '¡Al [x]!' : '¡A la [x]!'.\n- Nico: '¿Y ' + a + ' [x]? ¡Búscal' + (a === 'la' ? 'a' : 'o') + '!'.\n- Reminder: Tomás '¿La carta? ¡Para ' + a + ' [x]!'; Gómez '¡Vamos ' + (a === 'el' ? 'al' : 'a la') + ' [x]!'.\nThen add a Node test that runs every pool word through these templates.",
+   "effort": "S"
+  },
+  {
+   "title": "Finale says '¿Y para el cabra?'",
+   "severity": "high",
+   "evidence": "content/es/story-c11-c21.js:1050-1052, chapter 21 (the animal party). The code loops over [['caballo',...], ['pato',...], ['cabra',...]] and builds '¿Y para el [' + k + ']?'. Every player therefore sees '¿Y para el cabra?' in the last chapter.",
+   "impact": "A guaranteed grammar error in the showcase chapter. 'La cabra' is a chapter-7 word the child has used many times by then.",
+   "fix": "Use the word's article: '¿Y para ' + G.data.words[k].es.split(' ')[0] + ' [' + k + ']?', which gives '¿Y para la cabra?'.",
+   "effort": "S"
+  },
+  {
+   "title": "'¡Qué caliente!' used for a person who is hot (Mexican: '¡Qué calor!'; 'caliente' about a person is sexual)",
+   "severity": "high",
+   "evidence": "- content/es/zone-playa.js:344 (hotSide): every day after playa2, one of paco, lola, tere or marina (HOT, line 322) says T('¡Uf! ¡Qué [caliente]!', 'Phew! So hot!') whenever tapped.\n- content/es/zone-playa.js:338 (Doña Nieves): '¡Para Marina! ¡Qué [caliente]!' ('they are so hot').\n- The correct form already exists in the game: zone-montana.js:391 '¿Hace [frio:frío] o [caliente:calor]?', and the mic already accepts 'qué calor / tengo calor' (words.js:143).",
+   "impact": "For weather or body heat, Mexican Spanish uses calor ('¡Qué calor!', 'Tengo calor'). 'Caliente' is for things like sand, chocolate or soup. Said about yourself ('¡qué caliente!', 'estoy caliente'), it means sexually aroused, which is inappropriate in a game for a 7-year-old. It also teaches the wrong word for a very common need.",
+   "fix": "- zone-playa.js:344 becomes '¡Uf! ¡Qué [caliente:calor]!'.\n- zone-playa.js:338 becomes '¡Para Marina! ¡Tiene mucho [caliente:calor]!'.\n- Keep 'caliente' for objects only (the sand at :560 and the chocolate at zone-montana.js:373/938 are correct).\n- Optionally split the word card into caliente (things) and calor (hace / tengo calor).",
+   "effort": "S"
+  },
+  {
+   "title": "Mateo's daily line drops the article: '¡Me encanta nieve!'",
+   "severity": "medium",
+   "evidence": "content/es/zone-montana.js:331 builds T('¡Me encanta [' + k + ']!'), where k comes from ROTA = ['nieve','elsol','nube','nieve','viento','elsol','lluvia'] (line 168). G.baseForm strips the article (ui.js:37). The output is '¡Me encanta nieve!', '¡Me encanta sol!', '¡Me encanta nube!', '¡Me encanta viento!' or '¡Me encanta lluvia!'.",
+   "impact": "Ungrammatical every time she talks to Mateo after the first chapter. It also contradicts the game's own 'Me gusta ___' frame, which correctly adds 'el' (words.js:280 art:'el', so 'Me gusta el oso').",
+   "fix": "'¡Me encanta ' + art(k) + ' [' + k + ']!', giving '¡Me encanta la nieve!' or '¡Me encanta el sol!'. For nube use the plural: '¡Me encantan las [nube:nubes]!'. Or reuse G.phrase.slotText('f_gusta', k).",
+   "effort": "S"
+  },
+  {
+   "title": "Simón dice: 'toca tu ojos' (agreement) and the English calque 'toca tu cabeza'",
+   "severity": "medium",
+   "evidence": "- content/es/zone-abuelos.js:492: ask('abuelo', '¡Simón dice: toca tu [' + w + ']!') with w drawn from AB.BODY = ['mano','pie','nariz','ojos','boca','cabeza'] (line 206). When w = 'ojos' the result is '¡Simón dice: toca tu ojos!'.\n- zone-abuelos.js:485 ('¡Toca tus ojos!' / '¡Toca tu cabeza!') and :497 ('¡Simón dice: toca tu...!') use possessives with body parts, which is an English pattern. Native Mexican Simón dice says '¡Simón dice: tócate la nariz!'.\n- The game itself does this correctly at zone-abuelos.js:925: '¡Lávate las [mano:manos]!'.",
+   "impact": "A plain agreement error ('tu' with a plural noun) about half the time Abuelo plays, plus a calque that native children would never say.",
+   "fix": "'¡Simón dice: tócate ' + W(w).es.split(' ')[0] + ' [' + w + ']!', which gives 'tócate los ojos', 'tócate la nariz' or 'tócate el pie'. Apply the same change to the intro at :485 and the prompt at :497 ('¡Simón dice: tócate...!').",
+   "effort": "S"
+  },
+  {
+   "title": "Lola's favourite-animal reply uses 'El' for 21 of the 50 album animals",
+   "severity": "medium",
+   "evidence": "src/phrases.js:647 builds TT('¡El [' + w + ']! ¡A mí también me gusta!'), where w is any album animal she has met. Twenty-one of the 50 are feminine, giving lines such as '¡El tortuga!', '¡El mariposa!', '¡El vaca!', '¡El llama!', '¡El catarina!' and '¡El mariposa monarca!'.",
+   "impact": "This is the payoff line for choosing a favourite animal, which the playtests say she loves. The odds of a wrong article are about 40%, right after she has just said 'Me gusta la tortuga' correctly.",
+   "fix": "'¡' + cap(W(w).es.split(' ')[0]) + ' [' + w + ']! ¡A mí también me gusta!'",
+   "effort": "S"
+  },
+  {
+   "title": "Every review asks '¿Qué es?', even for actions, colours, feelings, numbers and greetings",
+   "severity": "medium",
+   "evidence": "src/intro.js:187 (G.review.ask) and src/warmup.js:189 both use { prompt: '¿Qué es?', show: id } for every word. That includes corre, salta, sube and atrapa (actions), rojo and azul (colours), triste and cansado (feelings), tres (numbers), hola and gracias (greetings), frío (weather) and grande and rápido (adjectives). The listen form '¿[' + id + ']?' renders as '¿corre?' or '¿rojo?'.",
+   "impact": "The child is trained to answer 'What is it?' with 'corre' or 'triste', which is the wrong question for those answers. Native questions differ: ¿Qué hace?, ¿De qué color es?, ¿Cómo está?, ¿Cuántos hay?, ¿Qué dice?, ¿Qué le dices a {dog}?, ¿Qué tiempo hace?, ¿Cómo es?, and ¿Quién es? for animals. The story already models these correctly (story-c11-c21.js:163, 1075), so the review contradicts it.",
+   "fix": "Add a topic-to-prompt map shared by intro.js and warmup.js:\n- acciones, nadar: '¿Qué hace?'\n- mascota: '¿Qué le dices a {dog}?'\n- colores: '¿De qué color es?'\n- sentir: '¿Cómo está?'\n- numeros: '¿Cuántos hay?'\n- saludos: '¿Qué le dices?'\n- sonidos: '¿Qué dice?'\n- tiempo: '¿Qué tiempo hace?'\n- grande, pequeno, rapido, despacio, caliente, frio: '¿Cómo es?' or '¿Cómo está?'\n- animal topics: '¿Quién es?'\n- everything else: '¿Qué es?'",
+   "effort": "S"
+  },
+  {
+   "title": "Vocabulary gaps against a 4-7 Mexican early-years list; animals take 28% of the words",
+   "severity": "medium",
+   "evidence": "content/es/words.js has 180 words. 50 are animals (7+4+7+8+8+8+8) plus 4 animal sounds. Checked against common Mexican preschool and first-grade word lists, these are missing:\n- Family and people: mamá, papá, hermano/a, niño/a, amigo/a. Only abuela, abuelo, bebé and familia exist, although Mamá is the first character.\n- Colours: negro, café, morado, anaranjado, gris. Only 6 colours exist.\n- Numbers: 11-20.\n- Body: orejas, pelo, dientes, brazo, pierna, panza, dedos. Only 6 body words exist.\n- Mexican staple foods: tortilla, frijoles, arroz, sopa, pollo, taco, fresa, uvas, sandía, jugo, pastel, dulce. Sopa, pastel and cocina appear in dialogue but are not words.\n- Needs and feelings: tengo hambre, sed, sueño; enojado, asustado.\n- Home and school: mesa, silla, puerta, ventana, plato, vaso, cuchara, libro, lápiz, mochila.\n- Transport: carro, camión (Mexican for the bus the game already has), bicicleta.\n- Everyday verbs: come, toma, duerme, lava, mira, escucha, abre, cierra.\n- Adjectives and positions: bonito/feo, mucho/poco, limpio/sucio, arriba/abajo, dentro/fuera.\nWords that are odd for Mexico:\n- erizo (no hedgehogs in the Americas; Mexican kids hear 'erizo' as sea urchin)\n- marmota and llama (not Mexican fauna)\n- bellota (low-frequency)\n- trineo",
+   "impact": "Over three years she would learn many rare animals but could not say 'mi papá', 'tengo hambre', 'una tortilla' or 'once'. These high-frequency words carry real conversation and appear in every Mexican early-years book.",
+   "fix": "Plan the next content tranches around the gaps:\n- A home zone (family, house objects, meals: tortilla, frijoles, sopa; tengo hambre/sed).\n- Luna's school (numbers 11-20, a second colours page, school objects).\n- A second body page.\n- Daily verbs through Canelo's routine.\nConsider replacing erizo with armadillo, and marmota and llama with teporingo, coyote or borrego cimarrón, to keep the Mexican setting.",
+   "effort": "L"
+  },
+  {
+   "title": "Regionalisms and naming choices that are not Mexican-natural",
+   "severity": "medium",
+   "evidence": "- Colour pink is 'rosado / rosada' (words.js:97), so the game says 'una flor rosada' (story-c11-c21.js:474, 496, 513), 'conchas rosadas' and 'Es rosado.' (dashboard). Mexican children say 'rosa', which does not change form.\n- 'Profesora Luna' (src/data.js:65, story-c01-c10.js:653): Mexican children say 'Maestra'.\n- 'cinta' for a prize ribbon (story-c11-c21.js:431, 443, 450, 997): the Mexican word is 'listón' ('cinta' means tape).\n- 'El show de perros' (words.js:350, story-c11-c21.js:372, 415, 419): a standard model would be 'El concurso de perros'.\n- 'Abuela Rosa' is a neighbour (data.js:71) while 'la abuela' is the child's own grandma, which blurs the family word. A neighbour would be 'Doña Rosa'.\n- '¡Mi huerto!' (zone-abuelos.js:441) does not match the notebook page 'La huerta' (words.js:41).\n- mora (words.js:159): the usual Mexican name is 'zarzamora'.\n- camisa for a child's T-shirt: Mexicans say 'playera'.\n- 'Don Lucho' (data.js:153) is a Chilean/Andean nickname.\n- pequeño: Mexican children say 'chiquito'; it is already accepted as a spoken alternative.",
+   "impact": "These are not grammar errors, but they move the child's Spanish away from the stated Mexican target. 'Abuela Rosa' also confuses one of the family words being taught.",
+   "fix": "- Make 'rosa' the main pink and keep 'rosado' as a spoken alternative. The request maker needs 'rosa' to stay the same in the plural ('conchas rosas'): set an adjective flag so RQ.pluralAdj does not add -s.\n- Rename to 'Maestra Luna' and 'Doña Rosa'.\n- Use 'listón' and 'El concurso de perros'.\n- Unify on 'la huerta'.\n- Consider 'zarzamora' and the name 'Don Luis'.",
+   "effort": "M"
+  },
+  {
+   "title": "'Mamá oso' should be 'Mamá osa'",
+   "severity": "low",
+   "evidence": "content/es/zone-bosque.js:570-571 has prompt '¡Mamá [oso]! ¡[grande]!' and ask 'Mamá [oso] es...'. Spanish uses 'osa' for the mother, as in Ricitos de Oro: Papá Oso, Mamá Osa. 'Osa' is already in the word's alt list (words.js:164).",
+   "impact": "A gender-agreement model error in the most-loved scene (finding the bear).",
+   "fix": "'¡Mamá [oso:osa]! ¡Es [grande]!' and 'Mamá [oso:osa] es...'",
+   "effort": "S"
+  },
+  {
+   "title": "147 sentence-start word tokens render in lowercase ('¡hola, Ana!', '¿cómo estás?')",
+   "severity": "low",
+   "evidence": "ui.js items() (line 41) draws m[2] || G.baseForm(id), which is always lowercase, and dialogue has no auto-capitalisation. Examples: story-c01-c10.js:87 '¡[hola], {name}!', :237 '¡[si]!', :292 '¡[buenosdias], {name}!', :660 '¿[comoestas]?', :818 '¡[adios]!'. A grep finds 147 tokens of the form [¡¿][id]. Meanwhile 22 lines hand-capitalise with [gracias:Gracias], so the text is inconsistent.",
+   "impact": "She is learning to read Spanish, and the capitals she sees flip from line to line.",
+   "fix": "In items(), capitalise the first letter of a token when it follows ¡ or ¿ or starts the string, unless the shown form is explicit. Then the hand-made [x:X] forms are no longer needed.",
+   "effort": "S"
+  },
+  {
+   "title": "Short exclamations missing their article or preposition",
+   "severity": "low",
+   "evidence": "- Default intro prompts '¡Mira! ¡[' + id + ']!' (zone-playa.js:110, 131; zone-bosque.js:135; zone-juegos.js:283, 353, 411, 846; zone-abuelos.js:302; zone-montana.js:304) give '¡Mira! ¡llama!', which also reads as the verb 'llama', and '¡columpio!'.\n- hearts.js:254 '¡Un secreto! Una página... ¡[fuente]!' should be '¡en la fuente!'.\n- errands.js:227 '¡[flor]! ¡[gracias]!' should be '¡Una flor! ¡Gracias!'.\n- zone-bosque.js:297 '¡Cuatro! ¡Al pay!' should be '¡A hacer el pay!'.\n- story-c11-c21.js:324 '¡A Rosa!' and :509 '¡A Lucía!' should be '¡Vamos con Rosa!'.\n- story-c11-c21.js:317 'Y el agua... ¡la fuente!' should be '¡de la fuente!'.\n- zone-montana.js:893 '¡Don Lucho tiene!' should be '¡Don Lucho tiene una!'.",
+   "impact": "These short exclamations are grammatically incomplete. They are fine for comprehension but are not the model sentences a child should copy.",
+   "fix": "Default prompt: '¡Mira! ¡' + (fem ? 'Una' : 'Un') + ' [x]!'. Apply the line fixes listed above.",
+   "effort": "S"
+  },
+  {
+   "title": "Punctuation typos",
+   "severity": "low",
+   "evidence": "- content/es/zone-bosque.js:619: '¡Tres! ¡Bajo las... !' has a space before '!'.\n- zone-bosque.js:646: '¡Una [bellota]... ¡para ti!' has two ¡ and one !.\n- zone-playa.js:652: '¡Las [tortuga:tortuguitas]... ¡...!' has two ¡ and one !.",
+   "impact": "These are visible typos in text she reads.",
+   "fix": "Use '¡Tres! ¡Bajo las...!', 'Una [bellota]... ¡para ti!' and 'Las [tortuga:tortuguitas]... ¡...!'.",
+   "effort": "S"
+  },
+  {
+   "title": "English inside Spanish dialogue: '¡Bye, bye, tortuguitas!'",
+   "severity": "low",
+   "evidence": "content/es/zone-playa.js:656: T(met('adios') ? '¡[adios:Adiós], ...!' : '¡Bye, bye, [tortuga:tortuguitas]!'). The English fallback is shown whenever 'adiós' has not been met yet.",
+   "impact": "English appears in a Spanish line, although an unmet word could simply be drawn as its picture.",
+   "fix": "Always use '¡[adios:Adiós], [tortuga:tortuguitas]!'; an unmet word already shows as its picture plus a blank. Or use '¡Hasta luego, tortuguitas!'.",
+   "effort": "S"
+  },
+  {
+   "title": "Words used with a meaning different from the card they are linked to",
+   "severity": "low",
+   "evidence": "- 'carta' means the mail letter (words.js:109, envelope picture), but chapter 16 uses it for the notebook's picture cards: story-c11-c21.js:573 '¿Tus cartas?', :594 'Una carta... ¡en el [arbol]!', :598, :615.\n- story-c01-c10.js:557 '¡Mira! ¡[pata:Huellas]!' marks 'Huellas' as the vocabulary token for 'dame la pata'. Once 'pata' is met it is drawn as that word, and st.see('pata') counts it as a meeting.",
+   "impact": "Two meanings attached to one word card. 'Huellas' (footprints) is not 'dame la pata' (shake).",
+   "fix": "Say 'tarjetas' or 'tus dibujos' for the notebook cards. Write 'Huellas' as plain text, or add a 'huella' word.",
+   "effort": "S"
+  },
+  {
+   "title": "Smaller agreement and translation mismatches",
+   "severity": "low",
+   "evidence": "- src/favores.js:141: '¿Cuántos?' is asked about apples (Pepe) and stars (Luna); it should be '¿Cuántas?'.\n- src/hearts.js:306: '¡Mejores amigos!' is shown even for a girl with a female friend; that case should be '¡Mejores amigas!'.\n- content/es/zone-abuelos.js:973: '¡Búscalo!' does not match the English 'Find her' (the baby is a girl, 'la bebé').\n- English labels: words.js:213 'the trousers' is British while the rest is American ('Mom', 'cookie', topic 'Colors'). About 70 English strings say 'colour/colours' while the dashboard says 'color'. words.js:141 castillo = 'the sandcastle', but the Spanish says only 'el castillo'.",
+   "impact": "Small accuracy errors for the grown-ups and in the child's text.",
+   "fix": "- Pick Cuántos/Cuántas from the counted noun's gender.\n- Use {amigos/amigas} when both are female.\n- Use '¡Búscala!' with 'la [bebe:bebé]', or change the English to 'him'.\n- Settle on American English: 'pants', 'color'.",
+   "effort": "S"
+  },
+  {
+   "title": "Generated requests are grammatical, but a few are nonsense or miss the personal 'a'",
+   "severity": "low",
+   "evidence": "I generated 1,634 requests (646 unique) for every board, template and level, and all are grammatical. Saved at /tmp/claude-0/-home-user-Spanish-Club/56c6d0c5-5673-5d69-87f4-ad0ff9c7afaf/scratchpad/audit2/spanish/reqs.tsv.\n- Mateo's board (src/requests.js:167) gives nube, elsol and muneco sizes but no 'animal' flag, so it says 'give': 'Dame el sol pequeño.', 'Dame cuatro nubes.', 'Dame el muñeco de nieve grande.'\n- Animals get 'Toca el perro grande.' Native speakers use the personal 'a' with animals ('Toca al perro grande'), as pet.js:442 already does ('Toca a {dog}').",
+   "impact": "Asking her to hand over the sun or clouds is odd. The missing 'a' is a minor naturalness issue.",
+   "fix": "Mark nube, elsol and muneco as touch/where things ('Toca la nube grande.', '¿Dónde está el sol pequeño?'). For the touch verb use 'Toca al' / 'Toca a la'. Add these to the SENTENCES list in tools/test-listen.js.",
+   "effort": "S"
+  },
+  {
+   "title": "Misspelled or odd spoken alternatives in words.js",
+   "severity": "low",
+   "evidence": "These are in the alt lists (forms the mic accepts):\n- pez 'pecesito' should be 'pececito' (words.js:77).\n- erizo 'erizito' should be 'ericito' (:169).\n- buho 'buhito' should be 'buhíto' (:170).\n- salta includes 'salte', which is the usted form of salir ('get out') (:67).\n- zorro includes 'zorra', which is also a common insult in Mexico (:168).\nMatching still works because speech.js:53 merges c, z and s and strips accents.",
+   "impact": "No effect on gameplay today, but the content is wrong if these forms are ever displayed.",
+   "fix": "Correct the spellings and drop 'salte'.",
+   "effort": "S"
+  },
+  {
+   "title": "Dashboard 'where does it live' answers are factually odd",
+   "severity": "low",
+   "evidence": "The HOME map in src/dashboard.js:44-48 produces 'Where does the bee live? In the flower.' (bees live in a hive, colmena), sends catarina and colibrí to 'flor', and sends conejo, hormiga, lagartija and grillo to 'parque'. COLOR maps cerdo to rosa, giving 'Es rosado.' (Mexican: 'Es rosa.').",
+   "impact": "The parent is told to ask the child a question whose expected answer is wrong.",
+   "fix": "Use '¿Dónde está...?' for those animals, or drop them from HOME. Align the pink answer with the rosa/rosado decision above.",
+   "effort": "S"
+  }
+ ],
+ "metrics": "- **Spanish-looking string literals scanned:** 2,084 in content/es/*.js and src/*.js, plus 429 T('es','en') pairs, all read by hand.\n- **Missing accents found:** 0. **usted/vosotros slips:** 0 (only the correct group form '¡Digan \"whisky\"!').\n- **Request maker (src/requests.js):** 1,634 requests generated, 646 unique sentences, all grammatical. `ONLY=node node tools/test-listen.js` passed 104/104.\n- **Wrong-article and agreement errors from code-built templates (confirmed by running them):**\n  - favores.js: 9 distinct bad outputs, including 3 of Nico's 5 animals.\n  - phrases.js:647: 21 of 50 album animals.\n  - zone-montana.js:331: 5 of 5 weather words.\n  - zone-abuelos.js:492: 1 of 6 body words.\n  - story-c11-c21.js:1052: 1, seen by every player.\n- **Lowercase sentence-start word tokens:** 147.\n- **Vocabulary:** 180 words in 26 topics; 50 animals (28%) plus 4 animal sounds; 6 colours; numbers 1-10; 6 body parts; 4 family words; no mamá/papá; no tortilla or frijoles.\n- **Scratch outputs:**\n  - /tmp/claude-0/-home-user-Spanish-Club/56c6d0c5-5673-5d69-87f4-ad0ff9c7afaf/scratchpad/audit2/spanish/strings.tsv\n  - /tmp/claude-0/-home-user-Spanish-Club/56c6d0c5-5673-5d69-87f4-ad0ff9c7afaf/scratchpad/audit2/spanish/pairs.tsv\n  - /tmp/claude-0/-home-user-Spanish-Club/56c6d0c5-5673-5d69-87f4-ad0ff9c7afaf/scratchpad/audit2/spanish/reqs.tsv\n  - Generator scripts extract.js, pairs.js and gen.js in the same folder."
+}
