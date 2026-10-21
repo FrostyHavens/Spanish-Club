@@ -101,6 +101,53 @@ async function letters(browser) {
   } finally { await ctx.close(); }
 }
 
+// ---------- the world map listens to her (docs/AUDIT_2026-10.md M5) ----------
+// Don Paco's letter in her hands at Villa Sol's bus stop: the world map's arrow is over the beach and the letter's picture
+// beside it is a button too (the bus takes her there). Another time she picks a place herself: a "?" (El bosque): the
+// guide leads there on foot, the letter waits; a place by bus (El parque): there, no arrow back to the bus stop
+async function worldmap(browser) {
+  const { ctx, g } = await open(browser, 'connect-worldmap', true);
+  try {
+    await fresh(g, { visit: ['playa', 'juegos'], words: ['carta', 'gracias'], done: ['playa1', 'playa2', 'playa3'], x: 26, y: 13 });
+    await g.fieldIdle('villa');
+    await g.ev(() => { G.errands.bag.add('carta', { q: 'post', to: 'paco', from: 'pepe' }); G.post.state().day = G.words.day(); });
+    await g.frames(4);
+    const why = () => g.ev(() => (G.guide.goal(G.field) || {}).why || '');
+    check('worldmap: a letter for Don Paco (the beach): the guide leads to the bus stop', /letter to paco \(bus\)/.test(await why()), await why());
+    const stop = await g.ev(() => G.zones.def('villa').bus.at), openMap = async () => {
+      await g.until(() => free(), null, 'free by the bus stop');
+      await g.ev(s => { const p = G.field.player; p.x = s[0]; p.y = s[1] + 2; G.field.snapCam(); }, stop); await g.frames(4);
+      await g.tapTile(stop[0], stop[1]);
+      await g.until(() => G.top().constructor.name === 'WorldMap' && G.top().t > 30, null, 'the world map');
+    };
+    await openMap();
+    const m = await g.ev(() => ({ a: G.top().arrowAt(), taps: G.top().taps(), hint: G.top().hintXY && true }));
+    check('worldmap: an arrow over the beach, where the letter goes', !!m.a && m.a.id === 'playa', JSON.stringify(m));
+    check('worldmap: the letter\'s picture beside the beach is a button for the beach', m.taps.length === 1 && m.taps[0].id === 'playa', JSON.stringify(m.taps));
+    await g.shot('worldmap_arrow');
+    await g.tapRect(m.taps[0]);
+    await g.until(() => !!G.zones.bus || G.top() === G.field, null, 'the bus');
+    await g.until(() => G.field && G.field.mapId === 'playa' && !G.field.locked && G.fade.a === 0 && !G.zones.bus, null, 'the bus to the beach', 30000);
+    check('worldmap: a tap on the letter\'s picture: the bus takes her to the beach', await g.ev(() => G.field.mapId === 'playa' && G.post.letter().to === 'paco'));
+    // another time: back in town with the letter, she picks a place herself
+    await g.ev(() => { G.goto('villa', 26, 13, 'down'); }); await g.fieldIdle('villa');
+    await openMap();
+    await g.tapRect(await g.ev(() => G.top().rects().find(r => r.id === 'bosque')));
+    await g.until(() => free(), null, 'back on the map (footprints to the forest)');
+    check('worldmap: her pick, a "?" place (El bosque): the guide leads there on foot, not to the letter\'s bus stop', /^explore bosque/.test(await why()) && await g.ev(() => !!G.post.letter()), await why());
+    await openMap();
+    await g.tapRect(await g.ev(() => G.top().rects().find(r => r.id === 'juegos')));
+    await g.until(() => G.field && G.field.mapId === 'juegos' && !G.field.locked && G.fade.a === 0 && !G.zones.bus, null, 'the bus to the park', 30000);
+    await g.drive(() => free(), 'arriving');
+    const w = await why();
+    check('worldmap: her pick by bus (El parque): there the guide shows the park, never the letter\'s bus stop (it waits), nor the forest she asked for before', !!w && !/letter to paco|explore bosque/.test(w) && await g.ev(() => G.zones.picked() === 'juegos' && !G.zones.want()), w);
+    // and once she leaves the place she picked, the letter leads again
+    await g.ev(() => { G.goto('villa', 20, 13, 'down'); }); await g.fieldIdle('villa');
+    check('worldmap: back in town (her pick is over): the letter leads again', /letter to paco \(bus\)/.test(await why()) && await g.ev(() => !G.zones.picked()), await why());
+    check('worldmap: no console errors', !g.errors.length, g.errors.join('\n'));
+  } finally { await ctx.close(); }
+}
+
 // ---------- the zones' people as friends ----------
 async function friends(browser) {
   const { ctx, g } = await open(browser, 'connect-friends', true);
@@ -233,4 +280,4 @@ async function dog(browser) {
 
 const G_ok = (d, h0) => d.s >= h0.s + 1;
 const ONLY = process.env.ONLY;
-run('The world, connected', [['Tomás\'s letters', letters], ['the zones\' people as friends', friends], ['the world\'s progress', progress], ['the dog in every zone', dog]].filter(([n, f]) => !ONLY || f.name === ONLY));
+run('The world, connected', [['Tomás\'s letters', letters], ['the world map listens to her', worldmap], ['the zones\' people as friends', friends], ['the world\'s progress', progress], ['the dog in every zone', dog]].filter(([n, f]) => !ONLY || f.name === ONLY));

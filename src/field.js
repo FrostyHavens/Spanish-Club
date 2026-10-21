@@ -27,6 +27,13 @@
       this.npcs.push(o); return o;
     }
     npc(id) { return this.npcs.find(n => n.id === id); }
+    // the corner buttons over the map now (screen px, their tap areas): the deck of cards (the menu) top-right; the thing
+    // in your hands top-left (carry.js). Nothing the guide points at may hide under them (guide.js wins, tools/test-world.js)
+    corners() {
+      const r = [{ k: 'menu', x: HUD[0] - 4, y: HUD[1] - 4, w: G.BTN + 8, h: G.BTN + 8 }];
+      const h = G.carry && G.carry.hud && G.carry.hud(); if (h) r.push(Object.assign({ k: 'hand' }, h));
+      return r;
+    }
     removeNpc(id) { this.npcs = this.npcs.filter(n => n.id !== id); }
     onEnter() {
       G.audio.play(this.def.music || 'town');
@@ -192,6 +199,7 @@
       const story = (G.chapters && G.chapters.spotAt(this, fx, fy)) || G.intro.spotAt(this, fx, fy); // a puzzle's thing on a counter: search it
       if (!n && !story) { const t = this.map.get(fx, fy); if (t === 'e' || t === 't' || t === 'a' || t === 'Y') { const [dx, dy] = G.DIRS[this.player.dir]; n = this.npcs.find(o => o.x === fx + dx && o.y === fy + dy && !o.hidden); } }
       if (n && n.talk) {
+        this.talkWith = n; // (who this talk is with: the guide tells a talk it led to that's the same as last time, guide.js)
         const back = { u: 'down', d: 'up', l: 'right', r: 'left' }[this.player.dir[0]];
         const prev = n.dir; if (!n.fixed) n.dir = back;
         if (typeof n.talk === 'function') yield* n.talk(this, n);
@@ -257,8 +265,9 @@
       // keys win over a tap walk, and a cutscene (the field locked) ends it rather than pausing it
       if (this.route && (this.locked || G.input.dir() || ['up', 'down', 'left', 'right', 'A', 'B'].some(k => G.input.p(k)))) this.route = null;
       if (!this.locked && G.input.tap()) { // the menu button (= B, eats the tap), else tap-to-walk (field tasks still see the tap)
-        if (G.btnHit(...HUD)) { G.input.eat(); this.menuReq = true; this.route = null; }
-        else if (G.carry && G.carry.tapHud(this, G.input.tap())) { G.input.eat(); this.route = null; } // the thing in your hands, in the corner: put it down (carry.js)
+        const mine = !!(G.guide && G.guide.wins && G.guide.wins(this, G.input.tap())); // (the arrow's target under a corner button: the target wins the tap, guide.js)
+        if (!mine && G.btnHit(...HUD)) { G.input.eat(); this.menuReq = true; this.route = null; }
+        else if (!mine && G.carry && G.carry.tapHud(this, G.input.tap())) { G.input.eat(); this.route = null; } // the thing in your hands, in the corner: put it down (carry.js)
         else if (G.seek && G.seek.tap(this, G.input.tap())) { G.input.eat(); this.route = null; } // found a hiding animal (seek.js)
         else { // tap-to-walk; a tap on an animal (animals.js, not over a person or a door) names it and walks toward it
           const tap = G.input.tap(), tt = this.tapTarget(tap);

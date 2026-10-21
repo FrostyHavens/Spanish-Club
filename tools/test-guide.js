@@ -169,6 +169,35 @@ async function noDeadEnd(browser) {
   } finally { await ctx.close(); }
 }
 
+// in a zone whose own things are all done (La montaña: its story, the dog's spots, Lola's hello), the day's play is
+// something there (Canelo) before anything back in Villa Sol; and with nothing there at all, the arrow shows the way back
+// to town: never an empty screen (docs/AUDIT_2026-10.md L9: the play pointed at Villa Sol and the arrow vanished)
+async function zonePlay(browser) {
+  const { ctx, g } = await open(browser, 'guide-zoneplay', true);
+  try {
+    await g.ev(() => {
+      G.st.newGame(); G.state.name = 'Luz';
+      Object.assign(G.state.flags, { intro: true, canelo: true, petStart: true, opener: true, dogSkip: true });
+      for (const id of G.chapters.ids()) if (G.chapters.lineOf(id) === 'montana') G.state.quests[id] = 'done';
+      for (const w of ['hola', 'perro', 'manzana']) G.words.meet(w, 'test');
+      G.zones.ids().forEach(G.zones.visit); G.state.post = { day: G.words.day(), n: 0, log: {} };
+      G.goto('montana', 8, 24, 'down');
+    });
+    await g.fieldIdle('montana');
+    await g.ev(() => { const d = G.words.day(), w = G.zones.state(); w.lola = Object.assign(w.lola || {}, { met: true, montana: d }); for (const sp of G.field.def.dogSpots || []) w.dog[sp.id] = { d, t: G.words.now() }; });
+    await g.frames(6);
+    await g.ev(() => { for (const n of G.field.npcs) n.alert = null; window.__zg = [G.zones.goal, G.zones.task]; G.zones.goal = G.zones.task = () => null; }); // (all done here: no bubbles, nothing of the zone's own left)
+    const r = await g.ev(() => { const p = G.carry.plan(G.field), goal = G.guide.goal(G.field); return { p, here: G.carry.here(G.field, p), goal: goal && { why: goal.why, via: goal.via } }; });
+    check('zone play: the day\'s play is something here (with Canelo), not back in Villa Sol: ' + (r.p && r.p.why), !!r.p && r.here && !r.p.far, JSON.stringify(r));
+    check('zone play: and the arrow shows it', !!r.goal && /^play:/.test(r.goal.why) && !r.goal.via, JSON.stringify(r.goal));
+    // Canelo not with her (away in a story): the plays are all back in town; the arrow shows the way there
+    const far = await g.ev(() => { const l0 = G.errands.lost; G.errands.lost = () => true; try { const p = G.carry.plan(G.field), goal = G.guide.goal(G.field); return { p, goal: goal && { why: goal.why, via: goal.via, to: goal.to } }; } finally { G.errands.lost = l0; } });
+    check('zone play: nothing to play here: the day\'s play is back in town (far) and the arrow shows the way: ' + (far.goal && far.goal.why), !!far.p && far.p.far && !!far.goal && /^play:/.test(far.goal.why) && far.goal.via === 'door', JSON.stringify(far));
+    await g.ev(() => { [G.zones.goal, G.zones.task] = window.__zg; });
+    check('zone play: no console errors', !g.errors.length, g.errors.join('\n'));
+  } finally { await ctx.close(); }
+}
+
 async function menu(browser) {
   const { ctx, g } = await open(browser, 'guide-menu', true);
   try {
@@ -222,4 +251,4 @@ async function naiveDay1(browser) {
 }
 
 const ONLY = (process.env.ONLY || '').split(',').filter(Boolean); // (ONLY=naive,play to run some sections)
-run('The guide: always a next thing to do, in sight', [['arrows, doors, choices, Canelo', arrows], ['never a dead end: play, asleep, sunset, bed', noDeadEnd], ['the kid menu', menu], ['a naive child plays day 1', naiveDay1]].filter(([n]) => !ONLY.length || ONLY.some(o => n.includes(o))));
+run('The guide: always a next thing to do, in sight', [['arrows, doors, choices, Canelo', arrows], ['never a dead end: play, asleep, sunset, bed', noDeadEnd], ['a zone\'s play: there first, else the way back (zone play)', zonePlay], ['the kid menu', menu], ['a naive child plays day 1', naiveDay1]].filter(([n]) => !ONLY.length || ONLY.some(o => n.includes(o))));

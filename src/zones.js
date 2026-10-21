@@ -39,6 +39,8 @@
   const TT = (t, en) => ({ t, en });
   Z.LIST = [];
   Z.MAPDRAW = []; // more to draw on the world map: fn(ctx, worldMap) (connect.js: the stars, the letter going somewhere)
+  Z.MAPTAPS = []; // more to tap on the world map: fn(worldMap) -> [{id (a zone), x, y, w, h}] (connect.js: the letter's picture)
+  Z.MAPGOAL = []; // where the world map's arrow points: fn(worldMap) -> a zone id or null (connect.js: the letter's place)
   // a zone's own ghost-hand demos (src/demo.js): { kind, find(f) -> [x, y] tile to tap, or null } (once each, saved)
   Z.demos = [];
   Z.add = function (def) {
@@ -88,11 +90,16 @@
   Z.visitedIds = () => Z.ids().filter(Z.visited);
   Z.visit = id => { if (!G.state || !Z.def(id) || Z.visited(id)) return false; st().visited[id] = { d: G.words ? G.words.day() : 0 }; G.st.autosave(); return true; };
   Z.want = () => { const w = G.state && st().want; return w && !Z.visited(w) ? w : null; };
+  // the place she picked herself on the world map today (by bus, or a "?" to walk to), while she's on her way there or in
+  // it: her choice leads (the guide: Tomás's letter waits meanwhile, guide.js). Over once she leaves it (Z.enter)
+  Z.picked = () => { const p = G.state && st().pick; return p && p.d === day() ? p.z : null; };
 
   const opened = () => !!(G.chapters && G.chapters.openerDone && G.chapters.openerDone());
   // ---------- arriving: a new place is a celebration ----------
   Z.enter = function (f) {
     if (!G.state || !f) return;
+    const pk = st().pick, a = Z.area(f.mapId); // (the place she picked: reached, or left behind once she's been)
+    if (pk) { if (a === pk.z) pk.in = 1; else if (pk.in && a !== 'path:' + pk.z) st().pick = null; }
     const z = Z.of(f.mapId); if (!z) return;
     if (z === 'villa' || !opened()) { if (z === 'villa') Z.visit('villa'); return; } // (home: no fuss; the opener first)
     if (!Z.visit(z)) return;
@@ -439,15 +446,22 @@
     here() { const f = G.field; return f ? Z.area(f.mapId) : 'villa'; }
     node(id) { const z = Z.def(id); return z && z.pos ? { x: z.pos[0], y: z.pos[1], r: 21 } : null; }
     closeXY() { return [G.W - 28, 6]; }
-    hintXY() { return null; }
+    // the arrow (AUDIT M5): over the place the guide is taking her (Tomás's letter's place; a place she asked for), not
+    // where she is. arrowAt: the spot to tap (tests); the hint hand taps there after a while
+    goal() { for (const fn of Z.MAPGOAL) { let id = null; try { id = fn(this); } catch (e) { /* */ } if (id && id !== this.here() && this.node(id)) return id; } const w = Z.want(); return w && w !== this.here() && this.node(w) ? w : null; }
+    arrowAt() { const id = this.goal(), n = id && this.node(id); return n ? { id, x: n.x, y: n.y } : null; }
+    hintXY() { const a = this.t > 90 && !this.walk ? this.arrowAt() : null; return a ? [a.x, a.y] : null; }
     trophyRect() { return { x: 4, y: 4, w: 22, h: 22 }; }
     rects() { return Z.ids().map(id => { const n = this.node(id); return n ? { id, x: n.x - n.r - 2, y: n.y - n.r - 2, w: 2 * n.r + 4, h: 2 * n.r + 14 } : null; }).filter(Boolean); }
+    taps() { const L = []; for (const fn of Z.MAPTAPS) { try { L.push(...(fn(this) || [])); } catch (e) { /* */ } } return L; } // (a place's pictures beside it: its letter)
     tapZone(id) {
       const here = this.here();
       if (id === here) { this.hop[id] = 0; honk(); return; }
-      if (Z.visited(id)) { if (!this.o.travel) { this.hop[id] = 0; return; } G.audio.sfx('ok'); G.pop(); this.w.resolve(id); return; }
+      // (her own pick leads, Z.picked: the bus there, or the way on foot; a "?" she asked for before is let go. Where the
+      // arrow points, the letter's place, is the errand followed, not a pick of her own)
+      if (Z.visited(id)) { if (!this.o.travel) { this.hop[id] = 0; return; } Object.assign(st(), { pick: id === this.goal() ? null : { z: id, d: day() }, want: null }); G.audio.sfx('ok'); G.pop(); this.w.resolve(id); return; }
       // not been there yet: footprints run along the path from here to it; the guide will suggest the way on foot
-      st().want = id; G.st.autosave(); G.audio.sfx('select'); this.walk = { id, t: 0 }; this.hop[id] = 0;
+      Object.assign(st(), { pick: { z: id, d: day() }, want: id }); G.st.autosave(); G.audio.sfx('select'); this.walk = { id, t: 0 }; this.hop[id] = 0;
     }
     update() {
       this.t++;
@@ -457,7 +471,7 @@
       const tap = G.input.tap();
       if ((tap && G.closeHit(...this.closeXY())) || G.input.p('B')) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(null); return; }
       if (tap && G.story && G.story.world && G.tapIn(this.trophyRect())) { G.audio.sfx('ok'); G.story.world(); return; } // the whole world on one page
-      if (tap) for (const r of this.rects()) if (G.tapIn(r)) { this.tapZone(r.id); return; }
+      if (tap) for (const r of this.taps().concat(this.rects())) if (G.tapIn(r)) { this.tapZone(r.id); return; }
       const ids = Z.ids(); if (this.sel == null) this.sel = Math.max(0, ids.indexOf(this.here()));
       const d = G.input.repDir(14, 6); if (d) { this.sel = (this.sel + (d === 'left' || d === 'up' ? -1 : 1) + ids.length) % ids.length; G.audio.sfx('cursor'); }
       if (G.input.p('A')) this.tapZone(ids[this.sel]);
@@ -509,6 +523,8 @@
         ctx.fillStyle = '#f04878'; ctx.beginPath(); ctx.moveTo(px - 5, py + 1); ctx.lineTo(px + 5, py + 1); ctx.lineTo(px, py + 8); ctx.fill();
       }
       for (const fn of Z.MAPDRAW) { try { fn(ctx, this); } catch (e) { if (!Z.err) { Z.err = 1; console.error(e); } } }
+      { const a = this.walk ? null : this.arrowAt(), b = Math.round(Math.abs(Math.sin(this.t / 8)) * 5); // the guide's arrow over where to go (over its stars; under its name near the top)
+        if (a && G.guide && G.guide.arrow) { if (a.y > 60) G.guide.arrow(ctx, a.x, a.y - 35 - b); else G.guide.arrow(ctx, a.x, a.y + 36 + b, false, null, true); } }
       { const r = this.trophyRect(), b = Math.round(Math.sin(this.t / 12) * 1); G.win(ctx, r.x, r.y + b, r.w, r.h, { fill1: '#fff6d0', fill2: '#f8d870', alpha: 1 }); G.drawIcon16(ctx, 'trofeo', r.x + 3, r.y + 3 + b); } // the trophy: "¡Mi mundo!" (connect.js)
       G.closeBtn(ctx, ...this.closeXY());
       if (G.enVisible()) G.text(ctx, this.o.travel ? 'Tap a place you have been to: the bus takes you. "?": walk there!' : 'The world', 30, 10, '#ffffff', '#10102a');

@@ -470,7 +470,7 @@ m.pos['estanque'] = [2, 16, 7, 4]; m.pos['conejos'] = [2, 8, 9, 3]
 m.mark('hide1', 30, 11); m.mark('hide2', 21, 3); m.mark('hide3', 29, 8); m.mark('hide4', 32, 18); m.mark('hide5', 3, 12); m.mark('hide6', 11, 10)
 out['juegos'] = m
 # La casa de los abuelos (the zone, docs/WORLD_PLAN.md): a cosy countryside home. The path comes in from Villa Sol at
-# the top (30, 0) past the bus stop and the signpost; the grandparents' cottage in the middle (its front door faces
+# the top (30, 0) past the signpost and down to the bus stop; the grandparents' cottage in the middle (its front door faces
 # the yard: you can go in), the orchard behind it (tall fruit trees, a swing hanging from one), the henhouse and the
 # hens' run on the left, the vegetable garden (rows of carrots, lettuces, tomatoes, corn) with the water pump, the
 # clothesline with the washing drying (the zone draws it), the duck pond, the paddock (the cow, the donkey) on the
@@ -525,7 +525,7 @@ for x, y in [(26, 24), (28, 26), (25, 27), (11, 24), (8, 26), (4, 23), (6, 22), 
     if m.g[y][x] == '.': m.put(x, y, 'o')
 for x, y in [(2, 24), (3, 27), (11, 27), (36, 4), (38, 10), (12, 22), (28, 28)]:
     if m.g[y][x] == '.': m.put(x, y, 'f')
-m.mark('in', 30, 1); m.mark('north', 30, 0); m.mark('post', 31, 2); m.mark('bus', 28, 2); m.mark('busIn', 28, 3)
+m.mark('in', 30, 1); m.mark('north', 30, 0); m.mark('post', 31, 2); m.mark('bus', 28, 6); m.mark('busIn', 28, 7) # (the stop a few rows down the road: at the top it sat under the corner's menu button, AUDIT H10)
 m.mark('lola', 32, 5); m.mark('nico', 9, 22); m.mark('abuela', 18, 11); m.mark('abuelo', 9, 15)
 m.mark('dog', 6, 13); m.mark('pavosDog', 33, 7); m.mark('sock', 18, 17)
 m.pos['vacas'] = [27, 15, 7, 4]; m.pos['burros'] = [33, 16, 5, 3]; m.pos['ovejas'] = [24, 23, 6, 5]; m.pos['cerdos'] = [31, 23, 7, 4]

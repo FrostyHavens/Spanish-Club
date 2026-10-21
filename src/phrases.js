@@ -590,6 +590,11 @@
     }
     return res;
   };
+  // can a request for this pattern run now (P.request won't come back null: the caller's old way)? Phrases on, and the
+  // pattern met already, or free to be introduced now (one at a time, P.GAP). Every bubble that promises a phrase asks
+  // this with the same slots as its talk, so it shows only when its talk can ask (AUDIT C2: Lola's heart bubble whose
+  // talk fell back to her hello, 45 times)
+  P.canRun = (id, o) => P.on() && !!P.def(id) && (P.met(id) || P.canIntro(id, o));
   // introduce if new, then ask; null: phrases off, or a pattern that can't be introduced now (the caller's old way)
   // A request for "Quiero" may introduce "___, por favor" instead (once Quiero is known: one pattern at a time).
   P.request = function* (id, o = {}) {
@@ -604,7 +609,7 @@
   // =====================================================================
   const say = (who, show, ...pages) => G.say(pages, Object.assign({ portrait: G.portraitOf(who), name: G.nameOf(who), who }, show ? { show } : {}));
   // ---------- Me llamo ___: a friend says their name, she says hers ----------
-  P.wantsName = npc => P.on() && !!H() && H().WHO.includes(npc) && P.NO_NAME.indexOf(npc) < 0 && !P.named(npc);
+  P.wantsName = npc => P.on() && !!H() && H().WHO.includes(npc) && P.NO_NAME.indexOf(npc) < 0 && !P.named(npc) && P.canRun('f_llamo', { who: npc });
   P.meetName = function* (npc) {
     if (!P.wantsName(npc)) return false;
     if (!(yield* P.ready('f_llamo', { who: npc }))) return false;
@@ -636,9 +641,12 @@
   const albumMet = () => (G.animals ? G.animals.list().filter(a => G.animals.met(a) && G.animals.KINDS[a] && metW(G.animals.KINDS[a].word)).map(a => G.animals.KINDS[a].word) : []);
   P.favReady = () => P.on() && !P.fav() && albumMet().length >= 3;
   P.favBubble = () => ({ icon: 'gracias' });
+  // her question can run now: ready, she has said hello in this place today, the story has nothing for her, and the
+  // pattern can be asked (P.canRun, with every animal her cards come from). Her bubble and her talk both ask this
+  P.favCan = f => P.favReady() && !!f && !!(G.zones && G.zones.lolaTalked && G.zones.lolaTalked(f.mapId)) && !(G.chapters && G.chapters.alert('lola')) && P.canRun('f_gusta', { slots: albumMet() });
   // Lola, once she has said hello in this place today: "¿Qué animal te gusta?" (any album animal she has met)
   P.favTalk = function* (f) {
-    if (!P.favReady() || !f || !(G.zones && G.zones.lolaTalked && G.zones.lolaTalked(f.mapId)) || (G.chapters && G.chapters.alert('lola'))) return false;
+    if (!P.favCan(f)) return false;
     const all = albumMet(), cards = all.slice().sort(() => G.rand() - 0.5).slice(0, 3);
     const r = yield* P.request('f_gusta', { who: 'lola', slots: cards, more: all, free: true, prompt: '¡{name}! ¿Qué animal te gusta?', en: 'Which animal do you like best? Say "Me gusta el..."',
       onGet: function* (k, res) {
@@ -651,7 +659,7 @@
   // a friend asks what she likes (some days, after the greeting; at most one a day in the whole world)
   const LIKE = ['comida', 'colores'], LIKE_EXTRA = ['helado', 'chocolate', 'mora'];
   P.likeAsk = function* (npc) {
-    if (!P.on() || !H() || !P.met('f_gusta')) return false;
+    if (!H() || !P.met('f_gusta') || !P.canRun('f_gusta')) return false;
     const L = st().likes, d = day();
     if (L._d === d || (L[npc] && d - L[npc].d < 7)) return false;
     let h = 0; for (const c of npc + d) h = (h * 31 + c.charCodeAt(0)) >>> 0;
@@ -701,7 +709,7 @@
     };
     if (id === 'lola') def.alert = function () {
       const a = a0 ? a0.apply(this, arguments) : null; if (a) return a;
-      const f = G.field; return f && G.state && P.favReady() && G.zones.lolaTalked(f.mapId) && !(G.chapters && G.chapters.alert('lola')) ? P.favBubble() : null;
+      const f = G.field; return G.state && P.favCan(f) ? P.favBubble() : null; // (only when her question can really be asked: the same check as her talk)
     };
   }
   for (const m in G.maps) for (const def of G.maps[m].npcs || []) wrap(def);

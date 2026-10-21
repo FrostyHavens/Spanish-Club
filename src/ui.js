@@ -186,7 +186,14 @@
       if (en && G.enVisible()) G.enBox(ctx, en, top ? y + h + 2 : y - (name ? 14 : 0), top);
     }
   }
-  G.say = function (pages, opts) { const w = new Wait(); G.push(new TextBox(pages, opts, w)); return w; };
+  G.say = function (pages, opts) { G.saidNote((opts && (opts.who || opts.name)) || '', pages); const w = new Wait(); G.push(new TextBox(pages, opts, w)); return w; };
+  // the last things said and asked (a short log: the guide, guide.js, tells a talk that's word for word the last one)
+  G.said = { n: 0, L: [] };
+  G.saidNote = function (who, pages) {
+    let t = ''; try { t = (Array.isArray(pages) ? pages : [pages]).map(p => (typeof p === 'string' ? p : p && p.t) || '').join(' / '); } catch (e) { /* */ }
+    G.said.L.push(who + ': ' + t); G.said.n++; if (G.said.L.length > 60) G.said.L.shift();
+  };
+  G.saidSince = n => G.said.L.slice(Math.max(0, G.said.L.length - (G.said.n - n)));
   // the bouncing "go on" arrow at the end of a page or card (tap, or A)
   G.moreArrow = function (ctx, x, y, t) {
     y -= Math.round(Math.abs(Math.sin(t / 9)) * 3);
