@@ -2,6 +2,54 @@
 
 A running record of what changed in Club de Español and why. Newest first.
 
+## 2026-10-21 — Learning plan 2, Phase 1: measure and review (the history, the dog's warm-up, slipping words, the Learning page)
+The parent wants to know what she actually RETAINS, and review should come back by itself. `docs/LEARNING_PLAN_2.md`
+Phase 1, built:
+- **The learning history in the save** (`src/history.js`, `G.hist`; one key, `G.state.hist`, no audio): per day (keyed
+  by `G.today()`) the seconds played (not after 3 minutes without a touch, not on the grown-ups' screens), the words met,
+  and per word `[gap, events]`: the gap is the whole days since the word was last met or actively used (`r.ld` in
+  `words.js`; a line that merely shows it doesn't count; an older save's words are estimated from their star / first-try
+  / met dates), the events one letter per retrieval (P pick, R recall: word-only cards or a page match, S said, K a cued
+  pick, E said right after hearing it, m a miss, C / c a grown-up's check; capital = first try). 60 days in detail, older
+  days fold into totals; two months of play stay under 8 KB. Recorded by the word model itself (`answerRight` /
+  `answerWrong` / `meet` / `G.st.said`, the mic through `G.mic.award`), so every question, favour and trick counts with no
+  change to content. **Retention** = right on the first try when a word comes back after a day or more (the first event
+  of a word that day with a gap of 1+; checks, cued picks and echoes never count). Older saves load with an empty
+  history; their play time counts in the total.
+- **The dog's warm-up, once a day** (`src/warmup.js`, `G.warmup`): the first time she is free to walk each day (any map;
+  never during a story beat, a find-it puzzle, the opener, the bus, the evening; it waits for the chapter's own beat that
+  starts by itself), the dog trots off, sniffs, comes back with a word card in his mouth (`pet.js` 'bring') and drops it
+  at her feet. 3-4 due words (`G.review.due`; earlier days first, the most overdue past their box's interval, other
+  places, a slipping one; never two forms of one word): a known word is held up with a big mic right beside it and
+  word-only cards (say it or tap its word: recall); a word only met is heard, then picked among picture-and-word cards
+  (recognition); distractors from its topic that don't sound like it. The dog wags after each one; at the end he jumps,
+  eats a bone, and gives a heart. About a minute; a skip button (two arrows, top left, no words) on the map and on every
+  card ends it; fewer than 2 due words: no warm-up that day. The first time, the ghost hand taps the big mic and a mouth
+  talks (`demo.js` 'warmup'). The guide carries on after.
+- **Slipping words** (`words.js` `W.SLIP`, `G.intro.again`): 3 misses in a row, or 3 within 10 minutes of play, mark a
+  word slipping; its next review question (`G.review.ask`, the warm-up) is a fresh one-unknown introduction (held up and
+  named, then hear it and pick its picture among two known ones) instead of the same question, once; it stays slipping
+  until it is right on the first try twice.
+- **The grown-ups' Learning page** (`src/dashboard.js`; grown-ups menu, a "Learning" row; English): *Overview* (days,
+  minutes in all and today, words met / known / remembered / solid, retention, the share said aloud, slipping words, the
+  last check, the warm-ups), *Retention* (last 7 days and all time with the counts, a bar a day for two weeks, the 70-80%
+  goal band), *Words* (a picture tab per place: each word's picture, Spanish, stage and box, said aloud, last met or
+  used, slipping; scrolls; tap to hear it), *Check* (10 words to ask away from the game, half that need it and half strong
+  ones: the picture, Spanish and English; Right / Not yet / Skip / Stop; a right is a recall in the model, a not yet a
+  miss, both in the history; the last score and its words), *Tonight* (one Spanish question for dinner from today's
+  words, only words she has met, with its English and an answer to expect; "Another question"), and *Share* (the share
+  sheet, else the clipboard, else a box to copy from, as the mic test does).
+- Small: questions can have a big mic beside the shown picture (`micBig`) and a skip button (`cancelIcon: 'skip'`,
+  `G.skipBtn`); `pet.js` 'bring' and 'wag'; `G.zones.ofWord` / `ofTopic` (a word's place, by its notebook page); the
+  grown-ups menu's rows are 15 px (12 rows above the help line); a word said on the new-word card right after hearing it is
+  an echo, not a recall.
+- Tests: `tools/test-learning.js` (new, 89 checks: the history over moved days, gaps, retention, minutes, the 60-day cap,
+  older saves; slipping and the re-introduction; the warm-up's words, forms, big mic, cards, dog, party, skip on the map
+  and on a card, never during a beat, too few words, the ghost hand, the guide after; every Learning page against the
+  model, the check, tonight's question, share). The harness keeps the warm-up off unless a test opens its page with
+  `{warmup: true}` or runs with `WARMUP=1` (smoke and test-guide pass with it on). `test-hints-day` allows the `hist`
+  key and checks today's record.
+
 ## 2026-10-21 — Bus stops and signposts are easy to tap
 - The bus stop's round sign is drawn mostly above its own map square, so tapping the picture landed on the empty
   square above and nothing happened. Now a tap anywhere on the sign, its pole, or a margin around them opens the bus;

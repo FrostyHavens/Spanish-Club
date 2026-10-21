@@ -198,6 +198,39 @@ words only ("¡Al parque!"): the next beat's trigger is what the arrow points at
 - The morning greeting and its due word are in `src/hearts.js` (`H.POOLS`). The order of a townsperson's talk is
   their greeting, the story, then a present they'd like, the day's favour, the shop (`src/maps.js`, `src/errands.js`).
 
+## Measured and reviewed by itself (`src/history.js`, `src/warmup.js`, `src/dashboard.js`)
+- **Recorded by the model.** Every answer that reaches the word model (`G.ask`, `G.review.ask`, `G.words.answerRight` /
+  `answerWrong`, `G.st.said`, the mic) also goes into the learning history (`G.hist`, the grown-ups' Learning page): a
+  pick, a recall (`mode: 'text'` word-only cards, `'match'` a page puzzle), said aloud (`said: true`), a miss, with the days
+  since the word was last met or used. Content never calls `G.hist`: a new kind of practice is counted by giving its
+  answer to the model, with `cued: true` when the answer could be found by matching (it never counts as retention).
+  `credit: false` leaves both alone (only a word said aloud still counts as said).
+- **Slipping words.** A word missed 3 times is met again instead of asked again: `G.review.ask` does it by itself
+  (`G.intro.again`: held up and named, then hear it and pick its picture among two known ones), once, and the word stays
+  *slipping* until it's right on the first try twice. A question written by hand for a due word does the same:
+  ```js
+  if (G.words.needsReintro(id)) yield* G.intro.again(id, { who: 'luna' }); else yield* G.ask({ ... });
+  ```
+- **The dog's warm-up** (`G.warmup`) brings 3-4 due words once a day, the first time the child is free to walk. It
+  never starts during a story beat, a find-it puzzle, the opener, the bus or the evening; anything else that mustn't be
+  interrupted holds it back. It asks met words that have a picture (`G.iconDrawn`), in the strongest form their stage
+  allows; a topic can have its own way to ask:
+  ```js
+  G.warmup.HOLDS.push(f => f.mapId === 'playa' && !!G.state.flags.myRace);   // not while this is true
+  G.warmup.FORMS.tiempo = function* (id, extra) {   // a topic's own question; return true if right on the first try
+    const ch = G.wordChoices(id, ['nieve', 'nube', 'lluvia', 'viento'], 3);
+    return yield* G.ask(Object.assign({ prompt: '¿Qué tiempo hace?', choices: ch.choices, answer: ch.answer,
+      layout: 'cards', review: true }, extra));      // keep `extra`: the skip button and the dog's cards over the question
+  };
+  G.warmup.start(f, ['perro', 'casa']);   // now, with these words (a story moment, tests)    G.warmup.skipToday()
+  G.warmup.wait(f);                       // why it can't start now ('story', 'find', 'busy', 'held'...) or null
+  ```
+- **The Learning page** shows each word on its place's tab: its notebook page's place (`pagePlaces`,
+  `G.zones.ofWord`), so a new word needs its page. *Tonight's question* comes from templates in `src/dashboard.js`
+  (`TPL`: `[name, id => ({es, en, ans: {es, en}, words}) | null]`, and the tables `SOUND`, `HOME`, `COLOR`, `ACT`,
+  `WEATHER`): `words` lists every word the question and its answer use, and it only shows once the child has met them
+  all; a new zone's animals, colours and places can join the tables.
+
 ## Side jobs, presents and the shops (`src/errands.js`)
 1. A side job is a place in `SPOTS`: `{ id, map, at: [x, y], icon: () => picture or null when inactive, run: function* (f) {...} }`
    (a picture bubble over the tile; a tap walks there and runs it; `quiet: true` draws no bubble, `nohint()` keeps the

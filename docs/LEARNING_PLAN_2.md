@@ -4,7 +4,7 @@ Engagement is working (a 7-year-old named her dog and found the bear in the cave
 how fast she learns. It builds on `LEARNING_DESIGN.md` (the word model: stages, Leitner boxes, review) and
 `WORLD_PLAN.md` (Villa Sol and five zones, 177 words). Decisions made with the parent are marked **[decided]**.
 
-## Phase 1: measure and review
+## Phase 1: measure and review: **built** (2026-10-21; DEVLOG)
 1. **Learning history in the save** (compact, on the device only, no audio): per day, minutes played, words met, and
    every retrieval: recognized (picked), recalled (word-only cards, page match), said aloud, missed; with the gap since
    the word's previous encounter, so retention after a day or more can be computed.
@@ -17,6 +17,36 @@ how fast she learns. It builds on `LEARNING_DESIGN.md` (the word model: stages, 
    words by zone (strength bar, said-aloud mark, last seen, slipping flag); **the parent check**: 10 words to ask her
    away from the game, mixed strong and slipping, the parent taps check or cross and the answers count as practice
    **[decided: in the dashboard]**; **tonight's question**: one line for dinner from today's words; share as text.
+
+**As built** (`src/history.js` `G.hist`, `src/warmup.js` `G.warmup`, `words.js` slipping + `G.intro.again`,
+`src/dashboard.js` `G.dashboard`; `tools/test-learning.js`), and what changed on the way:
+- **The gap** is the whole days since the word was last *met or actively used* (picked, recalled, said, missed,
+  checked): a line that merely shows a word doesn't reset it (questions show their own answer). Older saves have no
+  history; a word's last day is estimated from its star / first-try / met dates, so its first answer after the update
+  already counts.
+- **Compact format**: per day, per word, `[gap, events]` with one letter per retrieval (P pick, R recall, S said, K a cued
+  pick, E said right after hearing it, m miss, C / c the grown-up's check; capital = first try). One gap per word and
+  day loses nothing (later events that day have a gap of 0). 60 days in detail, older days folded into totals.
+- **Retention** counts the first event of a word on a day it comes back after 1+ days, right on the first try; the
+  grown-ups' checks, cued picks and echoes never count (they would flatter it). *Said aloud* = said events over all
+  practice events (checks apart). Minutes stop after 3 minutes without a touch and don't count the grown-ups' screens.
+- **The warm-up's form** follows the answer-card rules: a known word (stage 2+) is held up with a **big mic beside it**
+  and word-only cards (recall: say it or tap its word); a word only met is heard and picked among picture-and-word cards
+  (recognition); a slipping word is met again instead. Distractors come from the word's topic and never sound like it
+  (the mic hears all three). Order: earlier days first, then the most overdue past its box's interval, other places, a
+  slipping word; never two forms of one word. It waits for story beats (a chapter's beat that starts by itself goes
+  first), find-it puzzles, the opener, the bus, the evening, and `G.warmup.HOLDS`; with fewer than 2 due words it
+  doesn't come that day. The skip button is two arrows (no words). The tests keep it off unless they ask
+  (`{warmup: true}` in the harness, or `WARMUP=1`).
+- **Slipping**: 3 misses in a row, *or 3 within 10 minutes of play* (rights between them don't save it); met again once;
+  slipping until right on the first try twice (not cued, not an echo).
+- **The Learning page** has five tabs (Overview, Retention, Words, Check, Tonight) and Share (the share sheet, else the
+  clipboard, else a box to copy from). The check: Right / Not yet / Skip / Stop; half the words need it (slipping, due,
+  only met), half are strong; a right is a recall in the model (known -> remembered, up a box), a not yet a miss; the
+  last 12 checks are kept. Tonight's question is built only from words she has met (its word, and the answer's word
+  when it has one: *guau*, a colour, a place, the weather).
+- **How we'll know** (below) is now on the page: retention (Retention tab), the share spoken (Overview), and the
+  parent's check next to the game's retention.
 
 ## Phase 2: phrases, "say it to get it"
 1. Phrases are collectible cards too (speech-bubble mark), with the same strength model and growth.

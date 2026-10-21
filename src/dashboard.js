@@ -7,8 +7,9 @@
 //   Words      by place (Villa Sol and the five zones, picture tabs): each word's picture, its Spanish, a strength bar
 //              (four stages, the box under it), said aloud (a mic), last met or used, slipping; scroll; tap: hear it
 //   Check      ten words to ask away from the game (some strong, some slipping or due): the picture, the Spanish and the
-//              English for the grown-up; tap right or not yet; the answers count as practice (history.js H.checkAnswer:
-//              right = a recall, not yet = a miss) and the last check's score shows
+//              English for the grown-up; tap right or not yet (the card stays a moment with its mark), skip or stop; the
+//              answers count as practice (history.js H.checkAnswer: right = a recall, not yet = a miss) and the last
+//              check's score shows, its words in the order asked
 //   Tonight    one simple Spanish question for dinner from today's words (or the last days'), only words the child
 //              has met, with its English and an answer to expect (templates per kind of word, below)
 // Share (top): the summary as text (the share sheet; else the clipboard; else a box to copy from), inside the tap.
@@ -48,6 +49,7 @@
     mar: 'azul', nieve: 'blanco', nube: 'blanco', elsol: 'amarillo', oveja: 'blanco', cerdo: 'rosa', catarina: 'rojo', abeja: 'amarillo' };
   const ACT = { corre: ['correr', 'run'], baila: ['bailar', 'dance'], salta: ['saltar', 'jump'], nadar: ['nadar', 'swim'], sube: ['subir', 'climb'], lanza: ['lanzar', 'throw'] };
   const FOOD = ['comida', 'helado', 'chocolate', 'mora'];
+  const WEATHER = [['elsol', 'Hace sol.', 'Sunny.'], ['frio', 'Hace frío.', 'Cold.'], ['caliente', 'Hace calor.', 'Hot.'], ['lluvia', 'Llueve.', 'Raining.'], ['nieve', 'Nieva.', 'Snowing.'], ['viento', 'Hace viento.', 'Windy.'], ['nube', 'Hay nubes.', 'Cloudy.']];
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const fem = id => /^(la|las) /.test(es(id)), plural = id => /^(los|las) /.test(es(id)), noun = id => /^(el|la|los|las) /.test(es(id));
   const bare = id => es(id).replace(/^(el|la|los|las) /, '');
@@ -64,7 +66,10 @@
     ['clothes', id => D().words[id].topic === 'ropa' ? (plural(id) ? { es: '¿De qué color son tus ' + bare(id) + '?', en: 'What color are your ' + enBare(id) + '?', ans: { es: 'Son... (the color)', en: 'They are... (a color word)' }, words: [id] } : { es: '¿De qué color es tu ' + bare(id) + '?', en: 'What color is your ' + enBare(id) + '?', ans: { es: 'Es... (the color)', en: 'It\'s... (a color word)' }, words: [id] }) : null],
     ['family', id => id === 'abuela' || id === 'abuelo' ? { es: '¿Cómo se llama tu ' + bare(id) + '?', en: 'What is your ' + (id === 'abuela' ? 'grandma' : 'grandpa') + '\'s name?', ans: { es: 'Se llama... (a name)', en: 'Her / his name is... ' }, words: [id] } : null],
     ['feel', id => (id === 'feliz' || id === 'triste' || id === 'cansado') ? { es: G.fill('¿Estás ' + (id === 'cansado' ? 'cansad{o/a}' : bare(id)) + '?'), en: 'Are you ' + en(id) + '?', ans: { es: met('si') ? '¡Sí! / No.' : 'Sí. / No.', en: 'Yes! / No.' }, words: [id] } : (id === 'bien' || id === 'comoestas') ? { es: '¿Cómo estás?', en: 'How are you?', ans: { es: met('bien') ? '¡Bien!' + (met('gracias') ? ' Gracias.' : '') : '¡Feliz!', en: 'Fine! (Thank you.)' }, words: [id].concat(met('bien') ? ['bien'] : []) } : null],
-    ['weather', id => id === 'frio' ? { es: '¿Tienes frío?', en: 'Are you cold?', ans: { es: 'Sí, tengo frío. / No.', en: 'Yes, I\'m cold. / No.' }, words: [id] } : D().words[id].topic === 'tiempo' ? { es: '¿Qué tiempo hace hoy?', en: 'What is the weather like today?', ans: { es: 'Hace sol. / Hace frío. / Llueve.', en: 'Sunny. / Cold. / Raining.' }, words: [id] } : null],
+    ['weather', id => { if (id === 'frio') return { es: '¿Tienes frío?', en: 'Are you cold?', ans: { es: 'Sí, tengo frío. / No.', en: 'Yes, I\'m cold. / No.' }, words: [id] };
+      if (D().words[id].topic !== 'tiempo') return null;
+      const A = WEATHER.filter(a => met(a[0])).slice(0, 3); // (answers from her own weather words)
+      return A.length ? { es: '¿Qué tiempo hace hoy?', en: 'What is the weather like today?', ans: { es: A.map(a => a[1]).join(' / '), en: A.map(a => a[2]).join(' / ') }, words: [id].concat(A.map(a => a[0])) } : null; }],
     ['age', id => D().words[id].topic === 'numeros' ? { es: '¿Cuántos años tienes?', en: 'How old are you?', ans: { es: 'Tengo... años. (a number)', en: 'I\'m... (her age)' }, words: [id] } : null],
     ['act', id => ACT[id] ? { es: '¿Te gusta ' + ACT[id][0] + '?', en: 'Do you like to ' + ACT[id][1] + '?', ans: { es: met('si') ? '¡Sí!' : '¡Sí! / No.', en: 'Yes! / No.' }, words: [id] } : null],
     ['like', id => { const w = D().words[id]; if (!noun(id) || ['saludos', 'numeros', 'colores', 'sentir', 'acciones', 'cuerpo', 'familia', 'ropa'].includes(w.topic)) return null;
