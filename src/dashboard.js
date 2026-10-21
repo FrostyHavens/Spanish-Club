@@ -1,7 +1,8 @@
 // ===== Learning: the grown-ups' page of what the child actually knows and keeps (docs/LEARNING_PLAN_2.md, Phase 1) =====
 // The grown-ups menu's "Learning" row (behind the held gear, so English labels). Five tabs:
 //   Overview   days played, minutes (in all, today), words met / known / remembered / solid (each count includes the
-//              stronger ones), the share of practice said aloud, retention, slipping words, the last check, the warm-up
+//              stronger ones), the share of practice said aloud, retention, slipping words, the last check, the warm-up,
+//              the phrases, listen and do (requests done, right on the first try: Phase 3, src/listen.js)
 //   Retention  right on the first try when a word comes back after a day or more (last 7 days, all time, with the
 //              counts), and a bar per day for the last two weeks (the goal band 70-80%)
 //   Words      by place (Villa Sol and the five zones, picture tabs): each word's picture, its Spanish, a strength bar
@@ -118,6 +119,7 @@
     L.push('Said aloud: ' + (o.spoken.all ? o.spoken.pct + '% of practice (' + o.spoken.said + ' of ' + o.spoken.all + ').' : 'no practice recorded yet.'));
     if (o.slipping.length) L.push('Slipping (' + o.slipping.length + '): ' + o.slipping.map(es).join(', ') + '.');
     if (o.phrases && o.phrases.met) L.push('Phrases: ' + o.phrases.met + ' of ' + o.phrases.of + ' met (' + H().phraseIds().filter(id => G.words.met(id)).map(id => G.phrase ? G.phrase.label(id) : id).join(', ') + '); said aloud ' + o.phrases.said + ' times, ' + o.phrases.today + ' today.');
+    if (o.listen && o.listen.n) L.push('Listen and do (spoken requests with no pictures, like "Dame tres conchas"): ' + o.listen.n + (o.listen.n === 1 ? ' request' : ' requests') + ', ' + o.listen.pct + '% right the first time (' + o.listen.ft + ' of ' + o.listen.n + '); ' + o.listen.today.n + ' today.');
     if (o.check) L.push('Last word check: ' + o.check.right + ' of ' + o.check.of + ' (' + dateOf(o.check.d) + ').');
     const td = H().day().met; if (td.length) L.push('New today: ' + td.map(es).join(', ') + '.');
     const q = DB.tonight(0); if (q) L.push('Tonight\'s question: ' + q.es + ' (' + q.en + ') A good answer: ' + q.ans.es);
@@ -321,14 +323,19 @@
         ['Last check', o.check ? o.check.right + ' of ' + o.check.of + ', ' + ago(o.check.ago) : 'none yet (the Check tab)'],
         ['Warm-up', this.warmLine(o.warmup)],
         ['Phrases', this.phraseLine(o.phrases)],
+        ['Listen & do', this.listenLine(o.listen)],
       ];
       lines.forEach(([a, b], k) => {
-        const y = 110 + k * 13;
+        const y = 110 + k * 12;
         G.text(ctx, a, 10, y, COL.dim);
         G.text(ctx, fit(b, G.W - 92), 82, y, k === 3 && o.slipping.length ? COL.slip : COL.white);
       });
-      G.text(ctx, 'Each count includes the stronger words: a solid word', 10, 200, '#8890c0');
-      G.text(ctx, 'is also remembered, known and met.', 10, 210, '#8890c0');
+      G.text(ctx, 'Each count includes the stronger words.', 10, 208, '#8890c0');
+    }
+    // listen and do (src/listen.js): spoken requests with no pictures, how many and how many right on the first try
+    listenLine(l) {
+      if (!l || !l.n) return 'none yet (a friend asks: "Dame tres conchas.")';
+      return l.n + (l.n === 1 ? ' request, ' : ' requests, ') + l.pct + '% right first try (' + l.today.n + ' today)';
     }
     // the phrases (src/phrases.js): how many met, said aloud in all and today, built from cards
     phraseLine(p) {

@@ -27,7 +27,8 @@
 //
 // API: G.carry.held() -> {id, col, n, it} (your free stack) or null; .at(f, x, y) (what lies on that tile: {ground|src,
 //   id, col}); .pick(f, x, y); .drop(f); .giveDog(f, n) / .show(who, f) (generators); .plan(f) -> {why, who | dog |
-//   map+at, icon} or null; .SOURCES, .DOG; .tapSelf / .tapHud (field.js taps), .search (field.js), .makeRoom (errands.js
+//   map+at, icon} or null; .place(map, id, col, x, y, n) / .lying(map, x, y) (things the game puts down: listen.js);
+//   .SOURCES, .DOG; .tapSelf / .tapHud (field.js taps), .search (field.js), .makeRoom (errands.js
 //   bag.add), .drawUnder / .drawHeld / .drawHud (field.js). Saved in G.state.bag: items (the hands), ground [{id, col,
 //   map, x, y}], taken {source: {d: day, t: play s}}, play {day, n: {kind: times today}}.
 'use strict';
@@ -127,6 +128,16 @@
     while (mine.length > C.GROUND_MAX) { const g = mine.shift(); st().ground.splice(st().ground.indexOf(g), 1); }
     G.st.autosave();
   }
+  // things the game puts on a tile (src/listen.js: a friend's things to bring, scattered about); none from another kind
+  // there. The oldest on the map roll away past C.GROUND_MAX + 8.
+  C.place = function (map, id, col, x, y, n = 1) {
+    if (!G.state) return;
+    for (let i = 0; i < n; i++) st().ground.push({ id, col: col || null, map, x, y, f0: G.frame - C.FLY - 1 });
+    const mine = st().ground.filter(g => g.map === map);
+    while (mine.length > C.GROUND_MAX + 8) { const g = mine.shift(); st().ground.splice(st().ground.indexOf(g), 1); }
+    G.st.autosave();
+  };
+  C.lying = (map, x, y) => (G.state ? groundAt(map, x, y) : []);
   // where to put things down: in front of you, else beside you, else at your feet
   function spotNear(f, id) {
     const p = f.player, [dx, dy] = G.DIRS[p.dir];

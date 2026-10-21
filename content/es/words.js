@@ -120,7 +120,7 @@
     feliz: { es: 'feliz', en: 'happy', topic: 'sentir', icon: 'feliz', alt: 'contento / contenta' },
     triste: { es: 'triste', en: 'sad', topic: 'sentir', icon: 'triste' },
     // ---- Los números ----
-    uno: { es: 'uno', en: 'one', topic: 'numeros', icon: 'dado', n: 1 },
+    uno: { es: 'uno', en: 'one', topic: 'numeros', icon: 'dado', n: 1, alt: 'una' }, // (una: "¿Cuántas conchas?" "Una.", src/listen.js)
     dos: { es: 'dos', en: 'two', topic: 'numeros', icon: 'dado', n: 2 },
     tres: { es: 'tres', en: 'three', topic: 'numeros', icon: 'dado', n: 3 },
     cuatro: { es: 'cuatro', en: 'four', topic: 'numeros', icon: 'dado', n: 4 },

@@ -24,7 +24,8 @@
 //
 // Each pattern is introduced once, one at a time (never two in a few minutes), wherever it comes up first in the world:
 // two friends model it in a little comic strip (Lola: "Quiero pan." -> she gets bread; Nico: "Quiero una galleta."),
-// then "¡Ahora tú!" (PhraseModel). A pattern said only as its key word 3 times is modelled again (slipping, words.js).
+// then "¡Ahora tú!" (PhraseModel). The key word alone is neutral for the phrase [decided]: it still works and counts for
+// the word, never as a miss of the phrase; a slipping phrase (an older save's misses) is modelled again (words.js).
 //
 // API (G.phrase, short P):
 //   P.on()  phrases are on (off in tests unless they ask: tools/harness.js {phrases: true} or PHRASES=1)
@@ -186,19 +187,21 @@
   // =====================================================================
   //  Counting it: the word model, the history, the cards (words.js, history.js, cards.js)
   // =====================================================================
-  // how: 'full' (the whole phrase said), 'again' (said whole after the invitation), 'key' (the key word only: a miss of
-  // the phrase, the word said), 'built' (tapped together), 'polite' (the slot + "por favor": the "por favor" phrase)
+  // how: 'full' (the whole phrase said), 'again' (said whole after the invitation: right after it was shown and read
+  // aloud, so an echo in the history, never a retention test), 'key' (the key word only: NEUTRAL for the phrase
+  // [decided with the parent]: no miss and no right, only an encounter; the word in the slot gets its credit and the
+  // invitation follows), 'built' (tapped together), 'polite' (the slot + "por favor": the "por favor" phrase)
   P.credit = function (sc, how, k, at) {
     const id = sc.id, s = sc.slots[k], r = Wd().rec(id, true), [bx, by] = at.frame, [sx, sy] = at.slot;
     const rec = () => { r.slot = s.word || s.id; if (!s.word && !s.face && !s.name) { r.slotPic = typeof s.icon === 'string' ? s.icon : null; r.slotEs = s.es; } };
     if (how === 'full' || how === 'again') {
-      Wd().answerRight(id, { said: true, mode: 'say', firstTry: how === 'full' && !sc.phMiss, noGrow: true, review: Wd().isOld(id) });
+      Wd().answerRight(id, { said: true, mode: 'say', firstTry: how === 'full', echo: how === 'again', noGrow: true, review: Wd().isOld(id) });
       r.said = (r.said | 0) + 1; rec();
       if (G.cards) G.cards.grow(id, 'phrase', { x: bx, y: by });
     } else if (how === 'built') {
-      Wd().answerRight(id, { mode: 'both', firstTry: !sc.phMiss, noGrow: true, review: Wd().isOld(id) }); rec();
+      Wd().answerRight(id, { mode: 'both', firstTry: true, noGrow: true, review: Wd().isOld(id) }); rec();
       if (G.cards) G.cards.grow(id, 'build', { x: bx, y: by });
-    } else if (how === 'key' && !sc.phMiss) { Wd().answerWrong(id); sc.phMiss = true; } // (it still works; the phrase wasn't said)
+    } else if (how === 'key') Wd().encounter(id); // (it still works, and it's neither a miss nor a right for the phrase)
     // the word in the slot
     const w = s.word;
     if (w && Wd().met(w)) {

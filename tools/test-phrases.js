@@ -222,7 +222,7 @@ async function ask(browser) {
     await say(g, 'galleta');
     await g.until(() => window.__got.length === 1, null, 'the thing to come');
     check('ask: "galleta" alone -> it still comes (onGet ran first)', await g.ev(() => window.__got[0] === 1 && window.__r === undefined));
-    check('ask: ...the word was said (its card grew), the phrase a miss (m: it wasn\'t said)', await ev(g, 'galleta') === 'S' && (await ev(g, 'f_quiero')).endsWith('m') && await g.ev(() => G.cards.log.some(l => l.id === 'galleta' && l.how === 'say')));
+    check('ask: ...the word was said (its card grew); the phrase is neutral: no miss, no right (its history and counts unchanged)', await ev(g, 'galleta') === 'S' && await ev(g, 'f_quiero') === 'S' && await g.ev(() => { const r = G.words.rec('f_quiero'); return r.wrong === 0 && r.right === 1 && !G.words.slipping('f_quiero'); }) && await g.ev(() => G.cards.log.some(l => l.id === 'galleta' && l.how === 'say')), await ev(g, 'f_quiero'));
     await askUp(g, true);
     await g.frames(30); await still(g, 'invite_quiero');
     const inv = await g.ev(() => { const s = G.top(); return { placed: s.placed, said: window.__said.slice(-3), next: s.nextRect(), mic: s.mic.o.rect() }; });
@@ -232,7 +232,7 @@ async function ask(browser) {
     await g.until(() => window.__r !== undefined, null, 'the invitation to end');
     const f2 = await g.ev(() => ({ r: window.__r, log: G.cards.log.map(l => l.id + ':' + l.how + ':' + l.add) }));
     check('ask: said whole on the second try: the bonus (the phrase grows, the word +3), res.again', f2.r.how === 'key' && f2.r.again === true && f2.log.includes('f_quiero:phrase:8') && f2.log.includes('galleta:say:3'), JSON.stringify(f2));
-    check('ask: ...the history: the phrase\'s miss, then said after it (s)', /ms$/.test(await ev(g, 'f_quiero')), await ev(g, 'f_quiero'));
+    check('ask: ...the history: said whole right after the invitation read it aloud: an echo (E), never a miss', await ev(g, 'f_quiero') === 'SE' && await g.ev(() => G.words.rec('f_quiero').wrong === 0), await ev(g, 'f_quiero'));
     await g.fieldIdle('villa');
 
     // ---- the invitation never blocks: the "go on" arrow ----
@@ -410,9 +410,10 @@ async function cards(browser) {
     const again = await g.ev(() => { let shown = false; const p0 = G.push; G.push = s => { if (s.constructor.name === 'PhraseModel') shown = true; return p0(s); }; const it = G.phrase.ready('f_donde', {}); const r = it.next(); G.push = p0; return { shown, done: r.done, val: r.value }; });
     check('intro: each pattern is introduced once (its comic strip), then never again: ready at once', models.n === 3 && !again.shown && again.done && again.val === true, JSON.stringify(again));
     check('intro: all six met now, each with its introduction saved', await g.ev(() => G.phrase.ids().every(id => G.phrase.met(id) && G.phrase.state().intro[id])));
-    // a pattern said only as its key word 3 times is modelled again before its next request
+    // the key word alone is neutral for a phrase (never a miss); a pattern that is slipping anyway (an older save's
+    // misses) is modelled again before its next request
     await g.ev(() => { const W = G.words; for (let i = 0; i < 3; i++) W.answerWrong('f_tengo'); });
-    check('intro: three key-word-only answers: Tengo is slipping', await g.ev(() => G.words.needsReintro('f_tengo')));
+    check('intro: a slipping pattern (three misses, from an older save): Tengo needs modelling again', await g.ev(() => G.words.needsReintro('f_tengo')));
     await g.ev(() => { window.__ok = undefined; G.chapters.scene(G.field, (function* () { window.__ok = yield* G.phrase.ready('f_tengo', { who: 'mama' }); })()); });
     await g.until(() => G.top().constructor.name === 'PhraseModel', null, 'Tengo modelled again');
     check('intro: ...so it is modelled again (no "¡Ahora tú!" row: the request follows)', await g.ev(() => G.top().n === 2));

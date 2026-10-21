@@ -31,11 +31,13 @@
 //   W.stage(id) 0..4   W.met(id)   W.rec(id) the record (made and migrated on demand; null for a word not in D.words)
 //   W.meet(id, how, o) stage 0 -> 1 (how: 'show' 'find' 'watch' 'listen' 'answer' 'co' 'tap' ...; o.who), schedules the
 //                      follow-ups; true if it was new. (G.intro.* call it and add the small celebration.)
-//   W.answerRight(id, {cued, said, echo, parent, firstTry = true, mode: 'both'|'text'|'pic'|'match'|'say'|'parent',
-//                      review}) -> {stage, up, star, gold}: an active retrieval. Uncued first tries move the box and the
+//   W.answerRight(id, {cued, said, echo, parent, firstTry = true, mode: 'both'|'text'|'pic'|'match'|'say'|'parent'|
+//                      'listen', review}) -> {stage, up, star, gold}: an active retrieval. Uncued first tries move the box and the
 //                      stage; a star at most once per word per day (first tries only). echo: said right after hearing
 //                      it (a listening question answered aloud: the history's echo, not a recall); parent: a grown-up's
-//                      check (a recall, recorded as 'parent')
+//                      check (a recall, recorded as 'parent'); mode 'listen': the word understood in a spoken instruction
+//                      with no picture (listen-and-do, src/listen.js; receptive, so it moves the box like a pick, never
+//                      to gold: gold stays for recalling the word's form or saying it)
 //   W.answerWrong(id, {parent})  a miss: down a box, due again soon (3 misses: slipping)
 //   W.lastDay(id) the day number it was last met or used (or null)   W.gapDays(id) days since then (or null)
 //   W.slipping(id)  W.needsReintro(id) (slipping, not re-introduced yet)  W.reintroduced(id) (G.intro.again calls it)
@@ -192,8 +194,10 @@
     const first = o.firstTry !== false, mode = o.mode || 'both', day = G.today(), st0 = r.st, cued = !!o.cued || st0 < 1; // (meeting a word by answering is its puzzle, not a retrieval)
     const pts0 = G.cards && st0 >= 1 ? G.cards.pts(id) : 0; // (its card before the stage moves: a new stage's floor would hide the growth)
     // the history's event (src/history.js): P/p pick, R/r recall (word-only cards, a page match), S/s said, E said right
-    // after hearing it (an echo), K a cued pick, C a grown-up's check (capitals: right on the first try)
-    const hk = st0 < 1 ? null : o.parent ? 'C' : o.said ? (cued || o.echo ? 'E' : first ? 'S' : 's') : cued ? 'K' : mode === 'text' || mode === 'match' ? (first ? 'R' : 'r') : first ? 'P' : 'p';
+    // after hearing it (an echo), K a cued pick, C a grown-up's check, L a spoken instruction understood (capitals: right
+    // on the first try)
+    // L/l a spoken instruction understood (listen-and-do, src/listen.js: the word heard in a sentence, no picture)
+    const hk = st0 < 1 ? null : o.parent ? 'C' : o.said ? (cued || o.echo ? 'E' : first ? 'S' : 's') : cued ? 'K' : mode === 'listen' ? (first ? 'L' : 'l') : mode === 'text' || mode === 'match' ? (first ? 'R' : 'r') : first ? 'P' : 'p';
     if (hk && G.hist) G.hist.event(id, hk, { answer: true, said: !!o.said });
     if (st0 < 1) W.meet(id, o.how || 'answer');
     r.last = W.now(); r.ru = r.last; r.n++; r.ret++; // (ru: the last retrieval, chapters.js nudge)
@@ -225,7 +229,7 @@
     }
     log('retrieval', id, { said: !!o.said || null, cued: cued || null, mode, first: first || null, st0, st: r.st, review: o.review || null, star: star || null });
     // its card grows (cards.js): a pick, a page match (saying it grows it through G.st.said, mic.js)
-    if (G.cards && !o.said && !o.noGrow && st0 >= 1) G.cards.grow(id, mode === 'match' ? 'match' : 'pick', first ? { from: pts0 } : { add: 1, from: pts0 });
+    if (G.cards && !o.said && !o.noGrow && st0 >= 1) G.cards.grow(id, mode === 'match' ? 'match' : mode === 'listen' ? 'listen' : 'pick', first ? { from: pts0 } : { add: 1, from: pts0 });
     save();
     return { stage: r.st, up: r.st > st0, star, gold: r.st >= 3 && st0 < 3 };
   };

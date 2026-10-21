@@ -56,7 +56,13 @@
   //   G.favores.PLACES.faro = { at: [12, 3], on: 'playa' };  (a tile on that map: walk up to it) or { map: 'playa_cueva' }
   //   G.favores.ANIMALS.push('cangrejo'); G.favores.THINGS.lola = ['concha', 'elsol']; G.favores.COUNT_OF.lola = 'concha';
   // An offer's 4th entry is an optional condition (the zone was visited). Words must be known (stage 2+) to be asked.
+  // A new KIND of favour (src/listen.js adds 'listen' and 'carry') plugs in with: FV.KIND[kind] = function* (v, f) (its
+  // talk), FV.BUBBLE[kind] (the offer's bubble, else "?"), FV.ON[kind](v) (the bubble while it's going on), FV.REMIND[kind]
+  // (v, f) (a talk while it's going on), FV.TARGETS[kind](f, v) (where the guide points), FV.PICK[kind](who, pool) (the
+  // day's word, else a due known word of the pool), FV.OFF[kind]() (not offered now), FV.GROUP[kind] + FV.CAP[group] (at
+  // most that many of a group a day: not spammy).
   Object.assign(FV, { OFFERS, PLACES, ANIMALS, THINGS, COUNT_OF });
+  Object.assign(FV, { BUBBLE: {}, ON: {}, REMIND: {}, TARGETS: {}, PICK: {}, OFF: {}, GROUP: {}, CAP: {} });
   const st = () => { const s = G.state; if (!s.fav || typeof s.fav !== 'object') s.fav = { day: -1, list: [], pal: -1 }; if (!Array.isArray(s.fav.list)) s.fav.list = []; return s.fav; };
   // today's favours: made the first time they're asked for on a new day
   FV.today = function () {
@@ -64,14 +70,17 @@
     const s = st(), d = G.words.day();
     if (s.day !== d) {
       s.day = d; s.list = [];
-      const used = new Set(), whoUsed = new Set();
+      const used = new Set(), whoUsed = new Set(), groups = {};
       const offers = OFFERS.slice().sort(() => G.rand() - 0.5);
       for (const [who, kind, pool, cond] of offers) {
         if (s.list.length >= 3 || whoUsed.has(who) || (cond && !cond())) continue;
+        const grp = FV.GROUP[kind]; if (grp && (groups[grp] | 0) >= (FV.CAP[grp] || 1)) continue;
+        try { if (FV.OFF[kind] && FV.OFF[kind]()) continue; } catch (e) { continue; }
         const ok = id => known(id) && !used.has(id);
-        const word = G.review.next({ minStage: 2, filter: id => pool.includes(id) && ok(id) }) || null;
+        let word = null;
+        try { word = FV.PICK[kind] ? FV.PICK[kind](who, pool, ok) : G.review.next({ minStage: 2, filter: id => pool.includes(id) && ok(id) }) || null; } catch (e) { console.error(e); word = null; }
         if (!word) continue;
-        used.add(word); whoUsed.add(who);
+        used.add(word); whoUsed.add(who); if (grp) groups[grp] = (groups[grp] | 0) + 1;
         s.list.push({ who, kind, word, done: false, on: false });
       }
       G.st.autosave();
@@ -90,17 +99,21 @@
     if (who === 'luna' && FV.palabraReady()) return { icon: 'estrella' };
     if (who === 'ines' && FV.pageReady()) return { icon: 'pagina' };
     const v = mine(who); if (!v || storyHas(who)) return null;
-    return v.on ? null : 'pregunta';
+    if (v.on) { try { return FV.ON[v.kind] ? FV.ON[v.kind](v) || null : null; } catch (e) { return null; } }
+    return FV.BUBBLE[v.kind] || 'pregunta';
   };
   FV.talk = function* (who, f) {
     if (!G.state) return false;
     if (who === 'luna' && FV.palabraReady()) { yield* palabra(); return true; }
     if (who === 'ines' && FV.pageReady()) { yield* pages(); return true; }
     const v = mine(who); if (!v || storyHas(who)) return false;
-    if (v.on) { yield* remind(v); return true; }
+    if (v.on) { if (FV.REMIND[v.kind]) yield* FV.REMIND[v.kind](v, f); else yield* remind(v); return true; }
+    if (!KIND[v.kind]) return false;
     yield* KIND[v.kind](v, f);
     return true;
   };
+  FV.mine = mine; FV.storyHas = storyHas;
+  FV.reward = v => reward(v);
   function reward(v) {
     v.done = true; v.on = false;
     G.state.stars++; G.fx.flyStar(G.W / 2, 90, 0); G.audio.sfx('star');
@@ -109,7 +122,7 @@
   }
   const ask = (who, prompt, en, answer, others, o = {}) => G.chapters.ask(who, prompt, en, answer, others.filter(k => k !== answer && G.words.met(k)).slice(0, 2), Object.assign({ review: true }, o));
   const others = (id, pool) => pool.filter(k => k !== id && G.words.met(k) && G.baseForm(k) !== G.baseForm(id)).sort(() => G.rand() - 0.5);
-  const KIND = {
+  const KIND = FV.KIND = {
     *go(v) {
       const p = PLACES[v.word];
       yield say(v.who, v.who === 'tomas' ? TT('¡{name}! Una [carta]... ¡para la [' + v.word + ']! ¿[porfavor]?', 'A letter... for this place! Take it there, please? (the word only: remember where it is)')
@@ -178,6 +191,7 @@
   };
   FV.targets = function (f) {
     const v = onNow(); if (!v || !f) return [];
+    if (FV.TARGETS[v.kind]) { try { return FV.TARGETS[v.kind](f, v) || []; } catch (e) { return []; } }
     if (v.kind === 'go') { const p = PLACES[v.word]; if (p.at && f.mapId === (p.on || 'villa')) return [{ x: p.at[0] * T + 12, y: p.at[1] * T + 12, spot: 'fav:' + v.word }]; return []; }
     if (v.kind === 'find' && G.animals) { const a = G.animals.find(v.word, f); if (a) return [{ x: Math.round(a.x), y: Math.round(a.y - 6), animal: v.word }]; }
     return [];

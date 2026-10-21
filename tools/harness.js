@@ -22,6 +22,8 @@
 // The phrases (src/phrases.js, "say it to get it": Me llamo, Quiero, ¿Dónde está?, Me gusta, Tengo, por favor) change
 // what some talks ask, so they are OFF too unless a test asks: open(..., { phrases: true }) (tools/test-phrases.js), or
 // PHRASES=1 (drive() builds a phrase from its cards and taps through an introduction).
+// Listen and do (src/listen.js, src/requests.js: "Dame tres conchas", favours, the warm-up's request) is OFF too unless a
+// test asks: open(..., { listen: true }) (tools/test-listen.js) or LISTEN=1 (drive() does each request right).
 'use strict';
 const path = require('path'), fs = require('fs'), os = require('os');
 const { chromium } = require('playwright');
@@ -82,6 +84,7 @@ class Game {
         if (r.name === 'PetMenu' && s.want >= 0 && !s.won && s.t > 10) r.want = s.rect(s.want); // (the arrow the day's play shows over a card)
         if (r.name === 'PhraseAsk') Object.assign(r, { invite: s.invite != null, rects: s.rects(), answer: s.free ? 0 : s.answer, placed: Object.assign({}, s.placed), next: s.invite != null ? s.nextRect() : null, closing: !!s.result, sel: s.sel }); // (phrases.js)
         if (r.name === 'PhraseModel') Object.assign(r, { last: s.row >= s.n - 1, rt: s.rt });
+        if (r.name === 'ListenDo') Object.assign(r, { phase: s.phase, kind: s.req.kind, answer: s.req.answer, n: s.req.n, cellsR: s.cells.map((c, i) => s.cellRect(i)), basket: s.basket.length, basketR: s.basketRect(), cardsR: s.req.kind === 'howmany' ? [0, 1, 2].map(k => s.cardRect(k)) : null, card: s.req.kind === 'howmany' ? s.req.cards.findIndex(id => G.requests.numOf(id) === s.req.answer) : -1, next: s.nextRect(), counting: !!s.counting, closing: s.phase === 'right' }); // (listen.js)
         if (r.name === 'PagePuzzle') { // the next picture to match and its word (intro.js)
           const k = s.pics.findIndex((p, k) => !s.match[k]);
           Object.assign(r, { done: s.done, pic: k >= 0 ? s.picRect(k) : null, word: k >= 0 ? s.wordRect(s.words.indexOf(s.pics[k])) : null, sel: s.sel });
@@ -165,6 +168,15 @@ class Game {
           else { for (let n = 0; n < s.rects.length && await this.ev(() => G.top().sel) !== k; n++) await this.press('ArrowRight'); await this.press('Enter'); }
           break;
         }
+        case 'ListenDo': // listen and do (listen.js): do it right: the right picture; count the right pile into the basket and give it; the number
+          if (s.t <= 10 || s.closing || s.counting) { await this.frames(6); break; }
+          if (first) { await this.frames(6); await this.shot('listen_' + s.kind); this.seen.add('ListenDo'); }
+          if (s.phase === 'shown') await this.tapRect(s.next);
+          else if (s.kind === 'pick') await this.tapRect(s.cellsR[s.answer]);
+          else if (s.kind === 'howmany') await this.tapRect(s.cardsR[s.card]);
+          else if (s.basket < s.n) await this.tapRect(s.cellsR[s.answer]);
+          else await this.tapRect(s.basketR);
+          break;
         case 'PhraseModel': // a phrase's introduction (phrases.js): two friends say it; a tap goes on
           if (s.t <= 14) { await this.frames(16 - s.t); break; }
           if (first) { await this.frames(4); await this.shot('phrase_model'); this.seen.add('PhraseModel'); }
@@ -209,6 +221,7 @@ async function open(browser, name, touch, o = {}) {
   const page = await ctx.newPage();
   await page.addInitScript(on => { window.__warmupOff = !on; }, !!(o.warmup || process.env.WARMUP === '1')); // (the dog's warm-up: off unless asked)
   await page.addInitScript(on => { window.__phrasesOff = !on; }, !!(o.phrases || process.env.PHRASES === '1')); // (the phrases: off unless asked)
+  await page.addInitScript(on => { window.__listenOff = !on; }, !!(o.listen || process.env.LISTEN === '1')); // (listen and do: off unless asked)
   await page.addInitScript(() => { // log which input event each speak() call runs in (speech must start inside a tap)
     window.__speak = [];
     const ss = window.speechSynthesis, sp = ss && ss.speak.bind(ss);

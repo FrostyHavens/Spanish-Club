@@ -172,23 +172,25 @@
       const pos = { 1: [[7, 7]], 2: [[4, 4], [10, 10]], 3: [[4, 4], [7, 7], [10, 10]], 4: [[4, 4], [10, 4], [4, 10], [10, 10]], 5: [[4, 4], [10, 4], [7, 7], [4, 10], [10, 10]], 6: [[4, 3], [10, 3], [4, 7], [10, 7], [4, 11], [10, 11]] }[w.n] || [];
       pos.forEach(([x, y]) => p.rect(x, y, 2, 2, '#d02838'));
     },
-    manzana(p) {
-      p.disc(8, 9.5, 5.8, '#e03828'); p.shade(8, 9.5, 5.8, '#a82020');
-      p.rect(8, 2, 1, 3, '#7a4a20'); p.ell(10.5, 3.5, 2, 1.2, '#48b040');
-      p.put(5, 7, '#ffb0a0'); p.put(5, 8, '#ffb0a0');
+    manzana(p, w) { // red, unless the picture carries a colour (listen-and-do: green and yellow apples, src/listen.js)
+      const c = (w && w.col) || '#e03828', k = c !== '#e03828';
+      p.disc(8, 9.5, 5.8, c); p.shade(8, 9.5, 5.8, k ? G.shade(c, 0.74) : '#a82020');
+      p.rect(8, 2, 1, 3, '#7a4a20'); p.ell(10.5, 3.5, 2, 1.2, k && c === '#38b040' ? '#287a28' : '#48b040');
+      p.put(5, 7, k ? G.shade(c, 1.5) : '#ffb0a0'); p.put(5, 8, k ? G.shade(c, 1.5) : '#ffb0a0');
     },
     naranja(p) {
       p.disc(8, 9, 6, '#f88820'); p.shade(8, 9, 6, '#d06010');
       p.ell(8, 3, 1.8, 1.2, '#48b040'); p.put(5, 6, '#ffd0a0'); p.put(6, 6, '#ffd0a0');
       [[9, 8], [6, 11], [11, 11], [8, 13]].forEach(([x, y]) => p.put(x, y, '#e07018'));
     },
-    platano(p) {
+    platano(p, w) { // yellow, unless the picture carries a colour (a green banana: listen-and-do, src/listen.js)
+      const c = (w && w.col) || '#f8d838', ln = w && w.col ? G.shade(c, 0.78) : '#d0a018';
       for (let t = 0; t <= 1.0001; t += 0.04) {
         const a = Math.PI * (0.18 + t * 0.64), x = 8 - Math.cos(a) * 7, y = 2 + Math.sin(a) * 10;
         const r = 0.8 + Math.sin(t * Math.PI) * 1.9;
-        p.disc(x, y, r, '#f8d838');
+        p.disc(x, y, r, c);
       }
-      for (let t = 0.1; t <= 0.9; t += 0.04) { const a = Math.PI * (0.18 + t * 0.64); p.put(8 - Math.cos(a) * 7, 2 + Math.sin(a) * 10 + 1.2, '#d0a018'); }
+      for (let t = 0.1; t <= 0.9; t += 0.04) { const a = Math.PI * (0.18 + t * 0.64); p.put(8 - Math.cos(a) * 7, 2 + Math.sin(a) * 10 + 1.2, ln); }
       p.rect(1, 6, 2, 2, '#6a4a20'); p.put(14, 6, '#6a4a20');
     },
     uvas(p) {
@@ -274,6 +276,11 @@
       p.disc(8, 6.5, 2.2, mid); p.put(7, 5, '#fff8c0');
     },
     // ----- pictures that aren't words (badges, the bag, Misiones) -----
+    escucha(p) { // listen: an ear with sound coming in (a listen-and-do favour's bubble, src/listen.js: listen, then do it)
+      p.ell(6, 8.5, 4.4, 6.2, '#f0c8a0'); p.shade(6, 8.5, 4.4, '#d8a078');
+      p.ell(6.6, 8, 2.4, 4, '#c88068'); p.ell(7.1, 8.6, 1.2, 2.4, '#f0c8a0'); p.rect(4, 13, 3, 2, '#f0c8a0');
+      for (const r of [3.6, 6.2]) for (let a = -0.8; a <= 0.81; a += 0.1) p.put(9.6 + Math.cos(a) * r, 8 + Math.sin(a) * r, '#2f6fe0');
+    },
     canasta(p) { // a picnic basket with a red cloth
       for (let a = Math.PI; a <= Math.PI * 2; a += 0.05) p.put(8 + Math.cos(a) * 5.5 - 0.5, 7 + Math.sin(a) * 5 - 0.5, '#8a5022');
       p.rect(2, 7, 12, 7, '#c88a40'); p.rect(3, 14, 10, 1, '#8a5022');

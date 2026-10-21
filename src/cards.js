@@ -4,7 +4,8 @@
 // that grows each time the word is used: seed -> sprout -> leaves -> bud -> flower (-> two flowers -> three, gold).
 // Growth points (G.state.words[id].gp, next to the word model's record) come from USING the word:
 //   say 5 (the mic: by far the best way to grow a card), pick 2 (a right answer; 1 after a miss), find 2, match 2 (a page
-//   puzzle), carry 1, tap 1, give 1 (these last three at most once per word per C.GAP seconds of play, so they can't be farmed)
+//   puzzle), listen 2 (understood in a spoken instruction: listen-and-do), carry 1, tap 1, give 1 (these last three at most
+//   once per word per C.GAP seconds of play, so they can't be farmed)
 // The plant always agrees with the word model (words.js, docs/LEARNING_DESIGN.md): it can't flower before the word is
 // remembered (stage 3, the gold card), a known word is at least a sprout, a remembered one at least a flower and a solid
 // one two flowers; the third flower (gold petals) only grows on a solid word.
@@ -30,7 +31,7 @@
 'use strict';
 (function () {
   const C = G.cards = {};
-  C.GROW = { say: 5, pick: 2, find: 2, match: 2, carry: 1, tap: 1, give: 1, phrase: 8, build: 3 }; // (phrase, build: phrases.js)
+  C.GROW = { say: 5, pick: 2, find: 2, match: 2, listen: 2, carry: 1, tap: 1, give: 1, phrase: 8, build: 3 }; // (phrase, build: phrases.js; listen: listen-and-do, listen.js)
   C.PASSIVE = ['carry', 'tap', 'give'];
   C.GAP = 30;                       // play seconds between two passive growths of one word
   C.LV = [0, 2, 6, 12, 20, 32, 46]; // seed, sprout, leaves, bud, flower, two flowers, three

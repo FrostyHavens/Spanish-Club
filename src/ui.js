@@ -46,11 +46,14 @@
     return out;
   }
   // how a word token looks now: 'pic' (unmet: picture + blank), 'both' (met, known: picture + blue word), 'gold'
-  // (remembered+: picture + gold word), 'mask' (heard only). ('text', the word alone, is no longer used in dialogue.)
+  // (remembered+: picture + gold word), 'mask' (heard only), and, with o.noPic (true, or the ids), the word alone in its
+  // colour, no picture: 'text' (blue) / 'goldtext' (gold): a spoken instruction whose words are what's being understood
+  // (listen-and-do, src/listen.js: a picture would give the answer away). An unmet word is never written (still 'pic').
   const BLANK = 12;
-  G.wordLook = function (id, mask) {
+  G.wordLook = function (id, mask, noPic) {
     if (mask && mask.indexOf(id) >= 0) return 'mask';
     const st = G.st && G.data.words[id] ? G.st.stage(id) : 3;
+    if (st >= 1 && noPic && (noPic === true || noPic.indexOf(id) >= 0)) return st >= 3 ? 'goldtext' : 'text';
     return st >= 3 ? 'gold' : st >= 1 ? 'both' : 'pic';
   };
   const hasPic = lk => lk === 'pic' || lk === 'both' || lk === 'gold';
@@ -63,7 +66,7 @@
       if (lines[lines.length - 1].items.length) lines.push({ items: [], w: 0 });
       // chunks: runs of items with no space between them wrap together
       const its = items(p), chunks = [];
-      its.forEach(it => { if (it.id) it.look = G.wordLook(it.id, o.mask); if (it.gap || !chunks.length) chunks.push([it]); else chunks[chunks.length - 1].push(it); });
+      its.forEach(it => { if (it.id) it.look = G.wordLook(it.id, o.mask, o.noPic); if (it.gap || !chunks.length) chunks.push([it]); else chunks[chunks.length - 1].push(it); });
       for (const ch of chunks) {
         const cw = ch.reduce((a, it) => a + itemW(it), 0);
         let L = lines[lines.length - 1];
@@ -98,7 +101,7 @@
             ctx.globalAlpha = 0.55; ctx.fillStyle = '#c8c8e0'; for (let k = 0; k < BLANK; k += 3) ctx.fillRect(cx + k, cy + 12, 2, 1); ctx.globalAlpha = 1;
             cx += BLANK; continue;
           }
-          const t = it.text.slice(0, Math.max(0, chars)); G.text(ctx, t, cx, cy + 5, lk === 'gold' ? COL.known : COL.seen);
+          const t = it.text.slice(0, Math.max(0, chars)); G.text(ctx, t, cx, cy + 5, lk === 'gold' || lk === 'goldtext' ? COL.known : COL.seen);
         } else G.text(ctx, it.text.slice(0, Math.max(0, chars)), cx, cy + 5, o.color || COL.text);
         chars -= it.text.length; cx += G.textWidth(it.text);
       }
@@ -106,7 +109,8 @@
   };
 
   // ---------- Dialogue ----------
-  // G.say(pages, {name, portrait, pos:'bottom'|'top', auto, silent, noVoice, show: word id or picture held up}) -> Wait
+  // G.say(pages, {name, portrait, pos:'bottom'|'top', auto, silent, noVoice, show: word id or picture held up,
+  //   noPic: true | [ids] (those words written without their pictures: a listen-and-do request, src/listen.js)}) -> Wait
   // A page is a string or {t: 'Spanish text with [words]', en: 'English (parents option)'}.
   class TextBox {
     constructor(pages, opts, w) {
@@ -120,7 +124,7 @@
       const t = this.pages[this.pi].t;
       if (G.vocabLog) G.vlog('shown', G.richIds(t), { via: 'dialogue', who: this.opts.who || null }); // (the dev-only log, vocablog.js)
       G.richIds(t).forEach(id => G.st && G.st.see(id)); // (a met word met again; an unmet one stays unmet)
-      this.lines = G.richLayout(t, this.boxW - 18 - (this.opts.noVoice ? 0 : 24)); // room for the speaker button
+      this.lines = G.richLayout(t, this.boxW - 18 - (this.opts.noVoice ? 0 : 24), { noPic: this.opts.noPic }); // room for the speaker button
       this.shown = 0; this.scroll = 0; this.t = 0;
       this.spoke = !!this.opts.noVoice;
     }

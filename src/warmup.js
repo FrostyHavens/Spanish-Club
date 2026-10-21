@@ -19,6 +19,7 @@
 //   WU.done() today's has come (done, skipped or too few words)   WU.skip() ends the one going on   WU.skipToday()
 //   WU.HOLDS.push(f => bool)   content holds it back while true (a zone's moment that mustn't be interrupted)
 //   WU.FORMS[topic] = function* (id, extra) { ... return true if right first try }   a topic's own way to ask a word
+//   WU.LD ('_ld') the card that is a listen-and-do request (src/listen.js G.listen.warm), before a due phrase
 //     (extra: options for its G.ask: the skip button, the cards; pass them on so the child can still skip)
 // Saved: G.state.hist.wu (history.js: {d: the day it last came, n: done, k: skipped, none, last: {d, ids, right, of}}).
 // Off while G.debug.noWarmup (tools/harness.js keeps it off unless a test opens its page with {warmup: true}).
@@ -30,6 +31,7 @@
   WU.SETTLE = 40;    // frames free on the map before it starts (the map has faded in, the child has looked)
   WU.HOLDS = [];
   WU.FORMS = {};
+  WU.LD = '_ld';     // the card that is a listen-and-do request (src/listen.js), not a word
   const SKIP = [4, 4]; // the skip button (G.skipBtn), the same place on the map and over the questions
   let cur = null, freeT = 0;
   const wu = () => G.hist.state().wu;
@@ -74,8 +76,11 @@
     L.sort((a, b) => sc[b] - sc[a] || Wd.stage(a) - Wd.stage(b) || (Wd.rec(a).last || 0) - (Wd.rec(b).last || 0));
     // a phrase that's due comes too, as the last card (src/phrases.js: "Quiero..." to the dog; docs/LEARNING_PLAN_2.md Phase 2)
     const ph = G.phrase && G.phrase.on() ? G.phrase.due()[0] : null;
+    // and a listen-and-do request once she knows enough words (src/listen.js: "Dame dos huesos."), before the phrase
+    const ld = G.listen && G.listen.warmReady && G.listen.warmReady() ? WU.LD : null;
     const out = [], forms = new Set();
-    for (const id of L) { const b = G.baseForm(id); if (forms.has(b)) continue; forms.add(b); out.push(id); if (out.length >= n - (ph ? 1 : 0)) break; }
+    for (const id of L) { const b = G.baseForm(id); if (forms.has(b)) continue; forms.add(b); out.push(id); if (out.length >= n - (ph ? 1 : 0) - (ld ? 1 : 0)) break; }
+    if (ld && out.length) out.push(ld);
     if (ph) out.push(ph);
     return out;
   };
@@ -91,12 +96,12 @@
     if (++freeT < WU.SETTLE) return;
     freeT = 0;
     const ids = WU.pick(f);
-    if (ids.length < WU.MIN) { const w = wu(); w.d = G.today(); w.none = (w.none | 0) + 1; G.st.autosave(); return; }
+    if (ids.filter(id => id !== WU.LD).length < WU.MIN) { const w = wu(); w.d = G.today(); w.none = (w.none | 0) + 1; G.st.autosave(); return; } // (the request alone never brings it)
     WU.start(f, ids);
   };
   WU.start = function (f, ids) {
     f = f || G.field; if (!G.state || !f || cur) return false;
-    ids = (ids || WU.pick(f)).filter(id => G.words.met(id)); if (!ids.length) return false;
+    ids = (ids || WU.pick(f)).filter(id => id === WU.LD || G.words.met(id)); if (!ids.length) return false;
     wu().d = G.today();
     cur = { f, ids, i: -1, phase: 'bring', res: [], skipped: false, t0: G.frame, card: null };
     if (G.vocabLog) G.vlog.ev({ ty: 'warmup', ids });
@@ -167,6 +172,7 @@
   function* ask(c, id) {
     const Wd = G.words, st = Wd.stage(id), wd = G.data.words[id];
     const extra = { who: 'canelo', cancel: true, cancelIcon: 'skip', onCancel: () => { c.skipped = true; }, drawExtra: (ctx, s) => drawCards(ctx, s, c), warmup: { k: c.i, n: c.ids.length } };
+    if (id === WU.LD) return !!(G.listen && (yield* G.listen.warm(extra))); // (a listen-and-do request: "Dame dos huesos")
     if (Wd.isPhrase && Wd.isPhrase(id)) return !!(yield* G.phrase.warm(id, extra)); // (a phrase: say the whole thing to the dog)
     if (Wd.needsReintro(id)) return !!(yield* G.intro.again(id, { who: null, extra })); // (slipping: met again)
     if (WU.FORMS[wd.topic]) return !!(yield* WU.FORMS[wd.topic](id, extra));
@@ -191,7 +197,8 @@
     c.ids.forEach((id, k) => {
       const x = (b ? 18 : 40) + k * (b ? 11 : 12), now = k === c.i, bob = now ? Math.round(Math.abs(Math.sin(G.frame / 8)) * -2) : 0;
       ctx.globalAlpha = k < c.i || now ? 1 : 0.35;
-      if (G.words.isPhrase && G.words.isPhrase(id) && G.cards.bubble) G.cards.bubble(ctx, x - 6, y - 5 + bob, 1); else G.mic.cardGlyph(ctx, x, y + bob, 5);
+      if (id === WU.LD) G.drawIcon16(ctx, 'escucha', x - 6, y - 6 + bob, 0.75); // (a request: an ear)
+      else if (G.words.isPhrase && G.words.isPhrase(id) && G.cards.bubble) G.cards.bubble(ctx, x - 6, y - 5 + bob, 1); else G.mic.cardGlyph(ctx, x, y + bob, 5);
       if (k < c.i && c.res[k]) { ctx.fillStyle = '#f8d040'; ctx.fillRect(x + 3, y - 6, 2, 2); }
       ctx.globalAlpha = 1;
     });

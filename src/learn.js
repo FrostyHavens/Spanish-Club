@@ -174,7 +174,7 @@
     cue(k) {
       const c = this.ch[k], v = this.view(k), id = c.word; if (!id) return {};
       const its = []; this.lines.forEach(L => L.items.forEach(it => { if (it.id === id) its.push(it.look); }));
-      const pic = this.showId() === id || its.some(l => G.lookHasPic(l)), txt = its.some(l => l === 'both' || l === 'text' || l === 'gold');
+      const pic = this.showId() === id || its.some(l => G.lookHasPic(l)), txt = its.some(l => l === 'both' || l === 'text' || l === 'gold' || l === 'goldtext');
       return { cued: (!!v.icon && pic) || (!!v.label && txt), show: this.showId() === id && !!v.icon, prompt: txt && !!v.label };
     }
     onEnter() { if (this.mic) this.mic.arm(); }

@@ -9,20 +9,25 @@
 //      gap: whole days between the word's previous encounter (words.js r.ld: met, picked, recalled, said, missed,
 //        checked; passive appearances in a line don't count) and its first event that day (-1: unknown); every later event
 //        of the day has a gap of 0, so one gap per word and day keeps every event's gap
-//      events: one letter per retrieval, in order: P pick, R recall (word-only cards, a page match), S said aloud
-//        (capital: right on the first try; p, r, s: right after a miss), K a cued pick (it could be matched), E said right
-//        after hearing it (an echo), m a miss, C / c a grown-up's check right / wrong. (Up to H.EVMAX a word a day.)
+//      events: one letter per retrieval, in order: P pick, R recall (word-only cards, a page match), S said aloud,
+//        L listen (the word understood in a spoken instruction with no picture: listen-and-do, src/listen.js, one per
+//        word per request) (capital: right on the first try; p, r, s, l: right after a miss), K a cued pick (it could be
+//        matched), E said right after hearing it (an echo), m a miss, C / c a grown-up's check right / wrong. (Up to
+//        H.EVMAX a word a day.) An L that comes first on a day the word is back after 1+ days counts for retention.
 //   old: { days, s, rn, rr, pr, sp, cy, cn }   the folded days' totals (see stats below)
 //   pre: seconds of play before the history began (an older save's G.state.playTime)
 //   chk: { cur: {d, at, ids, r: [1 | 0 | null], i} | null, log: [{d, at, ids, r}] }   the grown-ups' word checks
 //   wu: { d: the day the dog's warm-up last ran (or was skipped), n: warm-ups done, k: skipped, none: days with too few
 //        words, last: {d, ids, right, of} }   (warmup.js)
+//   ld: { n: listen-and-do requests done, ft: right on the first try, td: {d, n, ft} (today's), lvl: 1 | 2 (one detail,
+//        or two details too: the request maker's ramp, src/requests.js), ok1: first-try rights at level 1, miss2: two-
+//        detail requests missed in a row, last: {d, say, ok} }   (src/listen.js)
 // Recording (words.js and state.js call these; content never needs to): H.event(id, kind, o), H.met(id), H.step().
 //
 // API (G.hist, short H): (o.days: the last n calendar days including today; o.all: everything, the folded days too)
 //   H.state()                 the saved object          H.day(key?) a day's record (today's by default, made on demand)
 //   H.days()                  the kept days' keys, oldest first
-//   H.events(o)               [{day, n, word, kind: 'pick'|'recall'|'say'|'miss'|'parent', first, ok, cued, echo, gap}]
+//   H.events(o)               [{day, n, word, kind: 'pick'|'recall'|'say'|'listen'|'miss'|'parent', first, ok, cued, echo, gap}]
 //   H.stats(o)                {rn, rr (retention: first events after a day or more, right first try), pr (practice
 //                             events, the grown-ups' checks apart), sp (said aloud), cy, cn (checks right / wrong), s}
 //   H.retention(o)            {n, right, pct}  (pct null with no data)      H.retentionByDay(n) [{key, n, right, pct}]
@@ -31,6 +36,8 @@
 //   H.zoneRows(zone)          a zone's words for the grown-ups (warmup.js / dashboard.js): {id, met, st, box, said,
 //                             ago (days since last met or used, or null), slip}
 //   H.overview()              the numbers on the grown-ups' Learning page
+//   H.listen()                listen-and-do (src/listen.js): {n, ft, pct, today: {n, ft}} requests done, right first try
+//   H.listenDone(ok, first)   a request done (listen.js; ok: right in the end, first: right on the first try)
 //   The grown-ups' check: H.checkPick(n), H.checkStart(), H.checkCur(), H.checkAnswer(ok: true | false | null (skip)),
 //   H.checkStop(), H.checkLast() -> {d, ago, right, of} | null, H.checks() (the log)
 'use strict';
@@ -40,7 +47,7 @@
   H.EVMAX = 60;         // events kept per word per day (a dog trick can be said fifty times...)
   H.IDLE = 180 * 60;    // frames without a touch or a key before play time stops counting (3 min)
   H.CHECK_N = 10;       // words in a grown-ups' check
-  H.KIND = { P: 'pick', p: 'pick', K: 'pick', R: 'recall', r: 'recall', S: 'say', s: 'say', E: 'say', m: 'miss', C: 'parent', c: 'parent' };
+  H.KIND = { P: 'pick', p: 'pick', K: 'pick', R: 'recall', r: 'recall', S: 'say', s: 'say', E: 'say', L: 'listen', l: 'listen', m: 'miss', C: 'parent', c: 'parent' };
   const ADULT = ['GrownUps', 'LearningDash', 'MicTest', 'Controls', 'QuestLog']; // grown-ups' screens: not play time
   const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
   const W = () => G.words, D = () => G.data;
@@ -57,6 +64,7 @@
     if (!Array.isArray(h.chk.log)) h.chk.log = [];
     if (h.chk.cur && !(isObj(h.chk.cur) && Array.isArray(h.chk.cur.ids) && Array.isArray(h.chk.cur.r))) h.chk.cur = null;
     if (!isObj(h.wu)) h.wu = { d: '', n: 0, k: 0, none: 0 };
+    if (!isObj(h.ld)) h.ld = { n: 0, ft: 0, lvl: 1, ok1: 0, miss2: 0 };
     return h;
   }
   H.state = () => (G.state ? st() : null);
@@ -121,7 +129,7 @@
   };
 
   // ---------- reading ----------
-  const CAP = c => c === 'P' || c === 'R' || c === 'S' || c === 'C';
+  const CAP = c => c === 'P' || c === 'R' || c === 'S' || c === 'L' || c === 'C';
   // one day's numbers: rn / rr retention (each word's first event that day, after a day or more: was it right first
   // try? a cued pick or an echo is no test, and a check before it means it was just seen), pr practice (every event but
   // the grown-ups' checks), sp said aloud, cy / cn checks right / wrong, s seconds played
@@ -216,6 +224,24 @@
     return out;
   };
 
+  // ---------- listen-and-do: requests done, right on the first try (src/listen.js) ----------
+  H.listenState = () => (G.state ? st().ld : null);
+  H.listenDone = function (ok, first, say) {
+    if (!G.state) return;
+    const L = st().ld, td = today();
+    if (!isObj(L.td) || L.td.d !== td) L.td = { d: td, n: 0, ft: 0 };
+    L.n = (L.n | 0) + 1; L.td.n++;
+    if (first) { L.ft = (L.ft | 0) + 1; L.td.ft++; }
+    L.last = { d: td, say: say || '', ok: ok ? 1 : 0, first: first ? 1 : 0 };
+    save();
+  };
+  H.listen = function () {
+    const out = { n: 0, ft: 0, pct: null, today: { n: 0, ft: 0 } }; if (!G.state) return out;
+    const L = st().ld; out.n = L.n | 0; out.ft = L.ft | 0; out.pct = pct(out.ft, out.n);
+    if (isObj(L.td) && L.td.d === today()) out.today = { n: L.td.n | 0, ft: L.td.ft | 0 };
+    return out;
+  };
+
   // ---------- the overview ----------
   H.overview = function () {
     const Wd = W(), r7 = H.retention({ days: 7 }), ra = H.retention({ all: true }), sp = H.spoken({ all: true }), h = st();
@@ -223,7 +249,7 @@
       days: H.daysPlayed(), minutes: H.totalMinutes(), today: H.minutes(),
       met: Wd.count(1), known: Wd.count(2), remembered: Wd.count(3), solid: Wd.count(4), all: Object.keys(D().words).length,
       slipping: Wd.slipList(), r7, ra, spoken: sp, check: H.checkLast(), warmup: Object.assign({}, h.wu),
-      phrases: H.phraseStats(),
+      phrases: H.phraseStats(), listen: H.listen(),
     };
   };
 
