@@ -893,7 +893,7 @@
       try { yield* sayShow('mateo', { icon: 'zanahoria' }, T('¿Y la nariz? ¡Don Lucho tiene!', 'And his nose? A carrot! Don Lucho has carrots for his llamas.')); } finally { CH.point(null); }
     } },
     { who: 'lucho', bubble: { icon: 'zanahoria' }, run: function* (f, c) { // a carrot (the llamas love them), an old cap and scarf
-      yield* sayShow('lucho', { icon: 'zanahoria' }, T('¡Una zanahoria! ¡Tómala!', 'A carrot for the snowman\'s nose! (my llamas would love it too)'));
+      yield* sayShow('lucho', { icon: 'zanahoria' }, T('¡Una [zanahoria]! ¡Tómala!', 'A carrot for the snowman\'s nose! (my llamas would love it too)')); // (the word of Abuelo's garden: written once it's met)
       const lla = AN.find('llama', f); if (lla) { AN.cry('llama'); lla.react = 40; }
       bag().add('zanahoria', { q: 'montana2' }); G.audio.jingle('item');
       if (met('gorro') && met('bufanda')) yield* sayShow('lucho', { list: [{ icon: 'gorro', col: '#f8c830' }, { icon: 'bufanda', col: '#38a858' }] }, T('¡Y un [gorro] y una [bufanda] viejos!', 'And an old woolly hat and scarf for him!'));
@@ -903,6 +903,7 @@
     { spot: { map: 'montana', at: [SNOWMAN[0], SNOWMAN[1] + 1], icon: { icon: 'zanahoria' } }, run: function* (f, c) { // the snowman's face; the dog steals the nose
       const p = f.player; p.dir = 'up';
       bag().take('zanahoria', { q: 'montana2' }); c.data.nose = 1; G.audio.sfx('pop'); CK.sparkle(f, SNOWMAN[0], SNOWMAN[1] - 1, 4);
+      if (met('zanahoria')) G.world.name('zanahoria', SNOWMAN[0] * TL + 12, (SNOWMAN[1] - 1) * TL - 6); // (la zanahoria, met at the grandparents': said as it goes on)
       yield 20;
       for (const w of ['gorro', 'bufanda'].filter(met)) {
         const vs = ['gorro', 'bufanda'].filter(k => met(k) && !c.data[k]); if (!vs.length) break;

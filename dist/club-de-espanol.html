@@ -7796,8 +7796,26 @@ G.store = {
       p.ell(8, 8, 6, 7.5, '#e8b030'); p.ell(8, 8, 4.6, 6.2, '#c8e8f8'); p.rect(5, 4, 1, 3, '#ffffff'); p.put(6, 3, '#ffffff'); p.rect(7, 15, 2, 1, '#a07418');
     },
     zanahoria(p) { // a carrot pulled out of the garden: orange, green feathery top
-      p.tri(6, 5, 11, 5, 7, 16, '#f08828'); p.rect(7, 7, 2, 1, '#c86010'); p.rect(8, 10, 1, 1, '#c86010');
-      for (const [x, y] of [[6, 1], [8, 0], [10, 1], [7, 2], [9, 2], [8, 3], [8, 4]]) p.put(x, y, '#38a838');
+      p.tri(3.5, 6, 12.5, 6, 8, 16.5, '#f08828'); p.ell(8, 6.5, 4.5, 2, '#f08828'); p.rect(5, 6, 2, 3, '#f8a850');
+      for (const [x, y, w] of [[8, 8, 3], [6, 10, 2], [9, 12, 2], [7, 14, 1]]) p.rect(x, y, w, 1, '#c86010');
+      for (const [x, y, c] of [[5, 0, '#38a838'], [6, 1, '#38a838'], [7, 2, '#38a838'], [7, 3, '#38a838'], [4, 2, '#58c048'], [5, 3, '#58c048'], [8, 0, '#58c048'], [8, 1, '#58c048'], [8, 2, '#58c048'], [8, 3, '#2e8a2e'], [8, 4, '#2e8a2e'], [11, 0, '#2e8a2e'], [10, 1, '#2e8a2e'], [9, 2, '#2e8a2e'], [9, 3, '#2e8a2e'], [12, 2, '#38a838'], [11, 3, '#38a838'], [7, 4, '#2e8a2e'], [9, 4, '#2e8a2e']]) p.put(x, y, c);
+    },
+    elote(p, w) { // corn on the cob (el elote): rows of kernels (yellow; w.col: white corn), green husks folded back, silk on top
+      const c = (w && w.col) || '#f8d040', d = G.shade(c, 0.78), l = G.shade(c, 1.12);
+      p.ell(8, 7.5, 3.4, 6.6, c);
+      for (let y = 2; y < 14; y += 2) for (let x = 5; x <= 11; x += 2) if (p.get(x + (y % 4 ? 1 : 0), y)) p.put(x + (y % 4 ? 1 : 0), y, d);
+      p.rect(6, 3, 1, 8, l);
+      for (const [x, y] of [[7, 0], [8, 0], [9, 1]]) p.put(x, y, '#c89a50');
+      p.tri(2, 9, 8, 15, 4, 15, '#58b040'); p.tri(14, 8, 8, 15, 12, 15, '#3e9030'); p.tri(5, 11, 8, 15, 6, 15, '#9cdc6a');
+      p.rect(7, 14, 2, 2, '#2e7a2a');
+    },
+    jitomate(p, w) { // a tomato (el jitomate): round and shiny (red; w.col: a green one, not ripe yet), a green star of leaves, a stalk
+      const c = (w && w.col) || '#e03a28';
+      p.ell(8, 9.5, 6.6, 5.8, c); p.shade(8, 9.5, 6.6, G.shade(c, 0.72));
+      p.rect(4, 6, 2, 2, G.shade(c, 1.35)); p.put(4, 8, G.shade(c, 1.35));
+      const k = '#1e6a24';
+      p.rect(6, 4, 5, 1, k); p.put(5, 5, k); p.put(11, 5, k); p.put(8, 5, k); p.put(7, 5, k); p.put(9, 5, k); p.put(4, 4, k); p.put(12, 4, k);
+      p.rect(8, 1, 1, 3, '#2e7a2a'); p.put(9, 1, '#2e7a2a');
     },
     canastaverduras(p) { // Abuelo's basket full of vegetables: a carrot, a tomato, a lettuce, corn
       p.ell(8, 11, 7, 4.5, '#c08040'); p.rect(1, 9, 14, 2, '#a06030');
@@ -8309,7 +8327,7 @@ G.store = {
 
 </script>
 <script>/* content/es/words.js */
-// ===== Spanish content: the words (177: 73 for the 21 chapters, the rest for the zones), their notebook pages, the phrases, and the 21 chapters (docs/CURRICULUM.md) =====
+// ===== Spanish content: the words (180: 73 for the 21 chapters, the rest for the zones), their notebook pages, the phrases, and the 21 chapters (docs/CURRICULUM.md) =====
 // Loaded by index.html BEFORE src/data.js, which copies everything here into G.data (G.data.words, .topics, .pages,
 // .chapters...), so the code reads G.data as before. Pictures live in src/icons.js (`icon`), the chapters' scripts in
 // content/es/story-*.js (G.chapters.script), the chapter engine in src/chapters.js.
@@ -8349,12 +8367,13 @@ G.store = {
     cuerpo: { name: 'Mi cuerpo', en: 'My body' },
     ropa: { name: 'La ropa', en: 'Clothes' },
     rancho: { name: 'En casa de los abuelos', en: 'At the grandparents\' (their animals)' },
+    huerta: { name: 'La huerta', en: 'Abuelo\'s vegetable garden' },
     tiempo: { name: '¿Qué tiempo hace?', en: 'The weather' },
     montana: { name: 'La montaña', en: 'The mountain (snow and cold)' },
     faunamontana: { name: 'Animales de la montaña', en: 'Mountain animals' },
   };
   // the notebook's page order: roughly the order the pages appear in the story
-  C.topicOrder = ['saludos', 'mascota', 'animales', 'sonidos', 'comida', 'colores', 'granja', 'pueblo', 'cosas', 'sentir', 'numeros', 'playa', 'mar', 'bosque', 'fauna', 'acciones', 'juegosparque', 'bichos', 'familia', 'cuerpo', 'ropa', 'rancho', 'tiempo', 'montana', 'faunamontana'];
+  C.topicOrder = ['saludos', 'mascota', 'animales', 'sonidos', 'comida', 'colores', 'granja', 'pueblo', 'cosas', 'sentir', 'numeros', 'playa', 'mar', 'bosque', 'fauna', 'acciones', 'juegosparque', 'bichos', 'familia', 'cuerpo', 'ropa', 'rancho', 'huerta', 'tiempo', 'montana', 'faunamontana'];
 
   C.words = {
     // ---- Saludos ----
@@ -8535,6 +8554,11 @@ G.store = {
     raton: { es: 'el ratón', en: 'the mouse', topic: 'rancho', icon: 'raton', pl: 'ratones', alt: 'ratoncito / ratones / ratita' },
     gallo: { es: 'el gallo', en: 'the rooster', topic: 'rancho', icon: 'gallo', pl: 'gallos', alt: 'gallito' },
     tlacuache: { es: 'el tlacuache', en: 'the possum', topic: 'rancho', icon: 'tlacuache', pl: 'tlacuaches', alt: 'tlacuachito / zarigüeya / tacuache' },
+    // ---- La huerta: Abuelo's vegetable garden (picked for his basket, carried, asked for on his listen-and-do board).
+    //      id zanahoria = the carrot picture's own name (same picture): the dog's carrot, Abuelo's and Don Lucho's are this word ----
+    zanahoria: { es: 'la zanahoria', en: 'the carrot', topic: 'huerta', icon: 'zanahoria', pl: 'zanahorias', alt: 'zanahorias / zanahorita / zanahoritas' },
+    elote: { es: 'el elote', en: 'the corn (on the cob)', topic: 'huerta', icon: 'elote', pl: 'elotes', alt: 'elotes / elotito / mazorca / el maíz / maíz' },
+    jitomate: { es: 'el jitomate', en: 'the tomato', topic: 'huerta', icon: 'jitomate', pl: 'jitomates', alt: 'jitomates / tomate / tomates / jitomatito / el tomate' },
     // ---- ¿Qué tiempo hace? (content/es/zone-montana.js): the weather, changed at Mateo's weather station; Mexican Spanish.
     //      el sol (elsol) and caliente are the beach's words: the mountain meets them if they aren't met yet ----
     nieve: { es: 'la nieve', en: 'the snow', topic: 'tiempo', icon: 'nieve', alt: 'nieve / nevando / está nevando / la nevada' },
@@ -8615,6 +8639,7 @@ G.store = {
     cuerpo: { topic: 'cuerpo', words: ['mano', 'pie', 'nariz', 'ojos', 'boca', 'cabeza'] },
     ropa: { topic: 'ropa', words: ['camisa', 'pantalon', 'calcetines', 'vestido', 'zapatos', 'sombrero', 'chamarra'] },
     rancho: { topic: 'rancho', words: ['vaca', 'cerdo', 'oveja', 'burro', 'pavo', 'raton', 'gallo', 'tlacuache'] },
+    huerta: { topic: 'huerta', words: ['zanahoria', 'elote', 'jitomate'] }, // (three words: its puzzle matches three, src/intro.js)
     tiempo: { topic: 'tiempo', words: ['nieve', 'frio', 'nube', 'viento', 'lluvia', 'arcoiris'] },
     montana: { topic: 'montana', words: ['lamontana', 'gorro', 'bufanda', 'guantes', 'muneco', 'chocolate', 'trineo', 'hielo'] },
     faunamontana: { topic: 'faunamontana', words: ['llama', 'marmota', 'zorrillo', 'carpintero', 'monarca', 'puma', 'aguila', 'lobo'] },
@@ -8631,7 +8656,7 @@ G.store = {
     playa: { '21,7': 'playa', '12,10': 'mar' }, // (La playa: by the lifeguard's tower, and in the middle of the beach)
     bosque: { '16,15': 'bosque', '22,6': 'fauna' }, // (El bosque: in the clearing, and in the meadow by the cave path)
     juegos: { '20,8': 'acciones', '27,4': 'juegosparque', '35,17': 'bichos' }, // (El parque de juegos: the playground, under the kite tree, the garden)
-    abuelos: { '14,14': 'cuerpo', '29,13': 'rancho' }, // (La casa de los abuelos: by the pump, by the paddock)
+    abuelos: { '14,14': 'cuerpo', '29,13': 'rancho', '11,18': 'huerta' }, // (La casa de los abuelos: by the pump, by the paddock, by the garden beds)
     abuelos_casa: { '5,5': 'familia', '15,5': 'ropa' }, // (inside: under the family photos, in the bedroom)
     montana: { '10,19': 'tiempo', '13,10': 'montana', '29,19': 'faunamontana' }, // (La montaña: by the weather station, on the snowfield, by the llamas' corral)
   };
@@ -9791,9 +9816,10 @@ G.store = {
     // El bosque: Doña Lupe's berries, acorns, mushrooms and leaves; Elena's animals (big and small)
     lupe: { things: { mora: { count: 1 }, bellota: { count: 1 }, hongo: { sizes: 1, count: 1 }, hoja: { cols: ['verde', 'amarillo', 'rojo'], count: 1 } } },
     elena: { things: { oso: A, ardilla: A, mapache: A, venado: A, zorro: A, erizo: A, buho: A, conejo: A } },
-    // La casa de los abuelos: Abuelo's orchard and henhouse (the game has no vegetable words yet: a vegetable word added
-    // to content/es/words.js can join his board here), and his animals
-    abuelo: { things: Object.assign({ huevo: { count: 1 } }, { manzana: FRUIT.manzana }, { vaca: A, cerdo: A, oveja: A, burro: A, pavo: A, gallo: A }) },
+    // La casa de los abuelos: Abuelo's garden (carrots to count, yellow or white corn, red or green tomatoes: "Dame dos
+    // zanahorias." "Dame el elote blanco." "Dame tres jitomates rojos."), his orchard and henhouse, and his animals
+    abuelo: { things: Object.assign({ zanahoria: { count: 1 }, elote: { cols: ['amarillo', 'blanco'], count: 1 }, jitomate: { cols: ['rojo', 'verde'], count: 1 } },
+      { huevo: { count: 1 } }, { manzana: FRUIT.manzana }, { vaca: A, cerdo: A, oveja: A, burro: A, pavo: A, gallo: A }) },
     // La montaña: Mateo's weather things (clouds, the sun, snowmen: big and small) and the clothes for the cold
     mateo: { things: { nube: { sizes: 1, count: 1 }, elsol: { sizes: 1 }, muneco: { sizes: 1 }, gorro: { cols: COLS }, bufanda: { cols: COLS }, guantes: { cols: COLS } } },
     // the dog's warm-up (src/warmup.js): his own things, and every board above (RQ.spec('dog'))
@@ -11010,7 +11036,7 @@ G.store = {
 //   -> its picture, say it or pick its word (the mic is on), or hear it and pick its picture. Counted as review.
 // Page puzzles (G.pages): a notebook page's sparkle on the map (maps.js `pages`) is a puzzle: 4 pictures of words from
 //   that page you've met, and their 4 words, shuffled; tap a picture and then its word (or drag the word onto it).
-//   Right: they join and the word is said; wrong: a wobble and "¡Casi!". All four: a star. ready(page) (4+ met words,
+//   Right: they join and the word is said; wrong: a wobble and "¡Casi!". All four: a star. (A page of three words, La huerta: three.) ready(page) (4+ met words,
 //   not solved, or solved on an earlier day with 2+ of them due again), words(page), run(page) (yieldable), visible()
 //   (the notebook's pages: those with a met word).
 'use strict';
@@ -11179,9 +11205,11 @@ G.store = {
   // a page's sparkle waits for 4 of its words KNOWN (stage 2+: picked once without a cue), known before this session
   // (CURRICULUM.md 5: at the earliest in the next session after the 4th), and comes back on a later day with 2+ due
   const ripe = w => { const r = Wd().rec(w); return !!r && r.st >= 2 && (r.ms < Wd().sess() || r.how === 'old' || r.how === 'learn'); };
+  const need = id => Math.min(4, pageWords(id).length); // (a page of three words, La huerta: three to match)
+  P.need = need;
   P.ready = function (id) {
     if (!G.state || !D().pages[id]) return false;
-    const met = pageWords(id).filter(ripe); if (met.length < 4) return false;
+    const met = pageWords(id).filter(ripe); if (met.length < need(id)) return false;
     const d = P.solvedDay(id); if (d == null) return true;
     return d < Wd().day() && met.filter(w => Wd().due(w)).length >= 2;
   };
@@ -11192,7 +11220,7 @@ G.store = {
     return shuffle(met.sort((a, b) => sc(a) - sc(b)).slice(0, 4));
   };
   P.run = function* (id) {
-    const ids = P.words(id); if (ids.length < 4) return false;
+    const ids = P.words(id); if (ids.length < need(id)) return false;
     if (G.vocabLog) { ids.forEach(w => G.vlog('prompt', w, { kind: 'review', st: Wd().stage(w), mode: 'match', via: 'page' })); G.vlog.ev({ ty: 'puzzle', page: id }); }
     const r = yield P.open(id, ids);
     if (!r.result) return false; // closed before the end
@@ -11212,11 +11240,11 @@ G.store = {
       this.done = 0; this.ki = 0;
     }
     onEnter() { G.audio.sfx('note'); }
-    picRect(k) { return { x: 22 + k * 72, y: 42, w: 60, h: 58 }; }
+    picRect(k) { return { x: 22 + (4 - this.pics.length) * 36 + k * 72, y: 42, w: 60, h: 58 }; } // (fewer than four: centred)
     wordRect(j) {
       const k = this.pics.indexOf(this.words[j]);
       if (this.match[k]) { const p = this.picRect(k); return { x: p.x - 2, y: p.y + 64, w: 64, h: 24, joined: true }; }
-      return { x: 20 + j * 72, y: 150, w: 64, h: 26 };
+      return { x: 20 + (4 - this.pics.length) * 36 + j * 72, y: 150, w: 64, h: 26 };
     }
     closeXY() { return [G.W - 30, 8]; }
     hintXY() { return null; } // never point at an answer
@@ -23551,7 +23579,27 @@ G.MAPDATA = {
   }
 
   // ---------- Abuelo: his garden (after chapter 2), Simón dice (after chapter 2), his jacket at night ----------
-  const BEDS = [[4, 14], [8, 14], [5, 16], [9, 16], [3, 18], [7, 18], [10, 18]];
+  // La huerta (content/es/words.js): la zanahoria, el elote, el jitomate. The beds' rows grow carrots, tomatoes, corn
+  // and lettuce (no word: never picked), each tile's by its place (src/tiles.js gardenTile). Each day Abuelo wants four
+  // of one: the first not met yet (met right there, a one-unknown puzzle; then said again as each is picked, counted
+  // and given), else the day's in turn. They also grow by the beds to pick up any time once met (G.carry.SOURCES below):
+  // the dog eats a carrot, Abuela takes any of them for her soup (a heart).
+  const VEGS = AB.VEGS = ['zanahoria', 'elote', 'jitomate'];
+  const VEG_KIND = [null, 'zanahoria', 'jitomate', 'elote']; // (gardenTile's kinds: 0 lettuce, 1 carrots, 2 tomatoes, 3 corn)
+  const BEDS = []; // [x, y, vegetable]
+  const AB_AT = P('abuelos', 'abuelo'); // (not the bed just above Abuelo: a tap there is a tap on him)
+  MD.abuelos.rows.forEach((r, y) => { for (let x = 0; x < r.length; x++) if (r[x] === 'ñ' && VEG_KIND[(x * 7 + y * 3) % 4] && !(x === AB_AT[0] && y === AB_AT[1] - 1)) BEDS.push([x, y, VEG_KIND[(x * 7 + y * 3) % 4]]); });
+  const W_ = id => G.data.words[id];
+  const vegPl = (v, cap) => { const f = W_(v).pl; return '[' + v + ':' + (cap ? f[0].toUpperCase() + f.slice(1) : f) + ']'; }; // [zanahoria:zanahorias]
+  const fem = v => /^la /.test(W_(v).es);
+  const VEG_EN = { zanahoria: ['a carrot', 'carrots'], elote: ['corn on the cob', 'ears of corn'], jitomate: ['a tomato', 'tomatoes'] };
+  // today's vegetable: the first not met yet, else one in turn
+  const vegOfDay = () => VEGS.find(v => !met(v)) || VEGS[day() % VEGS.length];
+  const gardenVeg = () => { const g = garden(); if (!g.v || VEGS.indexOf(g.v) < 0) g.v = VEGS.find(met) ? vegOfDay() : 'zanahoria'; return g.v; };
+  AB.gardenVeg = () => (G.state ? gardenVeg() : null);
+  function* meetVeg(f, v) { // its one-unknown puzzle, Abuelo holding it up
+    yield* meetW(v, { who: 'abuelo', prompt: '¡Mira! ¡' + (fem(v) ? 'Una' : 'Un') + ' [' + v + ']!', en: 'Look! ' + VEG_EN[v][0][0].toUpperCase() + VEG_EN[v][0].slice(1) + ' from my garden!', show: { icon: v }, known: othersFor(v, VEGS.concat(['manzana', 'huevo', 'flor', 'pan'])) });
+  }
   const garden = () => daily('garden');
   const basket = () => bag().list().find(it => it.id === 'canastaverduras' && it.q === 'huerto') || null;
   const gardenOpen = () => CH.done('abuelos2');
@@ -23569,37 +23617,44 @@ G.MAPDATA = {
     if (jacketAsk()) { yield* jacket(f); return true; }
     const g = garden(), b = basket();
     if (b && (g.n | 0) >= 4) { yield* gardenDone(f); return true; }
-    if (b) { yield* sayShow('abuelo', { icon: 'zanahoria' }, T('¡Más! ¡Cuatro!', 'More vegetables! Tap four of the garden beds.')); return true; }
+    if (b) { const v = gardenVeg(); yield* sayShow('abuelo', { icon: v, count: 4 }, T(met(v) ? '¡Más ' + vegPl(v) + '!' : '¡Más! ¡Cuatro!', 'More ' + VEG_EN[v][1] + '! Four, from the garden beds.')); return true; }
     if (gardenOpen() && !g.done) {
       yield* sayShow('abuelo', { icon: 'canastaverduras' }, T('¡Mi huerto! ¿Me ayudas?', 'My vegetable garden! Will you help me pick?'));
-      bag().add('canastaverduras', { q: 'huerto' }); g.n = 0; g.got = {}; G.st.autosave();
-      const at = BEDS[0]; CH.point(at[0] * TL + 12, at[1] * TL);
-      try { yield* sayShow('abuelo', { icon: 'zanahoria', count: 4 }, T(met('cuatro') ? '¡[cuatro:Cuatro], {name}!' : '¡Ándale, {name}!', 'Four, please! Tap the garden beds.')); } finally { CH.point(null); }
+      const v = vegOfDay();
+      bag().add('canastaverduras', { q: 'huerto' }); g.n = 0; g.got = {}; g.v = v; G.st.autosave();
+      const at = BEDS.find(e => e[2] === v); CH.point(at[0] * TL + 12, at[1] * TL);
+      try {
+        if (!met(v)) yield* meetVeg(f, v); // (the day's new one: met here, then asked for four)
+        yield* sayShow('abuelo', { icon: v, count: 4 }, T((met('cuatro') ? '¡[cuatro:Cuatro] ' + vegPl(v) : '¡' + vegPl(v, true)) + ', {name}!', 'Four ' + VEG_EN[v][1] + ', please! Tap the garden beds where they grow.'));
+      } finally { CH.point(null); }
       return true;
     }
     if (simonOpen() && !daily('simon').done) { yield* simonGame(f); return true; }
     return false;
   }
-  const VEG = ['zanahoria', { icon: 'zanahoria' }];
   function* pickVeg(f, i) {
-    const g = garden(); if (!basket() || (g.got || (g.got = {}))[i] || (g.n | 0) >= 4) return;
-    const [x, y] = BEDS[i]; g.got[i] = G.frame; g.n = (g.n | 0) + 1; G.st.autosave();
+    const g = garden(); if (!basket() || (g.got || (g.got = {}))[i] || (g.n | 0) >= 4 || BEDS[i][2] !== gardenVeg()) return;
+    const [x, y, v] = BEDS[i];
+    if (!met(v)) yield* meetVeg(f, v); // (a basket from an earlier day: today's vegetable met at its bed)
+    g.got[i] = G.frame; g.n = (g.n | 0) + 1; G.st.autosave();
     G.audio.sfx('pop'); for (let k = 0; k < 6; k++) puff('crumb', x * TL + 12 + (Math.random() - 0.5) * 14, y * TL + 8, { vy: -1.2 - Math.random(), vx: (Math.random() - 0.5) * 2, g: 0.15, life: 26 });
     CK.sparkle(f, x, y, 3);
     yield 16;
+    G.world.name(v, x * TL + 12, y * TL - 6, { grow: 'carry' }); // (its name, said: used again right away)
+    yield 20;
     const nums = ['uno', 'dos', 'tres', 'cuatro'];
     if (met(nums[g.n - 1])) { G.fx.say(G.baseForm(nums[g.n - 1]), x * TL + 12 - Math.round(f.cam.x), y * TL - 10 - Math.round(f.cam.y), '#ffffff', true); G.speak(G.baseForm(nums[g.n - 1])); }
     if (g.n >= 4) { const n = npcAt(f, 'abuelo'); if (n) CH.pointNpc(n); try { yield* sayShow('abuelo', { icon: 'canastaverduras' }, T('¡Ya! ¡Tráela!', 'That\'s four! Bring the basket to Abuelo.')); } finally { CH.point(null); } }
-    void VEG;
   }
   function* gardenDone(f) {
     const g = garden();
     bag().take('canastaverduras', { q: 'huerto' }); G.audio.jingle('item');
     yield* sayShow('abuelo', { icon: 'canastaverduras' }, T('¡Qué bien! ¡[gracias:Gracias]!', 'How lovely! Thank you!'));
-    if (met('cuatro')) yield* quiz('abuelo', '¿Cuántas?', 'How many vegetables did you pick?', 'cuatro', ['tres', 'cinco'], { show: { icon: 'zanahoria', count: 4 } });
+    const v = gardenVeg();
+    if (met('cuatro')) yield* quiz('abuelo', '¿Cuánt' + (fem(v) ? 'as' : 'os') + ' ' + vegPl(v) + '?', 'How many ' + VEG_EN[v][1] + ' did you pick?', 'cuatro', ['tres', 'cinco'], { show: { icon: v, count: 4 } });
     g.done = true; st().gardens = (st().gardens | 0) + 1; CK.confetti(); G.audio.jingle('promote'); G.st.autosave();
-    yield* sayShow('abuelo', { icon: 'zanahoria' }, T('¡Una para ti!', 'A carrot for you! (the donkey loves carrots... and so does {dog})'));
-    if (!held()) bag().add('zanahoria');
+    yield* sayShow('abuelo', { icon: v }, T((fem(v) ? '¡Una' : '¡Uno') + ' para ti!', VEG_EN[v][0][0].toUpperCase() + VEG_EN[v][0].slice(1) + ' for you! ' + (v === 'zanahoria' ? '(the donkey loves carrots... and so does {dog})' : '(Abuela makes soup with them)')));
+    if (!held()) bag().add(v);
   }
   // Simón dice: Abuelo touches his nose, his head... you do it too; then you are Simón
   function* simonGame(f) {
@@ -23705,7 +23760,7 @@ G.MAPDATA = {
   const sockDog = () => (G.state && Z.state() ? (Z.state().dog || {}) : {});
   const SIDE = [
     ...EGGS.map((at, i) => ({ id: 'egg' + i, map: 'abuelos', at, on: () => cookiesOpen() && cookies().on && !(cookies().got || {})[i] && (cookies().n | 0) < 3, icon: () => null, run: f => pickEgg(f, i) })),
-    ...BEDS.map((at, i) => ({ id: 'bed' + i, map: 'abuelos', at, on: () => !!basket() && !(garden().got || {})[i] && (garden().n | 0) < 4, icon: () => null, run: f => pickVeg(f, i) })),
+    ...BEDS.map((b, i) => ({ id: 'bed' + i, map: 'abuelos', at: [b[0], b[1]], on: () => !!basket() && b[2] === gardenVeg() && !(garden().got || {})[i] && (garden().n | 0) < 4, icon: () => null, run: f => pickVeg(f, i) })),
     { id: 'trunk', map: 'abuelos_casa', at: TRUNK, on: () => CH.done('abuelos1') && !CH.running(), icon: () => (!daily('show').done ? { icon: 'vestido', col: AB.FIRST.vestido } : null), run: f => AB.dressUp(f) },
     { id: 'wardrobe', map: 'abuelos_casa', at: WARDROBE, on: () => CH.done('abuelos1'), icon: () => null, run: f => (function* () { yield AB.mirror(); })() },
     { id: 'swing', map: 'abuelos', at: SWING, on: () => true, icon: () => null, run: f => swingRide(f) },
@@ -23759,7 +23814,7 @@ G.MAPDATA = {
       if (cookiesOpen() && c.on && (c.n | 0) < 3) { if (outside(f)) { const i = EGGS.findIndex((e, i) => !(c.got || {})[i]); if (i >= 0) return { why: 'abuelos: eggs', pts: [pt(EGGS[i], 22, 'huevo')] }; } else return { why: 'abuelos: eggs (outside)', pts: [{ x: P('abuelos_casa', 'door')[0] * TL + 12, y: P('abuelos_casa', 'door')[1] * TL + 12, lift: 20, door: true }] }; }
       if (cookiesOpen() && c.on && (c.n | 0) >= 3) { const n = npcAt(f, 'abuela'); if (n) return { why: 'abuelos: eggs to Abuela', pts: [{ x: n.x * TL + 12, y: n.y * TL + 12, lift: 44, npc: n }] }; }
       const b = basket(), g = garden();
-      if (b && (g.n | 0) < 4 && outside(f)) { const i = BEDS.findIndex((e, i) => !(g.got || {})[i]); if (i >= 0) return { why: 'abuelos: vegetables', pts: [pt(BEDS[i], 22, 'zanahoria')] }; }
+      if (b && (g.n | 0) < 4 && outside(f)) { const v = gardenVeg(), i = BEDS.findIndex((e, i) => e[2] === v && !(g.got || {})[i]); if (i >= 0) return { why: 'abuelos: vegetables', pts: [pt(BEDS[i], 22, { icon: v })] }; }
       if (b && (g.n | 0) >= 4) { const n = npcAt(f, 'abuelo'); if (n) return { why: 'abuelos: the basket to Abuelo', pts: [{ x: n.x * TL + 12, y: n.y * TL + 12, lift: 44, npc: n }] }; }
     }
     return zTask(f);
@@ -23809,7 +23864,7 @@ G.MAPDATA = {
       const c = cookies();
       if (cookiesOpen() && c.on) EGGS.forEach(([x, y], i) => { if (!(c.got || {})[i]) G.drawIcon16(ctx, 'huevo', x * TL + 4 - cx, y * TL + 8 - cy, 0.75); });
       const g = garden();
-      for (const i in g.got || {}) { const at = BEDS[i], k = (G.frame - g.got[i]) / 30; if (at && k < 1) G.drawIcon16(ctx, 'zanahoria', at[0] * TL + 4 - cx, at[1] * TL - 4 - k * 20 - cy); }
+      for (const i in g.got || {}) { const at = BEDS[i], k = (G.frame - g.got[i]) / 30; if (at && k < 1) G.drawIcon16(ctx, { icon: at[2] }, at[0] * TL + 4 - cx, at[1] * TL - 4 - k * 20 - cy); }
     }
     if (indoors(f)) { // the photos on the living room's wall (the family photo joins them), the mirror in the bedroom, a mouse hole
       const [px, py] = P('abuelos_casa', 'photos'), photos = [['abuelo', '#c8e0f0'], ['abuela', '#f8d8e0'], ['bebe', '#f8f0c0']];
@@ -23907,7 +23962,31 @@ G.MAPDATA = {
     { id: 'manzana_abuelos', map: 'abuelos', at: [11, 4], item: 'manzana', every: 150, tree: [11, 2] },
     { id: 'manzana_abuelos2', map: 'abuelos', at: [19, 4], item: 'manzana', every: 150, tree: [19, 2] },
     { id: 'palo_abuelos', map: 'abuelos', at: [36, 11], item: 'palo', every: 90 },
+    // the garden's vegetables, by the beds (once each is met in Abuelo's garden): pick one up, give it to Abuela (or a
+    // carrot to the dog); a new one grows a while after
+    { id: 'zanahoria_abuelos', map: 'abuelos', at: [2, 15], item: 'zanahoria', every: 150, when: () => met('zanahoria') },
+    { id: 'elote_abuelos', map: 'abuelos', at: [2, 17], item: 'elote', every: 150, when: () => met('elote') },
+    { id: 'jitomate_abuelos', map: 'abuelos', at: [11, 14], item: 'jitomate', every: 150, when: () => met('jitomate') },
   );
+  // a vegetable in your hands: Abuela (or Abuelo) takes it for the soup: "¡Una zanahoria! ¡Para la sopa!", a heart
+  const show0 = G.carry.show;
+  G.carry.show = function* (who, f) {
+    const h = held();
+    if (!h || VEGS.indexOf(h.id) < 0 || (who !== 'abuela' && who !== 'abuelo')) return yield* show0.call(this, who, f);
+    bag().take(h.id, { q: null }); G.audio.jingle('item');
+    if (G.cards && met(h.id)) G.cards.grow(h.id, 'give');
+    st().vegs = (st().vegs | 0) + 1; G.st.autosave();
+    yield* sayShow(who, { icon: h.id }, T('¡' + (fem(h.id) ? 'Una' : 'Un') + ' [' + h.id + ']! ¡Para la sopa!', VEG_EN[h.id][0][0].toUpperCase() + VEG_EN[h.id][0].slice(1) + '! For the soup! Thank you, {name}!'));
+    if (G.hearts) { G.hearts.add(who, 1, 'care'); yield 20; yield* G.hearts.milestones(who); }
+    return true;
+  };
+  // ...and the guide takes a vegetable in your hands to Abuela (while you're at the grandparents')
+  const plan0 = G.carry.plan;
+  G.carry.plan = function (f) {
+    const h = G.state && held();
+    if (h && VEGS.indexOf(h.id) >= 0 && inZone(f)) return { why: 'a vegetable for Abuela', who: 'abuela', icon: { icon: h.id } };
+    return plan0.call(this, f);
+  };
   // ---------- Nico's hiding places (seek.js) ----------
   G.seek.SPOTS.push(
     { id: 'abuelos1', map: 'abuelos', at: P('abuelos', 'hide1'), how: 'over', cut: 9, dx: 0, kinds: ['gallina', 'conejo', 'gato', 'pavo'], place: 'gallina' },     // behind the hay bale in the hens' run
@@ -25064,7 +25143,7 @@ G.MAPDATA = {
       try { yield* sayShow('mateo', { icon: 'zanahoria' }, T('¿Y la nariz? ¡Don Lucho tiene!', 'And his nose? A carrot! Don Lucho has carrots for his llamas.')); } finally { CH.point(null); }
     } },
     { who: 'lucho', bubble: { icon: 'zanahoria' }, run: function* (f, c) { // a carrot (the llamas love them), an old cap and scarf
-      yield* sayShow('lucho', { icon: 'zanahoria' }, T('¡Una zanahoria! ¡Tómala!', 'A carrot for the snowman\'s nose! (my llamas would love it too)'));
+      yield* sayShow('lucho', { icon: 'zanahoria' }, T('¡Una [zanahoria]! ¡Tómala!', 'A carrot for the snowman\'s nose! (my llamas would love it too)')); // (the word of Abuelo's garden: written once it's met)
       const lla = AN.find('llama', f); if (lla) { AN.cry('llama'); lla.react = 40; }
       bag().add('zanahoria', { q: 'montana2' }); G.audio.jingle('item');
       if (met('gorro') && met('bufanda')) yield* sayShow('lucho', { list: [{ icon: 'gorro', col: '#f8c830' }, { icon: 'bufanda', col: '#38a858' }] }, T('¡Y un [gorro] y una [bufanda] viejos!', 'And an old woolly hat and scarf for him!'));
@@ -25074,6 +25153,7 @@ G.MAPDATA = {
     { spot: { map: 'montana', at: [SNOWMAN[0], SNOWMAN[1] + 1], icon: { icon: 'zanahoria' } }, run: function* (f, c) { // the snowman's face; the dog steals the nose
       const p = f.player; p.dir = 'up';
       bag().take('zanahoria', { q: 'montana2' }); c.data.nose = 1; G.audio.sfx('pop'); CK.sparkle(f, SNOWMAN[0], SNOWMAN[1] - 1, 4);
+      if (met('zanahoria')) G.world.name('zanahoria', SNOWMAN[0] * TL + 12, (SNOWMAN[1] - 1) * TL - 6); // (la zanahoria, met at the grandparents': said as it goes on)
       yield 20;
       for (const w of ['gorro', 'bufanda'].filter(met)) {
         const vs = ['gorro', 'bufanda'].filter(k => met(k) && !c.data[k]); if (!vs.length) break;

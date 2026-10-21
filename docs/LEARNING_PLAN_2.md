@@ -2,7 +2,7 @@
 
 Engagement is working (a 7-year-old named her dog and found the bear in the cave). This plan improves how well and
 how fast she learns. It builds on `LEARNING_DESIGN.md` (the word model: stages, Leitner boxes, review) and
-`WORLD_PLAN.md` (Villa Sol and five zones, 177 words). Decisions made with the parent are marked **[decided]**.
+`WORLD_PLAN.md` (Villa Sol and five zones, 180 words). Decisions made with the parent are marked **[decided]**.
 
 **Status of the plan (2026-10-21): all three phases are built.** Phase 1 (measure and review: the learning history,
 the dog's warm-up, slipping words, the grown-ups' Learning page), Phase 2 (phrases, "say it to get it": six patterns,
@@ -162,8 +162,8 @@ and what changed on the way:
   the day's. *listen* (two requests on the tray, then a star and a heart): **Don Pepe** (fruit by colour and number:
   apples red / green / yellow, green and yellow bananas, oranges), **Nico** (Villa Sol's animals big and small, how
   many), **Doña Lupe** (blackberries, acorns, mushrooms big and small, leaves by colour), **Elena** (the forest's
-  animals big and small), **Abuelo** (his apples and eggs, and his animals: the game has no vegetable words yet, so his
-  board is his orchard and henhouse; a vegetable word added later can join it), **Mateo** (clouds, the sun and
+  animals big and small), **Abuelo** (his garden: carrots to count, yellow or white corn, red or green tomatoes; his apples
+  and eggs, and his animals), **Mateo** (clouds, the sun and
   snowmen big and small, the cap, scarf and mittens by colour). *carry* (a world request): **Lola** wherever she is
   (shells on the beach, leaves in the forest, apples at the grandparents'; none in the park or the mountain) and
   **Lucía** (flowers, after her chapter): she says "¡Mira! ¡Escucha!", the things appear around her on the map **one per
@@ -185,8 +185,8 @@ and what changed on the way:
 - Listen and do is **off in the tests unless they ask** (`{listen: true}` in the harness, or `LISTEN=1`; `drive()` does
   each request right); with it off, every favour and warm-up is exactly as before.
 - **Open questions for the parent**: is two favours a day + one in the warm-up the right amount? Should listen-and-do
-  ever make a word gold (now only recalling or saying it does)? Vegetable words for Abuelo's garden (la zanahoria, el
-  elote, el jitomate)?
+  ever make a word gold (now only recalling or saying it does)? ~~Vegetable words for Abuelo's garden?~~ **[decided]** la zanahoria, el
+  elote, el jitomate: added (DEVLOG 2026-10-21, La huerta).
 
 ## How we'll know it works
 - Retention after a day or more: 70-80% first try.

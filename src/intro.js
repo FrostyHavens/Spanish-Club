@@ -30,7 +30,7 @@
 //   -> its picture, say it or pick its word (the mic is on), or hear it and pick its picture. Counted as review.
 // Page puzzles (G.pages): a notebook page's sparkle on the map (maps.js `pages`) is a puzzle: 4 pictures of words from
 //   that page you've met, and their 4 words, shuffled; tap a picture and then its word (or drag the word onto it).
-//   Right: they join and the word is said; wrong: a wobble and "¡Casi!". All four: a star. ready(page) (4+ met words,
+//   Right: they join and the word is said; wrong: a wobble and "¡Casi!". All four: a star. (A page of three words, La huerta: three.) ready(page) (4+ met words,
 //   not solved, or solved on an earlier day with 2+ of them due again), words(page), run(page) (yieldable), visible()
 //   (the notebook's pages: those with a met word).
 'use strict';
@@ -199,9 +199,11 @@
   // a page's sparkle waits for 4 of its words KNOWN (stage 2+: picked once without a cue), known before this session
   // (CURRICULUM.md 5: at the earliest in the next session after the 4th), and comes back on a later day with 2+ due
   const ripe = w => { const r = Wd().rec(w); return !!r && r.st >= 2 && (r.ms < Wd().sess() || r.how === 'old' || r.how === 'learn'); };
+  const need = id => Math.min(4, pageWords(id).length); // (a page of three words, La huerta: three to match)
+  P.need = need;
   P.ready = function (id) {
     if (!G.state || !D().pages[id]) return false;
-    const met = pageWords(id).filter(ripe); if (met.length < 4) return false;
+    const met = pageWords(id).filter(ripe); if (met.length < need(id)) return false;
     const d = P.solvedDay(id); if (d == null) return true;
     return d < Wd().day() && met.filter(w => Wd().due(w)).length >= 2;
   };
@@ -212,7 +214,7 @@
     return shuffle(met.sort((a, b) => sc(a) - sc(b)).slice(0, 4));
   };
   P.run = function* (id) {
-    const ids = P.words(id); if (ids.length < 4) return false;
+    const ids = P.words(id); if (ids.length < need(id)) return false;
     if (G.vocabLog) { ids.forEach(w => G.vlog('prompt', w, { kind: 'review', st: Wd().stage(w), mode: 'match', via: 'page' })); G.vlog.ev({ ty: 'puzzle', page: id }); }
     const r = yield P.open(id, ids);
     if (!r.result) return false; // closed before the end
@@ -232,11 +234,11 @@
       this.done = 0; this.ki = 0;
     }
     onEnter() { G.audio.sfx('note'); }
-    picRect(k) { return { x: 22 + k * 72, y: 42, w: 60, h: 58 }; }
+    picRect(k) { return { x: 22 + (4 - this.pics.length) * 36 + k * 72, y: 42, w: 60, h: 58 }; } // (fewer than four: centred)
     wordRect(j) {
       const k = this.pics.indexOf(this.words[j]);
       if (this.match[k]) { const p = this.picRect(k); return { x: p.x - 2, y: p.y + 64, w: 64, h: 24, joined: true }; }
-      return { x: 20 + j * 72, y: 150, w: 64, h: 26 };
+      return { x: 20 + (4 - this.pics.length) * 36 + j * 72, y: 150, w: 64, h: 26 };
     }
     closeXY() { return [G.W - 30, 8]; }
     hintXY() { return null; } // never point at an answer

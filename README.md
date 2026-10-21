@@ -164,7 +164,7 @@ back by itself a minute later, Canelo shows a "?": tap him and say or pick it.
 - **The animals and the album**, **hearts** with everyone (stickers at 3, a photo at 5), the **evening at home** with the *Hoy* card, and the **diploma** at the end.
 
 ## Content
-177 words on 25 notebook pages and 6 phrases (`content/es/words.js`): 73 words taught by the 21 chapters of Villa Sol
+180 words on 26 notebook pages and 6 phrases (`content/es/words.js`): 73 words taught by the 21 chapters of Villa Sol
 (`content/es/story-c01-c10.js`, `content/es/story-c11-c21.js`), the rest by the five zones' people and places
 (`content/es/zone-*.js`). Progress saves itself in the browser, in three save slots; saves from before the
 chapters (and from part 1, when chapters 11-21 were still the older errands) load with their errands mapped onto the

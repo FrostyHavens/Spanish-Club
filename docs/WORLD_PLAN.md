@@ -202,7 +202,7 @@ table where cookies cool, a mouse and its hole), the bedroom (the wardrobe with 
 trunk). At night the windows glow, fireflies come out over the orchard. New tiles (`src/tiles.js`, Unicode codes:
 the ASCII ones are used up): `ñ` garden bed (lettuce, carrots, tomatoes, corn along the row), `á` henhouse (2 tiles),
 `í` the pigs' mud, `é` the water pump and trough, `ó` the wardrobe (an indoor wall), `ú` the dressing-up trunk.
-- **Words (25, four notebook pages):** *La familia* (`familia`): la abuela, la familia, el abuelo, el bebé (`bebe`);
+- **Words (25, four notebook pages; three more since on a fifth, *La huerta*, below):** *La familia* (`familia`): la abuela, la familia, el abuelo, el bebé (`bebe`);
   *Mi cuerpo* (`cuerpo`): la mano, el pie, la nariz, los ojos, la boca, la cabeza; *La ropa* (`ropa`): la camisa, el
   pantalón (`pantalon`), los calcetines, el vestido, los zapatos, el sombrero, la chamarra (Mexican; alt *chaqueta*);
   *En casa de los abuelos* (`rancho`): la vaca, el cerdo (alt *puerco, cochino*), la oveja (alt *borrego*), el burro,
@@ -236,11 +236,23 @@ the ASCII ones are used up): `ñ` garden bed (lettuce, carrots, tomatoes, corn a
   the wall after).
 - **Side quests (`G.state.abuelos`):** Abuela's cookies (after chapter 1: three eggs from the hens' run, *¿Cuántos?*,
   wash your hands, she bakes; a cookie for you or the dog; daily), the photo wall (after chapter 3: *¿Quién es?*),
-  Abuelo's garden (after chapter 2: his basket, four beds, a carrot for you; daily), Simón dice with Abuelo (after
+  Abuelo's garden (after chapter 2: his basket, four of the day's vegetable from its beds, one for you; daily; see
+  *La huerta* below), Simón dice with Abuelo (after
   chapter 2: los ojos, la boca, la cabeza met one at a time (he shows, you do), then *¡Simón dice: toca tu...!* to
   listen, then you are Simón; daily), Abuelo's jacket at night (*¡Brrr!*: la chamarra), the trunk's fashion show, the
   swing in the orchard.
-- **Dog:** digs in the garden (a carrot), steals a sock off the line (dog-spot act `tug`, the zone's own: a tug of war,
+- **La huerta (added 2026-10-21, the parent's choice):** a fifth page, *La huerta* (`huerta`, three words: its page
+  puzzle by the beds matches three, `src/intro.js` `P.need`): **la zanahoria** (id = the carrot picture's own name, so
+  the dog's dug carrot, Abuelo's gift and Don Lucho's snowman nose are all the word; the picture is unchanged in
+  shape, redrawn fatter), **el elote** (`col`: yellow, or white corn), **el jitomate** (`col`: red, or green). The beds'
+  vegetables follow the tile (`gardenTile`'s kind by column and row: carrots, tomatoes, corn, lettuce with no word;
+  `AB.BEDS` = `[x, y, veg]`, not the bed right above Abuelo: a tap there is a tap on him). Each garden day wants four
+  of one vegetable: the first not met yet (met there in a one-unknown puzzle, `meetW`, then named as each is picked,
+  *¿Cuántas zanahorias?*, one for you), else one in turn by day. Once met, each grows by the beds to pick up
+  (`G.carry.SOURCES`, back after 150 s): a carrot for the dog (he eats it), any of them for Abuela or Abuelo (*¡Para la
+  sopa!*, a care heart; `G.carry.show` wrapped; the guide's play takes a vegetable in your hands to Abuela). Abuelo's
+  listen-and-do board has them ("Dame dos zanahorias." "Dame el elote blanco." "¿Cuántos jitomates verdes hay?").
+- **Dog:** digs in the garden (a carrot: the word *la zanahoria*), steals a sock off the line (dog-spot act `tug`, the zone's own: a tug of war,
   three pulls; from chapter 1's end), chases the turkeys (`chase`).
 - **Also:** six hiding places (the hens' hay, the henhouse, the paddock's hay, the pump, the swing tree, a rock by the
   pond), four page puzzles (the body page by the pump, the animals by the paddock, the family under the photos, the

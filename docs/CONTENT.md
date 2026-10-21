@@ -39,6 +39,11 @@ child names him in the opener (`G.dogName()`, default *Canelo*). Never write *Ca
 2. Add a picture to `DRAW` in `src/icons.js` (tools/test-roundb-world.js fails for a word without one). Each picture is a 16×16 function that paints with `p.disc`, `p.ell`, `p.rect`, `p.tri` and `p.shade`; the dark outline is added automatically. A word without a picture gets a plain placeholder tile.
 3. Put it on its notebook page (`C.pages`, in the order the chapters meet it); for a new topic, add it to `C.topics`
    and `C.topicOrder` too. Then add it to its chapter's `words` in `C.chapters` (the budget counts those).
+   A page puzzle matches four words (a page of three, like *La huerta*, matches three). A word id that is already a
+   picture's name used as a plain string (`'zanahoria'`) makes every such use that word: fine when that's what you want
+   (the carrots became *la zanahoria* everywhere), otherwise pick another id (`elsol`, `cubetaarena`).
+4. For listen-and-do, give a noun its plural (`pl`) and put it on a person's board (`G.requests.SPECS`, below), with
+   the colours it really comes in (`cols`: Abuelo's corn yellow or white) and its picture taking `w.col`.
 
 ## Writing dialogue
 Write dialogue as `T('Spanish', 'English')`. The English only shows with the parents' option on, so the Spanish has to work alone:

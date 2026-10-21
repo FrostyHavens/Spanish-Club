@@ -752,8 +752,26 @@
       p.ell(8, 8, 6, 7.5, '#e8b030'); p.ell(8, 8, 4.6, 6.2, '#c8e8f8'); p.rect(5, 4, 1, 3, '#ffffff'); p.put(6, 3, '#ffffff'); p.rect(7, 15, 2, 1, '#a07418');
     },
     zanahoria(p) { // a carrot pulled out of the garden: orange, green feathery top
-      p.tri(6, 5, 11, 5, 7, 16, '#f08828'); p.rect(7, 7, 2, 1, '#c86010'); p.rect(8, 10, 1, 1, '#c86010');
-      for (const [x, y] of [[6, 1], [8, 0], [10, 1], [7, 2], [9, 2], [8, 3], [8, 4]]) p.put(x, y, '#38a838');
+      p.tri(3.5, 6, 12.5, 6, 8, 16.5, '#f08828'); p.ell(8, 6.5, 4.5, 2, '#f08828'); p.rect(5, 6, 2, 3, '#f8a850');
+      for (const [x, y, w] of [[8, 8, 3], [6, 10, 2], [9, 12, 2], [7, 14, 1]]) p.rect(x, y, w, 1, '#c86010');
+      for (const [x, y, c] of [[5, 0, '#38a838'], [6, 1, '#38a838'], [7, 2, '#38a838'], [7, 3, '#38a838'], [4, 2, '#58c048'], [5, 3, '#58c048'], [8, 0, '#58c048'], [8, 1, '#58c048'], [8, 2, '#58c048'], [8, 3, '#2e8a2e'], [8, 4, '#2e8a2e'], [11, 0, '#2e8a2e'], [10, 1, '#2e8a2e'], [9, 2, '#2e8a2e'], [9, 3, '#2e8a2e'], [12, 2, '#38a838'], [11, 3, '#38a838'], [7, 4, '#2e8a2e'], [9, 4, '#2e8a2e']]) p.put(x, y, c);
+    },
+    elote(p, w) { // corn on the cob (el elote): rows of kernels (yellow; w.col: white corn), green husks folded back, silk on top
+      const c = (w && w.col) || '#f8d040', d = G.shade(c, 0.78), l = G.shade(c, 1.12);
+      p.ell(8, 7.5, 3.4, 6.6, c);
+      for (let y = 2; y < 14; y += 2) for (let x = 5; x <= 11; x += 2) if (p.get(x + (y % 4 ? 1 : 0), y)) p.put(x + (y % 4 ? 1 : 0), y, d);
+      p.rect(6, 3, 1, 8, l);
+      for (const [x, y] of [[7, 0], [8, 0], [9, 1]]) p.put(x, y, '#c89a50');
+      p.tri(2, 9, 8, 15, 4, 15, '#58b040'); p.tri(14, 8, 8, 15, 12, 15, '#3e9030'); p.tri(5, 11, 8, 15, 6, 15, '#9cdc6a');
+      p.rect(7, 14, 2, 2, '#2e7a2a');
+    },
+    jitomate(p, w) { // a tomato (el jitomate): round and shiny (red; w.col: a green one, not ripe yet), a green star of leaves, a stalk
+      const c = (w && w.col) || '#e03a28';
+      p.ell(8, 9.5, 6.6, 5.8, c); p.shade(8, 9.5, 6.6, G.shade(c, 0.72));
+      p.rect(4, 6, 2, 2, G.shade(c, 1.35)); p.put(4, 8, G.shade(c, 1.35));
+      const k = '#1e6a24';
+      p.rect(6, 4, 5, 1, k); p.put(5, 5, k); p.put(11, 5, k); p.put(8, 5, k); p.put(7, 5, k); p.put(9, 5, k); p.put(4, 4, k); p.put(12, 4, k);
+      p.rect(8, 1, 1, 3, '#2e7a2a'); p.put(9, 1, '#2e7a2a');
     },
     canastaverduras(p) { // Abuelo's basket full of vegetables: a carrot, a tomato, a lettuce, corn
       p.ell(8, 11, 7, 4.5, '#c08040'); p.rect(1, 9, 14, 2, '#a06030');

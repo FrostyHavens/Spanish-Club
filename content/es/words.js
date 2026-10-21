@@ -1,4 +1,4 @@
-// ===== Spanish content: the words (177: 73 for the 21 chapters, the rest for the zones), their notebook pages, the phrases, and the 21 chapters (docs/CURRICULUM.md) =====
+// ===== Spanish content: the words (180: 73 for the 21 chapters, the rest for the zones), their notebook pages, the phrases, and the 21 chapters (docs/CURRICULUM.md) =====
 // Loaded by index.html BEFORE src/data.js, which copies everything here into G.data (G.data.words, .topics, .pages,
 // .chapters...), so the code reads G.data as before. Pictures live in src/icons.js (`icon`), the chapters' scripts in
 // content/es/story-*.js (G.chapters.script), the chapter engine in src/chapters.js.
@@ -38,12 +38,13 @@
     cuerpo: { name: 'Mi cuerpo', en: 'My body' },
     ropa: { name: 'La ropa', en: 'Clothes' },
     rancho: { name: 'En casa de los abuelos', en: 'At the grandparents\' (their animals)' },
+    huerta: { name: 'La huerta', en: 'Abuelo\'s vegetable garden' },
     tiempo: { name: '¿Qué tiempo hace?', en: 'The weather' },
     montana: { name: 'La montaña', en: 'The mountain (snow and cold)' },
     faunamontana: { name: 'Animales de la montaña', en: 'Mountain animals' },
   };
   // the notebook's page order: roughly the order the pages appear in the story
-  C.topicOrder = ['saludos', 'mascota', 'animales', 'sonidos', 'comida', 'colores', 'granja', 'pueblo', 'cosas', 'sentir', 'numeros', 'playa', 'mar', 'bosque', 'fauna', 'acciones', 'juegosparque', 'bichos', 'familia', 'cuerpo', 'ropa', 'rancho', 'tiempo', 'montana', 'faunamontana'];
+  C.topicOrder = ['saludos', 'mascota', 'animales', 'sonidos', 'comida', 'colores', 'granja', 'pueblo', 'cosas', 'sentir', 'numeros', 'playa', 'mar', 'bosque', 'fauna', 'acciones', 'juegosparque', 'bichos', 'familia', 'cuerpo', 'ropa', 'rancho', 'huerta', 'tiempo', 'montana', 'faunamontana'];
 
   C.words = {
     // ---- Saludos ----
@@ -224,6 +225,11 @@
     raton: { es: 'el ratón', en: 'the mouse', topic: 'rancho', icon: 'raton', pl: 'ratones', alt: 'ratoncito / ratones / ratita' },
     gallo: { es: 'el gallo', en: 'the rooster', topic: 'rancho', icon: 'gallo', pl: 'gallos', alt: 'gallito' },
     tlacuache: { es: 'el tlacuache', en: 'the possum', topic: 'rancho', icon: 'tlacuache', pl: 'tlacuaches', alt: 'tlacuachito / zarigüeya / tacuache' },
+    // ---- La huerta: Abuelo's vegetable garden (picked for his basket, carried, asked for on his listen-and-do board).
+    //      id zanahoria = the carrot picture's own name (same picture): the dog's carrot, Abuelo's and Don Lucho's are this word ----
+    zanahoria: { es: 'la zanahoria', en: 'the carrot', topic: 'huerta', icon: 'zanahoria', pl: 'zanahorias', alt: 'zanahorias / zanahorita / zanahoritas' },
+    elote: { es: 'el elote', en: 'the corn (on the cob)', topic: 'huerta', icon: 'elote', pl: 'elotes', alt: 'elotes / elotito / mazorca / el maíz / maíz' },
+    jitomate: { es: 'el jitomate', en: 'the tomato', topic: 'huerta', icon: 'jitomate', pl: 'jitomates', alt: 'jitomates / tomate / tomates / jitomatito / el tomate' },
     // ---- ¿Qué tiempo hace? (content/es/zone-montana.js): the weather, changed at Mateo's weather station; Mexican Spanish.
     //      el sol (elsol) and caliente are the beach's words: the mountain meets them if they aren't met yet ----
     nieve: { es: 'la nieve', en: 'the snow', topic: 'tiempo', icon: 'nieve', alt: 'nieve / nevando / está nevando / la nevada' },
@@ -304,6 +310,7 @@
     cuerpo: { topic: 'cuerpo', words: ['mano', 'pie', 'nariz', 'ojos', 'boca', 'cabeza'] },
     ropa: { topic: 'ropa', words: ['camisa', 'pantalon', 'calcetines', 'vestido', 'zapatos', 'sombrero', 'chamarra'] },
     rancho: { topic: 'rancho', words: ['vaca', 'cerdo', 'oveja', 'burro', 'pavo', 'raton', 'gallo', 'tlacuache'] },
+    huerta: { topic: 'huerta', words: ['zanahoria', 'elote', 'jitomate'] }, // (three words: its puzzle matches three, src/intro.js)
     tiempo: { topic: 'tiempo', words: ['nieve', 'frio', 'nube', 'viento', 'lluvia', 'arcoiris'] },
     montana: { topic: 'montana', words: ['lamontana', 'gorro', 'bufanda', 'guantes', 'muneco', 'chocolate', 'trineo', 'hielo'] },
     faunamontana: { topic: 'faunamontana', words: ['llama', 'marmota', 'zorrillo', 'carpintero', 'monarca', 'puma', 'aguila', 'lobo'] },
@@ -320,7 +327,7 @@
     playa: { '21,7': 'playa', '12,10': 'mar' }, // (La playa: by the lifeguard's tower, and in the middle of the beach)
     bosque: { '16,15': 'bosque', '22,6': 'fauna' }, // (El bosque: in the clearing, and in the meadow by the cave path)
     juegos: { '20,8': 'acciones', '27,4': 'juegosparque', '35,17': 'bichos' }, // (El parque de juegos: the playground, under the kite tree, the garden)
-    abuelos: { '14,14': 'cuerpo', '29,13': 'rancho' }, // (La casa de los abuelos: by the pump, by the paddock)
+    abuelos: { '14,14': 'cuerpo', '29,13': 'rancho', '11,18': 'huerta' }, // (La casa de los abuelos: by the pump, by the paddock, by the garden beds)
     abuelos_casa: { '5,5': 'familia', '15,5': 'ropa' }, // (inside: under the family photos, in the bedroom)
     montana: { '10,19': 'tiempo', '13,10': 'montana', '29,19': 'faunamontana' }, // (La montaña: by the weather station, on the snowfield, by the llamas' corral)
   };

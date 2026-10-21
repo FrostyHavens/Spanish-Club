@@ -2,6 +2,27 @@
 
 A running record of what changed in Club de Español and why. Newest first.
 
+## 2026-10-21 — La huerta: la zanahoria, el elote, el jitomate (the parent's choice)
+Three vegetable words for Abuelo's garden at La casa de los abuelos (Mexican Spanish), on a new notebook page, *La
+huerta* (180 words, 26 pages); everything else as it was.
+- **Words and pictures** (`content/es/words.js`, `src/icons.js`): *la zanahoria* (pl. zanahorias; the id is the carrot
+  picture's own name, so the dog's dug carrot, Abuelo's gift and Don Lucho's snowman nose are now the word: named in
+  your hands and the corner; the picture redrawn fatter with feathery tops), *el elote* (elotes; yellow, or white corn
+  with `col`), *el jitomate* (jitomates; red, or green). The page's sparkle is by the beds (11, 18); a page of three
+  words now has a three-picture puzzle, centred (`src/intro.js` `P.need`).
+- **Abuelo's garden** (`content/es/zone-abuelos.js`): the beds give what their tile grows (carrots, tomatoes, corn;
+  lettuce has no word); each day he wants four of one: the first not met (a one-unknown puzzle as he hands you the
+  basket, `meetW`), its name said at each bed, *¿Cuántas zanahorias?*, one for you; once all are met, one in turn.
+  The bed right above Abuelo is left out (a tap there was a tap on him).
+- **Carried:** once met, each grows by the beds (back after a while): the dog eats a carrot; Abuela or Abuelo takes any
+  for the soup (*¡Una zanahoria! ¡Para la sopa!*, a heart); the guide takes one in your hands to Abuela.
+- **Listen and do:** Abuelo's board (`src/requests.js`): "Dame dos zanahorias.", "Dame el elote blanco.", "Dame tres
+  jitomates rojos.", "¿Cuántos jitomates verdes hay?".
+- **La montaña:** Don Lucho's line marks *[zanahoria]*, and the nose is named as it goes on when the word is met.
+- Tests: `tools/test-zone-abuelos.js` (the words, plurals and genders, the pictures; two garden days, the right beds,
+  the gift, carrying to Abuela, the sources growing back; La huerta's three-word page puzzle), `tools/test-listen.js`
+  (the new sentences, the vegetables on Abuelo's board).
+
 ## 2026-10-21 — Learning plan 2, Phase 3: listen and do
 She can pick and say words; now she hears a whole request with no pictures and does it. `docs/LEARNING_PLAN_2.md`
 Phase 3, built (`src/requests.js` `G.requests`, `src/listen.js` `G.listen` and its scene `ListenDo`):

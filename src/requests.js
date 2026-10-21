@@ -164,9 +164,10 @@
     // El bosque: Doña Lupe's berries, acorns, mushrooms and leaves; Elena's animals (big and small)
     lupe: { things: { mora: { count: 1 }, bellota: { count: 1 }, hongo: { sizes: 1, count: 1 }, hoja: { cols: ['verde', 'amarillo', 'rojo'], count: 1 } } },
     elena: { things: { oso: A, ardilla: A, mapache: A, venado: A, zorro: A, erizo: A, buho: A, conejo: A } },
-    // La casa de los abuelos: Abuelo's orchard and henhouse (the game has no vegetable words yet: a vegetable word added
-    // to content/es/words.js can join his board here), and his animals
-    abuelo: { things: Object.assign({ huevo: { count: 1 } }, { manzana: FRUIT.manzana }, { vaca: A, cerdo: A, oveja: A, burro: A, pavo: A, gallo: A }) },
+    // La casa de los abuelos: Abuelo's garden (carrots to count, yellow or white corn, red or green tomatoes: "Dame dos
+    // zanahorias." "Dame el elote blanco." "Dame tres jitomates rojos."), his orchard and henhouse, and his animals
+    abuelo: { things: Object.assign({ zanahoria: { count: 1 }, elote: { cols: ['amarillo', 'blanco'], count: 1 }, jitomate: { cols: ['rojo', 'verde'], count: 1 } },
+      { huevo: { count: 1 } }, { manzana: FRUIT.manzana }, { vaca: A, cerdo: A, oveja: A, burro: A, pavo: A, gallo: A }) },
     // La montaña: Mateo's weather things (clouds, the sun, snowmen: big and small) and the clothes for the cold
     mateo: { things: { nube: { sizes: 1, count: 1 }, elsol: { sizes: 1 }, muneco: { sizes: 1 }, gorro: { cols: COLS }, bufanda: { cols: COLS }, guantes: { cols: COLS } } },
     // the dog's warm-up (src/warmup.js): his own things, and every board above (RQ.spec('dog'))

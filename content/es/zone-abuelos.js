@@ -398,7 +398,27 @@
   }
 
   // ---------- Abuelo: his garden (after chapter 2), Simón dice (after chapter 2), his jacket at night ----------
-  const BEDS = [[4, 14], [8, 14], [5, 16], [9, 16], [3, 18], [7, 18], [10, 18]];
+  // La huerta (content/es/words.js): la zanahoria, el elote, el jitomate. The beds' rows grow carrots, tomatoes, corn
+  // and lettuce (no word: never picked), each tile's by its place (src/tiles.js gardenTile). Each day Abuelo wants four
+  // of one: the first not met yet (met right there, a one-unknown puzzle; then said again as each is picked, counted
+  // and given), else the day's in turn. They also grow by the beds to pick up any time once met (G.carry.SOURCES below):
+  // the dog eats a carrot, Abuela takes any of them for her soup (a heart).
+  const VEGS = AB.VEGS = ['zanahoria', 'elote', 'jitomate'];
+  const VEG_KIND = [null, 'zanahoria', 'jitomate', 'elote']; // (gardenTile's kinds: 0 lettuce, 1 carrots, 2 tomatoes, 3 corn)
+  const BEDS = []; // [x, y, vegetable]
+  const AB_AT = P('abuelos', 'abuelo'); // (not the bed just above Abuelo: a tap there is a tap on him)
+  MD.abuelos.rows.forEach((r, y) => { for (let x = 0; x < r.length; x++) if (r[x] === 'ñ' && VEG_KIND[(x * 7 + y * 3) % 4] && !(x === AB_AT[0] && y === AB_AT[1] - 1)) BEDS.push([x, y, VEG_KIND[(x * 7 + y * 3) % 4]]); });
+  const W_ = id => G.data.words[id];
+  const vegPl = (v, cap) => { const f = W_(v).pl; return '[' + v + ':' + (cap ? f[0].toUpperCase() + f.slice(1) : f) + ']'; }; // [zanahoria:zanahorias]
+  const fem = v => /^la /.test(W_(v).es);
+  const VEG_EN = { zanahoria: ['a carrot', 'carrots'], elote: ['corn on the cob', 'ears of corn'], jitomate: ['a tomato', 'tomatoes'] };
+  // today's vegetable: the first not met yet, else one in turn
+  const vegOfDay = () => VEGS.find(v => !met(v)) || VEGS[day() % VEGS.length];
+  const gardenVeg = () => { const g = garden(); if (!g.v || VEGS.indexOf(g.v) < 0) g.v = VEGS.find(met) ? vegOfDay() : 'zanahoria'; return g.v; };
+  AB.gardenVeg = () => (G.state ? gardenVeg() : null);
+  function* meetVeg(f, v) { // its one-unknown puzzle, Abuelo holding it up
+    yield* meetW(v, { who: 'abuelo', prompt: '¡Mira! ¡' + (fem(v) ? 'Una' : 'Un') + ' [' + v + ']!', en: 'Look! ' + VEG_EN[v][0][0].toUpperCase() + VEG_EN[v][0].slice(1) + ' from my garden!', show: { icon: v }, known: othersFor(v, VEGS.concat(['manzana', 'huevo', 'flor', 'pan'])) });
+  }
   const garden = () => daily('garden');
   const basket = () => bag().list().find(it => it.id === 'canastaverduras' && it.q === 'huerto') || null;
   const gardenOpen = () => CH.done('abuelos2');
@@ -416,37 +436,44 @@
     if (jacketAsk()) { yield* jacket(f); return true; }
     const g = garden(), b = basket();
     if (b && (g.n | 0) >= 4) { yield* gardenDone(f); return true; }
-    if (b) { yield* sayShow('abuelo', { icon: 'zanahoria' }, T('¡Más! ¡Cuatro!', 'More vegetables! Tap four of the garden beds.')); return true; }
+    if (b) { const v = gardenVeg(); yield* sayShow('abuelo', { icon: v, count: 4 }, T(met(v) ? '¡Más ' + vegPl(v) + '!' : '¡Más! ¡Cuatro!', 'More ' + VEG_EN[v][1] + '! Four, from the garden beds.')); return true; }
     if (gardenOpen() && !g.done) {
       yield* sayShow('abuelo', { icon: 'canastaverduras' }, T('¡Mi huerto! ¿Me ayudas?', 'My vegetable garden! Will you help me pick?'));
-      bag().add('canastaverduras', { q: 'huerto' }); g.n = 0; g.got = {}; G.st.autosave();
-      const at = BEDS[0]; CH.point(at[0] * TL + 12, at[1] * TL);
-      try { yield* sayShow('abuelo', { icon: 'zanahoria', count: 4 }, T(met('cuatro') ? '¡[cuatro:Cuatro], {name}!' : '¡Ándale, {name}!', 'Four, please! Tap the garden beds.')); } finally { CH.point(null); }
+      const v = vegOfDay();
+      bag().add('canastaverduras', { q: 'huerto' }); g.n = 0; g.got = {}; g.v = v; G.st.autosave();
+      const at = BEDS.find(e => e[2] === v); CH.point(at[0] * TL + 12, at[1] * TL);
+      try {
+        if (!met(v)) yield* meetVeg(f, v); // (the day's new one: met here, then asked for four)
+        yield* sayShow('abuelo', { icon: v, count: 4 }, T((met('cuatro') ? '¡[cuatro:Cuatro] ' + vegPl(v) : '¡' + vegPl(v, true)) + ', {name}!', 'Four ' + VEG_EN[v][1] + ', please! Tap the garden beds where they grow.'));
+      } finally { CH.point(null); }
       return true;
     }
     if (simonOpen() && !daily('simon').done) { yield* simonGame(f); return true; }
     return false;
   }
-  const VEG = ['zanahoria', { icon: 'zanahoria' }];
   function* pickVeg(f, i) {
-    const g = garden(); if (!basket() || (g.got || (g.got = {}))[i] || (g.n | 0) >= 4) return;
-    const [x, y] = BEDS[i]; g.got[i] = G.frame; g.n = (g.n | 0) + 1; G.st.autosave();
+    const g = garden(); if (!basket() || (g.got || (g.got = {}))[i] || (g.n | 0) >= 4 || BEDS[i][2] !== gardenVeg()) return;
+    const [x, y, v] = BEDS[i];
+    if (!met(v)) yield* meetVeg(f, v); // (a basket from an earlier day: today's vegetable met at its bed)
+    g.got[i] = G.frame; g.n = (g.n | 0) + 1; G.st.autosave();
     G.audio.sfx('pop'); for (let k = 0; k < 6; k++) puff('crumb', x * TL + 12 + (Math.random() - 0.5) * 14, y * TL + 8, { vy: -1.2 - Math.random(), vx: (Math.random() - 0.5) * 2, g: 0.15, life: 26 });
     CK.sparkle(f, x, y, 3);
     yield 16;
+    G.world.name(v, x * TL + 12, y * TL - 6, { grow: 'carry' }); // (its name, said: used again right away)
+    yield 20;
     const nums = ['uno', 'dos', 'tres', 'cuatro'];
     if (met(nums[g.n - 1])) { G.fx.say(G.baseForm(nums[g.n - 1]), x * TL + 12 - Math.round(f.cam.x), y * TL - 10 - Math.round(f.cam.y), '#ffffff', true); G.speak(G.baseForm(nums[g.n - 1])); }
     if (g.n >= 4) { const n = npcAt(f, 'abuelo'); if (n) CH.pointNpc(n); try { yield* sayShow('abuelo', { icon: 'canastaverduras' }, T('¡Ya! ¡Tráela!', 'That\'s four! Bring the basket to Abuelo.')); } finally { CH.point(null); } }
-    void VEG;
   }
   function* gardenDone(f) {
     const g = garden();
     bag().take('canastaverduras', { q: 'huerto' }); G.audio.jingle('item');
     yield* sayShow('abuelo', { icon: 'canastaverduras' }, T('¡Qué bien! ¡[gracias:Gracias]!', 'How lovely! Thank you!'));
-    if (met('cuatro')) yield* quiz('abuelo', '¿Cuántas?', 'How many vegetables did you pick?', 'cuatro', ['tres', 'cinco'], { show: { icon: 'zanahoria', count: 4 } });
+    const v = gardenVeg();
+    if (met('cuatro')) yield* quiz('abuelo', '¿Cuánt' + (fem(v) ? 'as' : 'os') + ' ' + vegPl(v) + '?', 'How many ' + VEG_EN[v][1] + ' did you pick?', 'cuatro', ['tres', 'cinco'], { show: { icon: v, count: 4 } });
     g.done = true; st().gardens = (st().gardens | 0) + 1; CK.confetti(); G.audio.jingle('promote'); G.st.autosave();
-    yield* sayShow('abuelo', { icon: 'zanahoria' }, T('¡Una para ti!', 'A carrot for you! (the donkey loves carrots... and so does {dog})'));
-    if (!held()) bag().add('zanahoria');
+    yield* sayShow('abuelo', { icon: v }, T((fem(v) ? '¡Una' : '¡Uno') + ' para ti!', VEG_EN[v][0][0].toUpperCase() + VEG_EN[v][0].slice(1) + ' for you! ' + (v === 'zanahoria' ? '(the donkey loves carrots... and so does {dog})' : '(Abuela makes soup with them)')));
+    if (!held()) bag().add(v);
   }
   // Simón dice: Abuelo touches his nose, his head... you do it too; then you are Simón
   function* simonGame(f) {
@@ -552,7 +579,7 @@
   const sockDog = () => (G.state && Z.state() ? (Z.state().dog || {}) : {});
   const SIDE = [
     ...EGGS.map((at, i) => ({ id: 'egg' + i, map: 'abuelos', at, on: () => cookiesOpen() && cookies().on && !(cookies().got || {})[i] && (cookies().n | 0) < 3, icon: () => null, run: f => pickEgg(f, i) })),
-    ...BEDS.map((at, i) => ({ id: 'bed' + i, map: 'abuelos', at, on: () => !!basket() && !(garden().got || {})[i] && (garden().n | 0) < 4, icon: () => null, run: f => pickVeg(f, i) })),
+    ...BEDS.map((b, i) => ({ id: 'bed' + i, map: 'abuelos', at: [b[0], b[1]], on: () => !!basket() && b[2] === gardenVeg() && !(garden().got || {})[i] && (garden().n | 0) < 4, icon: () => null, run: f => pickVeg(f, i) })),
     { id: 'trunk', map: 'abuelos_casa', at: TRUNK, on: () => CH.done('abuelos1') && !CH.running(), icon: () => (!daily('show').done ? { icon: 'vestido', col: AB.FIRST.vestido } : null), run: f => AB.dressUp(f) },
     { id: 'wardrobe', map: 'abuelos_casa', at: WARDROBE, on: () => CH.done('abuelos1'), icon: () => null, run: f => (function* () { yield AB.mirror(); })() },
     { id: 'swing', map: 'abuelos', at: SWING, on: () => true, icon: () => null, run: f => swingRide(f) },
@@ -606,7 +633,7 @@
       if (cookiesOpen() && c.on && (c.n | 0) < 3) { if (outside(f)) { const i = EGGS.findIndex((e, i) => !(c.got || {})[i]); if (i >= 0) return { why: 'abuelos: eggs', pts: [pt(EGGS[i], 22, 'huevo')] }; } else return { why: 'abuelos: eggs (outside)', pts: [{ x: P('abuelos_casa', 'door')[0] * TL + 12, y: P('abuelos_casa', 'door')[1] * TL + 12, lift: 20, door: true }] }; }
       if (cookiesOpen() && c.on && (c.n | 0) >= 3) { const n = npcAt(f, 'abuela'); if (n) return { why: 'abuelos: eggs to Abuela', pts: [{ x: n.x * TL + 12, y: n.y * TL + 12, lift: 44, npc: n }] }; }
       const b = basket(), g = garden();
-      if (b && (g.n | 0) < 4 && outside(f)) { const i = BEDS.findIndex((e, i) => !(g.got || {})[i]); if (i >= 0) return { why: 'abuelos: vegetables', pts: [pt(BEDS[i], 22, 'zanahoria')] }; }
+      if (b && (g.n | 0) < 4 && outside(f)) { const v = gardenVeg(), i = BEDS.findIndex((e, i) => e[2] === v && !(g.got || {})[i]); if (i >= 0) return { why: 'abuelos: vegetables', pts: [pt(BEDS[i], 22, { icon: v })] }; }
       if (b && (g.n | 0) >= 4) { const n = npcAt(f, 'abuelo'); if (n) return { why: 'abuelos: the basket to Abuelo', pts: [{ x: n.x * TL + 12, y: n.y * TL + 12, lift: 44, npc: n }] }; }
     }
     return zTask(f);
@@ -656,7 +683,7 @@
       const c = cookies();
       if (cookiesOpen() && c.on) EGGS.forEach(([x, y], i) => { if (!(c.got || {})[i]) G.drawIcon16(ctx, 'huevo', x * TL + 4 - cx, y * TL + 8 - cy, 0.75); });
       const g = garden();
-      for (const i in g.got || {}) { const at = BEDS[i], k = (G.frame - g.got[i]) / 30; if (at && k < 1) G.drawIcon16(ctx, 'zanahoria', at[0] * TL + 4 - cx, at[1] * TL - 4 - k * 20 - cy); }
+      for (const i in g.got || {}) { const at = BEDS[i], k = (G.frame - g.got[i]) / 30; if (at && k < 1) G.drawIcon16(ctx, { icon: at[2] }, at[0] * TL + 4 - cx, at[1] * TL - 4 - k * 20 - cy); }
     }
     if (indoors(f)) { // the photos on the living room's wall (the family photo joins them), the mirror in the bedroom, a mouse hole
       const [px, py] = P('abuelos_casa', 'photos'), photos = [['abuelo', '#c8e0f0'], ['abuela', '#f8d8e0'], ['bebe', '#f8f0c0']];
@@ -754,7 +781,31 @@
     { id: 'manzana_abuelos', map: 'abuelos', at: [11, 4], item: 'manzana', every: 150, tree: [11, 2] },
     { id: 'manzana_abuelos2', map: 'abuelos', at: [19, 4], item: 'manzana', every: 150, tree: [19, 2] },
     { id: 'palo_abuelos', map: 'abuelos', at: [36, 11], item: 'palo', every: 90 },
+    // the garden's vegetables, by the beds (once each is met in Abuelo's garden): pick one up, give it to Abuela (or a
+    // carrot to the dog); a new one grows a while after
+    { id: 'zanahoria_abuelos', map: 'abuelos', at: [2, 15], item: 'zanahoria', every: 150, when: () => met('zanahoria') },
+    { id: 'elote_abuelos', map: 'abuelos', at: [2, 17], item: 'elote', every: 150, when: () => met('elote') },
+    { id: 'jitomate_abuelos', map: 'abuelos', at: [11, 14], item: 'jitomate', every: 150, when: () => met('jitomate') },
   );
+  // a vegetable in your hands: Abuela (or Abuelo) takes it for the soup: "¡Una zanahoria! ¡Para la sopa!", a heart
+  const show0 = G.carry.show;
+  G.carry.show = function* (who, f) {
+    const h = held();
+    if (!h || VEGS.indexOf(h.id) < 0 || (who !== 'abuela' && who !== 'abuelo')) return yield* show0.call(this, who, f);
+    bag().take(h.id, { q: null }); G.audio.jingle('item');
+    if (G.cards && met(h.id)) G.cards.grow(h.id, 'give');
+    st().vegs = (st().vegs | 0) + 1; G.st.autosave();
+    yield* sayShow(who, { icon: h.id }, T('¡' + (fem(h.id) ? 'Una' : 'Un') + ' [' + h.id + ']! ¡Para la sopa!', VEG_EN[h.id][0][0].toUpperCase() + VEG_EN[h.id][0].slice(1) + '! For the soup! Thank you, {name}!'));
+    if (G.hearts) { G.hearts.add(who, 1, 'care'); yield 20; yield* G.hearts.milestones(who); }
+    return true;
+  };
+  // ...and the guide takes a vegetable in your hands to Abuela (while you're at the grandparents')
+  const plan0 = G.carry.plan;
+  G.carry.plan = function (f) {
+    const h = G.state && held();
+    if (h && VEGS.indexOf(h.id) >= 0 && inZone(f)) return { why: 'a vegetable for Abuela', who: 'abuela', icon: { icon: h.id } };
+    return plan0.call(this, f);
+  };
   // ---------- Nico's hiding places (seek.js) ----------
   G.seek.SPOTS.push(
     { id: 'abuelos1', map: 'abuelos', at: P('abuelos', 'hide1'), how: 'over', cut: 9, dx: 0, kinds: ['gallina', 'conejo', 'gato', 'pavo'], place: 'gallina' },     // behind the hay bale in the hens' run

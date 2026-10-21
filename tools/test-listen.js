@@ -71,6 +71,14 @@ const SENTENCES = [
   [{ verb: 'give', thing: 'pelota', col: 'verde' }, 'Dame la pelota verde.'],
   [{ verb: 'give', thing: 'hueso', num: 'cuatro' }, 'Dame cuatro huesos.'],
   [{ verb: 'give', thing: 'nube', num: 'dos', size: 'grande' }, 'Dame dos nubes grandes.'],
+  [{ verb: 'give', thing: 'zanahoria', num: 'dos' }, 'Dame dos zanahorias.'],
+  [{ verb: 'give', thing: 'zanahoria', num: 'uno' }, 'Dame una zanahoria.'],
+  [{ verb: 'give', thing: 'elote', col: 'blanco' }, 'Dame el elote blanco.'],
+  [{ verb: 'bring', thing: 'elote' }, 'Tráeme el elote.'],
+  [{ verb: 'give', thing: 'jitomate', num: 'tres', col: 'rojo' }, 'Dame tres jitomates rojos.'],
+  [{ verb: 'give', thing: 'elote', num: 'dos', col: 'amarillo' }, 'Dame dos elotes amarillos.'],
+  [{ verb: 'howmany', thing: 'jitomate', col: 'verde' }, '¿Cuántos jitomates verdes hay?'],
+  [{ verb: 'howmany', thing: 'zanahoria' }, '¿Cuántas zanahorias hay?'],
 ];
 const ADJ = [['rojo', 'f', true, 'rojas'], ['rojo', 'm', false, 'rojo'], ['azul', 'f', true, 'azules'], ['azul', 'f', false, 'azul'], ['verde', 'm', true, 'verdes'], ['amarillo', 'f', false, 'amarilla'],
   ['blanco', 'm', true, 'blancos'], ['rosa', 'f', true, 'rosadas'], ['pequeno', 'f', true, 'pequeñas'], ['pequeno', 'm', false, 'pequeño'], ['grande', 'f', true, 'grandes'], ['grande', 'm', false, 'grande']];
@@ -120,6 +128,10 @@ async function node() {
   const none = nodeMaker(['hola']);
   check('make: nothing she knows on a board: no request', Object.keys(none.RQ.SPECS).every(w => !none.RQ.make(none.RQ.spec(w))));
   check('make: the word that\'s due comes first (a request about it when one can be made)', [...Array(10)].every(() => { const r = RQ.make(RQ.spec('lupe'), { focus: 'bellota' }); return r.words.includes('bellota'); }) && [...Array(10)].every(() => { const r = RQ.make(RQ.spec('pepe'), { focus: 'verde' }); return r.words.includes('verde'); }));
+  // Abuelo's garden on his board: carrots to count, corn and tomatoes by colour
+  const veg = { zanahoria: [], elote: [], jitomate: [] };
+  for (const v of Object.keys(veg)) for (let i = 0; i < 12; i++) { const r = RQ.make(RQ.spec('abuelo'), { focus: v, level: 1 + (i % 2) }); if (r && r.words.includes(v)) veg[v].push(r.say); }
+  check('abuelo: his garden is on his board (' + Object.values(veg).map(L => L[0]).join(' / ') + ')', Object.values(veg).every(L => L.length === 12) && veg.elote.some(t => /elotes? (amarillos?|blancos?)/.test(t)) && veg.jitomate.some(t => /jitomates? (rojos?|verdes?)/.test(t)), JSON.stringify(veg).slice(0, 300));
   // the ramp
   check('ramp: one detail to begin with (level 1)', RQ.level() === 1);
   const one1 = RQ.make(RQ.spec('pepe'), {});

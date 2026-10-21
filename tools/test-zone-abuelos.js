@@ -3,8 +3,9 @@
 // meets an unmet one through Lola's puzzle, the rare rooster and possum, the album page, every new word's picture);
 // the story by taps (¡A vestirse!, ¡A lavarse!, ¡La foto de la familia!); the clothes you wear (the trunk, the
 // mirror, worn on every map, kept in the save), the body (tap yourself: "¿Qué toco?", Simón dice), Abuelo's jacket
-// at night; the side quests (Abuela's cookies, Abuelo's garden); the dog (dig, the sock, the turkeys); hide-and-seek,
-// a page puzzle, save and load.
+// at night; the side quests (Abuela's cookies, Abuelo's garden: la zanahoria, el elote, el jitomate met one a day in
+// it, picked, counted and given; the vegetables by the beds to carry to Abuela; his listen-and-do board); the dog (dig:
+// the carrot is the word, the sock, the turkeys); hide-and-seek, page puzzles (La huerta's three), save and load.
 // NODE_PATH=$(npm root -g) node tools/test-zone-abuelos.js [screenshot dir]
 'use strict';
 const { run, open, check } = require('./harness');
@@ -131,9 +132,10 @@ async function animals(browser) {
     check('album: the page has its 8 animals, numbered after the park\'s; rare ones and habitats marked', await g.ev(() => { const z = G.zones.def('abuelos'); return z.animals.length === 8 && G.album.entries('abuelos').length === 8 && z.rare.gallo === 'manana' && z.rare.tlacuache === 'noche' && Object.values(z.habitat).every(G.iconDrawn) && G.album.number('vaca') === G.album.zoneStart('abuelos') + 1 && G.album.zoneStart('abuelos') > G.album.zoneStart('juegos'); }));
     const ws = await g.ev(() => Object.keys(G.data.words).filter(k => ['familia', 'cuerpo', 'ropa', 'rancho'].includes(G.data.words[k].topic)));
     check('words: 25 new words, every one with its own picture (4 notebook pages)', ws.length === 25 && await g.ev(ws => ws.every(G.iconDrawn) && ['familia', 'cuerpo', 'ropa', 'rancho'].every(p => G.data.pages[p]), ws), ws.join(','));
+    check('words: La huerta: la zanahoria, el elote, el jitomate (plurals for listen-and-do; the page placed by the garden beds)', await g.ev(() => { const W = G.data.words, R = G.requests; return G.data.pages.huerta.words.join() === 'zanahoria,elote,jitomate' && ['zanahoria', 'elote', 'jitomate'].every(G.iconDrawn) && R.noun('zanahoria').g === 'f' && R.noun('zanahoria').pl === 'zanahorias' && R.noun('elote').g === 'm' && R.noun('elote').pl === 'elotes' && R.noun('jitomate').pl === 'jitomates' && Object.values(G.maps.abuelos.pages).includes('huerta') && W.zanahoria.icon === 'zanahoria'; }));
     // a sheet of every new picture, big (render check)
     await g.ev(ws => {
-      const extra = ['camara', 'foto', 'espejo', 'zanahoria', 'canastaverduras', 'galletas', { icon: 'camisa', col: '#3870d8' }, { icon: 'vestido', col: '#f8c830' }, { icon: 'sombrero', col: '#e04040' }];
+      const extra = ['camara', 'foto', 'espejo', 'zanahoria', 'elote', 'jitomate', { icon: 'elote', col: G.data.words.blanco.col }, { icon: 'jitomate', col: G.data.words.verde.col }, 'canastaverduras', 'galletas', { icon: 'camisa', col: '#3870d8' }, { icon: 'vestido', col: '#f8c830' }, { icon: 'sombrero', col: '#e04040' }];
       const L = ws.concat(extra), cv = document.createElement('canvas'), s = 4, cols = 9; cv.width = cols * 18 * s; cv.height = Math.ceil(L.length / cols) * 18 * s;
       const c = cv.getContext('2d'); c.fillStyle = '#f4ecd8'; c.fillRect(0, 0, cv.width, cv.height); c.imageSmoothingEnabled = false;
       L.forEach((w, i) => c.drawImage(G.icon(w), (i % cols) * 18 * s + s, Math.floor(i / cols) * 18 * s + s, 16 * s, 16 * s));
@@ -287,12 +289,43 @@ async function side(browser) {
     await goto(g, 'abuelos', 11, 15);
     check('side: Abuelo has his basket in his bubble', await g.ev(() => { const a = G.field.npc('abuelo').alert(); return a && a.icon === 'canastaverduras'; }));
     await tapNpc(g, 'abuelo', 1, 0);
-    await drv(g, () => free() && !!G.errands.bag.has('canastaverduras', { q: 'huerto' }), 'the basket');
-    for (const [x, y] of (await g.ev(() => G.abuelos.BEDS)).slice(0, 4)) { await tapAt(g, x, y, x, y + 1); await drv(g, () => free(), 'a vegetable'); }
+    await drv(g, () => free() && !!G.errands.bag.has('canastaverduras', { q: 'huerto' }), 'the basket and la zanahoria');
+    check('garden: la zanahoria met in Abuelo\'s garden (a one-unknown puzzle): today he wants four carrots', await g.ev(() => G.words.met('zanahoria') && G.abuelos.state().garden.v === 'zanahoria' && !G.words.met('elote')));
+    const picks = async v => {
+      const beds = await g.ev(v => G.abuelos.BEDS.filter(b => b[2] === v), v);
+      check('garden: only the day\'s beds can be picked (' + v + ': ' + beds.length + ' beds; the guide points at one)', beds.length >= 4 && await g.ev(v => G.abuelos.SIDE.filter(s => /^bed/.test(s.id) && s.on()).length === G.abuelos.BEDS.filter(b => b[2] === v).length && (G.zones.task(G.field) || {}).pts[0].icon.icon === v, v));
+      for (const [x, y] of beds.slice(0, 4)) { await tapAt(g, x, y, x, y === 14 ? 13 : y + 1); await drv(g, () => free(), 'a vegetable'); } // (from above the top row: Abuelo stands below it)
+    };
+    await picks('zanahoria');
     await g.shot('vegetables');
     await tapNpc(g, 'abuelo', 1, 0);
     await drv(g, () => free() && G.abuelos.state().garden.done, 'the basket to Abuelo');
-    check('side: four vegetables picked and brought; a carrot for you', await g.ev(() => G.abuelos.state().gardens === 1 && G.carry.held() && G.carry.held().id === 'zanahoria'));
+    check('side: four carrots picked and brought (¿Cuántas zanahorias?); a carrot for you', await g.ev(() => G.abuelos.state().gardens === 1 && G.carry.held() && G.carry.held().id === 'zanahoria'));
+    check('garden: the carrot in your hands is the word (its name in the corner); the guide takes it to Abuela', await g.ev(() => G.carry.label('zanahoria') === 'la zanahoria' && (G.carry.plan(G.field) || {}).who === 'abuela'));
+    // the next day: el elote (a new one each day until all three are met)
+    await g.ev(() => { G.errands.bag.take('zanahoria'); G.abuelos.state().garden.d = -1; }); // (a new day for the garden)
+    await tapNpc(g, 'abuelo', 1, 0);
+    await drv(g, () => free() && !!G.errands.bag.has('canastaverduras', { q: 'huerto' }), 'the basket and el elote');
+    check('garden: the next day el elote is met there, and he wants four of them', await g.ev(() => G.words.met('elote') && G.abuelos.state().garden.v === 'elote' && !G.words.met('jitomate')));
+    await picks('elote');
+    await tapNpc(g, 'abuelo', 1, 0);
+    await drv(g, () => free() && G.abuelos.state().garden.done, 'the corn to Abuelo');
+    check('garden: four ears of corn; one for you', await g.ev(() => G.abuelos.state().gardens === 2 && G.carry.held() && G.carry.held().id === 'elote'));
+    // give a vegetable to Abuela: for the soup
+    await goto(g, 'abuelos_casa', 11, 5);
+    const h0 = await g.ev(() => { Object.assign(G.abuelos.state().photos, { d: G.words.day(), done: true }); return G.hearts.get('abuela'); }); // (the photo wall done today: her talk is the corn)
+    await tapNpc(g, 'abuela', 1, 0);
+    await drv(g, () => free() && !G.carry.held(), 'the corn for Abuela');
+    check('carry: Abuela takes the corn for her soup (a heart)', await g.ev(h0 => G.abuelos.state().vegs === 1 && G.hearts.get('abuela') > h0, h0));
+    // the vegetables by the beds: carried once met, and they grow back
+    await goto(g, 'abuelos', 3, 15);
+    const src = await g.ev(() => G.carry.SOURCES.filter(s => s.map === 'abuelos' && G.abuelos.VEGS.includes(s.item)).map(s => ({ id: s.id, item: s.item, at: s.at, on: G.carry.avail(s.id) })));
+    check('carry: a carrot and a corn by the garden beds (met); the tomato not yet', src.length === 3 && src.filter(s => s.on).map(s => s.item).sort().join() === 'elote,zanahoria', JSON.stringify(src));
+    await g.frames(10); await g.shot('garden_things');
+    const zs = src.find(s => s.item === 'zanahoria');
+    await tapAt(g, zs.at[0], zs.at[1], zs.at[0] + 1, zs.at[1]);
+    await g.until(() => G.carry.held() && G.carry.held().id === 'zanahoria', null, 'picking up the carrot');
+    check('carry: picked up (the word\'s name); it grows back a while later', await g.ev(id => { const now = G.words.now, t = now(), was = G.carry.avail(id); G.words.now = () => t + 200; const back = G.carry.avail(id); G.words.now = now; return !was && back; }, zs.id));
     // the swing
     await g.ev(() => G.errands.bag.take('zanahoria'));
     const sw = await g.ev(() => G.MAPDATA.abuelos.pos.swing);
@@ -353,6 +386,16 @@ async function seek(browser) {
     await g.frames(10); await g.shot('page_cuerpo');
     await drv(g, () => free(), 'the page puzzle');
     check('page: solved', await g.ev(() => !G.pages.ready('cuerpo')));
+    // La huerta's page (three words: three to match), by the garden beds
+    await g.ev(() => { for (const w of ['zanahoria', 'elote', 'jitomate']) { G.words.meet(w, 't'); G.state.words[w] = { learned: true }; } });
+    const ph = await g.ev(() => Object.keys(G.maps.abuelos.pages).find(k => G.maps.abuelos.pages[k] === 'huerta').split(',').map(Number));
+    check('page: La huerta\'s sparkle is ready with its three words', await g.ev(() => G.pages.ready('huerta') && G.pages.words('huerta').length === 3));
+    await tapAt(g, ph[0], ph[1], ph[0], ph[1] + 1);
+    await g.until(() => G.top().constructor.name === 'PagePuzzle', null, 'La huerta\'s puzzle');
+    await g.frames(10); await g.shot('page_huerta');
+    check('page: three pictures, centred', await g.ev(() => { const s = G.top(), a = s.picRect(0), b = s.picRect(2); return s.pics.length === 3 && Math.abs((a.x + b.x + b.w) / 2 - G.W / 2) <= 8; }));
+    await drv(g, () => free(), 'La huerta\'s puzzle');
+    check('page: La huerta solved', await g.ev(() => !G.pages.ready('huerta') && G.pages.solvedDay('huerta') != null));
     // save and load: the clothes you wear, the side quests, the chapters
     await g.ev(() => { G.abuelos.putOn(G.field, 'vestido', '#3870d8'); G.abuelos.putOn(G.field, 'sombrero', '#e04040'); const s = G.abuelos.state(); s.cookiesN = 2; G.state.quests.abuelos1 = 'done'; G.st.begin(1); G.st.saveNow(); });
     await g.page.reload();
