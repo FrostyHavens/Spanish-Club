@@ -45,10 +45,16 @@ Phase 3, built (`src/requests.js` `G.requests`, `src/listen.js` `G.listen` and i
   credit and history, "¿Cuántas?" by voice and a wrong number, two details after the ramp, the grown-ups' counts; the
   world: two favours a day, Don Pepe in Villa Sol and Doña Lupe in the forest, Lola's shells on the beach, the warm-up's
   request). The harness keeps listen-and-do off unless a test asks (`{listen: true}`, `LISTEN=1`); with it off, a kind
-  that's off is left out of the day's favour draw (`FV.OFF`), so the favours are exactly what they were before; `drive()`
-  does each request right (smoke passes with `LISTEN=1`). Two timing checks made robust: in `test-zone-playa` the ice cream for
-  the dog and in `test-world` the dog's digging spot are tapped again (up to three times) when a tap under load lands
-  as the dog trots off his tile or before the map is ready for it.
+  that's off is left out of the day's favour draw (`FV.OFF`), so the favours are exactly what they were before;
+  `drive()` does each request right (smoke passes with `LISTEN=1`). Two timing checks made robust: in `test-zone-playa`
+  the ice cream for the dog and in `test-world` the dog's digging spot are tapped again (up to three times) when a tap
+  under load lands as the dog trots off his tile or before the map is ready for it; two more that failed once in the
+  full regression (and passed alone) are steadier too: in `test-ambient` the villagers stay home while Tomás walks his
+  round (one wandering onto the road sent him round on the grass), and in `test-review` an animal standing on a page
+  sparkle steps off it before the tap (the sparkle wins the tap: the page puzzle opened instead of the rabbit's favour).
+- Full regression on the final code, two browsers at a time: all 31 files pass (every `tools/test-*.js`, `tools/smoke.js`
+  and `tools/test-playthrough.js`: 1630 of 1630 checks); with `LISTEN=1`, smoke 61/61 and the whole playthrough to the
+  diploma 8/8 (listen-and-do on never gets in the story's way).
 
 ## 2026-10-21 — Learning plan 2, Phase 2: phrases, "say it to get it"
 She knows lots of single words; now she says whole sentences to make things happen. `docs/LEARNING_PLAN_2.md` Phase 2,
