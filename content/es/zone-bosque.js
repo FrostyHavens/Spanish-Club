@@ -191,7 +191,7 @@
     if (st().leaves[h.col]) { yield* sayShow('lola', { list: BQ.leavesHave().map(leafPic) }, T('¡Ya la tengo! ¡Otra!', 'I have that one already! Find another colour.')); return; }
     bag().take('hoja', { col: h.col, q: null }); st().leaves[h.col] = 1; G.audio.jingle('item'); G.st.autosave();
     const n = BQ.leavesHave().length, nums = ['uno', 'dos', 'tres'];
-    yield* sayShow('lola', { list: BQ.leavesHave().map(leafPic) }, T('¡Una [hoja]! ¡[gracias:Gracias]!', 'A leaf! Thank you! (' + n + ' of 3 colours)'));
+    yield* sayShow('lola', { list: BQ.leavesHave().map(leafPic) }, T('¡Una ' + G.requests.np({ thing: 'hoja', col: h.col, def: false }).text + '! ¡[gracias:Gracias]!', 'A ' + G.data.words[h.col].en + ' leaf! Thank you! (' + n + ' of 3 colours)')); // (its colour: each leaf a different line)
     if (met(nums[n - 1])) yield* quiz('lola', '¿Cuántas?', 'How many leaves has she got now?', nums[n - 1], nums.filter((k, i) => i !== n - 1), { show: { icon: 'hoja', count: n } });
     if (BQ.leavesDone()) {
       CK.confetti(); G.audio.jingle('promote');

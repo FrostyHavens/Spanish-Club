@@ -146,13 +146,13 @@
   // b: check()'s b. Nothing changes unless it all worked. Afterwards nothing of the game in play is saved again (G.st.detach):
   // the caller goes to the title.
   B.restore = function (b) {
-    const keep = snapshot();
+    const keep = snapshot(), prevUndo = G.store.raw(UNDO_KEY); // (a failed restore puts the earlier undo copy back)
     if (!G.store.setRaw(UNDO_KEY, JSON.stringify(keep))) return no('There isn\'t room on this device to keep a copy of what\'s here now, so nothing was changed.' + full());
     let ok = true;
     for (let n = 1; n <= 3 && ok; n++) { const g = b.slots[n - 1], k = G.st.slotKey(n); if (g) ok = G.store.setRaw(k, JSON.stringify(g)); else G.store.del(k); }
     if (ok) ok = G.store.setRaw(MIGRATED_KEY, '1'); // (an old pre-slot save never comes back over them)
     if (ok && b.prefs && G.store.raw(PREF_KEY) == null) ok = G.store.set(PREF_KEY, b.prefs); // (a device with no settings yet: the backup's)
-    if (!ok) { const why = full(); putBack(keep.keys); G.store.del(UNDO_KEY); return no('The backup didn\'t fit in this browser\'s storage, so nothing was changed.' + why); }
+    if (!ok) { const why = full(); putBack(keep.keys); G.store.del(UNDO_KEY); if (prevUndo != null) G.store.setRaw(UNDO_KEY, prevUndo); return no('The backup didn\'t fit in this browser\'s storage, so nothing was changed.' + why); }
     G.st.detach(); reloadPrefs();
     if (!(G.prefs.lastBackup >= b.at)) G.audio.setPref('lastBackup', b.at); // (this device's games are now the ones in that backup)
     return { ok: true };
@@ -298,7 +298,10 @@
         const k = ids.find(id => GRID[id][1] === r && (GRID[id][0] === c || id === 'undo'));
         if (k && k !== this.sel) { this.sel = k; G.audio.sfx('cursor'); }
       }
-      if (G.input.p('A') && this.sel !== fired) this.press(this.sel);
+      if (G.input.p('A') && this.sel !== fired) { // (the on-screen A button: not inside a tap, so iPad Safari won't open the share sheet or the file picker)
+        if (G.touch && (this.sel === 'file' || this.sel === 'backup')) { G.audio.sfx('cursor'); this.notice('Tap the button itself', COL.dim); }
+        else this.press(this.sel);
+      }
     }
     press(id) {
       if (id === 'backup') this.backup();

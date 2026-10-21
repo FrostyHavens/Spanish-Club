@@ -9,12 +9,12 @@
 //   idle ~4 s      Canelo trots a few tiles toward the goal, barks and looks back at you
 // The goal, most important first: (on a night walk after the Hoy card, day.js: the night animal she came to see) >
 // the story's chapter (its beat: a person, a place, an animal, a door, a find-it puzzle; the next chapter's giver; a
-// review day's teacher) > home at sunset > a favour going on or offered > a place she asked for on the world map >
-// Tomás's letter in your hands (to whoever it's for; another place: the bus stop, src/connect.js; it waits while she's
-// in a place she picked herself) > a zone's task > Nico's
-// hide-and-seek (only the edge arrow: the peeking ears are the game; the arrow over one after a long wait) > Canelo's
+// review day's teacher) > home at sunset > a favour going on or offered > Tomás's letter in your hands (to whoever
+// it's for; another place: the bus stop, src/connect.js; it waits while she's in a place she picked herself) > a zone's
+// task > Nico's hide-and-seek (only the edge arrow: the peeking ears are the game; the arrow over one after a long
+// wait) > a place she asked for on the world map > Canelo's
 // "?", Luna's palabra del día, Inés's pages, a side job, anyone else with a bubble > (the next chapter, then Tomás's
-// letter of the day, exploring, a letter that waited) > the day's play (src/carry.js, this part of the world first: what
+// letter of the day, a letter that waited, exploring) > the day's play (src/carry.js, this part of the world first: what
 // you hold to whoever would love it, or Canelo; empty-handed, today's next play: fetch, an apple for Luna, a flower for
 // Mamá, the bone, an egg for Rosa, bread for the ducks, a page puzzle... and a game of fetch is always there). So there
 // is never a dead end: between chapters, while today's new words are used up, before the evening chapter, the arrow
@@ -188,7 +188,7 @@
   const postOffer = f => (G.post && G.post.offerGoal ? G.post.offerGoal(f) : null); // (Tomás's letter of the day: after the story's next chapter)
   // the night walk after the Hoy card (day.js): the arrow on the night animal she came to see, before anything else
   const nightWalk = f => (G.day && G.day.walkGoal ? G.day.walkGoal(f) : null);
-  const TIERS = [nightWalk, chapterGoal, sunsetGoal, favourGoal, wantGoal, postGoal, zoneTask, seekGoal, reviewGoal, zoneGoal, chapterLater, postOffer, exploreGoal, postLater, playGoal, puppyGoal];
+  const TIERS = [nightWalk, chapterGoal, sunsetGoal, favourGoal, postGoal, zoneTask, seekGoal, wantGoal, reviewGoal, zoneGoal, chapterLater, postOffer, postLater, exploreGoal, playGoal, puppyGoal];
 
   // on another map: the door that leads there (from town, its door; from a building, the way out)
   function viaDoor(f, g) {

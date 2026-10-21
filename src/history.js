@@ -50,7 +50,7 @@
   H.IDLE = 180 * 60;    // frames without a touch or a key before play time stops counting (3 min)
   H.CHECK_N = 10;       // words in a grown-ups' check
   H.KIND = { P: 'pick', p: 'pick', K: 'pick', R: 'recall', r: 'recall', S: 'say', s: 'say', E: 'say', L: 'listen', l: 'listen', m: 'miss', C: 'parent', c: 'parent' };
-  const ADULT = ['GrownUps', 'LearningDash', 'MicTest', 'Controls', 'QuestLog']; // grown-ups' screens: not play time
+  const ADULT = ['GrownUps', 'LearningDash', 'MicTest', 'Controls', 'QuestLog', 'Backup', 'ProblemLog']; // grown-ups' screens: not play time
   const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
   const W = () => G.words, D = () => G.data;
   const today = () => G.today(), dn = () => G.words.dayNum();

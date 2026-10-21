@@ -186,7 +186,7 @@
     }
     bag().take('concha', { col: h.col, q: null }); st().shells[h.col] = 1; G.audio.jingle('item'); G.st.autosave();
     const n = PL.shellsHave().length, nums = ['uno', 'dos', 'tres', 'cuatro', 'cinco'];
-    yield* sayShow('lola', { list: PL.shellsHave().map(shellPic) }, T('¡Una [concha]! ¡[gracias:Gracias]!', 'A shell! Thank you! (' + n + ' of 5 colours)'));
+    yield* sayShow('lola', { list: PL.shellsHave().map(shellPic) }, T('¡Una ' + G.requests.np({ thing: 'concha', col: h.col, def: false }).text + '! ¡[gracias:Gracias]!', 'A ' + G.data.words[h.col].en + ' shell! Thank you! (' + n + ' of 5 colours)')); // (its colour: each shell a different line, and colour practice)
     if (met(nums[n - 1])) yield* quiz('lola', '¿Cuántas?', 'How many shells has she got now?', nums[n - 1], nums.filter((k, i) => Math.abs(i - (n - 1)) === 1), { show: { icon: 'concha', count: n } });
     if (PL.shellsDone()) {
       CK.confetti(); G.audio.jingle('promote');

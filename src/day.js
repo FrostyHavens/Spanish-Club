@@ -57,7 +57,7 @@
   DY.step = function () {
     const f = G.field;
     if (!f || !G.state || G.scenes.indexOf(f) < 0) return;
-    if (!base || base.state !== G.state) newDay(); // a new game, or one just opened: a new session
+    if (!base || base.state !== G.state || (G.frame % 600 === 0 && base.hoy.d !== G.today() && !f.evening && !DY.walk)) newDay(); // a new game, one just opened, or one left open overnight: a new session
     G.sessionTime += 1 / 60;
     if (G.words) G.words.step(); // the word model's play clock (words.js)
     if (G.frame % 30 === 0) sweep();

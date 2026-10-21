@@ -267,7 +267,7 @@
     out.sort((a, b) => d(a) - d(b));
     return out[0] || null;
   }
-  const go = (why, c) => (c ? { why, map: c.map, at: c.at, icon: pic(c.id, c.col) } : null);
+  const go = (why, c) => (c ? { why, map: c.map, at: c.at, icon: pic(c.id, c.col), pick: true } : null); // (a pick-up)
   const fetchOk = () => !!G.pet && G.pet.mine() && !(G.errands && G.errands.lost());
   const pageAt = f => { // a notebook page puzzle that's ready (a sparkle), this map first
     let best = null;
@@ -302,8 +302,8 @@
   // (the guide shows the way there)
   C.plan = function (f) {
     if (!G.state || !f || !G.errands) return null;
-    const h = C.held(), far = [];
-    const here = g => { if (!g) return null; if (C.here(f, g)) return g; far.push(g); return null; };
+    const h = C.held(), far = []; let busy = false;
+    const here = g => { if (!g || (busy && g.pick)) return null; if (C.here(f, g)) return g; far.push(g); return null; };
     let g = null;
     if (h) { // what you hold, to whoever would love it
       const w = C.likerFor(h.it); if (w && (g = here({ why: 'give ' + h.id + ' to ' + w, who: w, icon: pic(h.id, h.col) }))) return g;
@@ -311,6 +311,7 @@
       if (h.id === 'huevo' && !G.errands.jobDone('huevo') && reach('rosa') && (g = here({ why: 'the egg to Rosa', who: 'rosa', icon: pic('huevo') }))) return g;
       if (h.id === 'pan' && chDone('c6') && !G.errands.jobDone('patos') && (g = here({ why: 'bread for the ducks', map: 'villa', at: [37, 21], icon: 'pato' }))) return g;
       if (C.DOG[h.id] && fetchOk() && (C.DOG[h.id] !== 'fetch' || (st().play.n[h.id] | 0) < 5) && (g = here({ why: (C.DOG[h.id] === 'fetch' ? 'throw it for Canelo' : 'Canelo: ' + h.id), dog: true, icon: pic(h.id, h.col) }))) return g;
+      busy = far.length > 0; // what you hold is wanted elsewhere: picking up something else here would only swap it down (an egg and an apple, back and forth)
     }
     const k0 = day() % C.ORDER.length;
     for (let i = 0; i < C.ORDER.length; i++) {

@@ -39,6 +39,7 @@
     // in your hands top-left (carry.js). Nothing the guide points at may hide under them (guide.js wins, tools/test-world.js)
     corners() {
       const r = [{ k: 'menu', x: HUD[0] - 4, y: HUD[1] - 4, w: G.BTN + 8, h: G.BTN + 8 }];
+      if (G.saveCloud && G.st.troubled()) r.push({ k: 'cloud', x: HUD[0] + 2, y: HUD[1] + 24, w: 16, h: 11 }); // the grey 'saves failing' cloud (backup.js)
       const h = G.carry && G.carry.hud && G.carry.hud(); if (h) r.push(Object.assign({ k: 'hand' }, h));
       return r;
     }
