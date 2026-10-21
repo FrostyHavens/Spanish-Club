@@ -228,8 +228,8 @@
   C.show = function* (who, f) {
     const h = C.held(); if (!h || who === 'canelo') return false;
     if (who === 'tomas' && h.id === 'carta') {
-      bag().take('carta', { q: null }); G.audio.jingle('item'); bump('carta');
-      yield say(who, null, TT('¡Mi [carta]! ¡[gracias], {name}!', 'My letter! Thank you, {name}!'));
+      const back = function* () { bag().take('carta', { q: null }); G.audio.jingle('item'); bump('carta'); yield say(who, null, TT('¡Mi [carta]! ¡[gracias], {name}!', 'My letter! Thank you, {name}!')); };
+      if (!(G.phrase && G.words.met('carta') && (yield* G.phrase.tengo('tomas', 'carta', { onGet: back })))) yield* back(); // "Tengo una carta" (src/phrases.js)
       if (G.hearts) { G.hearts.add('tomas', 1, 'care'); yield 20; yield* G.hearts.milestones('tomas'); }
       return true;
     }

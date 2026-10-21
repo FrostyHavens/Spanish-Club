@@ -23,10 +23,14 @@
 //   .drawPlant(ctx, pts, cx, bottom, o); .drawDeck(ctx, x, y) (the 20x20 corner button and its count); .bookOpen();
 //   .live() cards popping now; .busy(); .log (tests: the last uses [{id, how, add, from, to}]); .party() the book's
 //   celebration going on; .step() / .draw(ctx) (core.js, around the scenes like fx.js).
+// Phrases (src/phrases.js, docs/LEARNING_PLAN_2.md Phase 2) are cards too: a speech bubble on the card's corner, the
+// frame as its label ("Quiero"), the word it was last said with as its picture; they grow the same way, most by saying
+// the whole phrase ('phrase' 8), then building it from cards ('build' 3). The deck shows them on their own tab (a
+// speech bubble beside the deck at the top).
 'use strict';
 (function () {
   const C = G.cards = {};
-  C.GROW = { say: 5, pick: 2, find: 2, match: 2, carry: 1, tap: 1, give: 1 };
+  C.GROW = { say: 5, pick: 2, find: 2, match: 2, carry: 1, tap: 1, give: 1, phrase: 8, build: 3 }; // (phrase, build: phrases.js)
   C.PASSIVE = ['carry', 'tap', 'give'];
   C.GAP = 30;                       // play seconds between two passive growths of one word
   C.LV = [0, 2, 6, 12, 20, 32, 46]; // seed, sprout, leaves, bud, flower, two flowers, three
@@ -38,6 +42,8 @@
   const D = () => G.data;
   const rec = id => (G.words ? G.words.rec(id) : null);
   const met = id => !!G.state && !!G.words && G.words.met(id);
+  const item = id => (G.words ? G.words.item(id) : D().words[id]); // a word or a phrase (words.js)
+  const isPhrase = id => !!(G.words && G.words.isPhrase(id));
 
   // ---------- points and levels ----------
   C.raw = id => { const r = rec(id); return r ? +r.gp || 0 : 0; };
@@ -56,7 +62,7 @@
   let spot = null, lastTap = null;
   C.at = (x, y) => { spot = { x, y, f: G.frame }; };
   C.grow = function (id, how, o = {}) {
-    if (!G.state || !D().words[id] || !met(id)) return 0;
+    if (!G.state || !item(id) || !met(id)) return 0;
     const r = rec(id); if (!r) return 0;
     const add = o.add != null ? o.add : (C.GROW[how] || 1);
     if (C.PASSIVE.indexOf(how) >= 0) {
@@ -68,10 +74,10 @@
     r.gp = Math.round(((+r.gp || 0) + add) * 10) / 10;
     const to = C.pts(id);
     C.log.push({ id, how, add, from, to }); if (C.log.length > 60) C.log.shift();
-    pop(id, { from, to, how, x: o.x, y: o.y, said: how === 'say', small: C.PASSIVE.indexOf(how) >= 0 });
+    pop(id, { from, to, how, x: o.x, y: o.y, said: how === 'say' || how === 'phrase', small: C.PASSIVE.indexOf(how) >= 0 });
     return add;
   };
-  C.show = function (id, o = {}) { if (!D().words[id]) return; const p = C.pts(id); pop(id, Object.assign({ from: p, to: p, how: 'show' }, o)); };
+  C.show = function (id, o = {}) { if (!item(id)) return; const p = C.pts(id); pop(id, Object.assign({ from: p, to: p, how: 'show' }, o)); };
 
   // ---------- cards popping up ----------
   const pops = [];
@@ -121,7 +127,7 @@
     if (deckVis > 0) deckVis--;
     for (let i = pops.length - 1; i >= 0; i--) {
       const p = pops[i]; p.t++;
-      if (p.t === 1) { G.audio.sfx(p.fresh ? 'note' : 'pop'); if (p.fresh) G.speak(G.baseForm(p.id)); }
+      if (p.t === 1) { G.audio.sfx(p.fresh ? 'note' : 'pop'); if (p.fresh) G.speak(isPhrase(p.id) && G.phrase ? G.phrase.sentence(p.id) : G.baseForm(p.id)); }
       if (p.t > 0) deckVis = Math.max(deckVis, 40);
       const gl = p.said ? GROW_SAY : GROW;
       if (!p.fresh && p.t >= IN && p.t <= IN + gl) {
@@ -191,6 +197,7 @@
   };
   // a whole card at x, y (top-left), o: {s scale, pts (the plant, e.g. while it grows), hi (selected), st (stage)}
   C.drawCard = function (ctx, id, x, y, o = {}) {
+    if (isPhrase(id)) return drawPhraseCard(ctx, id, x, y, o);
     const wd = D().words[id]; if (!wd) return;
     const st = o.st != null ? o.st : (G.words ? G.words.stage(id) : 1), s = o.s || 1, gold = st >= 3, isMet = st >= 1;
     const pts = o.pts != null ? o.pts : C.pts(id);
@@ -210,6 +217,35 @@
     if (st >= 4 && ((G.frame >> 4) & 3) === 0) { R(ctx, 5, 5, 1, 3, '#ffffff'); R(ctx, 4, 6, 3, 1, '#ffffff'); }
     ctx.restore();
   };
+  // a speech bubble (a phrase's mark): x, y its top-left, about 13 x 11 at scale 1 (o.dots: three dots in it)
+  C.bubble = function (ctx, x, y, k = 1, col = '#ffffff', ink = '#10102a') {
+    ctx.save(); ctx.translate(Math.round(x), Math.round(y)); if (k !== 1) ctx.scale(k, k);
+    R(ctx, 1, 0, 11, 9, ink); R(ctx, 0, 1, 13, 7, ink); R(ctx, 2, 9, 3, 2, ink); R(ctx, 2, 11, 1, 1, ink);  // outline and tail
+    R(ctx, 1, 1, 11, 7, col); R(ctx, 3, 8, 1, 2, col);
+    R(ctx, 3, 4, 1, 1, ink); R(ctx, 6, 4, 1, 1, ink); R(ctx, 9, 4, 1, 1, ink);                                 // ...
+    ctx.restore();
+  };
+  // a phrase's card: the word it was last said with as its picture (its speech bubble in the corner), the frame as its
+  // label, the same rim (blue, gold once remembered) and plant as a word's card
+  function drawPhraseCard(ctx, id, x, y, o) {
+    const ph = G.phrase, st = o.st != null ? o.st : (G.words ? G.words.stage(id) : 1), s = o.s || 1, gold = st >= 3, isMet = st >= 1;
+    const pts = o.pts != null ? o.pts : C.pts(id);
+    ctx.save(); ctx.translate(Math.round(x), Math.round(y)); if (s !== 1) ctx.scale(s, s);
+    if (o.a != null) ctx.globalAlpha *= o.a;
+    R(ctx, 2, 3, C.W, C.H - 1, 'rgba(0,0,16,0.35)');
+    R(ctx, 1, 0, C.W - 2, C.H, '#10102a'); R(ctx, 0, 1, C.W, C.H - 2, '#10102a');
+    R(ctx, 1, 1, C.W - 2, C.H - 2, !isMet ? '#c8bca0' : gold ? (o.hi ? '#fff070' : '#f0c030') : (o.hi ? '#b8e8ff' : '#6898e0'));
+    R(ctx, 3, 3, C.W - 6, C.H - 6, gold ? '#fff4c8' : '#f4fbff');
+    ctx.globalAlpha *= isMet ? 1 : 0.5;
+    if (ph) ph.drawPic(ctx, ph.cardPic(id), 4, 5, 2, o.t);
+    ctx.globalAlpha /= isMet ? 1 : 0.5;
+    C.bubble(ctx, C.W - 16, 1, 1, gold ? '#fff8d0' : '#ffffff'); // the phrase's mark: a speech bubble
+    const lab = isMet ? (ph ? ph.label(id) : id) : '? ? ?', lw = G.textWidth(lab), sq = Math.min(1, (C.W - 6) / Math.max(1, lw));
+    ctx.save(); ctx.translate(C.W / 2, 0); ctx.scale(sq, 1); G.textC(ctx, lab, 0, 39, !isMet ? '#b0a080' : gold ? '#a06008' : '#2860a8', null); ctx.restore();
+    if (isMet) C.drawPlant(ctx, pts, C.W / 2, C.H - 3, { gold: st >= 4, s: 2 });
+    ctx.restore();
+  }
+
   // the deck: a 20x20 button (like G.iconBtn) with a little stack of cards, and how many cards beside it
   C.drawDeck = function (ctx, x, y, o = {}) {
     x = Math.round(x); y = Math.round(y);
@@ -275,12 +311,19 @@
   }
 
   // ---------- the deck: every card, newest first; tap one to hear it ----------
+  // Two groups: the word cards (the deck's own picture, top left) and, once a phrase is met, the phrases (a speech
+  // bubble beside it: "Frases", src/phrases.js); the one showing is lit.
   const COLS = 6, ROWS = 2, PER = COLS * ROWS;
   class Deck {
-    constructor(w) {
+    constructor(w, o) {
       G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; this.pg = 0; this.sel = 0; this.hop = {};
-      this.ids = G.words.list(1).sort((a, b) => (rec(b).met || 0) - (rec(a).met || 0) || (a < b ? -1 : 1));
+      this.words = G.words.list(1).sort((a, b) => (rec(b).met || 0) - (rec(a).met || 0) || (a < b ? -1 : 1));
+      this.phrases = G.phrase ? G.phrase.list(1) : [];
+      this.setGroup(o && o.group === 'frases' && this.phrases.length ? 'frases' : 'words');
     }
+    setGroup(g) { this.group = g; this.ids = g === 'frases' ? this.phrases : this.words; this.pg = 0; this.sel = 0; }
+    wordsXY() { return [44, 8]; }
+    frasesXY() { return [70, 8]; }
     pages() { return Math.max(1, Math.ceil(this.ids.length / PER)); }
     onPage() { return this.ids.slice(this.pg * PER, this.pg * PER + PER); }
     cardRect(k) { return { x: 12 + (k % COLS) * 50, y: 31 + Math.floor(k / COLS) * 91, w: C.W, h: C.H }; }
@@ -288,10 +331,12 @@
     nextXY() { return [G.W / 2 + 42, 4]; }
     closeXY() { return [G.W - 30, 8]; }
     turn(d) { if (this.pages() < 2) return; this.pg = (this.pg + d + this.pages()) % this.pages(); this.sel = 0; G.audio.sfx('note'); }
-    say(k) { const id = this.onPage()[k]; if (!id) return; this.sel = k; this.hop[id] = this.t; G.speak(G.baseForm(id)); G.audio.sfx('cursor'); }
+    say(k) { const id = this.onPage()[k]; if (!id) return; this.sel = k; this.hop[id] = this.t; G.speak(isPhrase(id) && G.phrase ? G.phrase.sentence(id) : G.baseForm(id)); G.audio.sfx('cursor'); }
     update() {
       this.t++;
       if (G.input.p('B') || G.closeHit(...this.closeXY())) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); return; }
+      if (this.phrases.length && G.btnHit(...this.frasesXY())) { if (this.group !== 'frases') { this.setGroup('frases'); G.audio.sfx('note'); } return; }
+      if (this.phrases.length && G.btnHit(...this.wordsXY())) { if (this.group !== 'words') { this.setGroup('words'); G.audio.sfx('note'); } return; }
       if (this.pages() > 1 && G.btnHit(...this.prevXY())) { this.turn(-1); return; }
       if (this.pages() > 1 && G.btnHit(...this.nextXY())) { this.turn(1); return; }
       const ids = this.onPage();
@@ -308,7 +353,14 @@
       const u = Math.min(1, this.t / 8);
       ctx.fillStyle = 'rgba(4,6,24,' + (0.5 * u) + ')'; ctx.fillRect(0, 0, G.W, G.H);
       G.win(ctx, 6, 6, G.W - 12, G.H - 12, { fill1: '#2c7a4a', fill2: '#14502a', alpha: 1 }); // a green table to lay the cards on
-      C.drawDeck(ctx, 44, 8, { still: true });
+      if (this.phrases.length) { // the two groups: the word cards and the phrases (a speech bubble); the one showing is lit
+        const lit = (xy, on) => { R(ctx, xy[0] - 3, xy[1] - 3, 26, 26, on ? '#f8e060' : '#1c5a34'); R(ctx, xy[0] - 2, xy[1] - 2, 24, 24, on ? '#fff6b0' : '#246a40'); };
+        lit(this.wordsXY(), this.group === 'words'); lit(this.frasesXY(), this.group === 'frases');
+        const [bx, by] = this.frasesXY(), on = G.input.holding(bx - 4, by - 4, 28, 28) > 0;
+        R(ctx, bx + 1, by, 18, 20, '#000010'); R(ctx, bx, by + 1, 20, 18, '#000010'); R(ctx, bx + 1, by + 1, 18, 18, on ? '#f0d060' : '#8898e0'); R(ctx, bx + 2, by + 2, 16, 16, on ? '#304cc0' : '#1c2c8c');
+        C.bubble(ctx, bx + 3, by + 4, 1);
+      }
+      C.drawDeck(ctx, ...this.wordsXY(), { still: true, n: this.words.length });
       G.closeBtn(ctx, ...this.closeXY());
       if (this.pages() > 1) {
         G.iconBtn(ctx, 'back', ...this.prevXY()); G.iconBtn(ctx, 'next', ...this.nextXY());
@@ -328,5 +380,5 @@
     }
   }
   G.Deck = Deck;
-  G.deck = function () { const w = new G.Wait(); G.push(new Deck(w)); return w; };
+  G.deck = function (o) { const w = new G.Wait(); G.push(new Deck(w, o)); return w; };
 })();

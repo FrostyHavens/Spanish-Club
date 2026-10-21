@@ -171,6 +171,8 @@
           if (cry(id)) G.textC(ctx, cry(id), x + r.w / 2, y + 43, '#e06010', null);
           if (R.said) G.mic.glyph(ctx, x + r.w - 10, y + 14, '#2a8a9a');
           if (R.counted) G.text(ctx, '\u0005', x + 3, y + 14, '#e0a010', '#5a2c04');
+          const fav = G.phrase && G.phrase.fav(); // her favourite animal (Lola asked: "Me gusta el oso", src/phrases.js): a heart pinned on it
+          if (fav && fav.id === AN().KINDS[id].word && G.hearts) G.hearts.heart(ctx, x + 3, y + r.h - 11, true, 1);
         } else {
           ctx.globalAlpha = 0.8; ctx.imageSmoothingEnabled = false;
           ctx.drawImage(G.tinted(G.icon(w), '#3a3048', 'albsil' + id), x + r.w / 2 - 16, y + 2, 32, 32); ctx.globalAlpha = 1;
@@ -206,6 +208,15 @@
         G.text(ctx, nm, r.x + fw + 8, r.y + 5, '#604020', null);
         H.row(ctx, who, r.x + fw + 8, r.y + 16);
         if (H.sticker(who)) { ctx.fillStyle = '#f8c820'; ctx.beginPath(); ctx.arc(r.x + r.w - 10, r.y + 10, 6, 0, Math.PI * 2); ctx.fill(); G.text(ctx, '\u0005', r.x + r.w - 13, r.y + 7, '#ffffff', '#a06000'); }
+        const fav = lola && G.phrase && G.phrase.fav(); // what you told her you like best (src/phrases.js): your face, a bubble, a heart, the animal
+        if (fav && G.data.words[fav.id]) {
+          const fx = r.x + r.w - 130, fy = r.y + 4;
+          ctx.fillStyle = '#5a3810'; ctx.fillRect(fx - 1, fy - 1, 20, 20); H.face(ctx, 'player', fx, fy, 18, this.t);
+          ctx.fillStyle = '#10102a'; ctx.fillRect(fx + 22, fy - 1, 40, 20); ctx.fillRect(fx + 20, fy + 8, 2, 3);
+          ctx.fillStyle = '#ffffff'; ctx.fillRect(fx + 23, fy, 38, 18); ctx.fillRect(fx + 21, fy + 9, 2, 1);
+          H.heart(ctx, fx + 25, fy + 6, true, 1); G.drawIcon16(ctx, fav.id, fx + 39, fy + 1);
+          G.text(ctx, 'Me gusta', fx + 66, fy + 6, '#a03060', null);
+        }
         if (lola && Z) { // where you've met her: each place's picture, bright where she said hello
           const met = (G.state.world && G.state.world.lolaZ) || {};
           Z.ids().filter(z => z !== 'villa').forEach((z, i) => { const x = r.x + fw + 8 + i * 22, y = r.y + 28; ctx.globalAlpha = met[z] ? 1 : 0.3; G.drawIcon16(ctx, Z.def(z).icon, x, y); ctx.globalAlpha = 1; if (met[z]) G.text(ctx, '\u0003', x + 13, y + 9, '#f04878', null); });

@@ -46,7 +46,7 @@
   // it flies into the deck in the corner. (It used to be a notebook page; the notebook comes later, docs/PLAYTEST_NOTES.md.)
   let noteUntil = 0;
   I.note = function (ids, o = {}) {
-    ids = (Array.isArray(ids) ? ids : [ids]).filter(id => D().words[id]);
+    ids = (Array.isArray(ids) ? ids : [ids]).filter(id => (G.words.item ? G.words.item(id) : D().words[id])); // (a word or a phrase: phrases.js)
     const w = new G.Wait();
     if (!ids.length) { w.resolve(); return w; }
     ids.forEach((id, k) => { if (G.cards) G.cards.show(id, Object.assign({ fresh: true, delay: k * 36 }, o)); });

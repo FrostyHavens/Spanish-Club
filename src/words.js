@@ -103,9 +103,20 @@
     return r;
   }
   W.migrate = migrate;
+  // Phrases (docs/LEARNING_PLAN_2.md, Phase 2; content/es/words.js C.phrases, src/phrases.js) are learnable items too:
+  // the same record, stages, boxes, history and cards, kept apart in G.state.phrases.r so that every list of WORDS
+  // (W.list, the review engine, the warm-up's words, the notebook's pages, the save slots' counts) stays words only.
+  W.isPhrase = id => !!(D().phrases && D().phrases[id]);
+  W.item = id => D().words[id] || (D().phrases && D().phrases[id]) || null; // a word or a phrase
+  const recsOf = id => {
+    if (!W.isPhrase(id)) return G.state.words;
+    const s = G.state; if (!isObj(s.phrases)) s.phrases = {};
+    if (!isObj(s.phrases.r)) s.phrases.r = {};
+    return s.phrases.r;
+  };
   W.rec = function (id, make) {
-    if (!G.state || !D().words[id]) return null;
-    const ws = G.state.words; let r = ws[id];
+    if (!G.state || !W.item(id)) return null;
+    const ws = recsOf(id); let r = ws[id];
     if (r && (!isObj(r) || r.st == null)) r = ws[id] = migrate(isObj(r) ? r : {});
     if (!r && make) r = ws[id] = { st: 0, box: 0, due: null, dd: null, dc: null, fu: 0, met: null, ms: 0, md: 0, how: null, last: null, n: 0, right: 0, wrong: 0, said: 0, cue: 0, ret: 0, ft: {}, star: '', s3: null, gold: false, learned: false };
     return r || null;

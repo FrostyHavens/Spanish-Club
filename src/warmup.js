@@ -72,8 +72,11 @@
     const score = id => late(id) + (G.zones && G.zones.ofWord(id) !== zone ? 2 : 0) + (Wd.slipping(id) ? 1 : 0) + (earlier(id) ? 5 : 0);
     const sc = {}; L.forEach(id => { sc[id] = score(id); });
     L.sort((a, b) => sc[b] - sc[a] || Wd.stage(a) - Wd.stage(b) || (Wd.rec(a).last || 0) - (Wd.rec(b).last || 0));
+    // a phrase that's due comes too, as the last card (src/phrases.js: "Quiero..." to the dog; docs/LEARNING_PLAN_2.md Phase 2)
+    const ph = G.phrase && G.phrase.on() ? G.phrase.due()[0] : null;
     const out = [], forms = new Set();
-    for (const id of L) { const b = G.baseForm(id); if (forms.has(b)) continue; forms.add(b); out.push(id); if (out.length >= n) break; }
+    for (const id of L) { const b = G.baseForm(id); if (forms.has(b)) continue; forms.add(b); out.push(id); if (out.length >= n - (ph ? 1 : 0)) break; }
+    if (ph) out.push(ph);
     return out;
   };
 
@@ -164,6 +167,7 @@
   function* ask(c, id) {
     const Wd = G.words, st = Wd.stage(id), wd = G.data.words[id];
     const extra = { who: 'canelo', cancel: true, cancelIcon: 'skip', onCancel: () => { c.skipped = true; }, drawExtra: (ctx, s) => drawCards(ctx, s, c), warmup: { k: c.i, n: c.ids.length } };
+    if (Wd.isPhrase && Wd.isPhrase(id)) return !!(yield* G.phrase.warm(id, extra)); // (a phrase: say the whole thing to the dog)
     if (Wd.needsReintro(id)) return !!(yield* G.intro.again(id, { who: null, extra })); // (slipping: met again)
     if (WU.FORMS[wd.topic]) return !!(yield* WU.FORMS[wd.topic](id, extra));
     // two other met words: the same topic first, never one that sounds like another card (the mic hears them all)
@@ -183,11 +187,11 @@
   // ---------- drawing ----------
   // over a question: the dog's cards, one per word (done ones with their sprout, this one bobbing, the rest faded)
   function drawCards(ctx, s, c) {
-    const ph = s.lines.length * 16 + 10 + (s.o.show ? 58 : 0), y = 8 + ph - 15;
+    const ph = s.lines.length * 16 + 10 + (s.o.show ? 58 : 0), b = s.box ? s.box() : null, y = b ? b.y + b.h + 3 : 8 + ph - 15; // (a phrase's question: under its box, over her face)
     c.ids.forEach((id, k) => {
-      const x = 40 + k * 12, now = k === c.i, bob = now ? Math.round(Math.abs(Math.sin(G.frame / 8)) * -2) : 0;
+      const x = (b ? 18 : 40) + k * (b ? 11 : 12), now = k === c.i, bob = now ? Math.round(Math.abs(Math.sin(G.frame / 8)) * -2) : 0;
       ctx.globalAlpha = k < c.i || now ? 1 : 0.35;
-      G.mic.cardGlyph(ctx, x, y + bob, 5);
+      if (G.words.isPhrase && G.words.isPhrase(id) && G.cards.bubble) G.cards.bubble(ctx, x - 6, y - 5 + bob, 1); else G.mic.cardGlyph(ctx, x, y + bob, 5);
       if (k < c.i && c.res[k]) { ctx.fillStyle = '#f8d040'; ctx.fillRect(x + 3, y - 6, 2, 2); }
       ctx.globalAlpha = 1;
     });

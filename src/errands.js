@@ -220,18 +220,29 @@
   function* gift(who) {
     const it = giftFor(who); if (!it) return false;
     const egg = it.id === 'huevo' && who === 'rosa';
+    function* take() { // they take it: its card grows, thank you, a heart
+      B.take(it.id, { col: it.col, q: null });
+      G.audio.jingle('item');
+      if (G.cards) G.cards.grow(it.id, 'give', { x: G.W / 2, y: G.H / 2 }); // giving it grows its card (cards.js)
+      yield* say(who, TT('¡[' + it.id + ']! ¡[gracias], {name}!', 'Thank you, {name}!'));
+      if (egg) { G.hearts.add('rosa', 1, 'care'); jobStar(G.field, 'huevo', G.W / 2, 90); }
+      else G.hearts.add(who, 1, 'gift');
+      yield 30;
+    }
+    // Tengo ___ (src/phrases.js): they ask what you have, you say it ("Tengo una flor") or build it, and they take it;
+    // the back button keeps it
+    const tg = G.phrase && G.words.met(it.id) ? yield* G.phrase.tengo(who, it, { cancel: true, onGet: take }) : null;
+    if (tg) {
+      if (tg.cancel) yield* say(who, TT('¡Oh! Bueno...', 'Oh! All right...'));
+      else yield* G.hearts.milestones(who);
+      return true;
+    }
     yield* say(who, TT('¡Oh! ¿Un regalo? ¿Para mí?', 'Oh! A present? For me?'));
     if (G.words.met('si') && G.words.met('no')) { // (before sí and no are met, tapping them with it in your hands is the yes)
       const r = yield G.choose({ prompt: '¿Para ' + G.nameOf(who).replace(/ (el|la) .*/, '') + '?', en: 'Give it?', show: B.icon(it), choices: words('si', 'no'), layout: 'cards', mic: true });
       if (r.result !== 0) { yield* say(who, TT('¡Oh! Bueno...', 'Oh! All right...')); return true; }
     }
-    B.take(it.id, { col: it.col, q: null });
-    G.audio.jingle('item');
-    if (G.cards) G.cards.grow(it.id, 'give', { x: G.W / 2, y: G.H / 2 }); // giving it grows its card (cards.js)
-    yield* say(who, TT('¡[' + it.id + ']! ¡[gracias], {name}!', 'Thank you, {name}!'));
-    if (egg) { G.hearts.add('rosa', 1, 'care'); jobStar(G.field, 'huevo', G.W / 2, 90); }
-    else G.hearts.add(who, 1, 'gift');
-    yield 30;
+    yield* take();
     yield* G.hearts.milestones(who);
     return true;
   }
@@ -240,6 +251,9 @@
     if (!SHOP[who] || !chDone(who === 'marta' ? 'c6' : 'c4') || B.full()) return false;
     const items = SHOP[who].filter(k => !B.has(k, { q: null }) && G.words.met(k)); if (!items.length) return false; // (a word not met yet waits for its chapter)
     yield* say(who, TT('¡[hola]! ¿Qué quieres?', 'Hello! What would you like?'));
+    // Quiero ___ (src/phrases.js): say it to get it (or build it from the cards); the back button: nothing today
+    const ph = G.phrase ? yield* G.phrase.quiero(who, items, { cancel: true, onGet: function* (k) { B.add(items[k]); yield* say(who, TT('¡Aquí tienes! ¡[' + items[k] + ']!', 'Here you are!')); } }) : null;
+    if (ph) { if (ph.cancel) yield* say(who, TT('¡[adios]!', 'Bye!')); return true; }
     const r = yield G.choose({ prompt: '¿Qué quieres?', en: 'What would you like? (or "no")', choices: words(...items, 'no'), layout: 'cards', mic: true, cancel: true });
     const k = r.result;
     if (k < 0 || k >= items.length) { yield* say(who, TT('¡[adios]!', 'Bye!')); return true; }

@@ -97,6 +97,64 @@
   };
   S.grade = score => score >= S.PASS ? 'PASS' : score >= S.CLOSE ? 'CLOSE' : 'MISS';
 
+  // ---------- Phrases: a frame and a slot ("Quiero ___", "¿Dónde está ___?"; docs/LEARNING_PLAN_2.md, Phase 2) ----------
+  // S.FRAMES[id] = { say: 'quiero / yo quiero / quisiera' (the frame's spoken forms, no slot), anySlot (a name: the frame
+  //   alone is the whole phrase, and any word after it is the slot: a name is often mis-heard), polite (this frame IS
+  //   "por favor") }. src/phrases.js fills it from the content (G.data.phrases); a spec object can be passed instead.
+  // S.matchPhrase(frame, slotTargets, alternatives) -> {frame, slot, full, polite, score, heard, i, fs, ss}
+  //   frame: the frame was heard (anywhere, fuzzy like S.match: one sound off still passes); slot: the index of the slot
+  //   target heard in the rest of the sentence (articles, accents, case and ¿¡ ignored; any word order), or -1; full:
+  //   frame and slot (anySlot: the frame alone, or with any word after it); polite: "por favor" anywhere (taken out
+  //   before the rest is matched). The best alternative wins: full, then the slot alone, then the frame alone, then
+  //   the score. Pure (tools/test-phrases.js runs it in Node).
+  S.FRAMES = {};
+  const toks = s => words(s).filter(Boolean);
+  const ARTS = /^(el|la|los|las|un|una|unos|unas)$/;
+  // the best window of ws (a run of max(1, len-1) .. len+1 words) for any of the forms (token lists) -> {s, a, b}
+  // (an exact tie takes the longer window: "yo quiero" over "quiero", so the whole frame comes out of the sentence)
+  function bestWin(forms, ws) {
+    let best = { s: 0, a: -1, b: -1 };
+    for (const f of forms) {
+      const t = f.join(''); if (!t) continue;
+      for (let len = Math.max(1, f.length - 1); len <= Math.min(ws.length, f.length + 1); len++)
+        for (let k = 0; k + len <= ws.length; k++) {
+          const sc = sim(t, ws.slice(k, k + len).join(''));
+          if (sc > best.s + 1e-9 || (Math.abs(sc - best.s) < 1e-9 && best.a >= 0 && len > best.b - best.a)) best = { s: sc, a: k, b: k + len };
+        }
+    }
+    return best;
+  }
+  const POLITE = [['por', 'fabor'], ['fabor']];
+  const politeWin = ws => { const w = bestWin([POLITE[0]], ws); return w.s >= S.PASS ? w : bestWin([POLITE[1]], ws); };
+  S.frameSpec = f => (f && typeof f === 'object' ? f : S.FRAMES[f] || null);
+  S.matchPhrase = function (frame, slotTargets, alternatives) {
+    const fr = S.frameSpec(frame), list = alternatives == null ? [] : Array.isArray(alternatives) ? alternatives : [alternatives];
+    const T = (Array.isArray(slotTargets) ? slotTargets : slotTargets == null ? [] : [slotTargets]).map(t => (t == null ? [] : forms(t)));
+    const FF = fr ? String(fr.say || '').split('/').map(toks).filter(f => f.length) : [];
+    const rank = r => (r.full ? 3 : r.slot >= 0 ? 2 : r.frame ? 1 : 0);
+    let best = null;
+    list.forEach((a, i) => {
+      const tr = a && typeof a === 'object' ? a.transcript : a;
+      let ws = toks(tr);
+      // "por favor" anywhere: taken out (the request is matched in what's left)
+      const pw = politeWin(ws), polite = pw.s >= S.PASS;
+      if (polite) ws = ws.slice(0, pw.a).concat(ws.slice(pw.b));
+      // the frame, anywhere; what's left is where the slot is
+      let fs = 0, rest = ws;
+      if (fr && fr.polite) fs = polite ? 1 : 0;
+      else if (FF.length) { const w = bestWin(FF, ws); if (w.s >= S.PASS) { fs = w.s; rest = ws.slice(0, w.a).concat(ws.slice(w.b)); } }
+      const isFrame = fs >= S.PASS;
+      let slot = -1, ss = 0;
+      T.forEach((F, k) => { const w = bestWin(F, rest); if (w.s >= S.PASS && w.s > ss + 1e-9) { slot = k; ss = w.s; } });
+      const extra = rest.filter(w => !ARTS.test(w));
+      if (fr && fr.anySlot && isFrame && slot < 0 && extra.length && T.length === 1) { slot = 0; ss = S.PASS; } // (a mis-heard name)
+      const full = isFrame && (slot >= 0 || !!(fr && fr.anySlot));
+      const r = { frame: isFrame, slot, full, polite, score: full ? (fs + (slot >= 0 ? ss : 1)) / 2 : slot >= 0 ? ss * 0.6 : isFrame ? fs * 0.5 : 0, heard: String(tr == null ? '' : tr).trim(), i, fs, ss };
+      if (!best || rank(r) > rank(best) || (rank(r) === rank(best) && r.score > best.score + 1e-9)) best = r;
+    });
+    return best || { frame: false, slot: -1, full: false, polite: false, score: 0, heard: '', i: -1, fs: 0, ss: 0 };
+  };
+
   // ---------- What this browser has ----------
   const SR = () => W.SpeechRecognition || W.webkitSpeechRecognition || null;
   S.supported = () => !!SR();

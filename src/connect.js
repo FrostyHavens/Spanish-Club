@@ -111,7 +111,9 @@
   // tapping the one it's for: they take it, it's from someone, a heart and a star; every other letter, a reply
   P.deliver = function* (who, f) {
     const it = P.letter(); if (!it || it.to !== who) return false;
-    yield* CK.sayShow(who, { icon: 'carta' }, TT(met('carta') ? '¡Una [carta]! ¿Para mí?' : '¡Oh! ¿Para mí?', 'A letter! For me?'));
+    const forMe = function* () { yield* CK.sayShow(who, { icon: 'carta' }, TT(met('carta') ? '¡Una [carta]! ¿Para mí?' : '¡Oh! ¿Para mí?', 'A letter! For me?')); };
+    // "¿Qué tienes?" "Tengo una carta" (src/phrases.js), then they see it's for them
+    if (!(G.phrase && met('carta') && (yield* G.phrase.tengo(who, 'carta', { onGet: forMe })))) yield* forMe();
     bag().take('carta', { q: 'post', to: who }); G.audio.jingle('item');
     if (G.cards && met('carta')) G.cards.grow('carta', 'give', { x: G.W / 2, y: G.H / 2 });
     if (it.from && it.from !== who) yield* CK.sayShow(who, { face: it.from }, TT('¡Es de ' + short(it.from) + '!', 'It\'s from ' + (it.from === 'canelo' ? G.dogName() : nm(it.from)) + '!'));

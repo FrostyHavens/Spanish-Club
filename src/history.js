@@ -90,7 +90,7 @@
   // replaces it (first try or not, an echo) instead of counting twice.
   let pend = null;
   H.event = function (id, k, o = {}) {
-    if (!G.state || !D().words[id] || !H.KIND[k]) return null;
+    if (!G.state || !W().item(id) || !H.KIND[k]) return null; // (a word or a phrase: phrases.js)
     const d = H.day(), r = W().rec(id);
     let e = d.w[id];
     if (o.answer && o.said && pend && pend.id === id && pend.key === today() && G.frame - pend.f <= 150 && Array.isArray(e) && typeof e[1] === 'string' && e[1].length > pend.i) {
@@ -108,7 +108,7 @@
     return k;
   };
   // a word met (words.js meet)
-  H.met = function (id) { if (!G.state) return; const d = H.day(); if (d.met.indexOf(id) < 0) d.met.push(id); };
+  H.met = function (id) { if (!G.state || W().isPhrase(id)) return; const d = H.day(); if (d.met.indexOf(id) < 0) d.met.push(id); }; // (words: a phrase's introduction is G.state.phrases.intro)
   // every frame a game is on (words.js step): today's seconds of play (not while idle, not on the grown-ups' screens)
   let acc = 0, lastIn = 0, lastState = null;
   H.step = function () {
@@ -196,6 +196,25 @@
     return { id, met: st0 >= 1, st: st0, box: r && st0 >= 1 ? Math.max(1, r.box | 0) : 0, said: r ? r.said | 0 : 0, ago: st0 >= 1 ? g : null, slip: W().slipping(id) };
   };
   H.zoneRows = zone => H.wordsOf(zone).map(H.row);
+  // the phrases (phrases.js), for the grown-ups' Frases tab: the same rows
+  H.phraseIds = () => (D().phraseOrder || Object.keys(D().phrases || {})).filter(id => D().phrases && D().phrases[id]);
+  H.phraseRows = () => H.phraseIds().map(H.row);
+  // phrases said aloud (S, s, E events of phrase ids) and built, in all and today
+  H.phraseStats = function () {
+    const out = { met: 0, of: H.phraseIds().length, said: 0, today: 0, built: 0 };
+    if (!G.state) return out;
+    out.met = H.phraseIds().filter(id => W().met(id)).length;
+    const h = st(), td = today();
+    for (const k of keys(h)) {
+      const d = h.d[k];
+      for (const id in d.w) {
+        if (!W().isPhrase(id)) continue;
+        const e = d.w[id]; if (!Array.isArray(e) || typeof e[1] !== 'string') continue;
+        for (const c of e[1]) { if (c === 'S' || c === 's' || c === 'E') { out.said++; if (k === td) out.today++; } else if (c === 'P' || c === 'p') out.built++; }
+      }
+    }
+    return out;
+  };
 
   // ---------- the overview ----------
   H.overview = function () {
@@ -204,6 +223,7 @@
       days: H.daysPlayed(), minutes: H.totalMinutes(), today: H.minutes(),
       met: Wd.count(1), known: Wd.count(2), remembered: Wd.count(3), solid: Wd.count(4), all: Object.keys(D().words).length,
       slipping: Wd.slipList(), r7, ra, spoken: sp, check: H.checkLast(), warmup: Object.assign({}, h.wu),
+      phrases: H.phraseStats(),
     };
   };
 

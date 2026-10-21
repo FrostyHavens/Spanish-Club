@@ -355,6 +355,8 @@
   const CUPS = 4; // (you, Lucho, Mateo, Lola: four cups)
   function* pourCups(f, o = {}) {
     const c = o.c || choco(), p = f.player, lu = npcAt(f, 'lucho');
+    // the daily one: Quiero chocolate (src/phrases.js) before he pours (the story's own chapter pours as it always did)
+    if (!o.c && G.phrase && met('chocolate')) yield* G.phrase.quiero('lucho', ['chocolate'], { onGet: function* () { yield* sayShow('lucho', 'chocolate', T('¡Chocolate! ¡Ahorita!', 'Hot chocolate! Coming right up!')); } });
     yield* sayShow('lucho', { icon: 'chocolate', count: CUPS }, T('¡Una taza para cada quien!', 'A cup for everyone: for you, for me, for Mateo and for Lola. Tap the pot!'));
     const pot = P('montana_refugio', 'pot');
     for (let k = (c.n | 0); k < CUPS; k++) {

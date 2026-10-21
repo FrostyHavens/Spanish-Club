@@ -232,6 +232,9 @@
     try { yield* G.chapters.ask(npc, nm + ': ' + Q[0], Q[1], ans, others, { show: kind === 'best' ? null : show }); } finally { if (G.vlog) G.vlog.greet = null; }
     H.add(npc, 1, 'greet'); // (marks today's greeting even when no heart is left to give)
     yield 20;
+    // a friend you haven't swapped names with says theirs ("Me llamo Pepe. ¿Y tú?"), or some days asks what you like
+    // ("¿Qué te gusta?"): that's the day's question with them (src/phrases.js, docs/LEARNING_PLAN_2.md Phase 2)
+    if (G.phrase && ((yield* G.phrase.meetName(npc)) || (yield* G.phrase.likeAsk(npc)))) { yield* H.milestones(npc); return true; }
     // one word that's due, from what they know about
     const pool = H.POOLS[npc] || [];
     const due = G.review.next({ filter: id => pool.includes(id) && !GREET.includes(id) });

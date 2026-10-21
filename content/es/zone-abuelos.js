@@ -380,7 +380,10 @@
     c.baked = true; c.on = false; st().cookiesN = (st().cookiesN | 0) + 1; G.audio.jingle('promote'); CK.confetti(); G.st.autosave();
     yield* sayShow('abuela', { icon: 'galletas' }, T('¡Galletas! ¡Para ti!', 'Cookies! One for you (and one for {dog}).'));
     if (met('seis')) yield* quiz('abuela', '¿Cuántas?', 'How many cookies are on the plate?', 'seis', ['cinco', 'siete', 'cuatro'], { show: { icon: 'galleta', count: 6 } });
-    if (!held()) bag().add('galleta'); G.st.autosave();
+    // Quiero una galleta (src/phrases.js): she asks for one and gets it; else it's yours as before
+    const give = function* () { if (!held()) bag().add('galleta'); G.st.autosave(); yield* sayShow('abuela', 'galleta', T('¡Aquí tienes!', 'Here you are!')); };
+    if (!(G.phrase && met('galleta') && (yield* G.phrase.quiero('abuela', ['galleta'], { onGet: give })))) { if (!held()) bag().add('galleta'); }
+    G.st.autosave();
   }
   // ---------- the photo wall (after chapter 3): who's who ----------
   function* photoWall(f) {

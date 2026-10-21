@@ -413,7 +413,8 @@
       const z = Z.def(zone), w = st(); if (!isObj(w.lola)) w.lola = {};
       const first = !w.lola.met; w.lola.met = true;
       if (Z.lolaTalked(f.mapId) && G.favores && (yield* G.favores.talk('lola', f))) return; // (her favour of the day, a zone's)
-      yield sayP('lola', null, first ? TT(met('hola') ? '¡[hola], {name}! ¡Soy Lola!' : '¡Hola, {name}! ¡Soy Lola!', 'Hi, {name}! I\'m Lola. I explore everywhere!') : TT(met('hola') ? '¡[hola], {name}!' : '¡Hola, {name}!', 'Hi, {name}!'));
+      const intro = first && !(G.phrase && G.phrase.named('lola')); // (she just said "Me llamo Lola": src/phrases.js)
+      yield sayP('lola', null, intro ? TT(met('hola') ? '¡[hola], {name}! ¡Soy Lola!' : '¡Hola, {name}! ¡Soy Lola!', 'Hi, {name}! I\'m Lola. I explore everywhere!') : TT(met('hola') ? '¡[hola], {name}!' : '¡Hola, {name}!', 'Hi, {name}!'));
       if (z) yield sayP('lola', { icon: z.icon }, TT('¡' + z.name + '!', 'This is ' + (z.en || z.name) + '!'));
       w.lola[f.mapId] = day(); G.st.autosave();
       if (z && z.lola) { yield* z.lola(f); return; }

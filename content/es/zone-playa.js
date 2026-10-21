@@ -332,8 +332,9 @@
   function* nievesSide(f) {
     if (!hotWho() || hotDone()) return false;
     if (iceHeld() || bag().has('helado')) { yield* sayShow('nieves', { face: hotWho() }, T('¡Para ' + G.nameOf(hotWho()).replace(/^(Don|Doña) /, '') + '!', 'For ' + G.nameOf(hotWho()) + '! They are so hot.')); return true; }
-    yield* quiz('nieves', '¿Qué quieres?', 'What would you like? (an ice cream!)', 'helado', ['concha', 'elsol', 'arena', 'cubetaarena'], { show: 'helado' });
-    bag().add('helado'); G.st.autosave();
+    // Quiero un helado (src/phrases.js): say it to get it; else the question as before
+    const ph = G.phrase ? yield* G.phrase.quiero('nieves', ['helado'], { onGet: function* () { bag().add('helado'); G.st.autosave(); yield* sayShow('nieves', 'helado', T('¡Un [helado]! ¡Aquí tienes!', 'An ice cream! Here you are!')); } }) : null;
+    if (!ph) { yield* quiz('nieves', '¿Qué quieres?', 'What would you like? (an ice cream!)', 'helado', ['concha', 'elsol', 'arena', 'cubetaarena'], { show: 'helado' }); bag().add('helado'); G.st.autosave(); }
     yield* sayShow('nieves', { face: hotWho() }, T('¡Para ' + G.nameOf(hotWho()).replace(/^(Don|Doña) /, '') + '! ¡Qué [caliente]!', 'Take it to ' + G.nameOf(hotWho()) + ': they are so hot!'));
     return true;
   }

@@ -251,6 +251,32 @@
     aguila: { es: 'el águila', en: 'the eagle', topic: 'faunamontana', icon: 'aguila', pl: 'águilas', alt: 'águila / aguilita / las águilas' },
     lobo: { es: 'el lobo', en: 'the wolf', topic: 'faunamontana', icon: 'lobo', pl: 'lobos', alt: 'lobito / lobos' },
   };
+  // ---------- Phrases (docs/LEARNING_PLAN_2.md, Phase 2: "say it to get it"; src/phrases.js) ----------
+  // A phrase is a FRAME with a SLOT for a word she knows: "Quiero ___" + el helado -> "Quiero un helado". Phrases are
+  // learnable items like words (the same stages, boxes and history: src/words.js keeps their records apart, in
+  // G.state.phrases), with their own cards (a speech bubble on the card). A phrase:
+  //   es       the frame as written, ___ for the slot ('¿Dónde está ___?')
+  //   en       for the grown-ups
+  //   say      the frame's spoken forms the mic accepts, ' / '-separated, no slot (src/speech.js matchPhrase: fuzzy,
+  //            articles / accents / ¿¡ ignored, any word order; "por favor" anywhere is the polite bonus)
+  //   art      the slot's article: 'un' (Quiero un helado, Tengo una carta; a mass noun in C.mass goes bare: Quiero pan),
+  //            'el' (¿Dónde está el gato? Me gusta el oso), '' (a name: Me llamo Luz)
+  //   plural   the frame before a plural slot ('¿Dónde están ___?', 'Me gustan ___')
+  //   prompt   what someone asks to get it said ('¿Qué quieres?')
+  //   reply    what the one who hears it says in its introduction (src/phrases.js models it twice: Lola and Nico)
+  //   icon     the card's slot picture until the phrase is used with a word (then the last word it was said with)
+  //   anySlot  a name: the frame alone is the whole phrase (a name is often mis-heard), polite: this one IS "por favor"
+  C.phrases = {
+    f_llamo: { es: 'Me llamo ___', en: 'My name is ___', say: 'me llamo / mi nombre es / yo me llamo', art: '', prompt: '¿Y tú?', reply: '¡Hola!', icon: 'hola', anySlot: true },
+    f_quiero: { es: 'Quiero ___', en: 'I want ___', say: 'quiero / yo quiero / quisiera / me das', art: 'un', prompt: '¿Qué quieres?', reply: '¡Aquí tienes!', icon: 'pan' },
+    f_porfavor: { es: '___, por favor', en: '___, please', say: 'por favor', art: 'un', prompt: '¿Qué quieres?', reply: '¡Qué amable!', icon: 'porfavor', polite: true },
+    f_donde: { es: '¿Dónde está ___?', en: 'Where is ___?', say: 'donde esta / donde estan / adonde esta / en donde esta', art: 'el', plural: '¿Dónde están ___?', prompt: '¿Qué buscas?', reply: '¡Ahí!', icon: 'lupa' },
+    f_gusta: { es: 'Me gusta ___', en: 'I like ___', say: 'me gusta / me gustan / me encanta / me encantan', art: 'el', plural: 'Me gustan ___', prompt: '¿Qué te gusta?', reply: '¡A mí también!', icon: 'gracias' },
+    f_tengo: { es: 'Tengo ___', en: 'I have ___', say: 'tengo / yo tengo / aquí tengo / te traigo', art: 'un', prompt: '¿Qué tienes?', reply: '¡Gracias!', icon: 'mano' },
+  };
+  C.phraseOrder = ['f_llamo', 'f_quiero', 'f_porfavor', 'f_donde', 'f_gusta', 'f_tengo']; // (the notebook's, the deck's and the grown-ups' order)
+  C.mass = ['pan', 'agua', 'leche', 'queso', 'chocolate', 'arena', 'nieve', 'hielo']; // (said bare after quiero / tengo: Quiero pan)
+
   C.numberWords = ['uno', 'dos', 'tres', 'cuatro', 'cinco'];
   C.numberWords10 = ['uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'];
 

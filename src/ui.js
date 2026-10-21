@@ -34,7 +34,7 @@
   // instead: heard, not read (a listening question; a question's own answer, learn.js).
   const TOK = /\[([a-z0-9]+)(?::([^\]]+))?\]/g;
   const COL = { text: '#ffffff', seen: '#a8d8ff', known: '#f8d860' };
-  G.baseForm = id => { const w = G.data.words[id]; return w ? w.es.split(' / ')[0].replace(/^(el|la|los|las) /, '') : id; };
+  G.baseForm = id => { const w = G.data.words[id]; return w ? w.es.split(' / ')[0].replace(/^(el|la|los|las) /, '') : G.phrase && G.data.phrases && G.data.phrases[id] ? G.phrase.label(id) : id; }; // (a phrase: its frame, phrases.js)
   G.richIds = s => { const out = []; String(s).replace(TOK, (m, id) => { out.push(id); return m; }); return out; };
   G.plain = s => String(s).replace(TOK, (m, id, shown) => shown || G.baseForm(id));
   function items(s) { // -> [{text, id?, gap}]  gap: a space precedes this item (wrapping happens only at gaps)

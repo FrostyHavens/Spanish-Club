@@ -6,6 +6,7 @@
 //              counts), and a bar per day for the last two weeks (the goal band 70-80%)
 //   Words      by place (Villa Sol and the five zones, picture tabs): each word's picture, its Spanish, a strength bar
 //              (four stages, the box under it), said aloud (a mic), last met or used, slipping; scroll; tap: hear it
+//              (and a last tab, a speech bubble: the phrases, src/phrases.js, Phase 2: the same rows)
 //   Check      ten words to ask away from the game (some strong, some slipping or due): the picture, the Spanish and the
 //              English for the grown-up; tap right or not yet (the card stays a moment with its mark), skip or stop; the
 //              answers count as practice (history.js H.checkAnswer: right = a recall, not yet = a miss) and the last
@@ -116,6 +117,7 @@
     L.push('Retention (right on the first try when a word comes back after a day or more): ' + (o.r7.n ? o.r7.pct + '% in the last 7 days (' + o.r7.right + ' of ' + o.r7.n + ')' : 'no words back after a day yet this week') + (o.ra.n ? ', ' + o.ra.pct + '% overall (' + o.ra.right + ' of ' + o.ra.n + ').' : '.'));
     L.push('Said aloud: ' + (o.spoken.all ? o.spoken.pct + '% of practice (' + o.spoken.said + ' of ' + o.spoken.all + ').' : 'no practice recorded yet.'));
     if (o.slipping.length) L.push('Slipping (' + o.slipping.length + '): ' + o.slipping.map(es).join(', ') + '.');
+    if (o.phrases && o.phrases.met) L.push('Phrases: ' + o.phrases.met + ' of ' + o.phrases.of + ' met (' + H().phraseIds().filter(id => G.words.met(id)).map(id => G.phrase ? G.phrase.label(id) : id).join(', ') + '); said aloud ' + o.phrases.said + ' times, ' + o.phrases.today + ' today.');
     if (o.check) L.push('Last word check: ' + o.check.right + ' of ' + o.check.of + ' (' + dateOf(o.check.d) + ').');
     const td = H().day().met; if (td.length) L.push('New today: ' + td.map(es).join(', ') + '.');
     const q = DB.tonight(0); if (q) L.push('Tonight\'s question: ' + q.es + ' (' + q.en + ') A good answer: ' + q.ans.es);
@@ -146,7 +148,7 @@
   }
   DB.strength = strength;
 
-  const ZONES = () => (G.zones ? G.zones.ids() : ['villa']);
+  const ZONES = () => (G.zones ? G.zones.ids() : ['villa']).concat(G.phrase && G.phrase.on() ? ['frases'] : []); // (the phrases' tab last)
   class LearningDash {
     constructor(w, o) {
       G.toastT = 0; this.w = w; this.t = 0; this.tab = Math.max(0, DB.TABS.indexOf((o && o.tab) || 'Overview'));
@@ -172,7 +174,7 @@
     sayXY() { return [256, 64]; }
     anotherRect() { return { x: 90, y: 192, w: 140, h: 22 }; }
     tonightSayXY() { return [G.W - 34, 66]; }
-    rows() { if (!this.rowsCache || this.rowsCache.zone !== this.zone || this.rowsCache.t !== G.frame >> 5) { const L = H().zoneRows(this.zone); L.sort((a, b) => b.met - a.met); this.rowsCache = { zone: this.zone, t: G.frame >> 5, L }; } return this.rowsCache.L; } // (met words first, in notebook order)
+    rows() { if (!this.rowsCache || this.rowsCache.zone !== this.zone || this.rowsCache.t !== G.frame >> 5) { const L = this.zone === 'frases' ? H().phraseRows() : H().zoneRows(this.zone); L.sort((a, b) => b.met - a.met); this.rowsCache = { zone: this.zone, t: G.frame >> 5, L }; } return this.rowsCache.L; } // (met words first, in notebook order; the phrases' tab: the phrases)
     maxScroll() { return Math.max(0, this.rows().length * 18 - this.listBox().h); }
     notice(s) { this.note = s; this.noteT = 180; }
     // the page's numbers, worked out again twice a second (they're drawn every frame)
@@ -218,7 +220,7 @@
       const tap = G.input.tap();
       if (tap && G.tapIn(b)) {
         const L = this.rows(), i = Math.floor((tap.y - b.y + this.scroll) / 18);
-        if (L[i]) { this.hi = { id: L[i].id, t: this.t }; G.speak(G.baseForm(L[i].id)); }
+        if (L[i]) { this.hi = { id: L[i].id, t: this.t }; G.speak(this.zone === 'frases' && G.phrase ? G.phrase.sentence(L[i].id) : G.baseForm(L[i].id)); }
       }
     }
     updCheck() {
@@ -318,14 +320,20 @@
         ['Slipping', o.slipping.length ? o.slipping.length + ': ' + o.slipping.map(es).join(', ') : 'none'],
         ['Last check', o.check ? o.check.right + ' of ' + o.check.of + ', ' + ago(o.check.ago) : 'none yet (the Check tab)'],
         ['Warm-up', this.warmLine(o.warmup)],
+        ['Phrases', this.phraseLine(o.phrases)],
       ];
       lines.forEach(([a, b], k) => {
-        const y = 112 + k * 14;
+        const y = 110 + k * 13;
         G.text(ctx, a, 10, y, COL.dim);
         G.text(ctx, fit(b, G.W - 92), 82, y, k === 3 && o.slipping.length ? COL.slip : COL.white);
       });
-      G.text(ctx, 'Each count includes the stronger words: a solid word', 10, 198, '#8890c0');
-      G.text(ctx, 'is also remembered, known and met.', 10, 208, '#8890c0');
+      G.text(ctx, 'Each count includes the stronger words: a solid word', 10, 200, '#8890c0');
+      G.text(ctx, 'is also remembered, known and met.', 10, 210, '#8890c0');
+    }
+    // the phrases (src/phrases.js): how many met, said aloud in all and today, built from cards
+    phraseLine(p) {
+      if (!p || !p.met) return 'none met yet (Me llamo, Quiero, ¿Dónde está?, Me gusta, Tengo, por favor)';
+      return p.met + ' of ' + p.of + ' met; said aloud ' + p.said + (p.said === 1 ? ' time' : ' times') + ' (' + p.today + ' today)' + (p.built ? ', built ' + p.built : '');
     }
     warmLine(w) {
       const today = w && w.d === G.today(), L = w && w.last;
@@ -369,11 +377,11 @@
         const r = this.zoneRect(k), on = z === this.zone, zd = G.zones ? G.zones.def(z) : null;
         G.win(ctx, r.x, r.y, r.w, r.h, on ? { fill1: '#3a56c8', fill2: '#1c2c8c', alpha: 1 } : { fill1: '#18205e', fill2: '#10164a', alpha: 1 });
         if (on) { ctx.fillStyle = COL.yel; ctx.fillRect(r.x + 2, r.y + r.h - 3, r.w - 4, 1); }
-        G.drawIcon16(ctx, zd ? zd.icon : 'sol', r.x + 5, r.y + 2);
+        if (z === 'frases') G.cards.bubble(ctx, r.x + 6, r.y + 4, 1); else G.drawIcon16(ctx, zd ? zd.icon : 'sol', r.x + 5, r.y + 2);
       });
-      const zd = G.zones ? G.zones.def(this.zone) : null, nm = rows.filter(r => r.met).length, ns = rows.filter(r => r.slip).length;
-      G.text(ctx, fit(zd ? zd.name : 'Villa Sol', 130), 184, 49, COL.white);
-      G.text(ctx, nm + ' of ' + rows.length + ' met' + (ns ? ', ' + ns + ' slipping' : ''), 184, 59, ns ? COL.slip : COL.dim);
+      const zd = G.zones ? G.zones.def(this.zone) : null, nm = rows.filter(r => r.met).length, ns = rows.filter(r => r.slip).length, nx = 6 + Z.length * 29 + 4;
+      G.text(ctx, fit(this.zone === 'frases' ? 'Phrases' : zd ? zd.name : 'Villa Sol', G.W - nx - 6), nx, 49, COL.white);
+      G.text(ctx, fit(nm + ' of ' + rows.length + ' met' + (ns ? ', ' + ns + ' slipping' : ''), G.W - nx - 6), nx, 59, ns ? COL.slip : COL.dim);
       G.text(ctx, 'Word', 30, 70, '#8890c0'); G.text(ctx, 'Stage', 116, 70, '#8890c0'); G.text(ctx, 'Said', 160, 70, '#8890c0'); G.text(ctx, 'Last met/used', 190, 70, '#8890c0');
       ctx.save(); ctx.beginPath(); ctx.rect(b.x, b.y, b.w, b.h); ctx.clip();
       rows.forEach((w, k) => {
@@ -381,7 +389,9 @@
         const hi = this.hi && this.hi.id === w.id && this.t - this.hi.t < 40;
         if (hi) { ctx.fillStyle = 'rgba(248,224,96,0.18)'; ctx.fillRect(r.x, r.y, r.w, r.h); }
         else if (k % 2) { ctx.fillStyle = 'rgba(136,152,224,0.08)'; ctx.fillRect(r.x, r.y, r.w, r.h); }
-        ctx.globalAlpha = w.met ? 1 : 0.35; G.drawIcon16(ctx, w.id, 10, r.y + 1); ctx.globalAlpha = 1;
+        ctx.globalAlpha = w.met ? 1 : 0.35;
+        if (this.zone === 'frases' && G.phrase) { G.phrase.drawPic(ctx, G.phrase.cardPic(w.id), 10, r.y + 1, 1, this.t); G.cards.bubble(ctx, 18, r.y - 1, 0.6); } else G.drawIcon16(ctx, w.id, 10, r.y + 1);
+        ctx.globalAlpha = 1;
         const lab = G.baseForm(w.id), col = !w.met ? '#6870a0' : w.st >= 3 ? COL.gold : COL.met;
         G.text(ctx, fit(lab, 82), 30, r.y + 6, col);
         if (!w.met) { G.text(ctx, 'not met yet', 116, r.y + 6, '#5a6290'); return; }

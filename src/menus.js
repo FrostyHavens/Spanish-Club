@@ -121,13 +121,17 @@
   // Only topics with a met word have a page (G.pages.visible, intro.js). On a page: each met word's picture and word
   // (blue, or gold once remembered), its card's plant (cards.js: it grows as the word is used) and a little mic if it was said; the
   // words still to meet are empty dotted frames. Tap a word to hear it; < > (or left / right) turns the page.
+  // The phrases (src/phrases.js) have a page of their own, first: "Frases", each one as her speech bubble with the word it
+  // was last said with, its card's plant; tap one to hear it.
   class Notebook {
     constructor(w, start) {
       G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; this.list = G.pages.visible();
+      if (G.phrase && G.phrase.on() && G.phrase.list(1).length) this.list.unshift('frases');
       this.pi = Math.max(0, this.list.indexOf(start)); this.wi = 0; this.flip = 0;
     }
     page() { return this.list[this.pi]; }
-    words() { return this.page() ? D().pages[this.page()].words : []; }
+    frases() { return this.page() === 'frases'; }
+    words() { return this.frases() ? G.phrase.ids() : this.page() ? D().pages[this.page()].words : []; }
     // tap areas (shared with draw): word k on the page, the < > page buttons around the page dots, close
     cols() { return this.words().length > 9 ? 4 : 3; } // (a page of 10, the numbers: four narrower columns)
     cellRect(k) { const c = this.cols(); return c === 4 ? { x: 18 + (k % 4) * 72, y: 36 + Math.floor(k / 4) * 58, w: 70, h: 56 } : { x: 22 + (k % 3) * 94, y: 36 + Math.floor(k / 3) * 58, w: 90, h: 56 }; }
@@ -135,7 +139,7 @@
     nextXY() { return [G.W / 2 + 62, 4]; }
     closeXY() { return [G.W - 30, 8]; }
     turn(dx) { if (this.list.length < 2) return; this.pi = (this.pi + dx + this.list.length) % this.list.length; this.wi = 0; this.flip = 8 * dx; G.audio.sfx('note'); }
-    say(k) { const id = this.words()[k]; if (id && S().seen(id)) { G.speak(G.baseForm(id)); return true; } G.audio.sfx('boop'); return false; }
+    say(k) { const id = this.words()[k]; if (id && S().seen(id)) { G.speak(this.frases() ? G.phrase.sentence(id) : G.baseForm(id)); return true; } G.audio.sfx('boop'); return false; }
     update() {
       this.t++; if (this.flip) this.flip -= Math.sign(this.flip);
       const d = G.input.repDir(14, 5), n = this.words().length;
@@ -171,11 +175,13 @@
         const x = Math.round(G.W / 2 - (n * step - (step - dw)) / 2 + k * step);
         ctx.fillStyle = k === this.pi ? '#a05020' : '#c8a070'; ctx.fillRect(x, 11, dw, 6); ctx.fillStyle = '#7a4a20'; ctx.fillRect(x, 17, dw, 1);
       });
-      const ws = this.words(), got = ws.filter(id => S().seen(id)).length, tp = D().topics[D().pages[pid].topic];
+      const ws = this.words(), got = ws.filter(id => S().seen(id)).length, tp = this.frases() ? { name: 'Frases', en: 'Phrases' } : D().topics[D().pages[pid].topic];
       G.textC(ctx, G.fill(tp.name), G.W / 2, 25, '#a05020', null);
+      if (this.frases()) G.cards.bubble(ctx, G.W / 2 - G.textWidth(tp.name) / 2 - 18, 22, 1);
       G.textR(ctx, got + '/' + ws.length, G.W - 40, 25, '#a08060', null);
       if (G.enVisible()) G.text(ctx, G.fill(tp.en), 22, 25, '#a09070', null);
       const dx = this.flip * 3;
+      if (this.frases()) { this.drawFrases(ctx, ws, dx); return; }
       ws.forEach((id, k) => {
         const R = this.cellRect(k), cx = R.x + dx + (R.w - 90) / 2, cy = R.y + 2, sel = k === this.wi, st = S().stage(id);
         if (st < 1) { // still to meet: an empty dotted frame
@@ -199,6 +205,24 @@
       });
     }
   }
+  // the phrases' page: her speech bubble with each phrase (its frame and the word it was last said with), the plant of its
+  // card, a mic once said aloud; a phrase not met yet is a dotted bubble
+  Notebook.prototype.drawFrases = function (ctx, ws, dx) {
+    const P = G.phrase;
+    ws.forEach((id, k) => {
+      const R = this.cellRect(k), x = R.x + dx, y = R.y + 2, sel = k === this.wi, st = S().stage(id);
+      if (st < 1) { ctx.fillStyle = '#d0c0a0'; for (let i = 0; i < 70; i += 4) { ctx.fillRect(x + 4 + i, y + 6, 2, 1); ctx.fillRect(x + 4 + i, y + 40, 2, 1); } for (let i = 0; i < 34; i += 4) { ctx.fillRect(x + 4, y + 6 + i, 1, 2); ctx.fillRect(x + 74, y + 6 + i, 1, 2); } return; }
+      if (sel) { ctx.fillStyle = '#f8e0a0'; ctx.fillRect(x - 2, y - 2, R.w, R.h); }
+      const hop = sel ? Math.round(Math.abs(Math.sin(this.t / 8)) * -2) : 0;
+      const bx = x + 20, by = y + hop; // a speech bubble with the word it was last said with
+      ctx.fillStyle = '#10102a'; ctx.fillRect(bx + 1, by, 44, 38); ctx.fillRect(bx, by + 1, 46, 36); ctx.fillRect(bx + 6, by + 37, 5, 3); ctx.fillRect(bx + 6, by + 40, 2, 2);
+      ctx.fillStyle = st >= 3 ? '#fff4c8' : '#ffffff'; ctx.fillRect(bx + 1, by + 1, 44, 36); ctx.fillRect(bx + 7, by + 37, 2, 3);
+      P.drawPic(ctx, P.cardPic(id), bx + 7, by + 3, 2, this.t);
+      G.textC(ctx, P.label(id), x + 43, y + 45, st >= 3 ? '#a06008' : '#2860a8', null);
+      if (G.cards) G.cards.drawPlant(ctx, G.cards.pts(id), x + 83, y + 38, { s: 2, gold: st >= 4 });
+      const r = G.words.rec(id); if (r && r.said) G.mic.glyph(ctx, x + 1, y + 2, '#2a8a9a');
+    });
+  };
   G.notebook = function (start) { const w = new G.Wait(); G.push(new Notebook(w, start)); return w; };
 
   // ---------- Misiones: who asked, and what they want (pictures only) ----------

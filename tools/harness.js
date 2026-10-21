@@ -19,6 +19,9 @@
 // The dog's daily warm-up (src/warmup.js) takes over the map the first time the child is free on a new day, so it is
 // OFF in a test's page unless it asks: open(browser, name, touch, { warmup: true }) (tools/test-learning.js), or the
 // environment says WARMUP=1 (every test then plays with it on; drive() answers its questions like any other).
+// The phrases (src/phrases.js, "say it to get it": Me llamo, Quiero, ¿Dónde está?, Me gusta, Tengo, por favor) change
+// what some talks ask, so they are OFF too unless a test asks: open(..., { phrases: true }) (tools/test-phrases.js), or
+// PHRASES=1 (drive() builds a phrase from its cards and taps through an introduction).
 'use strict';
 const path = require('path'), fs = require('fs'), os = require('os');
 const { chromium } = require('playwright');
@@ -77,6 +80,8 @@ class Game {
         if (r.name === 'TextBox') Object.assign(r, { pi: s.pi, shown: s.shown, all: s.chars(0, s.scroll + 3), spk: s.spk(), noVoice: !!s.opts.noVoice });
         if (r.name === 'Notebook' || r.name === 'Deck' || r.name === 'PetMenu' || r.name === 'Album') r.close = s.closeXY();
         if (r.name === 'PetMenu' && s.want >= 0 && !s.won && s.t > 10) r.want = s.rect(s.want); // (the arrow the day's play shows over a card)
+        if (r.name === 'PhraseAsk') Object.assign(r, { invite: s.invite != null, rects: s.rects(), answer: s.free ? 0 : s.answer, placed: Object.assign({}, s.placed), next: s.invite != null ? s.nextRect() : null, closing: !!s.result, sel: s.sel }); // (phrases.js)
+        if (r.name === 'PhraseModel') Object.assign(r, { last: s.row >= s.n - 1, rt: s.rt });
         if (r.name === 'PagePuzzle') { // the next picture to match and its word (intro.js)
           const k = s.pics.findIndex((p, k) => !s.match[k]);
           Object.assign(r, { done: s.done, pic: k >= 0 ? s.picRect(k) : null, word: k >= 0 ? s.wordRect(s.words.indexOf(s.pics[k])) : null, sel: s.sel });
@@ -151,6 +156,21 @@ class Game {
           else { if (this.explore) await this.press('ArrowRight'); await this.press('Enter'); }
           break;
         }
+        case 'PhraseAsk': { // a phrase (phrases.js): build it from its cards (the frame, then the right word), or go on
+          if (s.t <= 10 || s.closing) { await this.frames(6); break; }
+          if (first) { await this.frames(6); await this.shot(s.invite ? 'phrase_invite' : 'phrase_ask'); this.seen.add('PhraseAsk'); }
+          if (s.invite) { if (this.touch) await this.tapRect(s.next); else await this.press('Enter'); break; }
+          const k = !s.placed.frame ? 0 : s.answer + 1;
+          if (this.touch) await this.tapRect(s.rects[k]);
+          else { for (let n = 0; n < s.rects.length && await this.ev(() => G.top().sel) !== k; n++) await this.press('ArrowRight'); await this.press('Enter'); }
+          break;
+        }
+        case 'PhraseModel': // a phrase's introduction (phrases.js): two friends say it; a tap goes on
+          if (s.t <= 14) { await this.frames(16 - s.t); break; }
+          if (first) { await this.frames(4); await this.shot('phrase_model'); this.seen.add('PhraseModel'); }
+          if (s.last && s.rt <= 32) { await this.frames(34 - s.rt); break; }
+          if (this.touch) await this.tap(160, 120); else await this.press('z');
+          break;
         case 'NewPlace': // "¡Nuevo lugar!" (zones.js): it closes by itself, or a tap
           if (s.t <= 44) { await this.frames(46 - s.t); break; }
           if (first) { await this.shot('new_place'); this.seen.add('NewPlace'); }
@@ -188,6 +208,7 @@ async function open(browser, name, touch, o = {}) {
   const ctx = await browser.newContext(touch ? { viewport: { width: 1024, height: 768 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 } : { viewport: { width: 1280, height: 800 } });
   const page = await ctx.newPage();
   await page.addInitScript(on => { window.__warmupOff = !on; }, !!(o.warmup || process.env.WARMUP === '1')); // (the dog's warm-up: off unless asked)
+  await page.addInitScript(on => { window.__phrasesOff = !on; }, !!(o.phrases || process.env.PHRASES === '1')); // (the phrases: off unless asked)
   await page.addInitScript(() => { // log which input event each speak() call runs in (speech must start inside a tap)
     window.__speak = [];
     const ss = window.speechSynthesis, sp = ss && ss.speak.bind(ss);

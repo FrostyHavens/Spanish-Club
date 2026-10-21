@@ -16,6 +16,10 @@
 //   dogspot  the dog's paw-print bubble on screen (his thing to do in this zone): the hand taps it
 //   warmup   the dog's daily warm-up (warmup.js), its first question: the hand taps the big mic and a mouth talks (say
 //            it!), or, without the mic, glides over the cards and taps one (never the answer)
+//   phrasesay a phrase's request or its invitation (phrases.js), its big mic: the hand taps it, her face's mouth talks
+//            and her speech bubble lights up one piece after the other (the frame, then the word): say the whole thing
+//   phrase   the phrase builder (after phrasesay was seen, when she waits, or without a mic): the hand taps the frame
+//            card, then a word card (never the answer of a request that has one)
 //   (zones)  a zone's own new action (G.zones.demos: {kind, find(f) -> tile}): the beach's 'fillpail' (the empty pail
 //            in your hands: the hand taps the water's edge)
 // The map's demos wait for a moment of standing about (DM.IDLE, so they don't get in the way of a child who is busy).
@@ -24,7 +28,7 @@
 'use strict';
 (function () {
   const DM = G.demo = {}, T = G.TILE;
-  DM.KINDS = ['answer', 'mic', 'canelo', 'pickup', 'give', 'putdown', 'puzzle', 'seek', 'bus', 'worldmap', 'dogspot', 'warmup'];
+  DM.KINDS = ['answer', 'mic', 'canelo', 'pickup', 'give', 'putdown', 'puzzle', 'seek', 'bus', 'worldmap', 'dogspot', 'warmup', 'phrasesay', 'phrase'];
   DM.IDLE = 90;    // frames standing about on the map before a map demo (1.5 s)
   DM.cur = null;
   let idle = 0, scan = 0;
@@ -60,6 +64,19 @@
   // ---------- when each one comes up ----------
   function onQuestion(s) {
     const n = name(s);
+    if (n === 'PhraseAsk' && !s.won && !s.result && s.t >= 20) { // a phrase (phrases.js): say the whole thing; or build it
+      const m = s.mic, f = s.faceRect(), mouth = { x: f.x + f.w / 2, y: f.y + f.h - 12 };
+      if (m && m.shown && m.shown() && m.can && m.can() && !DM.shown('phrasesay')) {
+        const r = m.o.rect(); book().mic = book().mic || G.frame || 1;
+        start('phrasesay', [{ x: r.x + r.w / 2, y: r.y + r.h / 2 + 2, move: 22, act: 'tap', hold: 4 }, { x: r.x + r.w / 2, y: r.y + r.h / 2 + 2, move: 1, act: 'talk', hold: 110 }], { mic: r, mouth, mouthK: 0.75 });
+        return true;
+      }
+      if (s.invite == null && !DM.shown('phrase') && (DM.shown('phrasesay') || !(m && m.shown && m.shown())) && s.t >= (m && m.shown && m.shown() ? 300 : 20) && !s.placed.frame && s.placed.slot < 0) {
+        const R = s.rects(), ks = R.map((r, k) => k).filter(k => k > 0 && !s.off[k - 1] && (s.free || k - 1 !== s.answer)), k = ks.length ? ks[Math.floor(Math.random() * ks.length)] : 1;
+        if (R[0] && R[k]) { start('phrase', [{ x: R[0].x + R[0].w / 2, y: R[0].y + 40, move: 22, act: 'tap', hold: 12 }, { x: R[k].x + R[k].w / 2, y: R[k].y + 40, move: 18, act: 'tap', hold: 22 }]); return true; }
+      }
+      return false;
+    }
     if (n === 'Choice' && s.o.warmup && s.cards && s.o.answer != null && !s.won && s.t >= 14 && !DM.shown('warmup')) { // the dog's warm-up (warmup.js): say it, or tap
       const m = s.mic;
       if (m && m.shown && m.shown() && m.can && m.can()) {
@@ -173,7 +190,7 @@
     if (c.carry && c.down && G.carry) G.drawIcon16(ctx, G.carry.pic(c.carry), Math.round(c.x - 8), Math.round(c.y - 22)); // carried along
     if (c.drag != null && c.down) { ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(c.x - 30), Math.round(c.y - 12), 60, 24); G.textC(ctx, G.baseForm(c.drag), c.x, c.y - 4, '#2860a8', null); }
     G.hint.hand(ctx, { x: c.x, y: c.y, dir: 'up' }, c.push);
-    if (c.talk) { const mx = c.mic ? c.mic.x + c.mic.w / 2 : c.x, my = c.mic ? (c.mic.y < 30 ? c.mic.y + c.mic.h + 10 : c.mic.y - 16) : c.y - 16; ctx.globalAlpha = Math.min(1, c.a); ctx.save(); ctx.translate(mx, my); ctx.scale(1.3, 1.3); mouth(ctx, 0, 0, c.talk); ctx.restore(); } // a mouth talking, over the mic (under it near the top: the warm-up's big mic)
+    if (c.talk) { const mx = c.mouth ? c.mouth.x : c.mic ? c.mic.x + c.mic.w / 2 : c.x, my = c.mouth ? c.mouth.y : c.mic ? (c.mic.y < 30 ? c.mic.y + c.mic.h + 10 : c.mic.y - 16) : c.y - 16; ctx.globalAlpha = Math.min(1, c.a); ctx.save(); ctx.translate(mx, my); ctx.scale(c.mouthK || 1.3, c.mouthK || 1.3); mouth(ctx, 0, 0, c.talk); ctx.restore(); } // a mouth talking, over the mic (under it near the top: the warm-up's big mic; c.mouth: her own face, phrases.js)
     ctx.restore();
   };
 })();

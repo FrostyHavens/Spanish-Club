@@ -306,8 +306,13 @@
     const [dx, dy] = P('bosque', 'cabinDoor');
     for (let k = 0; k < 3; k++) { G.audio.sfx('select'); for (let i = 0; i < 4; i++) CK.puff('dust', dx * TL + 12 + (Math.random() - 0.5) * 30, dy * TL - 20, { vy: -0.6, life: 40 }); yield 20; }
     p.baked = true; st().pies = (st().pies | 0) + 1; G.audio.jingle('promote'); CK.confetti();
-    bag().add('pay');
-    yield* sayShow('lupe', { icon: 'pay' }, T('¡Un pay! ¡Para ti!', 'A blackberry pie! For you! (share it: {dog} loves pie)'));
+    // Quiero un pay (src/phrases.js): the pie (a picture: el pay) or blackberries, whichever she asks for
+    const PAY = { id: 'pay', es: 'el pay', icon: 'pay', alt: 'pay / pai / pastel / tarta / pay de moras' };
+    const ph = G.phrase ? yield* G.phrase.quiero('lupe', [PAY].concat(met('mora') ? ['mora'] : []), { onGet: function* (k) {
+      const it = k === 1 ? 'mora' : 'pay'; bag().add(it); G.st.autosave();
+      yield* sayShow('lupe', { icon: it }, T(it === 'pay' ? '¡Un pay! ¡Aquí tienes!' : '¡[mora:Moras]! ¡Aquí tienes!', it === 'pay' ? 'A blackberry pie! Here you are! (share it: {dog} loves pie)' : 'Blackberries! Here you are!'));
+    } }) : null;
+    if (!ph) { bag().add('pay'); yield* sayShow('lupe', { icon: 'pay' }, T('¡Un pay! ¡Para ti!', 'A blackberry pie! For you! (share it: {dog} loves pie)')); }
     G.st.autosave();
   }
   if (G.carry) Object.assign(G.carry.DOG, { pay: 'eat', mora: 'eat', bellota: 'sniff' });

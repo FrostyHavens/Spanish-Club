@@ -37,6 +37,8 @@
       dogName: null,      // the dog's name, chosen by the child in the opener (G.dogName(): "Canelo" until then)
       hist: {},           // the learning history (history.js): per day the minutes played, words met, every retrieval
                           // (compact, no audio, the last 60 days); the parent checks; the dog's warm-up (warmup.js)
+      phrases: {},        // the phrases (phrases.js, words.js): r {id: the word model's record}, intro {id: {d, at}},
+                          // named {npc: day}, fav (her favourite animal, for Lola), likes {npc: {w, d}}, last (play s)
     };
   }
   function devicePrefs(s) {
