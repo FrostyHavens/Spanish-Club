@@ -142,7 +142,7 @@
 
   // ---------- Mi casa ----------
   G.maps.casa = {
-    name: 'Mi casa', icon: 'casa', rows: MD.casa.rows, music: 'headquarters',
+    name: 'Mi casa', icon: 'casa', rows: MD.casa.rows, music: 'headquarters', indoor: true, // (a bus ride from home just fades: zones.js)
     things: { at: { '7,5': 'cama' } }, // world.js: the beds say "la cama" (yours, and Canelo's cushion)
     // after sunset your bed is where the day ends (the guide's arrow is on it, guide.js): a tap and it's good night
     poke: (f, x, y) => { if (f.map.get(x, y) !== 'j' || !(G.day && G.day.over()) || f.evening) return false; f.tasks.add(G.day.evening(f)); return true; },
@@ -187,7 +187,7 @@
   // names itself when tapped (world.js: a "?" and its picture while the word isn't met); a hay bale rustles. Hide-and-
   // seek (seek.js) hides an animal or two in here. Canelo comes in with you.
   G.maps.granja = {
-    name: 'La granja', icon: 'granja', rows: MD.granja.rows, music: 'inn',
+    name: 'La granja', icon: 'granja', rows: MD.granja.rows, music: 'rancho',
     exits: [exitAt('granja', 'granjaDoor')],
     pages: PAGES('granja'),
     things: { tiles: { E: 'huevo', U: 'agua', m: 'leche', A: 'manzana' } },
@@ -236,7 +236,7 @@
 
   // ---------- Casa de la abuela Rosa ----------
   G.maps.rosa = {
-    name: 'La casa de Rosa', icon: 'casa', rows: MD.rosa.rows, music: 'inn',
+    name: 'La casa de Rosa', icon: 'casa', rows: MD.rosa.rows, music: 'headquarters',
     exits: [exitAt('rosa', 'rosaDoor')],
     pages: PAGES('rosa'), things: {},
     npcs: [],
@@ -244,7 +244,7 @@
 
   // ---------- La panadería (Marta) ----------
   G.maps.panaderia = {
-    name: 'La panadería', icon: 'panaderia', rows: MD.panaderia.rows, music: 'inn',
+    name: 'La panadería', icon: 'panaderia', rows: MD.panaderia.rows, music: 'town', // (the town's waltz plays on inside, without starting again)
     things: {}, pages: PAGES('panaderia'),
     exits: [exitAt('panaderia', 'panaderiaDoor')],
     npcs: [

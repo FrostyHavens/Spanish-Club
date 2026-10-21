@@ -7,8 +7,9 @@
 //   choices        a puzzle's places to choose from (which bush has the red ball, who says "¡miau!") all get a smaller
 //                  white arrow, so it shows WHERE to look without giving the answer away
 //   idle ~4 s      Canelo trots a few tiles toward the goal, barks and looks back at you
-// The goal, most important first: the story's chapter (its beat: a person, a place, an animal, a door, a find-it
-// puzzle; the next chapter's giver; a review day's teacher) > home at sunset > a favour going on or offered > Tomás's
+// The goal, most important first: (on a night walk after the Hoy card, day.js: the night animal she came to see) >
+// the story's chapter (its beat: a person, a place, an animal, a door, a find-it puzzle; the next chapter's giver; a
+// review day's teacher) > home at sunset > a favour going on or offered > Tomás's
 // letter in your hands (to whoever it's for; another place: the bus stop, src/connect.js) > a zone's task > Nico's
 // hide-and-seek (only the edge arrow: the peeking ears are the game; the arrow over one after a long wait) > Canelo's
 // "?", Luna's palabra del día, Inés's pages, a side job, anyone else with a bubble > (the next chapter, then Tomás's
@@ -168,7 +169,9 @@
   // Tomás's letter in your hands (connect.js): to whoever it's for; in another place, by the bus (or the way there)
   const postGoal = f => (G.post && G.post.goal ? G.post.goal(f) : null);
   const postOffer = f => (G.post && G.post.offerGoal ? G.post.offerGoal(f) : null); // (Tomás's letter of the day: after the story's next chapter)
-  const TIERS = [chapterGoal, sunsetGoal, favourGoal, postGoal, zoneTask, seekGoal, wantGoal, reviewGoal, zoneGoal, chapterLater, postOffer, exploreGoal, playGoal, puppyGoal];
+  // the night walk after the Hoy card (day.js): the arrow on the night animal she came to see, before anything else
+  const nightWalk = f => (G.day && G.day.walkGoal ? G.day.walkGoal(f) : null);
+  const TIERS = [nightWalk, chapterGoal, sunsetGoal, favourGoal, postGoal, zoneTask, seekGoal, wantGoal, reviewGoal, zoneGoal, chapterLater, postOffer, exploreGoal, playGoal, puppyGoal];
 
   // on another map: the door that leads there (from town, its door; from a building, the way out)
   function viaDoor(f, g) {

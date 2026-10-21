@@ -83,6 +83,7 @@ async function day1(browser) {
   try {
     await watchCards(g);
     await newGame(g);
+    await g.ev(() => { G.debug.sunsetAt = 1e9; G.day.EARLY = 1e9; }); // (day 1 is chapters 1 and 2, then "tomorrow": the sun stays up; the evening's own times: tools/test-day.js)
     const t0 = await g.ev(() => ({ s: G.sessionTime, dog: !!G.field.npc('canelo'), met: G.words.list(1) }));
     check('day1: Canelo burst in within the first minute of play (he is hiding: a find-it puzzle)', t0.dog && t0.s < 60 && await g.ev(() => !!G.state.finds.perro && !G.state.finds.perro.found), JSON.stringify(t0));
     check('day1: only hola met before he is found', t0.met.join() === 'hola', t0.met.join());

@@ -210,6 +210,7 @@
     try {
       if (!S.slot || !G.state || G.state !== bound) return false;
       snapLoc();
+      try { if (G.day && G.day.sweep) G.day.sweep(); } catch (e) { } // (today's grown words into the save: the Hoy card, day.js)
       G.state.savedAt = Date.now();
       const ok = keepBad(S.slot) && G.store.set(S.slotKey(S.slot), G.state);
       if (ok) Object.assign(status, { at: G.state.savedAt, fails: 0, why: null });

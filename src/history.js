@@ -19,6 +19,8 @@
 //   chk: { cur: {d, at, ids, r: [1 | 0 | null], i} | null, log: [{d, at, ids, r}] }   the grown-ups' word checks
 //   wu: { d: the day the dog's warm-up last ran (or was skipped), n: warm-ups done, k: skipped, none: days with too few
 //        words, last: {d, ids, right, of} }   (warmup.js)
+//   hoy: { d: 'YYYY-M-D', w: [ids grown since the morning], s, m: stars and speaking stars then }   the Hoy card's day,
+//        by calendar date (a game opened again the same day keeps it; a night at home starts a new one; src/day.js)
 //   ld: { n: listen-and-do requests done, ft: right on the first try, td: {d, n, ft} (today's), lvl: 1 | 2 (one detail,
 //        or two details too: the request maker's ramp, src/requests.js), ok1: first-try rights at level 1, miss2: two-
 //        detail requests missed in a row, last: {d, say, ok} }   (src/listen.js)

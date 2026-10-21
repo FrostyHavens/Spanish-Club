@@ -205,36 +205,39 @@
   const LAND = '.o,=pyz'; // (z: the barn's straw floor)
   function tilesIn(f, r, ok) { const out = []; if (!r) return out; for (let y = r[1]; y < r[1] + r[3]; y++) for (let x = r[0]; x < r[0] + r[2]; x++) if (ok(f.map.get(x, y), x, y)) out.push([x, y]); return out; }
   function setup(f) {
-    const z = f.zoo = { f: G.frame, list: [], fx: [] };
+    const z = f.zoo = { f: G.frame, list: [], fx: [], night: [] };
     for (const c of f.def.animals || []) {
       // rare ones (docs/WORLD_PLAN.md): only at a time of day (when: 'manana' | 'noche' | 'dia' | fn), only some visits (chance)
-      if (c.when && !(G.zones && G.zones.timeOk(c.when))) continue;
-      if (c.chance != null && Math.random() > c.chance) continue;
-      const r = area(f, c.area || c.at); if (!r) continue;
-      if (c.kind === 'pato') {
-        const water = tilesIn(f, r, ch => ch === 'w'); if (!water.length) continue;
-        const [x, y] = water[ri(water.length)];
-        const mom = add(z, 'pato', x * T + 12, y * T + 16, { water, ducklings: [] });
-        for (let i = 1; i < (c.n || 1); i++) mom.ducklings.push(add(z, 'pato', mom.x - 10 * i, mom.y, { baby: true, mom, trail: i }));
-      } else if (c.kind === 'rana') {
-        const water = tilesIn(f, r, ch => ch === 'w'); if (!water.length) continue;
-        const pads = [water[0], water[water.length - 1]].map(([x, y], i) => [x * T + 8 + i * 8, y * T + 10 + i * 4]);
-        add(z, 'rana', pads[0][0], pads[0][1], { pads, pad: 0 });
-      } else if (c.kind === 'pez') {
-        add(z, 'pez', r[0] * T + 12, r[1] * T + 16, { cx: r[0] * T + 12, cy: r[1] * T + 16, ang: rnd(6), next: 120 + ri(200) });
-      } else if (c.perch) { // sitting on something (the hens on the barn's perch): one on each tile, pinned there
-        for (let i = 0; i < Math.min(c.n || r[2] * r[3], r[2] * r[3]); i++) {
-          const x = r[0] + (i % r[2]), y = r[1] + Math.floor(i / r[2]), px = x * T + 12 + (i & 1 ? 2 : -2), py = y * T + c.perch;
-          add(z, c.kind, px, py, { ground: [[x, y]], tint: i, pin: [px, py], perched: true, flip: (i & 1) === 1 });
-        }
-      } else {
-        const K = AN.KINDS[c.kind] || {}, on = c.on || K.on || LAND;
-        const ground = tilesIn(f, r, (ch, x, y) => on.includes(ch) && !f.exitAt(x, y));
-        if (!ground.length) continue;
-        for (let i = 0; i < (c.n || 1); i++) {
-          const [x, y] = ground[ri(ground.length)];
-          add(z, c.kind, x * T + 4 + rnd(16), y * T + 12 + rnd(10), { ground, tint: c.tint != null ? c.tint : i, t: 20 + ri(200) });
-        }
+      if (c.when && !(G.zones && G.zones.timeOk(c.when))) { if (c.when === 'noche') z.night.push(c); continue; } // (the night's come out at sunset: AN.update)
+      place(f, z, c);
+    }
+  }
+  function place(f, z, c) { // one entry of the map's animals (setup)
+    if (c.chance != null && Math.random() > c.chance) return;
+    const r = area(f, c.area || c.at); if (!r) return;
+    if (c.kind === 'pato') {
+      const water = tilesIn(f, r, ch => ch === 'w'); if (!water.length) return;
+      const [x, y] = water[ri(water.length)];
+      const mom = add(z, 'pato', x * T + 12, y * T + 16, { water, ducklings: [] });
+      for (let i = 1; i < (c.n || 1); i++) mom.ducklings.push(add(z, 'pato', mom.x - 10 * i, mom.y, { baby: true, mom, trail: i }));
+    } else if (c.kind === 'rana') {
+      const water = tilesIn(f, r, ch => ch === 'w'); if (!water.length) return;
+      const pads = [water[0], water[water.length - 1]].map(([x, y], i) => [x * T + 8 + i * 8, y * T + 10 + i * 4]);
+      add(z, 'rana', pads[0][0], pads[0][1], { pads, pad: 0 });
+    } else if (c.kind === 'pez') {
+      add(z, 'pez', r[0] * T + 12, r[1] * T + 16, { cx: r[0] * T + 12, cy: r[1] * T + 16, ang: rnd(6), next: 120 + ri(200) });
+    } else if (c.perch) { // sitting on something (the hens on the barn's perch): one on each tile, pinned there
+      for (let i = 0; i < Math.min(c.n || r[2] * r[3], r[2] * r[3]); i++) {
+        const x = r[0] + (i % r[2]), y = r[1] + Math.floor(i / r[2]), px = x * T + 12 + (i & 1 ? 2 : -2), py = y * T + c.perch;
+        add(z, c.kind, px, py, { ground: [[x, y]], tint: i, pin: [px, py], perched: true, flip: (i & 1) === 1 });
+      }
+    } else {
+      const K = AN.KINDS[c.kind] || {}, on = c.on || K.on || LAND;
+      const ground = tilesIn(f, r, (ch, x, y) => on.includes(ch) && !f.exitAt(x, y));
+      if (!ground.length) return;
+      for (let i = 0; i < (c.n || 1); i++) {
+        const [x, y] = ground[ri(ground.length)];
+        add(z, c.kind, x * T + 4 + rnd(16), y * T + 12 + rnd(10), { ground, tint: c.tint != null ? c.tint : i, t: 20 + ri(200) });
       }
     }
   }
@@ -694,6 +697,7 @@
   // ---------- hooks and lookups ----------
   AN.update = function (f) {
     if (!f.zoo) setup(f);
+    if (f.zoo.night.length && G.frame % 30 === 0 && G.zones && G.zones.timeOk('noche')) { const L = f.zoo.night; f.zoo.night = []; for (const c of L) place(f, f.zoo, c); } // the sun went down while you're here: the night's animals come out
     const p = f.player, tr = f.zoo.trail || (f.zoo.trail = []), px = p.x * T + 12 + (p.ox || 0), py = p.y * T + 20 + (p.oy || 0), l = tr[tr.length - 1]; // (your trail: animals that follow you walk it)
     if (!l || Math.abs(l[0] - px) + Math.abs(l[1] - py) >= 2) { tr.push([px, py]); if (tr.length > 120) tr.shift(); }
     sync(f);

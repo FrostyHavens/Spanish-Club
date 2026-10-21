@@ -159,6 +159,13 @@ class Game {
           else { if (this.explore) await this.press('ArrowRight'); await this.press('Enter'); }
           break;
         }
+        case 'BedOrWalk': { // after the Hoy card (src/day.js): to bed, unless g.nightWalk (a night walk to a night animal)
+          if (s.t <= 22) { await this.frames(24); break; }
+          if (first) { await this.shot('bed_or_walk'); this.seen.add('BedOrWalk'); }
+          if (this.touch) await this.tapRect(await this.ev(k => G.top().rect(k), this.nightWalk ? 1 : 0));
+          else { if (this.nightWalk) await this.press('ArrowRight'); await this.press('Enter'); }
+          break;
+        }
         case 'PhraseAsk': { // a phrase (phrases.js): build it from its cards (the frame, then the right word), or go on
           if (s.t <= 10 || s.closing) { await this.frames(6); break; }
           if (first) { await this.frames(6); await this.shot(s.invite ? 'phrase_invite' : 'phrase_ask'); this.seen.add('PhraseAsk'); }

@@ -1,35 +1,58 @@
-// ===== The end of the day: a sunset over Villa Sol after a good long play, then home to bed and a new morning =====
-// G.sessionTime counts the seconds of play since this game was started or opened (it is never saved). After
-// G.day.SUNSET_AT the town warms to a sunset, its windows light up and a moon bubble floats over the home door.
-// Going home then plays the evening: Mamá's "¡Buenas noches!", the "Hoy" card (the words met or grown today, as
-// their growing word cards), the night sky, a sunrise and Mamá's "¡Buenos días!"; the game is saved
-// and the clock starts again. Nothing is forced: staying out to play changes nothing.
-// "Today" is what changed since the session began (a snapshot of the words' stages and the stars), so the save
-// format doesn't change. G.debug.sunsetAt (seconds) brings the sunset sooner, for tests and curious grown-ups.
+// ===== The end of the day: a sunset over Villa Sol, then home to bed and a new morning, all in a 15-minute sitting =====
+// G.sessionTime counts the seconds of play since this game was started or opened, or since this morning (it is never
+// saved). After G.day.SUNSET_AT (12.5 minutes), or sooner: a minute after the day's story is done when that's after
+// DY.EARLY, 6 minutes (a chapter whose line then waits for the morning, or has no more: chapters.js calls DY.storyDone;
+// a story done sooner leaves the open world until the usual sunset, so the story keeps its pace), the town warms to a
+// sunset, its windows light up and a moon bubble floats over the home door. Going home then plays the evening: Mamá's
+// "¡Buenas noches!", the "Hoy" card (the words met or grown today, as their growing word cards), then, while a night
+// animal she hasn't met lives in a place she's been to, two big pictures: to bed, or a short night walk there (DY.walk:
+// the bus at night, the guide's arrow on the animal; once she's found it, or after DY.WALK_MAX, back home to bed); then
+// the night sky, a sunrise and Mamá's "¡Buenos días!"; the game is saved and the clock starts again.
+// Nothing is forced: staying out to play changes nothing, and the bed is the picture already chosen.
+// "Today" counts by calendar date: a game opened again later the same day still has the whole day's words and stars
+// (a night at home starts a new day). Saved compact in G.state.hist.hoy = {d: 'YYYY-M-D', w: [ids grown today, in
+// order], s: stars, m: speaking stars at the day's start}; each session snapshots the words' stages in memory to see
+// what grows. G.debug.sunsetAt (seconds) brings the sunset sooner, for tests and curious grown-ups.
 'use strict';
 (function () {
   const DY = G.day = {};
-  DY.SUNSET_AT = 18 * 60; // seconds of play before the sun goes down
+  DY.SUNSET_AT = 12.5 * 60; // seconds of play before the sun goes down (15 minutes a day: the evening fits in)
+  DY.EARLY = 6 * 60;        // the day's story done after this much play: the sun goes down DY.AFTER seconds later
+  DY.AFTER = 60;
+  DY.WALK_MAX = 180;        // a night walk: back home to bed after this long (seconds), the animal found or not
+  DY.HOY_MAX = 44;          // words the Hoy card holds (4 rows of 11)
   G.debug = G.debug || {};
   G.sessionTime = 0;
-  const HOME = 'casa', TOWN = 'villa', BED = [6, 3]; // where you wake up: beside your bed at home
+  const HOME = 'casa', TOWN = 'villa', BED = [6, 3], NIGHT = '#080a26'; // where you wake up: beside your bed at home
   const T = (t, en) => ({ t, en });
-  let base = null, today = [], glow = 0, bringAt = null;
+  const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+  let base = null, glow = 0, bringAt = null;
+  DY.walk = null; // the night walk going on: {zone, map, kinds, t, found, calm, back}
 
   // ---------- the session: since the game was started or opened, or since this morning ----------
-  function newDay() {
-    const st = {}; for (const id in G.data.words) st[id] = G.st.stage(id); // each word's stage this morning (words.js)
-    base = { state: G.state, st, stars: G.state.stars | 0, said: G.st.micStars() };
-    today = []; G.sessionTime = 0; glow = 0; bringAt = null;
+  // night: the morning after a night at home (a new day, even on the same date); else a game opened: today goes on
+  function newDay(night) {
+    const st = {}; for (const id in G.data.words) st[id] = G.st.stage(id); // each word's stage now (words.js)
+    const h = G.hist ? G.hist.state() : {}, td = G.today();
+    if (night || !isObj(h.hoy) || h.hoy.d !== td || !Array.isArray(h.hoy.w)) h.hoy = { d: td, w: [], s: G.state.stars | 0, m: G.st.micStars() };
+    base = { state: G.state, st, hoy: h.hoy };
+    G.sessionTime = 0; glow = 0; bringAt = null; DY.walk = null;
   }
   // an evening chapter is next (chapters.js: C9): the sun goes down sec seconds from now (or sooner, as it was)
   DY.bring = sec => { const at = G.sessionTime + sec; if (bringAt == null || at < bringAt) bringAt = at; };
   DY.brought = () => bringAt != null;
+  // the day's story is done (chapters.js: its line waits for the morning, or has no more): after 6 minutes, the evening soon
+  DY.storyDone = () => { if (G.sessionTime >= DY.EARLY) DY.bring(DY.AFTER); };
   DY.sunsetAt = () => Math.min(G.debug && G.debug.sunsetAt != null ? G.debug.sunsetAt : DY.SUNSET_AT, bringAt == null ? 1e9 : bringAt);
-  DY.over = () => !!(G.state && G.state.flags.intro) && G.sessionTime >= DY.sunsetAt();
+  DY.over = () => !!(G.state && G.state.flags.intro) && !!base && base.state === G.state && G.sessionTime >= DY.sunsetAt(); // (a game just opened: its clock starts at its first frame)
   // words met or grown a stage today (in that order), stars earned today and how many of them were speaking stars
-  const sweep = () => { for (const id in G.state.words) if (today.indexOf(id) < 0 && G.st.stage(id) > (base.st[id] | 0)) today.push(id); };
-  DY.today = () => base && base.state === G.state && (sweep(), 1) ? { words: today.slice(), stars: Math.max(0, (G.state.stars | 0) - base.stars), said: Math.max(0, (G.st.micStars()) - base.said) } : { words: [], stars: 0, said: 0 };
+  const sweep = () => { const w = base.hoy.w; for (const id in G.state.words) if (w.length < DY.HOY_MAX && w.indexOf(id) < 0 && G.st.stage(id) > (base.st[id] | 0)) w.push(id); };
+  DY.sweep = () => { if (base && base.state === G.state) sweep(); }; // (state.js, before each save)
+  DY.today = function () {
+    if (!base || base.state !== G.state) return { words: [], stars: 0, said: 0 };
+    sweep(); const r = base.hoy;
+    return { words: r.w.filter(id => G.data.words[id]), stars: Math.max(0, (G.state.stars | 0) - (+r.s || 0)), said: Math.max(0, G.st.micStars() - (+r.m || 0)) };
+  };
   // core.js, every frame: the clock runs while a game is on (a map is in the scene stack, maybe under a talk)
   DY.step = function () {
     const f = G.field;
@@ -39,6 +62,7 @@
     if (G.words) G.words.step(); // the word model's play clock (words.js)
     if (G.frame % 30 === 0) sweep();
     glow = G.clamp(glow + (DY.over() ? 1 / 480 : -1 / 30), 0, 1); // the sun goes down over ~8 s
+    walkStep(f);
   };
   DY.glow = () => glow;
   // the home door, while it has its moon bubble (hint.js points there too)
@@ -105,26 +129,35 @@
   DY.evening = function* (f) {
     if (!f || f.mapId !== HOME || f.evening || !DY.over()) return;
     f.evening = true; f.locked = true; f.banner = null; // this field's own guard: it can't start twice
+    if (DY.walk) { DY.walk = null; yield* sleep(f); return; } // home from the night walk (or on foot): good night was said, to bed
     while (G.fade.a > 0) yield 1;
     yield 12;
     f.player.dir = 'up';
     const mama = { portrait: G.portraitOf('mama'), name: G.nameOf('mama'), who: 'mama' }, met = id => G.st.seen(id);
     // the story's evening (chapters.js: C9 teaches agua, cama and buenas noches here), else Mamá's good night
-    if (!(G.chapters && (yield* G.chapters.evening('dusk', f)))) {
+    const story = !!(G.chapters && (yield* G.chapters.evening('dusk', f)));
+    if (!story) {
       if (met('buenasnoches')) yield* G.chapters.ask('mama', '¡...!', 'The moon is out: Mom says good night. Say it back!', 'buenasnoches', met('buenosdias') ? ['buenosdias'].concat(met('cama') ? ['cama'] : met('hola') ? ['hola'] : []) : ['hola'], { show: { icon: 'noche' } });
       else yield G.say(T('¡[buenasnoches], {name}!', 'Good night, {name}!'), mama);
     }
     yield DY.todayCard();
+    // a night animal she hasn't met lives in a place she's been to: to bed, or a little night walk there first?
+    const z = !story && DY.walkTo();
+    if (z && (yield DY.bedOrWalk(z)).result === 'walk') { yield* walkOut(f, z); return; }
+    yield* sleep(f);
+  };
+  function* sleep(f) {
     G.audio.play('inn', true); // a little lullaby
-    yield G.fadeTo(1, 0.03, '#080a26');
+    yield G.fadeTo(1, 0.03, NIGHT);
     Object.assign(f.player, { x: BED[0], y: BED[1], dir: 'left', ox: 0, oy: 0 }); f.snapCam();
     if (G.pet) G.pet.night(f); // Canelo curls up on his cushion (pet.js)
     yield DY.night(); // the night sky, then the sunrise (it fades itself in and out)
-    newDay(); if (G.words) G.words.newSession('night'); // a new day for the word model too: yesterday's words come back
+    newDay(true); if (G.words) G.words.newSession('night'); // a new day for the word model too: yesterday's words come back
     G.audio.play(f.def.music || 'town', true);
     yield G.fadeTo(0, 0.04, '#fff2d0'); // out of the morning light (the night left the fade there)
     if (G.pet) G.pet.morning(f); // and Canelo hops up
     yield 16;
+    const mama = { portrait: G.portraitOf('mama'), name: G.nameOf('mama'), who: 'mama' }, met = id => G.st.seen(id);
     // the morning: the story's (C9's last beat), else Mamá's good morning under the sun, once buenos días is met
     if (!(G.chapters && (yield* G.chapters.evening('dawn', f)))) {
       if (met('buenosdias')) {
@@ -135,7 +168,101 @@
     }
     f.locked = false; f.evening = false;
     if (G.st.autosave) G.st.autosave();
+  }
+
+  // ---------- the night walk: after the Hoy card, the bus at night to a place with a night animal, then to bed ----------
+  // A place's night animals: its album's rare ones at 'noche' (zones.js) and the map each lives on (its animals entry).
+  const nightOf = z => {
+    const d = G.zones && G.zones.def(z), out = [];
+    if (d && d.rare) for (const k in d.rare) if (d.rare[k] === 'noche') { const m = (d.maps || []).find(m => ((G.maps[m] || {}).animals || []).some(c => c.kind === k && c.when === 'noche')); if (m) out.push({ kind: k, map: m }); }
+    return out;
   };
+  DY.nightOf = nightOf;
+  // where a walk would go: a place she's been to with a night animal not met yet (the beach last: its night isn't drawn
+  // yet, docs/AUDIT_2026-10.md 3.7), or null (then the evening goes straight on to bed, as before)
+  DY.walkTo = function () {
+    if (!G.zones || !G.animals || !G.state) return null;
+    const L = G.zones.visitedIds().filter(z => nightOf(z).some(n => !G.animals.met(n.kind)));
+    return L.find(z => z !== 'playa') || L[0] || null;
+  };
+  function* walkOut(f, z) {
+    const L = nightOf(z).filter(n => !G.animals.met(n.kind));
+    DY.walk = { zone: z, map: L[0].map, kinds: L.map(n => n.kind), t: 0, found: null, calm: 0, back: false };
+    f.evening = false; glow = 1; // (night: the sun is long down)
+    yield* G.zones.ride(f, z); // the bus (from home it just fades): you get off at the stop, the moon up, the night animals out
+  }
+  // every frame on the walk: once she's found it (and the map is quiet a moment), or after DY.WALK_MAX, home to bed
+  function walkStep(f) {
+    const w = DY.walk; if (!w || w.back || f.mapId === HOME) return;
+    w.t += 1 / 60;
+    if (w.found == null && w.kinds.some(k => G.animals.met(k))) w.found = w.t;
+    const free = G.top() === f && !f.locked && G.fade.a === 0, quiet = free && !f.player.moving && !f.route && !(G.world && (G.world.bubble || G.world.sayBack));
+    w.calm = quiet ? w.calm + 1 : 0;
+    if (free && ((w.found != null && w.calm > 150) || (w.t > DY.WALK_MAX && (quiet || w.t > DY.WALK_MAX + 30)))) { w.back = true; f.tasks.add(walkHome(f)); }
+  }
+  function* walkHome(f) {
+    f.locked = true; f.route = null;
+    if (G.pet) G.pet.sound('whine'); // (a sleepy yawn)
+    yield 30;
+    yield G.fadeTo(1, 0.03, NIGHT);
+    G.goto(HOME, BED[0], BED[1], 'left'); // (casa's onEnter: DY.evening, straight on to bed)
+    G.fadeTo(1, 1, NIGHT); // (it stays dark)
+  }
+  // the guide (guide.js, first): the arrow on the night animal (or the way to its map) until she's found it
+  DY.walkGoal = function (f) {
+    const w = DY.walk; if (!w || w.back || !G.animals) return null;
+    const left = w.kinds.filter(k => !G.animals.met(k)); if (!left.length) return null;
+    for (const k of left) { const a = G.animals.find(k, f); if (a) return { why: 'night walk: ' + k, pts: [{ x: Math.round(a.x), y: Math.round(a.y - 6), lift: 22 }] }; }
+    return f.mapId !== w.map ? { why: 'night walk', map: w.map, far: true, badge: { icon: 'noche' } } : null;
+  };
+  // Two big pictures (like the opener's choice, zones.js), the voice asks "¿A dormir... o a pasear?": your bed with the
+  // moon and "z z" (picked already: A, B or a tap on it goes to bed), or the night sky over that place with a dark "?"
+  // shape of the animal waiting there, fireflies, and you and the dog walking out.
+  class BedOrWalk {
+    constructor(w, z) { this.w = w; this.z = G.zones.def(z); this.t = 0; this.sel = 0; this.transparent = true; this.kind = (nightOf(z).find(n => !G.animals.met(n.kind)) || {}).kind; }
+    onEnter() { if (G.speak) G.speak('¿A dormir... o a pasear?'); }
+    rect(k) { return { x: k ? 170 : 22, y: 40, w: 128, h: 150 }; }
+    hintXY() { return null; }
+    pick(k) { G.audio.sfx('ok'); if (G.speak) G.speak(k ? '¡A pasear!' : '¡A dormir!'); G.pop(); this.w.resolve(k ? 'walk' : 'bed'); }
+    update() {
+      this.t++;
+      if (this.t < 20) return;
+      const tap = G.input.tap();
+      if (tap) for (const k of [0, 1]) if (G.tapIn(this.rect(k))) { this.sel = k; this.pick(k); return; }
+      const d = G.input.repDir(14, 6); if (d === 'left' || d === 'right') { this.sel = d === 'left' ? 0 : 1; G.audio.sfx('cursor'); }
+      if (G.input.p('A')) this.pick(this.sel); else if (G.input.p('B')) this.pick(0);
+    }
+    draw(ctx) {
+      ctx.fillStyle = 'rgba(4,6,24,0.6)'; ctx.fillRect(0, 0, G.W, G.H);
+      if (G.enVisible()) G.textC(ctx, 'Bed now, or a little night walk to find a night animal?', G.W / 2, 22, '#ffffff', '#10102a');
+      for (const k of [0, 1]) {
+        const r = this.rect(k), on = this.sel === k, bob = Math.round(Math.sin(this.t / 12 + k * Math.PI) * 2), cx = r.x + r.w / 2, top = r.y + bob, ix = r.x + 8, iy = top + 8, iw = r.w - 16, ih = r.h - 40;
+        G.win(ctx, r.x, r.y + bob, r.w, r.h, on ? { fill1: '#3a56c8', fill2: '#1c2c8c', alpha: 1 } : { alpha: 1 });
+        ctx.save(); ctx.beginPath(); ctx.rect(ix, iy, iw, ih); ctx.clip();
+        const sky = ctx.createLinearGradient(0, iy, 0, iy + ih); sky.addColorStop(0, '#0a0e30'); sky.addColorStop(1, k ? '#283478' : '#3a2a5a'); ctx.fillStyle = sky; ctx.fillRect(ix, iy, iw, ih);
+        for (let i = 0; i < 14; i++) { const sx = ix + (i * 37 + k * 11) % iw, sy = iy + (i * 23) % 50, tw = Math.sin(this.t / 10 + i * 1.9); ctx.globalAlpha = 0.5 + 0.5 * tw; ctx.fillStyle = '#e8ecff'; ctx.fillRect(sx, sy, 1, 1); }
+        ctx.globalAlpha = 1; ctx.drawImage(moon(7), ix + iw - 22, iy + 6);
+        ctx.imageSmoothingEnabled = false;
+        if (!k) { // your bed, a lamp's glow, "z z" floating up
+          const g = ctx.createRadialGradient(cx, iy + ih - 34, 4, cx, iy + ih - 34, 50); g.addColorStop(0, 'rgba(255,214,140,0.45)'); g.addColorStop(1, 'rgba(255,214,140,0)'); ctx.fillStyle = g; ctx.fillRect(ix, iy, iw, ih);
+          G.drawIcon16(ctx, 'cama', cx - 32, iy + ih - 70, 4);
+          for (let j = 0; j < 2; j++) { const a = ((this.t + j * 40) % 80) / 80; ctx.globalAlpha = Math.min(1, (1 - a) * 2); G.bigText(ctx, 'z', Math.round(cx + 14 + a * 14), Math.round(iy + ih - 70 - a * 26), 1 + j, '#e8ecff'); ctx.globalAlpha = 1; }
+        } else { // the place at night: its picture on the hill, the animal waiting (a dark "?" shape), fireflies, you and the dog
+          ctx.fillStyle = '#18264a'; ctx.beginPath(); ctx.ellipse(cx, iy + ih + 18, iw * 0.75, 44, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.globalAlpha = 0.85; G.drawIcon16(ctx, this.z.icon, ix + 4, iy + ih - 40, 2); ctx.globalAlpha = 1;
+          if (this.kind) { const glow = ctx.createRadialGradient(cx + 18, iy + 46, 2, cx + 18, iy + 46, 26); glow.addColorStop(0, 'rgba(200,210,255,0.5)'); glow.addColorStop(1, 'rgba(200,210,255,0)'); ctx.fillStyle = glow; ctx.fillRect(ix, iy, iw, ih); ctx.drawImage(G.tinted(G.icon(G.animals.KINDS[this.kind] ? G.animals.KINDS[this.kind].word : this.kind), '#0c0e2a', 'nightsil' + this.kind), cx + 2, iy + 30, 32, 32); G.bigText(ctx, '?', cx + 18, iy + 18, 1, '#f8e060'); }
+          for (let i = 0; i < 6; i++) { const fx = ix + 10 + (i * 41) % (iw - 20) + Math.sin(this.t / 20 + i) * 4, fy = iy + 40 + (i * 29) % 50 + Math.cos(this.t / 17 + i * 2) * 3; ctx.globalAlpha = 0.4 + 0.6 * Math.abs(Math.sin(this.t / 15 + i)); ctx.fillStyle = '#f8f070'; ctx.fillRect(Math.round(fx), Math.round(fy), 2, 2); }
+          ctx.globalAlpha = 1;
+          const step = (this.t >> 4) & 1, me = G.unitSprite(G.st.playerSpec().map, 'up', step), pup = G.data.npcs.canelo && G.unitSprite(G.data.npcs.canelo.map, 'up', step);
+          ctx.drawImage(me, cx - 30, iy + ih - 34, 32, 32); if (pup && G.pet && G.pet.mine()) ctx.drawImage(pup, cx - 6, iy + ih - 22, 24, 24);
+        }
+        ctx.restore();
+        G.textC(ctx, k ? '¡A pasear!' : '¡A dormir!', cx, top + r.h - 22, '#f8e060');
+        if (on && (this.t >> 3) % 4 !== 3) G.textC(ctx, '\u0001', cx, r.y - 10 + bob, '#f8e060');
+      }
+    }
+  }
+  DY.bedOrWalk = function (z) { const w = new G.Wait(); G.push(new BedOrWalk(w, z)); return w; };
 
   // ---------- "Hoy": today's words, as their growing cards (cards.js) ----------
   // Cards pop in one by one, each said aloud (no stars: the plants on the cards show what grew). Tap a card (or left / right) to hear it
