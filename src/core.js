@@ -150,8 +150,11 @@ G.top = () => G.scenes[G.scenes.length - 1];
 
 // ---------- Coroutine-ish task runner (for cutscenes & battle flow) ----------
 // Generators yield: number (wait frames), a Promise-like {done()} object, or nothing (1 frame)
+// A task that throws (a talk, a cutscene: H7) is dropped and logged (G.oops), the screens it had just pushed close
+// (whatever waited on them goes on), and the owner hears about it: tasks.onError(e, gen) (field.js: the map unlocks
+// and walking starts again; main.js: back to the title).
 G.Tasks = class {
-  constructor() { this.list = []; }
+  constructor() { this.list = []; this.onError = null; }
   add(gen) { this.list.push({ gen, wait: 0, obj: null }); }
   get busy() { return this.list.length > 0; }
   update() {
@@ -160,8 +163,13 @@ G.Tasks = class {
       if (t.wait > 0) { t.wait--; continue; }
       if (t.obj && !t.obj.done()) continue;
       const back = t.obj; t.obj = null;
+      const top0 = G.top();
       let r;
-      try { r = t.gen.next(back); } catch (e) { console.error(e); this.list.splice(i, 1); continue; }
+      try { r = t.gen.next(back); } catch (e) {
+        this.list.splice(i, 1); G.oops(e, 'task'); G.dropAbove(top0); // (a text box it opened, half-said: closed)
+        if (this.onError) try { this.onError(e, t.gen); } catch (e2) { G.oops(e2, 'task'); }
+        continue;
+      }
       if (r.done) { this.list.splice(i, 1); continue; }
       const v = r.value;
       if (typeof v === 'number') t.wait = v - 1;
@@ -177,16 +185,40 @@ G.fadeTo = (a, speed = 0.08, color = '#000') => { G.fade.target = a; G.fade.spee
 // Screen flash / shake
 G.fx = { shake: 0, flash: 0, flashColor: '#fff' };
 
+// ---------- Crash guards (docs/AUDIT_2026-10.md H7: one error used to stop the game for good) ----------
+// The loop below always re-arms itself, and every part of a frame is caught on its own: the overlays (fx, cards,
+// album, demo, hint, day), the top scene's update and each scene's draw. A scene that keeps throwing (3 times within
+// half a second) is closed, with anything over it: back to the screen under it, the map. Whatever waited on it (a
+// G.Wait it holds) goes on as if it had closed. The map (a G.Field) and the screen at the bottom are never closed.
+// A draw that threw may leave a transform, a clip or a save behind: the next frame starts from a fresh canvas state.
+// Errors go to G.oops (the problem log, below).
+function closeTop() { // pop the top scene for good; its waits resolve (null), so a talk waiting on it goes on
+  const s = G.scenes[G.scenes.length - 1];
+  try { G.pop(); } catch (e) { if (G.top() === s) G.scenes.pop(); G.oops(e, 'onExit'); }
+  if (s) for (const k in s) { const v = s[k]; if (v && G.Wait && v instanceof G.Wait && !v.fin) v.resolve(null); }
+}
+G.dropAbove = s => { if (!s || G.scenes.indexOf(s) < 0) return; while (G.top() !== s) closeTop(); }; // close what's over s
+const fails = new WeakMap(); // scene -> frames of its last errors
+let drawBad = false;
+G.ctxReset = () => { drawBad = true; }; // (a draw caught its own error: field.js)
+function sceneFailed(s, e, where) {
+  G.oops(e, where);
+  if (!s || G.scenes.indexOf(s) <= 0 || (G.Field && s instanceof G.Field)) return;
+  const L = (fails.get(s) || []).filter(f => f > G.frame - 30); L.push(G.frame); fails.set(s, L);
+  if (L.length >= 3) while (G.scenes.indexOf(s) >= 0) closeTop();
+}
+const PRE = [['fx', 'step'], ['intro', 'step'], ['cards', 'step'], ['album', 'step'], ['demo', 'pre']], POST = [['day', 'step'], ['hint', 'step'], ['demo', 'step']];
+const OVER = [['hint', 'draw'], ['intro', 'draw'], ['cards', 'draw'], ['album', 'draw'], ['demo', 'draw'], ['fx', 'draw']];
+function hooks(L, arg) { for (const [m, f] of L) { const o = G[m]; if (o && o[f]) try { o[f](arg); } catch (e) { if (arg) drawBad = true; G.oops(e, m + '.' + f); } } }
+
 G.frame = 0;
 function step() {
   G.frame++;
   const s = G.top();
-  if (G.fx.step) G.fx.step(); // the particle layer (fx.js): sees this frame's tap before a scene can eat it
-  if (G.intro && G.intro.step) G.intro.step(); // a word just met: its new card (intro.js)
-  if (G.cards && G.cards.step) G.cards.step(); // word cards popping up and growing, flying into the deck (cards.js)
-  if (G.album && G.album.step) G.album.step(); // "¡Nuevo animal!" (album.js)
-  if (G.demo && G.demo.pre) G.demo.pre(); // a tap stops a ghost-hand demo (demo.js: seen here, before a scene can eat it)
-  if (s) s.update();
+  // before the scene: the particle layer (fx.js: sees this frame's tap before a scene can eat it), a word just met (intro.js),
+  // word cards popping up and growing (cards.js), "¡Nuevo animal!" (album.js), a tap stopping a ghost-hand demo (demo.js)
+  hooks(PRE);
+  if (s) try { s.update(); } catch (e) { sceneFailed(s, e, 'update'); }
   // fade
   const f = G.fade;
   if (f.a < f.target) f.a = Math.min(f.target, f.a + f.speed);
@@ -195,29 +227,28 @@ function step() {
   if (G.fx.flash > 0) G.fx.flash--;
   for (const k in G.keys) if (G.keys[k]) G.repeatT[k] = (G.repeatT[k] || 0) + 1;
   if (G.toastT > 0) G.toastT--;
-  if (G.day) G.day.step(); if (G.hint) G.hint.step(); if (G.demo) G.demo.step(); // the day's clock (day.js), tap hints (hint.js): before input clears
+  hooks(POST); // the day's clock (day.js), tap hints (hint.js), demos (demo.js): before input clears
   G.input.endFrame();
-  G.audio && G.audio.tick();
+  try { G.audio && G.audio.tick(); } catch (e) { G.oops(e, 'audio'); }
 }
 function draw() {
   const ctx = G.ctx;
+  if (drawBad) { drawBad = false; G.canvas.width = G.W; ctx.imageSmoothingEnabled = false; } // (a fresh state: no clip or save left over)
   ctx.save();
   if (G.fx.shake > 0) ctx.translate(G.r(5) - 2, G.r(3) - 1);
   ctx.fillStyle = '#000'; ctx.fillRect(-4, -4, G.W + 8, G.H + 8);
   // draw from lowest non-transparent scene upward
   let start = G.scenes.length - 1;
   while (start > 0 && G.scenes[start].transparent) start--;
-  for (let i = Math.max(0, start); i < G.scenes.length; i++) G.scenes[i].draw(ctx);
+  for (let i = Math.max(0, start); i < G.scenes.length; i++) { const s = G.scenes[i]; try { s.draw(ctx); } catch (e) { drawBad = true; ctx.globalAlpha = 1; sceneFailed(s, e, 'draw'); } }
   ctx.restore();
   // above the scenes, bottom to top: flash, toast, the hint hand (hint.js), particles (fx.js); a fade covers it all
   if (G.fx.flash > 0) { ctx.globalAlpha = Math.min(1, G.fx.flash / 6); ctx.fillStyle = G.fx.flashColor; ctx.fillRect(0, 0, G.W, G.H); ctx.globalAlpha = 1; }
   if (G.toastT > 0 && G.win) { const w = G.textWidth(G.toastMsg) + 20; ctx.globalAlpha = Math.min(1, G.toastT / 15); G.win(ctx, (G.W - w) / 2, 40, w, 20); G.textC(ctx, G.toastMsg, G.W / 2, 46, '#f8e060'); ctx.globalAlpha = 1; }
-  if (G.hint) G.hint.draw(ctx); // the tapping hand, the keyboard strip
-  if (G.intro && G.intro.draw) G.intro.draw(ctx); // (intro.js: nothing of its own now, its new cards are cards.js's)
-  if (G.cards && G.cards.draw) G.cards.draw(ctx); // word cards growing and flying into the deck (cards.js)
-  if (G.album && G.album.draw) G.album.draw(ctx); // "¡Nuevo animal!" popping in, then into the album (album.js)
-  if (G.demo && G.demo.draw) G.demo.draw(ctx); // the ghost hand showing a first-time action (demo.js)
-  if (G.fx.draw) G.fx.draw(ctx); // ripples, bursts, confetti, flying stars (unshaken)
+  // the tapping hand and keyboard strip (hint.js), intro.js (nothing of its own now), word cards growing and flying into
+  // the deck (cards.js), "¡Nuevo animal!" (album.js), the ghost hand (demo.js), ripples, bursts and confetti (fx.js, unshaken)
+  hooks(OVER, ctx);
+  ctx.globalAlpha = 1;
   if (G.fade.a > 0) { ctx.globalAlpha = G.fade.a; ctx.fillStyle = G.fade.color; ctx.fillRect(0, 0, G.W, G.H); ctx.globalAlpha = 1; }
 }
 G.toast = (msg, t = 90) => { G.toastMsg = msg; G.toastT = t; };
@@ -226,21 +257,74 @@ G.step = step; G.drawFrame = draw;
 let last = performance.now(), acc = 0;
 G.speedMul = 1;
 function loop(now) {
+  requestAnimationFrame(loop); // first: nothing below can stop the game
   acc += Math.min(100, now - last); last = now;
   const dt = 1000 / 60;
   let n = 0;
-  while (acc >= dt && n < 5) { for (let k = 0; k < G.speedMul; k++) step(); acc -= dt; n++; }
-  draw();
-  requestAnimationFrame(loop);
+  try { while (acc >= dt && n < 5) { for (let k = 0; k < G.speedMul; k++) step(); acc -= dt; n++; } } catch (e) { acc = 0; G.oops(e, 'step'); }
+  try { draw(); } catch (e) { drawBad = true; G.oops(e, 'draw'); }
 }
 G.start = () => { if (location.hash === '#test') return; requestAnimationFrame(t => { last = t; loop(t); }); };
 
 // ---------- Storage (safe) ----------
+// Nothing here throws. set / setRaw return false when the browser refused (storage full, private browsing, a value
+// that can't be written), with the reason in G.store.err ('QuotaExceededError' = full); state.js counts the game's
+// failed saves (C4).
 G.store = {
+  err: null,
   get(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); G.store.err = null; return true; } catch (e) { G.store.err = (e && e.name) || 'Error'; return false; } },
+  raw(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  setRaw(k, s) { try { localStorage.setItem(k, s); G.store.err = null; return true; } catch (e) { G.store.err = (e && e.name) || 'Error'; return false; } },
+  keys() { try { const out = []; for (let i = 0; i < localStorage.length; i++) out.push(localStorage.key(i)); return out; } catch (e) { return []; } },
   del(k) { try { localStorage.removeItem(k); } catch (e) { } }
 };
+
+// ---------- The problem log (H7: errors used to go only to a console nobody sees on an iPad) ----------
+// G.oops(e, where) keeps an error the game got past: the last 20 on the device ('spanishclub_errors'), each with its
+// message, the first lines of its stack, where it was caught (update, draw, task, map <hook>, window, promise...), the
+// screen on top, the map, when, and the build (G.build(): a hash of the scripts' ?v= stamps). The same error again
+// only counts up (n, last), so a frame that keeps failing doesn't flood the log. A new one also goes to the console
+// (the tests read it). The grown-ups menu's Problem log (backup.js) shows them, with Copy and Clear.
+(function () {
+  const KEY = 'spanishclub_errors', MAX = 20;
+  let list = null, timer = 0, build = null;
+  G.errlogVer = 0;
+  const load = () => { if (!list) { const a = G.store.get(KEY); list = Array.isArray(a) ? a.filter(e => e && typeof e === 'object') : []; } return list; };
+  const save = () => { clearTimeout(timer); timer = 0; G.store.set(KEY, list); };
+  const short = s => String(s == null ? '' : s).replace(/(?:https?|file):\/\/[^\s()]*?\/((?:src|content)\/[^\s?():]+)(?:\?v=[0-9a-f]+)?/g, '$1')
+    .replace(/(?:https?|file):\/\/[^\s()]*\/([^\s\/()]+)/g, '$1').slice(0, 220); // (src/field.js:95:20; the single file: its name)
+  G.build = function () {
+    if (build) return build;
+    const v = Array.from(document.scripts || []).map(s => (/[?&]v=([0-9a-f]+)/.exec(s.src || '') || [])[1]).filter(Boolean);
+    let h = 2166136261; for (const ch of v.join('')) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+    const b = v.length ? (h >>> 0).toString(16).padStart(8, '0') : 'unstamped';
+    if (document.readyState !== 'loading') build = b; // (not while the scripts are still loading)
+    return b;
+  };
+  const L = G.errlog = {
+    list: () => load().slice(),
+    add(e, where) {
+      try {
+        const msg = short(e instanceof Error ? String(e) : typeof e === 'string' ? e : (() => { try { return JSON.stringify(e); } catch (x) { return String(e); } })());
+        const stack = e && e.stack ? String(e.stack).split('\n').filter(l => /\sat\s|@/.test(l)).slice(0, 4).map(l => short(l.trim())) : [];
+        const a = load(), now = Date.now(), old = a.find(x => x.msg === msg && x.where === where && (x.stack || [])[0] === stack[0]);
+        G.errlogVer++;
+        if (old) { old.n = (old.n || 1) + 1; old.last = now; a.splice(a.indexOf(old), 1); a.push(old); if (!timer) timer = setTimeout(save, 1000); return old; }
+        let top = null, map = null;
+        try { const s = G.top(); top = s ? s.constructor.name : null; if (G.field && G.scenes.indexOf(G.field) >= 0) map = G.field.mapId; } catch (x) { }
+        const ent = { at: now, msg, where: where || '?', scene: top, map, stack, build: G.build(), n: 1 };
+        a.push(ent); a.splice(0, Math.max(0, a.length - MAX)); save();
+        try { console.error('[caught: ' + ent.where + ']', e); } catch (x) { }
+        return ent;
+      } catch (x) { return null; }
+    },
+    clear() { list = []; clearTimeout(timer); timer = 0; G.store.del(KEY); G.errlogVer++; },
+  };
+  G.oops = (e, where) => L.add(e, where);
+  window.addEventListener('error', e => { if (e && (e.error || e.message)) L.add(e.error || e.message, 'window'); });
+  window.addEventListener('unhandledrejection', e => L.add(e && e.reason, 'promise'));
+})();
 
 // ---------- On-screen D-pad + A/B/C (a grown-ups option, per device; hidden by default) ----------
 (function () {

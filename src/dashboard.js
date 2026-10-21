@@ -15,6 +15,9 @@
 //   Tonight    one simple Spanish question for dinner from today's words (or the last days'), only words the child
 //              has met, with its English and an answer to expect (templates per kind of word, below)
 // Share (top): the summary as text (the share sheet; else the clipboard; else a box to copy from), inside the tap.
+// Overview's foot: whether the game is saving (G.st.saveLine: "Saved just now" / "Not saved since 10:42"), the last
+// backup ("Last backup: never / 9 days ago - back up now", asked for after 7 days), "Going on a trip or a break? Back up
+// first.", and a Back up button that opens Back up / restore (src/backup.js). Only here, for grown-ups: never in her play.
 // API: G.dashboard.open() -> Wait; .tonight(k) the k-th question of tonight's list ({id, es, en, ans: {es, en}, why,
 //   words}); .tonights() the whole list; .shareText(); .TABS. The screen is 'LearningDash' (tests read .tab, .view()).
 'use strict';
@@ -175,6 +178,7 @@
     stopRect() { return { x: 8, y: 205, w: 64, h: 16 }; }
     sayXY() { return [256, 64]; }
     anotherRect() { return { x: 90, y: 192, w: 140, h: 22 }; }
+    backupRect() { return { x: G.W - 70, y: 190, w: 62, h: 20 }; } // (Overview: opens Back up / restore)
     tonightSayXY() { return [G.W - 34, 66]; }
     rows() { if (!this.rowsCache || this.rowsCache.zone !== this.zone || this.rowsCache.t !== G.frame >> 5) { const L = this.zone === 'frases' ? H().phraseRows() : H().zoneRows(this.zone); L.sort((a, b) => b.met - a.met); this.rowsCache = { zone: this.zone, t: G.frame >> 5, L }; } return this.rowsCache.L; } // (met words first, in notebook order; the phrases' tab: the phrases)
     maxScroll() { return Math.max(0, this.rows().length * 18 - this.listBox().h); }
@@ -202,6 +206,7 @@
       const d = G.input.repDir(14, 6);
       if (d === 'left' || d === 'right') this.setTab((this.tab + (d === 'left' ? DB.TABS.length - 1 : 1)) % DB.TABS.length);
       const page = DB.TABS[this.tab];
+      if (page === 'Overview' && G.backup && G.tapIn(this.backupRect())) { G.audio.sfx('ok'); G.backup.open(); return; }
       if (page === 'Words') this.updWords(d);
       else if (page === 'Check') this.updCheck();
       else if (page === 'Tonight') this.updTonight();
@@ -315,6 +320,7 @@
       ctx.fillStyle = '#000010'; ctx.fillRect(bx - 1, by - 1, bw + 2, 7); ctx.fillStyle = COL.line; ctx.fillRect(bx, by, bw, 5);
       let x = bx; for (const [n, col] of segs) { const w = Math.round(bw * Math.max(0, n) / all); ctx.fillStyle = col; ctx.fillRect(x, by, w, 5); x += w; }
       G.textR(ctx, o.met + ' of ' + o.all + ' words met', G.W - 8, 100, COL.dim);
+      G.text(ctx, 'Counts include the stronger words', 8, 100, '#8890c0');
       const lines = [
         ['Played', o.days + (o.days === 1 ? ' day, ' : ' days, ') + hm(o.minutes) + ' in all, ' + (o.today ? hm(o.today) : 'nothing yet') + ' today'],
         ['Retention', o.r7.n ? pctS(o.r7) + ' last 7 days (' + o.r7.right + ' of ' + o.r7.n + ')' + (o.ra.n ? ', ' + pctS(o.ra) + ' in all' : '') : o.ra.n ? pctS(o.ra) + ' in all (' + o.ra.right + ' of ' + o.ra.n + ')' : 'no word back after a day yet'],
@@ -326,11 +332,21 @@
         ['Listen & do', this.listenLine(o.listen)],
       ];
       lines.forEach(([a, b], k) => {
-        const y = 110 + k * 12;
+        const y = 110 + k * 10;
         G.text(ctx, a, 10, y, COL.dim);
         G.text(ctx, fit(b, G.W - 92), 82, y, k === 3 && o.slipping.length ? COL.slip : COL.white);
       });
-      G.text(ctx, 'Each count includes the stronger words.', 10, 208, '#8890c0');
+      this.drawBackup(ctx);
+    }
+    // is it saving, the last backup (asked for after 7 days), before a trip; a button to Back up / restore (backup.js)
+    drawBackup(ctx) {
+      const B = G.backup; if (!B) return;
+      ctx.fillStyle = COL.line; ctx.fillRect(8, 188, G.W - 16, 1);
+      const sl = G.st.saveLine(), od = B.overdue(), w = G.W - 84;
+      G.text(ctx, fit(sl ? sl + '.' : '', w), 10, 192, G.st.status.fails ? COL.slip : COL.dim);
+      G.text(ctx, fit(B.lastLine() + '.', w), 10, 202, od ? COL.yel : COL.dim);
+      G.text(ctx, 'Going on a trip or a break? Back up first.', 10, 212, '#8890c0');
+      textBtn(ctx, this.backupRect(), 'Back up', od || G.st.status.fails ? { fill: '#2a7a3a', rim: '#a8e8b0' } : {});
     }
     // listen and do (src/listen.js): spoken requests with no pictures, how many and how many right on the first try
     listenLine(l) {
