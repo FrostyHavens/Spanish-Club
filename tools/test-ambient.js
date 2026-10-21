@@ -134,9 +134,16 @@ async function tomas(browser) {
       // (every tile he steps on once, in order: sampling time instead made a slow frame count one tile many times)
       window.__tom = []; const f = G.field;
       window.__tomT = setInterval(() => { const n = f.npc('tomas'), L = window.__tom, k = n.x + ',' + n.y; if (G.field === f && (n.moving || L.length) && (!L.length || L[L.length - 1].k !== k)) L.push({ k, c: f.map.get(n.x, n.y) }); }, 30);
+      // (the villagers stay home while he walks: one wandering onto the road makes him go round on the grass, which is
+      // right, but then this would measure where they happened to wander, not him)
+      window.__wander = f.npcs.filter(n => n.id !== 'tomas' && !n.ghost && n.wander).map(n => {
+        const w = n.wander; n.wander = 0;
+        if (!n.moving && !n.busy && n.home && !f.blocked(n.home[0], n.home[1], n)) { n.x = n.home[0]; n.y = n.home[1]; n.ox = n.oy = 0; }
+        return [n, w];
+      });
     });
     await g.until(() => G.field.amb.fx.some(e => e.kind === 'letter'), null, 'Tomás to deliver a letter at the bakery', 30000);
-    const road = await g.ev(() => { clearInterval(window.__tomT); const L = window.__tom; return L.length < 3 ? 1 : L.filter(e => ',=p'.includes(e.c)).length / L.length; });
+    const road = await g.ev(() => { clearInterval(window.__tomT); window.__wander.forEach(([n, w]) => { n.wander = w; }); const L = window.__tom; return L.length < 3 ? 1 : L.filter(e => ',=p'.includes(e.c)).length / L.length; });
     const at = await g.ev(() => { const n = G.field.npc('tomas'); return [n.x, n.y, n.dir]; });
     check('tomas: walks his round to the bakery and slips a letter in the door', at.join() === '28,7,up', at.join());
     check('tomas: keeps to the roads', road >= 0.75, 'on the road ' + Math.round(road * 100) + '% of the tiles he stepped on');

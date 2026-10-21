@@ -71,11 +71,11 @@
     if (s.day !== d) {
       s.day = d; s.list = [];
       const used = new Set(), whoUsed = new Set(), groups = {};
-      const offers = OFFERS.slice().sort(() => G.rand() - 0.5);
+      const off = kind => { try { return !!(FV.OFF[kind] && FV.OFF[kind]()); } catch (e) { return true; } };
+      const offers = OFFERS.filter(o => !off(o[1])).sort(() => G.rand() - 0.5); // (a kind that's off isn't drawn at all: the day's favours are what they'd be without it)
       for (const [who, kind, pool, cond] of offers) {
         if (s.list.length >= 3 || whoUsed.has(who) || (cond && !cond())) continue;
         const grp = FV.GROUP[kind]; if (grp && (groups[grp] | 0) >= (FV.CAP[grp] || 1)) continue;
-        try { if (FV.OFF[kind] && FV.OFF[kind]()) continue; } catch (e) { continue; }
         const ok = id => known(id) && !used.has(id);
         let word = null;
         try { word = FV.PICK[kind] ? FV.PICK[kind](who, pool, ok) : G.review.next({ minStage: 2, filter: id => pool.includes(id) && ok(id) }) || null; } catch (e) { console.error(e); word = null; }

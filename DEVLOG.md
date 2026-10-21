@@ -44,8 +44,9 @@ Phase 3, built (`src/requests.js` `G.requests`, `src/listen.js` `G.listen` and i
   word, only known words, the ramp; the scene: no pictures, the demo, replay, right and wrong picks and counts and their
   credit and history, "¿Cuántas?" by voice and a wrong number, two details after the ramp, the grown-ups' counts; the
   world: two favours a day, Don Pepe in Villa Sol and Doña Lupe in the forest, Lola's shells on the beach, the warm-up's
-  request). The harness keeps listen-and-do off unless a test asks (`{listen: true}`, `LISTEN=1`); `drive()` does each
-  request right (smoke passes with `LISTEN=1`). Two timing checks made robust: in `test-zone-playa` the ice cream for
+  request). The harness keeps listen-and-do off unless a test asks (`{listen: true}`, `LISTEN=1`); with it off, a kind
+  that's off is left out of the day's favour draw (`FV.OFF`), so the favours are exactly what they were before; `drive()`
+  does each request right (smoke passes with `LISTEN=1`). Two timing checks made robust: in `test-zone-playa` the ice cream for
   the dog and in `test-world` the dog's digging spot are tapped again (up to three times) when a tap under load lands
   as the dog trots off his tile or before the map is ready for it.
 

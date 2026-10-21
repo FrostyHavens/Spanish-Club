@@ -246,6 +246,7 @@
       if (this.o.cancel) { if (this.o.cancelIcon === 'skip') G.skipBtn(ctx, ...this.backXY(), t); else G.iconBtn(ctx, 'back', ...this.backXY()); }
       if (this.o.en && G.enVisible()) G.enBox(ctx, this.o.en, b.y + b.h + 1, true);
       if (this.o.drawExtra) { try { this.o.drawExtra(ctx, this); } catch (e) { console.error(e); } }
+      if (req.kind === 'count') this.drawBasketShade(ctx);
       this.drawTray(ctx);
       if (req.kind === 'count') this.drawBasket(ctx);
       if (req.kind === 'howmany') this.drawCards(ctx);
@@ -276,6 +277,11 @@
         else if (!c.gone) { const [px, py, s] = this.thingAt(i, 0), hop = glow ? Math.round(Math.abs(Math.sin(t / 7)) * -3) : 0; G.drawIcon16(ctx, L.pic(c), px + wob, py + hop, s / 16); }
         ctx.globalAlpha = 1;
       });
+    }
+    drawBasketShade(ctx) { // a soft shadow under the basket: the map's things (a flower) never look as if they were in it
+      const b = this.basketRect(), cx = b.x + b.w / 2, cy = b.y + 24;
+      ctx.fillStyle = 'rgba(8,12,40,0.3)';
+      [[b.w / 2 + 26, 38], [b.w / 2 + 18, 32]].forEach(([rx, ry]) => { ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.fill(); });
     }
     drawBasket(ctx) {
       const b = this.basketRect(), t = this.t, n = this.basket.length, live = this.phase !== 'right';
@@ -459,7 +465,7 @@
     if (!req.shown) { // gently: what she has isn't it; the right one, shown and said; then one more try
       req.shown = true; G.st.autosave();
       const right = { icon: WD(req.thing).icon, col: req.col ? RQ().colHex(req.col) : undefined, count: req.n || 1 };
-      yield say(v.who, right, TT('¡Casi! ' + req.npText, 'Almost! This is what I asked for: ' + req.words.map(enOf).join(' + ') + '. Bring me these!'));
+      yield G.say([TT('¡Casi! ' + req.npText, 'Almost! This is what I asked for: ' + req.words.map(enOf).join(' + ') + '. Bring me these!')], { portrait: G.portraitOf(v.who), name: G.nameOf(v.who), who: v.who, show: right, noPic: true }); // (the words without their pictures: the right ones are held up)
       return true;
     }
     yield say(v.who, null, TT('¡[gracias:Gracias], {name}!', 'Thank you anyway, {name}!'));

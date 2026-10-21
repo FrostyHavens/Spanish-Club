@@ -115,7 +115,18 @@ async function tapAnimal(g, kind) {
   }, t);
   await g.frames(6);
   await g.until(() => G.input.ready(), null, 'taps to count');
-  const pt = await g.ev(kind => { const a = G.animals.find(kind); Object.assign(a, { st: 'idle', t: 1e9 }); return G.animals.screen(a); }, kind);
+  const pt = await g.ev(kind => {
+    const a = G.animals.find(kind), f = G.field, T = G.TILE; Object.assign(a, { st: 'idle', t: 1e9 });
+    // (a sparkle, a thing to pick up or a door under it wins the tap over the animal: then it steps onto a plain tile next to it first)
+    const plain = () => { const p = G.animals.screen(a), tt = f.tapTarget({ x: p[0], y: p[1] }); return !tt.npc && !tt.exit && !tt.special; };
+    if (!plain()) {
+      const x0 = a.x, y0 = a.y, tx = Math.floor(x0 / T), ty = Math.floor(y0 / T);
+      let ok = false;
+      for (let r = 1; r < 4 && !ok; r++) for (const [dx, dy] of [[r, 0], [-r, 0], [0, r], [0, -r]]) { if (f.blocked(tx + dx, ty + dy, null)) continue; a.x = x0 + dx * T; a.y = y0 + dy * T; if (plain()) { ok = true; break; } }
+      if (!ok) { a.x = x0; a.y = y0; }
+    }
+    return G.animals.screen(a);
+  }, kind);
   await g.tap(...pt, true);
 }
 const noErrors = (g, name) => check(name + ': no console errors', !g.errors.length, g.errors.join('\n'));
