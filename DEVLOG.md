@@ -2,6 +2,43 @@
 
 A running record of what changed in Club de Español and why. Newest first.
 
+## 2026-10-21 — Learning plan 2, Phase 2: phrases, "say it to get it"
+She knows lots of single words; now she says whole sentences to make things happen. `docs/LEARNING_PLAN_2.md` Phase 2,
+built (`src/phrases.js`, `G.phrase`):
+- **Six patterns** (`content/es/words.js` `C.phrases`): *Me llamo ___*, *Quiero ___*, *___, por favor*, *¿Dónde está
+  ___?*, *Me gusta ___*, *Tengo ___*. Each is an item of the word model (`f_quiero`...: the same stages, boxes, slipping
+  and history as a word; the records in `G.state.phrases`), with its own card (a speech-bubble mark, the frame as its
+  label, the word it was last said with as its picture) that grows like a word card: said whole +8, built with taps +3.
+- **Say it to get it** (`PhraseAsk`): the question at the top, her face and her speech bubble (the frame's words, an
+  empty slot), a big mic beside it, a frame card and the word cards below. The whole phrase: they do it, both cards
+  grow. **The key word alone: they still do it [decided]**, then her bubble shows the whole sentence as pictures and
+  words and she is invited to say it (one try, a bonus, a go-on button). The frame alone: "¿...?" over the slot; a
+  wrong thing wobbles; nothing heard: ¡Otra vez!. **The builder**: tap the frame card and a word card, they fly into her
+  bubble and the sentence is read aloud (counts as built, below saying). "Por favor" anywhere: its card grows, "¡Qué
+  amable!", a heart.
+- **Lenient matching**, `G.speech.matchPhrase(frameId, slotTargets, alternatives)` (`src/speech.js`): the frame
+  anywhere (fuzzy, the word mic's folding), the slot in the rest, articles optional either gender, accents, ¿¡, word
+  order, the frames' other forms (quisiera, mi nombre es, dónde están, me encanta, yo tengo...), "por favor" anywhere.
+- **One pattern at a time, order-independent**: wherever a pattern comes up first, Lola and Nico (or the person there)
+  model it twice in a comic strip (the bubble, what happens), then "¡Ahora tú!"; never two within 4 minutes of play.
+- **In the world** (each call returns null when phrases are off, and the old way runs): *Me llamo* with each zone's
+  people and Lola on first meeting and with Villa Sol's friends after their next greeting (`hearts.js`); *Quiero* at
+  Marta's and Don Pepe's shops (`errands.js`), Doña Nieves's ice creams, Abuela's cookies, Don Lucho's hot chocolate,
+  Lupe's pie; *por favor* introduced on a Quiero request; *¿Dónde está?* is Nico's hide-and-seek hint (`seek.js`); *Me
+  gusta*: Lola asks her favourite animal (pinned with a heart in the album, on Lola's friend card too) and friends
+  sometimes ask about food and colours; *Tengo*: presents she carries (`errands.js`) and letters (`connect.js`,
+  `carry.js`); the dog's warm-up can bring a due phrase.
+- **Seen everywhere**: a *Frases* tab in the deck (`cards.js`), a *Frases* page in the notebook (`menus.js`), a
+  *Frases* tab on the grown-ups' Words tab and a "Phrases" line on the Overview and in Share (`dashboard.js`,
+  `history.js`). Ghost hands (`demo.js` 'phrasesay', 'phrase') show the big mic and the builder once.
+- Tests: `tools/test-phrases.js` (new: matchPhrase must-pass / must-fail in Node; the request with a fake recognizer:
+  the whole phrase, the key word + the invitation + its second try, a wrong word, nothing heard, the frame alone, por
+  favor, a misheard name, the builder; cards, history, notebook and dashboard; each pattern introduced once, one at a
+  time; a placement per pattern in the world). The harness keeps phrases off unless a test asks (`{phrases: true}`,
+  `PHRASES=1`) and `drive()` plays them through (smoke passes with `PHRASES=1`). `test-review`'s favours now start with
+  Villa Sol's "¡Completo!" party already had: with all 21 chapters done its story and album are complete, so the party
+  could pop up in the first free moment and take the tap meant for Lucía (it failed that way before this change too).
+
 ## 2026-10-21 — Learning plan 2, Phase 1: measure and review (the history, the dog's warm-up, slipping words, the Learning page)
 The parent wants to know what she actually RETAINS, and review should come back by itself. `docs/LEARNING_PLAN_2.md`
 Phase 1, built:

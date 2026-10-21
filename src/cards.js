@@ -227,6 +227,13 @@
   };
   // a phrase's card: the word it was last said with as its picture (its speech bubble in the corner), the frame as its
   // label, the same rim (blue, gold once remembered) and plant as a word's card
+  // a label in one line, or two (split at the space that balances them best) when one doesn't fit
+  function labelLines(s, w) {
+    if (G.textWidth(s) <= w || s.indexOf(' ') < 0) return [s];
+    let best = null;
+    for (let i = s.indexOf(' '); i >= 0; i = s.indexOf(' ', i + 1)) { const d = Math.max(G.textWidth(s.slice(0, i)), G.textWidth(s.slice(i + 1))); if (!best || d < best.d) best = { d, i }; }
+    return [s.slice(0, best.i), s.slice(best.i + 1)];
+  }
   function drawPhraseCard(ctx, id, x, y, o) {
     const ph = G.phrase, st = o.st != null ? o.st : (G.words ? G.words.stage(id) : 1), s = o.s || 1, gold = st >= 3, isMet = st >= 1;
     const pts = o.pts != null ? o.pts : C.pts(id);
@@ -236,12 +243,16 @@
     R(ctx, 1, 0, C.W - 2, C.H, '#10102a'); R(ctx, 0, 1, C.W, C.H - 2, '#10102a');
     R(ctx, 1, 1, C.W - 2, C.H - 2, !isMet ? '#c8bca0' : gold ? (o.hi ? '#fff070' : '#f0c030') : (o.hi ? '#b8e8ff' : '#6898e0'));
     R(ctx, 3, 3, C.W - 6, C.H - 6, gold ? '#fff4c8' : '#f4fbff');
+    // the picture a bit smaller than a word's (24 px): the frame's words need two lines ("Me / llamo", "¿Dónde / está?")
     ctx.globalAlpha *= isMet ? 1 : 0.5;
-    if (ph) ph.drawPic(ctx, ph.cardPic(id), 4, 5, 2, o.t);
+    if (ph) ph.drawPic(ctx, ph.cardPic(id), (C.W - 24) / 2, 5, 1.5, o.t);
     ctx.globalAlpha /= isMet ? 1 : 0.5;
     C.bubble(ctx, C.W - 16, 1, 1, gold ? '#fff8d0' : '#ffffff'); // the phrase's mark: a speech bubble
-    const lab = isMet ? (ph ? ph.label(id) : id) : '? ? ?', lw = G.textWidth(lab), sq = Math.min(1, (C.W - 6) / Math.max(1, lw));
-    ctx.save(); ctx.translate(C.W / 2, 0); ctx.scale(sq, 1); G.textC(ctx, lab, 0, 39, !isMet ? '#b0a080' : gold ? '#a06008' : '#2860a8', null); ctx.restore();
+    const lab = isMet ? (ph ? ph.label(id) : id) : '? ? ?', lines = labelLines(lab, C.W - 6), col = !isMet ? '#b0a080' : gold ? '#a06008' : '#2860a8';
+    lines.forEach((ln, k) => {
+      const sq = Math.min(1, (C.W - 6) / Math.max(1, G.textWidth(ln))), y = lines.length > 1 ? 31 + k * 8 : 34;
+      ctx.save(); ctx.translate(C.W / 2, 0); ctx.scale(sq, 1); G.textC(ctx, ln, 0, y, col, null); ctx.restore();
+    });
     if (isMet) C.drawPlant(ctx, pts, C.W / 2, C.H - 3, { gold: st >= 4, s: 2 });
     ctx.restore();
   }

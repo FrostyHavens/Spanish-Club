@@ -231,6 +231,46 @@ words only ("¡Al parque!"): the next beat's trigger is what the arrow points at
   `WEATHER`): `words` lists every word the question and its answer use, and it only shows once the child has met them
   all; a new zone's animals, colours and places can join the tables.
 
+## Phrases: say it to get it (`src/phrases.js`, `docs/LEARNING_PLAN_2.md` Phase 2)
+A phrase is a frame with a slot for a word she knows (*Quiero ___* + *el helado* = *Quiero un helado*). The six
+patterns are in `content/es/words.js` (`C.phrases`, in `C.phraseOrder`): `f_llamo`, `f_quiero`, `f_porfavor`,
+`f_donde`, `f_gusta`, `f_tengo`, each `{ es: 'Quiero ___', en, say: 'quiero / yo quiero / quisiera / me das'` (every
+way the mic accepts the frame), `art: 'un'` (the slot's article: *Quiero un helado*, *¿Dónde está el gato?*; `C.mass`
+words take none: *Quiero pan*), `plural`, `prompt`, `reply`, `icon`, `anySlot` (any word goes: a name), `polite` (the
+frame is "por favor", heard anywhere)`}`. A phrase is an item of the word model (stages, boxes, slipping, history, its
+card), so nothing else is needed to count it.
+
+**A phrase moment** is one call in a talk script. It returns null when phrases are off or the pattern can't be
+introduced right now (one was introduced in the last 4 minutes of play, or a word of the moment is brand new): the
+script then does what it did before, so write the old way after it:
+```js
+const got = yield* G.phrase.quiero('pepe', ['manzana', 'pan'], {   // "¿Qué quieres?": these words' cards, any of them
+  cancel: true,                                                      // a way out (the back button)
+  onGet: function* (k, res) {                                        // they do it: k is the slot she asked for
+    G.errands.bag.add(['manzana', 'pan'][k]);
+    yield G.say(['¡Aquí tienes!'], { who: 'pepe', portrait: G.portraitOf('pepe'), name: G.nameOf('pepe') });
+  } });
+if (!got) { /* the old way: G.choose / G.ask / just give it */ }
+yield* G.phrase.tengo('rosa', 'flor', { onGet: give });   // "¿Qué tienes?": the one she holds is right (two others)
+yield* G.phrase.donde('nico', ['gato', 'perro'], show);     // "¿Dónde está el gato?": any of them
+yield* G.phrase.request('f_gusta', { who: 'lola', slots: ['oso', 'pato', 'rana'], free: true,
+  prompt: '¿Qué animal te gusta?', en: 'Say "Me gusta el..."', onGet });   // any pattern
+```
+- `onGet(k, res)` runs once she has asked (the whole phrase, the key word alone, the slot + "por favor", or built with
+  taps); then, after the key word alone, she is invited to say the whole thing (one try, never in the way). `res.how` is
+  `'full'`, `'key'`, `'polite'` or `'built'`; `res.again` when she said it whole after the invitation; `{cancel: true}`
+  when she backed out.
+- Slots: a word id (met, with a picture), `{ name: true }` (her name), `{ face: 'nico', es: 'Nico' }`, or a thing that
+  isn't a word yet: `{ id: 'pay', es: 'el pay', icon: 'pay', alt: 'pay / pai / pastel' }` (heard, never counted).
+  `free: true`: any slot is right; `answer: i`: only that one (the others wobble). `more: [ids]`: heard too, without a
+  card (Lola's question: any album animal). `show: id`: a picture held up over the question.
+- The first time a pattern comes up anywhere, `G.phrase.ready` (inside `request`) shows the two friends modelling it and
+  "¡Ahora tú!"; a pattern missed 3 times (the key word alone counts as a miss of the phrase) is modelled again.
+- The mic's matching is `G.speech.matchPhrase(frameId, slotTargets, alternatives)`. A new way to say a frame goes in its
+  `say`; add a line to the must-pass (or must-fail) list in `tools/test-phrases.js`.
+- Tests keep phrases off unless they ask: `open(browser, name, touch, { phrases: true })` (`tools/harness.js`) or
+  `PHRASES=1`; `drive()` plays a request through (taps the frame card and a word card) and taps through a modelling strip.
+
 ## Side jobs, presents and the shops (`src/errands.js`)
 1. A side job is a place in `SPOTS`: `{ id, map, at: [x, y], icon: () => picture or null when inactive, run: function* (f) {...} }`
    (a picture bubble over the tile; a tap walks there and runs it; `quiet: true` draws no bubble, `nohint()` keeps the

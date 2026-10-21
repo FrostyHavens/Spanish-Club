@@ -172,7 +172,7 @@
           if (R.said) G.mic.glyph(ctx, x + r.w - 10, y + 14, '#2a8a9a');
           if (R.counted) G.text(ctx, '\u0005', x + 3, y + 14, '#e0a010', '#5a2c04');
           const fav = G.phrase && G.phrase.fav(); // her favourite animal (Lola asked: "Me gusta el oso", src/phrases.js): a heart pinned on it
-          if (fav && fav.id === AN().KINDS[id].word && G.hearts) G.hearts.heart(ctx, x + 3, y + r.h - 11, true, 1);
+          if (fav && fav.id === AN().KINDS[id].word && G.hearts) G.hearts.heart(ctx, x + 4, y + 24, true, 1); // (left of its picture, under the star: clear of its name and its sound)
         } else {
           ctx.globalAlpha = 0.8; ctx.imageSmoothingEnabled = false;
           ctx.drawImage(G.tinted(G.icon(w), '#3a3048', 'albsil' + id), x + r.w / 2 - 16, y + 2, 32, 32); ctx.globalAlpha = 1;

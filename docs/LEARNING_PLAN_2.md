@@ -48,7 +48,7 @@ how fast she learns. It builds on `LEARNING_DESIGN.md` (the word model: stages, 
 - **How we'll know** (below) is now on the page: retention (Retention tab), the share spoken (Overview), and the
   parent's check next to the game's retention.
 
-## Phase 2: phrases, "say it to get it"
+## Phase 2: phrases, "say it to get it": **built** (2026-10-21; DEVLOG)
 1. Phrases are collectible cards too (speech-bubble mark), with the same strength model and growth.
 2. Six patterns, introduced one at a time across the world: **Me llamo ___** (meeting each new friend: she says her
    name), **Quiero ___** (shops, cookies, ice cream), **¿Dónde está ___?** (a hint from Nico, a missing animal),
@@ -59,6 +59,49 @@ how fast she learns. It builds on `LEARNING_DESIGN.md` (the word model: stages, 
 4. A tap fallback: build the sentence from a pattern card and a word card; it is read back.
 5. Grammar by exposure only: people reply with the correct form. **No colour-coding of el/la: by ear [decided]**
    (colour already means a word's stage: blue met, gold remembered).
+
+**As built** (`src/phrases.js` `G.phrase`, `G.speech.matchPhrase` in `src/speech.js`, the patterns in
+`content/es/words.js` `C.phrases`; `tools/test-phrases.js`), and what changed on the way:
+- **A phrase is an item of the word model**: ids `f_llamo`, `f_quiero`, `f_porfavor`, `f_donde`, `f_gusta`, `f_tengo`;
+  the same record, stages, boxes, slipping and history as a word (kept apart in `G.state.phrases.r`, with the pattern
+  introductions, the names exchanged, her favourite animal and the friends' questions). Its card has a speech-bubble mark,
+  the frame as its label and the word it was last said with as its picture; it grows like a word card (said whole: the
+  most, +8; built with taps: +3). A *Frases* tab in the deck and in the grown-ups' Words tab, a *Frases* page in the
+  notebook, a "Phrases" line on the Overview (met, said aloud in all and today) and in Share.
+- **The request** (`PhraseAsk`): the person's question at the top, her face and her **speech bubble** (the frame's words
+  and an empty slot), a **big mic** beside it, and below a frame card and a card per word (the word's picture; its word
+  too while it's only met). Saying the whole phrase: both the phrase's card and the word's card grow, they do it.
+  **Only the key word: they still do it**, then her bubble shows the whole sentence (frame card + word card) and she is
+  invited to say it: one try, a bonus if she does (the phrase's card and +3 on the word's), a go-on button, never in
+  the way; the key word alone is a miss of the phrase in the model (3 of them: the pattern is modelled again). The frame
+  alone lights it up with "¿...?" over the slot; a wrong thing (Tengo: not what she holds) wobbles and greys out; nothing
+  heard: ¡Otra vez!. **The builder** (taps): the frame card and a word card fly into her bubble, the sentence is read
+  aloud; it counts as built (productive, but it can't make a phrase gold: only saying it does).
+- **Lenient matching** (`G.speech.matchPhrase(frameId, slotTargets, alternatives)` -> `{frame, slot, full, polite,
+  score, heard}`): the frame anywhere, the slot in the rest, articles optional and either gender, accents, case, ¿¡, word
+  order, the mishearings the word mic forgives, the frames' other forms (quisiera, yo quiero, me das; mi nombre es; dónde
+  están; me gustan, me encanta; yo tengo, te traigo), "por favor" anywhere. 49 must-pass / must-fail cases in the test.
+- **One pattern at a time**: the first time a pattern comes up, two friends (Lola and Nico, or the person there) model it
+  twice in a comic strip (the bubble, what happens: the bread flies over, the place the cat hides, a heart), then
+  "¡Ahora tú!" with a mic; never two within 4 minutes of play, never with a word met in the last minute; wherever it
+  comes up first (order-independent). Saved in `G.state.phrases.intro`.
+- **Where she says them**: *Me llamo* when she first talks with each zone's people and Lola (they say their name first;
+  Lola then skips her "¡Soy Lola!"), and with each Villa Sol friend after their next greeting; anything after "me llamo"
+  counts (a misheard name is fine); the tap card is her portrait and name. *Quiero* at Marta's and Don Pepe's shops,
+  Doña Nieves's ice creams, Abuela's cookies, Don Lucho's hot chocolate (once a day) and Lupe's pie (the pie isn't a
+  word: heard, never counted). *___, por favor* is introduced on a Quiero request once Quiero is known; after that "por
+  favor" on any request grows its card, "¡Qué amable!" and a heart for the person. *¿Dónde está?* is Nico's
+  hide-and-seek hint (he shows the hiding place). *Me gusta*: Lola, once she has three album animals, asks her
+  favourite (a heart bubble; "¿Qué animal te gusta?"): the animal gets a heart pin in the album and Lola's friend card
+  shows it; friends sometimes ask about food or colours after their greeting (once a day in the whole world, a friend
+  once a week). *Tengo*: a present she carries ("¿Qué tienes?" with three things: the one she holds is right) and the
+  letters (delivering Tomás's mail, a letter back to Tomás: "Tengo una carta"). The dog's warm-up can bring one due
+  phrase (last).
+- **Visual first**: the frame is always a picture-sentence; ghost hands show the big mic (a mouth says it) and, a few
+  seconds later or without a mic, the builder; no Spanish-only instructions (the prompts are questions with pictures;
+  *English help* has the line in English). No el / la colour: people say it right.
+- Phrases are off in the tests unless they ask (`{phrases: true}` in the harness, or `PHRASES=1`), and with phrases off
+  every moment does exactly what it did before.
 
 ## Phase 3: listen and do
 1. A request maker from words she already knows (stage 2+): number + thing ("Dame tres conchas"), colour + thing

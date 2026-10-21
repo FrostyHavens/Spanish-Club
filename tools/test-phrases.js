@@ -190,9 +190,11 @@ async function ask(browser) {
     await still(g, 'intro_quiero_ahora_tu');
     check('ask: then "¡Ahora tú!": her face and her empty bubble', await g.ev(() => window.__said.includes('¡Ahora tú!')));
     await g.tap(160, 120);
+    await g.until(() => G.cards.list().some(c => c.id === 'f_quiero' && c.fresh), null, 'its new card');
+    const popped = await g.ev(() => !G.phrase.cur());
     await askUp(g);
-    const st0 = await g.ev(() => ({ met: G.phrase.met('f_quiero'), intro: G.phrase.state().intro.f_quiero, card: G.cards.list().some(c => c.id === 'f_quiero' && c.fresh), words: Object.keys(G.state.words).some(k => k.startsWith('f_')) }));
-    check('ask: the pattern is met (its new card pops up), its introduction saved; its record is kept apart from the words', st0.met && st0.intro && st0.card && !st0.words, JSON.stringify(st0));
+    const st0 = await g.ev(() => ({ met: G.phrase.met('f_quiero'), intro: G.phrase.state().intro.f_quiero, flown: !G.cards.popping('f_quiero'), words: Object.keys(G.state.words).some(k => k.startsWith('f_')) }));
+    check('ask: the pattern is met (its new card pops up, says itself and flies into the deck before the request), its introduction saved; its record is kept apart from the words', popped && st0.met && st0.intro && st0.flown && !st0.words, JSON.stringify(st0));
     await g.frames(20); await still(g, 'ask_quiero');
     const L = await g.ev(() => { const s = G.top(); return { mic: s.mic && s.mic.o.rect(), rects: s.rects(), bubble: s.bubble(), face: s.faceRect(), box: s.box() }; });
     const inside = r => r.x >= 0 && r.y >= 0 && r.x + r.w <= 320 && r.y + r.h <= 224, apart = (a, b) => a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y;
@@ -332,4 +334,246 @@ async function ask(browser) {
   } finally { await ctx.close(); }
 }
 
-run('Phrases: say it to get it', [['node: matchPhrase', node], ['the request (iPad, a fake recognizer)', ask]]);
+// =====================================================================
+//  Cards, the notebook, the grown-ups' page; each pattern introduced once, one at a time; the warm-up's phrase
+// =====================================================================
+async function cards(browser) {
+  const { ctx, g } = await openWith(browser, 'phr-cards', true, { warmup: true });
+  try {
+    await game(g, { words: WORDS });
+    await g.ev(() => G.warmup.skipToday());
+    await g.fieldIdle('villa');
+    // three phrases met: Quiero said (with el helado), Me llamo said, Me gusta built
+    await g.ev(() => {
+      const W = G.words, grow = G.cards.grow; G.cards.grow = () => 0;
+      for (const id of ['f_quiero', 'f_llamo', 'f_gusta']) { W.meet(id, 'phrase'); G.phrase.state().intro[id] = { d: W.day(), at: 'test' }; }
+      W.answerRight('f_quiero', { said: true, mode: 'say' }); Object.assign(W.rec('f_quiero'), { said: 1, slot: 'helado', gp: 12 });
+      W.answerRight('f_llamo', { said: true, mode: 'say' }); Object.assign(W.rec('f_llamo'), { said: 2, slot: '_name', gp: 6 });
+      W.answerRight('f_gusta', { mode: 'both' }); Object.assign(W.rec('f_gusta'), { slot: 'oso', gp: 3 });
+      G.cards.grow = grow;
+    });
+    check('cards: the phrases met, in their order; the words\' lists stay words', await g.ev(() => G.phrase.list(1).join() === 'f_llamo,f_quiero,f_gusta' && !G.words.list(1).some(id => id.startsWith('f_')) && G.review.due(1e9).every(id => !id.startsWith('f_'))));
+    check('cards: a phrase\'s sentence and card label (the slot it was said with, its article by ear)', await g.ev(() => G.phrase.sentence('f_quiero') === 'Quiero un helado.' && G.phrase.sentence('f_llamo') === 'Me llamo Luz.' && G.phrase.sentence('f_gusta') === 'Me gusta el oso.' && G.phrase.sentence('f_donde', 'gato') === '¿Dónde está el gato?' && G.phrase.sentence('f_donde', 'ojos') === '¿Dónde están los ojos?' && G.phrase.sentence('f_porfavor', 'pan') === 'Pan, por favor.' && G.phrase.sentence('f_tengo', 'carta') === 'Tengo una carta.' && G.phrase.sentence('f_quiero', 'agua') === 'Quiero agua.' && G.phrase.label('f_donde') === '¿Dónde está?' && G.phrase.label('f_porfavor') === 'por favor'));
+    // the deck: the words, and a speech bubble for the phrases
+    await g.ev(() => { window.__d = G.deck(); });
+    await g.until(() => G.top().constructor.name === 'Deck' && G.input.ready(), null, 'the deck');
+    check('cards: the deck opens on the words, with a speech-bubble tab for the phrases', await g.ev(() => G.top().group === 'words' && G.top().phrases.length === 3));
+    await g.tapBtn(await g.ev(() => G.top().frasesXY()));
+    await g.frames(20); await still(g, 'deck_frases');
+    check('cards: the Frases tab: the phrase cards (newest... in their order)', await g.ev(() => G.top().group === 'frases' && G.top().onPage().join() === 'f_llamo,f_quiero,f_gusta'));
+    await g.tapRect(await g.ev(() => G.top().cardRect(1)));
+    check('cards: tapping a phrase card says its sentence ("Quiero un helado.")', await g.ev(() => window.__said.slice(-1)[0] === 'Quiero un helado.'));
+    await g.tapBtn(await g.ev(() => G.top().wordsXY()));
+    check('cards: the deck\'s own picture goes back to the words', await g.ev(() => G.top().group === 'words'));
+    await g.tapBtn(await g.ev(() => G.top().closeXY()));
+    await g.fieldIdle('villa');
+    // the notebook: a "Frases" page, first
+    await g.ev(() => { G.notebook(); });
+    await g.until(() => G.top().constructor.name === 'Notebook' && G.input.ready(), null, 'the notebook');
+    await g.frames(10); await still(g, 'notebook_frases');
+    check('cards: the notebook\'s first page is Frases: the six phrases, three met', await g.ev(() => G.top().page() === 'frases' && G.top().words().length === 6 && G.top().words().filter(id => G.words.met(id)).length === 3));
+    await g.tapRect(await g.ev(() => G.top().cellRect(0)));
+    check('cards: tapping one says it ("Me llamo Luz.")', await g.ev(() => window.__said.slice(-1)[0] === 'Me llamo Luz.'));
+    await g.tapBtn(await g.ev(() => G.top().closeXY()));
+    await g.fieldIdle('villa');
+    // the grown-ups' Learning page: a Frases tab on Words, the Overview's phrases, share
+    await g.ev(() => { G.dashboard.open({ tab: 'Words' }); });
+    await g.until(() => G.top().constructor.name === 'LearningDash' && G.input.ready(), null, 'the Learning page');
+    const zk = await g.ev(() => { const s = G.top(); return s.zoneRect(G.zones.ids().length); });
+    await g.tapRect(zk);
+    await g.frames(10); await still(g, 'dash_frases');
+    const dv = await g.ev(() => { const v = G.top().view(); return { zone: v.zone, rows: v.rows.map(r => [r.id, r.met, r.st, r.said].join(':')) }; });
+    check('cards: the Words tab has a speech-bubble tab: every phrase, met first (stage, said aloud)', dv.zone === 'frases' && dv.rows.length === 6 && dv.rows[0] === 'f_llamo:true:2:2' && dv.rows.includes('f_quiero:true:2:1') && dv.rows.includes('f_gusta:true:2:0') && dv.rows.slice(3).every(r => r.includes(':false:')), JSON.stringify(dv));
+    await g.tapRect(await g.ev(() => G.top().tabRect(0)));
+    await g.frames(10); await still(g, 'dash_overview');
+    const ov = await g.ev(() => { const line = G.top().phraseLine(G.hist.overview().phrases); return { p: G.hist.overview().phrases, line, fits: G.textWidth(line) <= G.W - 92, share: G.dashboard.shareText() }; });
+    check('cards: the Overview counts the phrases: 3 of 6 met, said aloud 2 times today (S events), built 1 (in one line)', ov.p.met === 3 && ov.p.of === 6 && ov.p.said === 2 && ov.p.today === 2 && ov.p.built === 1 && /^3 of 6 met; said 2 times \(2 today\), built 1$/.test(ov.line) && ov.fits, JSON.stringify(ov));
+    check('cards: the shared text has the phrases', /Phrases: 3 of 6 met \(Me llamo, Quiero, Me gusta\); said aloud 2 times, 2 today\./.test(ov.share), ov.share);
+    await g.tapBtn(await g.ev(() => G.top().closeXY()));
+    await g.fieldIdle('villa');
+
+    // ---- one pattern at a time; each introduced once ----
+    await g.ev(() => { G.phrase.state().last = G.words.now() - 30; });
+    check('intro: right after an introduction, another pattern waits (one at a time)', await g.ev(() => !G.phrase.canIntro('f_donde')));
+    await g.ev(() => { G.phrase.state().last = G.words.now() - G.phrase.GAP - 1; });
+    check('intro: a few minutes of play later it may come', await g.ev(() => G.phrase.canIntro('f_donde')));
+    check('intro: ...but not with a word met a moment ago (two new things at once)', await g.ev(() => { G.words.meet('rana', 't'); return !G.phrase.canIntro('f_donde', { slots: ['rana', 'gato'] }) && G.phrase.canIntro('f_donde', { slots: ['gato', 'perro'] }); }));
+    const models = { n: 0 };
+    for (const id of ['f_donde', 'f_tengo', 'f_porfavor']) {
+      await g.ev(id => { G.phrase.state().last = -1e6; window.__ok = undefined; const slots = { f_donde: ['gato', 'perro'], f_tengo: ['flor', 'manzana'], f_porfavor: ['pan', 'galleta'] }[id]; G.chapters.scene(G.field, (function* () { window.__ok = yield* G.phrase.ready(id, { who: 'nico', slots }); })()); }, id);
+      await g.until(() => G.top().constructor.name === 'PhraseModel', null, id + '\'s introduction');
+      models.n++;
+      if (id === 'f_donde') { await g.until(() => G.top().row === 1 && G.top().rt > 110, null, 'its second model'); await still(g, 'intro_donde'); }
+      if (id === 'f_porfavor') { await g.until(() => G.top().row === 0 && G.top().rt > 110, null, 'its first model'); await still(g, 'intro_porfavor'); }
+      await g.drive(() => window.__ok !== undefined && G.top() === G.field, id + ' introduced');
+    }
+    const again = await g.ev(() => { let shown = false; const p0 = G.push; G.push = s => { if (s.constructor.name === 'PhraseModel') shown = true; return p0(s); }; const it = G.phrase.ready('f_donde', {}); const r = it.next(); G.push = p0; return { shown, done: r.done, val: r.value }; });
+    check('intro: each pattern is introduced once (its comic strip), then never again: ready at once', models.n === 3 && !again.shown && again.done && again.val === true, JSON.stringify(again));
+    check('intro: all six met now, each with its introduction saved', await g.ev(() => G.phrase.ids().every(id => G.phrase.met(id) && G.phrase.state().intro[id])));
+    // a pattern said only as its key word 3 times is modelled again before its next request
+    await g.ev(() => { const W = G.words; for (let i = 0; i < 3; i++) W.answerWrong('f_tengo'); });
+    check('intro: three key-word-only answers: Tengo is slipping', await g.ev(() => G.words.needsReintro('f_tengo')));
+    await g.ev(() => { window.__ok = undefined; G.chapters.scene(G.field, (function* () { window.__ok = yield* G.phrase.ready('f_tengo', { who: 'mama' }); })()); });
+    await g.until(() => G.top().constructor.name === 'PhraseModel', null, 'Tengo modelled again');
+    check('intro: ...so it is modelled again (no "¡Ahora tú!" row: the request follows)', await g.ev(() => G.top().n === 2));
+    await g.drive(() => window.__ok !== undefined && G.top() === G.field, 'modelled again');
+    check('intro: ...once (not slipping-and-new any more)', await g.ev(() => !G.words.needsReintro('f_tengo')));
+
+    // ---- the dog's warm-up brings a phrase that's due ----
+    await g.ev(() => { const r = G.words.rec('f_quiero'); Object.assign(r, { due: null, dd: 0, dc: 0, fu: 0, box: 2 }); });
+    check('warmup: a phrase that\'s due is among the warm-up\'s cards, last', await g.ev(() => { const L = G.warmup.pick(G.field); return L[L.length - 1] === 'f_quiero' && G.phrase.due().includes('f_quiero'); }));
+    await g.ev(() => { G.warmup.start(G.field, ['perro', 'f_quiero']); });
+    await g.drive(() => G.top().constructor.name === 'PhraseAsk', 'the warm-up\'s first card');
+    await askUp(g);
+    await g.frames(10); await still(g, 'warmup_phrase');
+    const wq = await g.ev(() => { const s = G.top(); return { who: s.o.who, prompt: s.prompt, slots: s.slots.map(x => x.word), skip: s.o.cancelIcon === 'skip' }; });
+    check('warmup: the dog asks "¿Qué quieres?" with three of her words; the skip button is there', wq.who === 'canelo' && wq.prompt === '¿Qué quieres?' && wq.slots.length === 3 && wq.skip, JSON.stringify(wq));
+    await say(g, 'quiero ' + wq.slots[1]);
+    await g.until(() => !G.warmup.cur(), null, 'the warm-up to end', 30000).catch(() => {});
+    await g.drive(() => !G.warmup.cur() && G.top() === G.field, 'the warm-up\'s end');
+    check('warmup: said whole: right on the first try (the dog\'s card for it), the phrase said', await g.ev(() => G.hist.state().wu.last && G.hist.state().wu.last.right === 2 && G.words.rec('f_quiero').said === 2));
+    check('cards: no console errors', !g.errors.length, g.errors.join('\n'));
+  } finally { await ctx.close(); }
+}
+
+// =====================================================================
+//  In the world: a real placement per pattern
+// =====================================================================
+async function world(browser) {
+  const { ctx, g } = await openWith(browser, 'phr-world', true);
+  try {
+    // speak instead of building when a request comes up during a drive (g.sayNext), else drive() builds it from its cards
+    g.beforeAct = async s => {
+      if (s.name === 'PhraseAsk' && !s.invite && s.t > 12 && !s.closing && g.sayNext) { const t = g.sayNext; g.sayNext = null; await g.until(() => G.input.ready(), null, 'taps'); await say(g, t); return true; }
+      return false;
+    };
+    const drv = (cond, what) => g.drive(cond, what);
+    const FREE = 'G.top() === G.field && !G.field.locked && G.fade.a === 0'; // (drive's condition runs in the page)
+    const free = (also = 'true') => new Function('return (' + FREE + ') && (' + also + ');');
+    async function talk(id) {
+      await g.ev(id => { const f = G.field, n = f.npc(id), p = f.player; n.wander = 0; n.home = [n.x, n.y]; for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1]]) if (!f.blocked(n.x + dx, n.y + dy, p)) { p.x = n.x + dx; p.y = n.y + dy; break; } f.snapCam(); }, id);
+      await g.frames(4);
+      await g.tapTile(...await g.ev(id => { const n = G.field.npc(id); return [n.x, n.y]; }, id));
+    }
+    const greeted = (g2, ids) => g2.ev(ids => { for (const id of ids) { G.hearts.mark(id, 'greet'); G.phrase.state().named[id] = 0; } }, ids);
+    await game(g, { words: WORDS.concat(['queso', 'rana']), done: ['c1', 'c2', 'c3', 'c4', 'c5', 'c6'], visit: ['playa'] });
+    await g.fieldIdle('villa');
+
+    // ---- Quiero: Marta's bakery (the pattern introduced right there, then asked for) ----
+    await g.ev(() => G.goto('panaderia', 5, 5, 'up'));
+    await g.fieldIdle('panaderia');
+    await greeted(g, ['marta']);
+    await talk('marta');
+    await drv(() => G.top().constructor.name === 'PhraseModel', 'Marta: ¿Qué quieres? and Quiero\'s introduction');
+    check('world: Marta\'s shop introduces Quiero (her bread and cookies modelled by Lola and Nico)', await g.ev(() => G.top().id === 'f_quiero' && G.top().models.every(m => m.to === 'marta')));
+    g.sayNext = 'quiero pan';
+    await drv(free("G.errands.bag.has('pan')"), 'asking for bread');
+    check('world: "Quiero pan": the bread comes (in her hands), the phrase said', await g.ev(() => G.errands.bag.has('pan', { q: null }) && G.words.rec('f_quiero').said === 1));
+    await g.ev(() => { G.errands.bag.take('pan', { q: null }); });
+
+    // ---- ___, por favor: Don Pepe's market (introduced once Quiero is known) ----
+    await g.ev(() => { G.phrase.state().last = -1e6; G.goto('villa', 22, 13, 'down'); });
+    await g.fieldIdle('villa');
+    await greeted(g, ['pepe']);
+    await talk('pepe');
+    await drv(() => G.top().constructor.name === 'PhraseModel', 'Pepe: por favor\'s introduction');
+    check('world: Don Pepe\'s market (Quiero known) introduces "___, por favor"', await g.ev(() => G.top().id === 'f_porfavor'));
+    g.sayNext = 'una manzana por favor';
+    await drv(free("G.errands.bag.has('manzana')"), 'asking nicely');
+    check('world: "Una manzana, por favor": the apple comes, the "por favor" phrase said', await g.ev(() => G.errands.bag.has('manzana', { q: null }) && G.words.rec('f_porfavor').said === 1));
+
+    // ---- Tengo: a present for Abuela Rosa (who loves flowers) ----
+    await g.ev(() => { G.phrase.state().last = -1e6; G.errands.bag.take('manzana', { q: null }); G.errands.bag.add('flor', { col: 'rosa' }); });
+    await greeted(g, ['rosa']);
+    const hr = await g.ev(() => G.hearts.get('rosa'));
+    await talk('rosa');
+    await drv(() => G.top().constructor.name === 'PhraseAsk', 'Rosa: ¿Qué tienes?');
+    await askUp(g);
+    await g.frames(6); await still(g, 'world_tengo');
+    check('world: Rosa sees the flower: "¿Qué tienes?" (Tengo, its introduction first); the flower among three cards', await g.ev(() => { const s = G.top(); return s.id === 'f_tengo' && s.slots.some(x => x.word === 'flor') && s.slots.length === 3 && s.slots[s.answer].word === 'flor'; }));
+    g.sayNext = null; await say(g, 'tengo una flor');
+    await drv(free(), 'the present');
+    check('world: "Tengo una flor": she takes it, a heart', await g.ev(hr => !G.errands.bag.has('flor') && G.hearts.get('rosa') === hr + 1, hr));
+
+    // ---- ¿Dónde está?: Nico's hint in hide-and-seek ----
+    await g.ev(() => { G.phrase.state().last = -1e6; });
+    await greeted(g, ['nico']);
+    await talk('nico');
+    await drv(free(), 'Nico starts hide-and-seek');
+    check('world: Nico\'s hide-and-seek is on', await g.ev(() => G.seek.active()));
+    await talk('nico');
+    await drv(() => G.top().constructor.name === 'PhraseAsk', 'asking Nico');
+    await askUp(g);
+    const kinds = await g.ev(() => G.top().slots.map(x => x.word));
+    await g.frames(6); await still(g, 'world_donde');
+    check('world: asking Nico again: "¿Dónde está...?" with the animals still hiding as its cards', await g.ev(k => G.top().id === 'f_donde' && k.every(w => G.seek.hiding(w)), kinds) && kinds.length >= 2);
+    await say(g, 'dónde está el ' + kinds[0]);
+    await drv(() => G.top().constructor.name === 'TextBox' && G.top().opts.show && !!G.top().opts.show.icon, 'Nico\'s hint');
+    await g.frames(10); await still(g, 'world_donde_hint');
+    check('world: "¿Dónde está el ...?": Nico holds up the picture of where that one hides', await g.ev(k => { const L = G.seek.list().filter(h => h.kind === k), sp = L.length && G.seek.SPOTS.find(p => p.id === L[0].spot); return !!sp && G.top().opts.show.icon === sp.place; }, kinds[0]));
+    await drv(free(), 'the hint');
+
+    // ---- Me llamo: a town friend's next greeting (Lucía) ----
+    await g.ev(() => { G.phrase.state().last = -1e6; });
+    await talk('lucia');
+    await drv(() => G.top().constructor.name === 'PhraseAsk' && G.top().id === 'f_llamo', 'Lucía\'s greeting, then her name');
+    await askUp(g);
+    check('world: after Lucía\'s greeting: "¡Hola! Me llamo Lucía. ¿Y tú?" (Me llamo introduced first)', await g.ev(() => G.hearts.did('lucia', 'greet') && /Me llamo Lucía/.test(G.top().prompt) && G.phrase.state().intro.f_llamo));
+    await say(g, 'me llamo luz');
+    await drv(free(), 'the name exchange');
+    check('world: ...they know each other now; no due word that day (one question with them)', await g.ev(() => G.phrase.named('lucia') && G.words.rec('f_llamo').said === 1));
+
+    // ---- Lola (the beach): her first hello, Me llamo; then her favourite-animal question, Me gusta ----
+    await g.ev(() => G.goto('playa', 10, 3, 'down'));
+    await g.fieldIdle('playa');
+    await talk('lola');
+    await drv(() => G.top().constructor.name === 'PhraseAsk', 'Lola\'s first hello');
+    await askUp(g);
+    check('world: meeting Lola: "¡Hola! Me llamo Lola. ¿Y tú?"', await g.ev(() => /Me llamo Lola/.test(G.top().prompt)));
+    g.sayNext = null; await say(g, 'luz');
+    await drv(() => G.phrase.cur() && G.phrase.cur().invite != null, 'the key word, then the invitation');
+    await askUp(g, true);
+    await g.frames(10); await still(g, 'world_llamo_invite');
+    check('world: her name alone: Lola says hello anyway, then the invitation shows "Me llamo Luz"', await g.ev(() => window.__said.includes('¡Hola, Luz! ¡Mucho gusto!') && G.top().slots[G.top().invite].name));
+    await say(g, 'me llamo luz');
+    await drv(free(), 'Lola\'s hello');
+    check('world: ...said whole on the second try; Lola goes on with her hello (no "¡Soy Lola!" again)', await g.ev(() => G.phrase.named('lola') && G.zones.lolaTalked('playa') && !window.__said.some(s => /Soy Lola/.test(s))));
+    await g.ev(() => { G.phrase.state().last = -1e6; for (const a of ['gato', 'perro', 'conejo', 'pato', 'oso', 'rana']) G.state.album[a] = G.state.album[a] || { first: 1, map: 'villa', n: 1 }; });
+    check('world: once her hello is done, Lola\'s bubble has a heart: her question', await g.ev(() => JSON.stringify(G.field.npc('lola').alert()) === JSON.stringify(G.phrase.favBubble())));
+    await talk('lola');
+    g.sayNext = 'me gusta el oso';
+    await drv(free('!!G.phrase.fav()'), 'Lola\'s question');
+    check('world: "¿Qué animal te gusta?" "Me gusta el oso": pinned (her favourite: el oso)', await g.ev(() => G.phrase.fav().id === 'oso' && G.words.met('f_gusta')));
+    await g.ev(() => { G.album('amigos'); });
+    await g.until(() => G.top().constructor.name === 'Album' && G.input.ready(), null, 'the Amigos page');
+    await g.ev(() => { G.top().ftab = 'playa'; });
+    await g.frames(10); await still(g, 'album_amigos_fav');
+    await g.ev(() => { const s = G.top(); s.page = 'animales'; s.zone = 'bosque'; });
+    await g.frames(10); await still(g, 'album_fav_heart');
+    await g.ev(() => { G.top().close ? G.top().close() : (G.pop(), 0); });
+    await g.ev(() => { if (G.top().constructor.name === 'Album') { G.pop(); } });
+    await g.fieldIdle('playa');
+
+    // ---- Quiero in a zone: Doña Nieves's ice cream for whoever is hot ----
+    await g.ev(() => { for (const q of ['playa1', 'playa2']) G.state.quests[q] = 'done'; G.errands.bag.list().length = 0; });
+    await greeted(g, ['nieves']);
+    await talk('nieves');
+    await drv(() => G.top().constructor.name === 'PhraseAsk', 'Doña Nieves');
+    g.sayNext = null; await askUp(g); await say(g, 'quiero un helado');
+    await drv(free(), 'the ice cream');
+    check('world: Doña Nieves: "Quiero un helado": the ice cream comes (for whoever is hot)', await g.ev(() => G.errands.bag.has('helado')));
+
+    // ---- phrases off (the grown-ups' tests, older behaviour): the shop asks as before ----
+    await g.ev(() => { window.__phrasesOff = true; G.goto('panaderia', 5, 5, 'up'); });
+    await g.fieldIdle('panaderia');
+    await talk('marta');
+    await drv(() => G.top().constructor.name === 'Choice', 'the old shop');
+    check('world: phrases off: the shop is the old picture question (with "no")', await g.ev(() => G.top().ch.some(c => c.word === 'no')));
+    await drv(free(), 'the old shop');
+    check('world: no console errors', !g.errors.length, g.errors.join('\n'));
+  } finally { await ctx.close(); }
+}
+
+const SECTIONS = [['node: matchPhrase', node], ['the request (iPad, a fake recognizer)', ask], ['cards, the notebook, the grown-ups, one at a time, the warm-up', cards], ['in the world: a placement per pattern', world]];
+// ONLY=world (a word of a section's name) runs just that section while working on it
+run('Phrases: say it to get it', process.env.ONLY ? SECTIONS.filter(([n]) => n.includes(process.env.ONLY)) : SECTIONS);

@@ -125,6 +125,7 @@ async function favores(browser) {
   const { ctx, g } = await openFake(browser, 'fav');
   try {
     await play(g, 'villa', 15, 13, 'down', 21); // (the story is over: nobody's chapter bubble comes first)
+    await g.ev(() => { const w = G.zones.state(); w.done = Object.assign(w.done || {}, { villa: { d: 0 } }); }); // (Villa Sol's "¡Completo!" party already had: with every chapter done its story and album are complete, and the party would pop up in the first free moment and take the next tap)
     const list = await g.ev(() => G.favores.today().map(v => v.who + ':' + v.kind + ':' + v.word));
     check('favores: up to three a day, each about a known word, one per person', list.length >= 1 && list.length <= 3 && new Set(list.map(s => s.split(':')[0])).size === list.length && await g.ev(() => G.favores.today().every(v => G.words.stage(v.word) >= 2)), list.join(' '));
     check('favores: their givers show a "?" bubble (the story\'s bubble first, and Luna\'s palabra del día)', await g.ev(() => G.favores.today().every(v => { const n = G.maps.villa.npcs.concat(G.maps.casa.npcs, G.maps.escuela.npcs, G.maps.panaderia.npcs).find(d => d.id === v.who); const a = n && n.alert && n.alert(); return a === 'pregunta' || (v.who === 'luna' && a && a.icon === 'estrella') || !!G.chapters.alert(v.who); })), await g.ev(() => JSON.stringify(G.favores.today())));

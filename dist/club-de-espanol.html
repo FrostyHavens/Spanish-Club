@@ -1241,7 +1241,7 @@ G.store = {
   // instead: heard, not read (a listening question; a question's own answer, learn.js).
   const TOK = /\[([a-z0-9]+)(?::([^\]]+))?\]/g;
   const COL = { text: '#ffffff', seen: '#a8d8ff', known: '#f8d860' };
-  G.baseForm = id => { const w = G.data.words[id]; return w ? w.es.split(' / ')[0].replace(/^(el|la|los|las) /, '') : id; };
+  G.baseForm = id => { const w = G.data.words[id]; return w ? w.es.split(' / ')[0].replace(/^(el|la|los|las) /, '') : G.phrase && G.data.phrases && G.data.phrases[id] ? G.phrase.label(id) : id; }; // (a phrase: its frame, phrases.js)
   G.richIds = s => { const out = []; String(s).replace(TOK, (m, id) => { out.push(id); return m; }); return out; };
   G.plain = s => String(s).replace(TOK, (m, id, shown) => shown || G.baseForm(id));
   function items(s) { // -> [{text, id?, gap}]  gap: a space precedes this item (wrapping happens only at gaps)
@@ -2040,6 +2040,64 @@ G.store = {
     return best;
   };
   S.grade = score => score >= S.PASS ? 'PASS' : score >= S.CLOSE ? 'CLOSE' : 'MISS';
+
+  // ---------- Phrases: a frame and a slot ("Quiero ___", "¿Dónde está ___?"; docs/LEARNING_PLAN_2.md, Phase 2) ----------
+  // S.FRAMES[id] = { say: 'quiero / yo quiero / quisiera' (the frame's spoken forms, no slot), anySlot (a name: the frame
+  //   alone is the whole phrase, and any word after it is the slot: a name is often mis-heard), polite (this frame IS
+  //   "por favor") }. src/phrases.js fills it from the content (G.data.phrases); a spec object can be passed instead.
+  // S.matchPhrase(frame, slotTargets, alternatives) -> {frame, slot, full, polite, score, heard, i, fs, ss}
+  //   frame: the frame was heard (anywhere, fuzzy like S.match: one sound off still passes); slot: the index of the slot
+  //   target heard in the rest of the sentence (articles, accents, case and ¿¡ ignored; any word order), or -1; full:
+  //   frame and slot (anySlot: the frame alone, or with any word after it); polite: "por favor" anywhere (taken out
+  //   before the rest is matched). The best alternative wins: full, then the slot alone, then the frame alone, then
+  //   the score. Pure (tools/test-phrases.js runs it in Node).
+  S.FRAMES = {};
+  const toks = s => words(s).filter(Boolean);
+  const ARTS = /^(el|la|los|las|un|una|unos|unas)$/;
+  // the best window of ws (a run of max(1, len-1) .. len+1 words) for any of the forms (token lists) -> {s, a, b}
+  // (an exact tie takes the longer window: "yo quiero" over "quiero", so the whole frame comes out of the sentence)
+  function bestWin(forms, ws) {
+    let best = { s: 0, a: -1, b: -1 };
+    for (const f of forms) {
+      const t = f.join(''); if (!t) continue;
+      for (let len = Math.max(1, f.length - 1); len <= Math.min(ws.length, f.length + 1); len++)
+        for (let k = 0; k + len <= ws.length; k++) {
+          const sc = sim(t, ws.slice(k, k + len).join(''));
+          if (sc > best.s + 1e-9 || (Math.abs(sc - best.s) < 1e-9 && best.a >= 0 && len > best.b - best.a)) best = { s: sc, a: k, b: k + len };
+        }
+    }
+    return best;
+  }
+  const POLITE = [['por', 'fabor'], ['fabor']];
+  const politeWin = ws => { const w = bestWin([POLITE[0]], ws); return w.s >= S.PASS ? w : bestWin([POLITE[1]], ws); };
+  S.frameSpec = f => (f && typeof f === 'object' ? f : S.FRAMES[f] || null);
+  S.matchPhrase = function (frame, slotTargets, alternatives) {
+    const fr = S.frameSpec(frame), list = alternatives == null ? [] : Array.isArray(alternatives) ? alternatives : [alternatives];
+    const T = (Array.isArray(slotTargets) ? slotTargets : slotTargets == null ? [] : [slotTargets]).map(t => (t == null ? [] : forms(t)));
+    const FF = fr ? String(fr.say || '').split('/').map(toks).filter(f => f.length) : [];
+    const rank = r => (r.full ? 3 : r.slot >= 0 ? 2 : r.frame ? 1 : 0);
+    let best = null;
+    list.forEach((a, i) => {
+      const tr = a && typeof a === 'object' ? a.transcript : a;
+      let ws = toks(tr);
+      // "por favor" anywhere: taken out (the request is matched in what's left)
+      const pw = politeWin(ws), polite = pw.s >= S.PASS;
+      if (polite) ws = ws.slice(0, pw.a).concat(ws.slice(pw.b));
+      // the frame, anywhere; what's left is where the slot is
+      let fs = 0, rest = ws;
+      if (fr && fr.polite) fs = polite ? 1 : 0;
+      else if (FF.length) { const w = bestWin(FF, ws); if (w.s >= S.PASS) { fs = w.s; rest = ws.slice(0, w.a).concat(ws.slice(w.b)); } }
+      const isFrame = fs >= S.PASS;
+      let slot = -1, ss = 0;
+      T.forEach((F, k) => { const w = bestWin(F, rest); if (w.s >= S.PASS && w.s > ss + 1e-9) { slot = k; ss = w.s; } });
+      const extra = rest.filter(w => !ARTS.test(w));
+      if (fr && fr.anySlot && isFrame && slot < 0 && extra.length && T.length === 1) { slot = 0; ss = S.PASS; } // (a mis-heard name)
+      const full = isFrame && (slot >= 0 || !!(fr && fr.anySlot));
+      const r = { frame: isFrame, slot, full, polite, score: full ? (fs + (slot >= 0 ? ss : 1)) / 2 : slot >= 0 ? ss * 0.6 : isFrame ? fs * 0.5 : 0, heard: String(tr == null ? '' : tr).trim(), i, fs, ss };
+      if (!best || rank(r) > rank(best) || (rank(r) === rank(best) && r.score > best.score + 1e-9)) best = r;
+    });
+    return best || { frame: false, slot: -1, full: false, polite: false, score: 0, heard: '', i: -1, fs: 0, ss: 0 };
+  };
 
   // ---------- What this browser has ----------
   const SR = () => W.SpeechRecognition || W.webkitSpeechRecognition || null;
@@ -8493,6 +8551,32 @@ G.store = {
     aguila: { es: 'el águila', en: 'the eagle', topic: 'faunamontana', icon: 'aguila', pl: 'águilas', alt: 'águila / aguilita / las águilas' },
     lobo: { es: 'el lobo', en: 'the wolf', topic: 'faunamontana', icon: 'lobo', pl: 'lobos', alt: 'lobito / lobos' },
   };
+  // ---------- Phrases (docs/LEARNING_PLAN_2.md, Phase 2: "say it to get it"; src/phrases.js) ----------
+  // A phrase is a FRAME with a SLOT for a word she knows: "Quiero ___" + el helado -> "Quiero un helado". Phrases are
+  // learnable items like words (the same stages, boxes and history: src/words.js keeps their records apart, in
+  // G.state.phrases), with their own cards (a speech bubble on the card). A phrase:
+  //   es       the frame as written, ___ for the slot ('¿Dónde está ___?')
+  //   en       for the grown-ups
+  //   say      the frame's spoken forms the mic accepts, ' / '-separated, no slot (src/speech.js matchPhrase: fuzzy,
+  //            articles / accents / ¿¡ ignored, any word order; "por favor" anywhere is the polite bonus)
+  //   art      the slot's article: 'un' (Quiero un helado, Tengo una carta; a mass noun in C.mass goes bare: Quiero pan),
+  //            'el' (¿Dónde está el gato? Me gusta el oso), '' (a name: Me llamo Luz)
+  //   plural   the frame before a plural slot ('¿Dónde están ___?', 'Me gustan ___')
+  //   prompt   what someone asks to get it said ('¿Qué quieres?')
+  //   reply    what the one who hears it says in its introduction (src/phrases.js models it twice: Lola and Nico)
+  //   icon     the card's slot picture until the phrase is used with a word (then the last word it was said with)
+  //   anySlot  a name: the frame alone is the whole phrase (a name is often mis-heard), polite: this one IS "por favor"
+  C.phrases = {
+    f_llamo: { es: 'Me llamo ___', en: 'My name is ___', say: 'me llamo / mi nombre es / yo me llamo', art: '', prompt: '¿Y tú?', reply: '¡Hola!', icon: 'hola', anySlot: true },
+    f_quiero: { es: 'Quiero ___', en: 'I want ___', say: 'quiero / yo quiero / quisiera / me das', art: 'un', prompt: '¿Qué quieres?', reply: '¡Aquí tienes!', icon: 'pan' },
+    f_porfavor: { es: '___, por favor', en: '___, please', say: 'por favor', art: 'un', prompt: '¿Qué quieres?', reply: '¡Qué amable!', icon: 'porfavor', polite: true },
+    f_donde: { es: '¿Dónde está ___?', en: 'Where is ___?', say: 'donde esta / donde estan / adonde esta / en donde esta', art: 'el', plural: '¿Dónde están ___?', prompt: '¿Qué buscas?', reply: '¡Ahí!', icon: 'lupa' },
+    f_gusta: { es: 'Me gusta ___', en: 'I like ___', say: 'me gusta / me gustan / me encanta / me encantan', art: 'el', plural: 'Me gustan ___', prompt: '¿Qué te gusta?', reply: '¡A mí también!', icon: 'gracias' },
+    f_tengo: { es: 'Tengo ___', en: 'I have ___', say: 'tengo / yo tengo / aquí tengo / te traigo', art: 'un', prompt: '¿Qué tienes?', reply: '¡Gracias!', icon: 'mano' },
+  };
+  C.phraseOrder = ['f_llamo', 'f_quiero', 'f_porfavor', 'f_donde', 'f_gusta', 'f_tengo']; // (the notebook's, the deck's and the grown-ups' order)
+  C.mass = ['pan', 'agua', 'leche', 'queso', 'chocolate', 'arena', 'nieve', 'hielo']; // (said bare after quiero / tengo: Quiero pan)
+
   C.numberWords = ['uno', 'dos', 'tres', 'cuatro', 'cinco'];
   C.numberWords10 = ['uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'];
 
@@ -8774,6 +8858,8 @@ G.store = {
       dogName: null,      // the dog's name, chosen by the child in the opener (G.dogName(): "Canelo" until then)
       hist: {},           // the learning history (history.js): per day the minutes played, words met, every retrieval
                           // (compact, no audio, the last 60 days); the parent checks; the dog's warm-up (warmup.js)
+      phrases: {},        // the phrases (phrases.js, words.js): r {id: the word model's record}, intro {id: {d, at}},
+                          // named {npc: day}, fav (her favourite animal, for Lola), likes {npc: {w, d}}, last (play s)
     };
   }
   function devicePrefs(s) {
@@ -9025,9 +9111,20 @@ G.store = {
     return r;
   }
   W.migrate = migrate;
+  // Phrases (docs/LEARNING_PLAN_2.md, Phase 2; content/es/words.js C.phrases, src/phrases.js) are learnable items too:
+  // the same record, stages, boxes, history and cards, kept apart in G.state.phrases.r so that every list of WORDS
+  // (W.list, the review engine, the warm-up's words, the notebook's pages, the save slots' counts) stays words only.
+  W.isPhrase = id => !!(D().phrases && D().phrases[id]);
+  W.item = id => D().words[id] || (D().phrases && D().phrases[id]) || null; // a word or a phrase
+  const recsOf = id => {
+    if (!W.isPhrase(id)) return G.state.words;
+    const s = G.state; if (!isObj(s.phrases)) s.phrases = {};
+    if (!isObj(s.phrases.r)) s.phrases.r = {};
+    return s.phrases.r;
+  };
   W.rec = function (id, make) {
-    if (!G.state || !D().words[id]) return null;
-    const ws = G.state.words; let r = ws[id];
+    if (!G.state || !W.item(id)) return null;
+    const ws = recsOf(id); let r = ws[id];
     if (r && (!isObj(r) || r.st == null)) r = ws[id] = migrate(isObj(r) ? r : {});
     if (!r && make) r = ws[id] = { st: 0, box: 0, due: null, dd: null, dc: null, fu: 0, met: null, ms: 0, md: 0, how: null, last: null, n: 0, right: 0, wrong: 0, said: 0, cue: 0, ret: 0, ft: {}, star: '', s3: null, gold: false, learned: false };
     return r || null;
@@ -9300,7 +9397,7 @@ G.store = {
   // replaces it (first try or not, an echo) instead of counting twice.
   let pend = null;
   H.event = function (id, k, o = {}) {
-    if (!G.state || !D().words[id] || !H.KIND[k]) return null;
+    if (!G.state || !W().item(id) || !H.KIND[k]) return null; // (a word or a phrase: phrases.js)
     const d = H.day(), r = W().rec(id);
     let e = d.w[id];
     if (o.answer && o.said && pend && pend.id === id && pend.key === today() && G.frame - pend.f <= 150 && Array.isArray(e) && typeof e[1] === 'string' && e[1].length > pend.i) {
@@ -9318,7 +9415,7 @@ G.store = {
     return k;
   };
   // a word met (words.js meet)
-  H.met = function (id) { if (!G.state) return; const d = H.day(); if (d.met.indexOf(id) < 0) d.met.push(id); };
+  H.met = function (id) { if (!G.state || W().isPhrase(id)) return; const d = H.day(); if (d.met.indexOf(id) < 0) d.met.push(id); }; // (words: a phrase's introduction is G.state.phrases.intro)
   // every frame a game is on (words.js step): today's seconds of play (not while idle, not on the grown-ups' screens)
   let acc = 0, lastIn = 0, lastState = null;
   H.step = function () {
@@ -9406,6 +9503,25 @@ G.store = {
     return { id, met: st0 >= 1, st: st0, box: r && st0 >= 1 ? Math.max(1, r.box | 0) : 0, said: r ? r.said | 0 : 0, ago: st0 >= 1 ? g : null, slip: W().slipping(id) };
   };
   H.zoneRows = zone => H.wordsOf(zone).map(H.row);
+  // the phrases (phrases.js), for the grown-ups' Frases tab: the same rows
+  H.phraseIds = () => (D().phraseOrder || Object.keys(D().phrases || {})).filter(id => D().phrases && D().phrases[id]);
+  H.phraseRows = () => H.phraseIds().map(H.row);
+  // phrases said aloud (S, s, E events of phrase ids) and built, in all and today
+  H.phraseStats = function () {
+    const out = { met: 0, of: H.phraseIds().length, said: 0, today: 0, built: 0 };
+    if (!G.state) return out;
+    out.met = H.phraseIds().filter(id => W().met(id)).length;
+    const h = st(), td = today();
+    for (const k of keys(h)) {
+      const d = h.d[k];
+      for (const id in d.w) {
+        if (!W().isPhrase(id)) continue;
+        const e = d.w[id]; if (!Array.isArray(e) || typeof e[1] !== 'string') continue;
+        for (const c of e[1]) { if (c === 'S' || c === 's' || c === 'E') { out.said++; if (k === td) out.today++; } else if (c === 'P' || c === 'p') out.built++; }
+      }
+    }
+    return out;
+  };
 
   // ---------- the overview ----------
   H.overview = function () {
@@ -9414,6 +9530,7 @@ G.store = {
       days: H.daysPlayed(), minutes: H.totalMinutes(), today: H.minutes(),
       met: Wd.count(1), known: Wd.count(2), remembered: Wd.count(3), solid: Wd.count(4), all: Object.keys(D().words).length,
       slipping: Wd.slipList(), r7, ra, spoken: sp, check: H.checkLast(), warmup: Object.assign({}, h.wu),
+      phrases: H.phraseStats(),
     };
   };
 
@@ -9492,10 +9609,14 @@ G.store = {
 //   .drawPlant(ctx, pts, cx, bottom, o); .drawDeck(ctx, x, y) (the 20x20 corner button and its count); .bookOpen();
 //   .live() cards popping now; .busy(); .log (tests: the last uses [{id, how, add, from, to}]); .party() the book's
 //   celebration going on; .step() / .draw(ctx) (core.js, around the scenes like fx.js).
+// Phrases (src/phrases.js, docs/LEARNING_PLAN_2.md Phase 2) are cards too: a speech bubble on the card's corner, the
+// frame as its label ("Quiero"), the word it was last said with as its picture; they grow the same way, most by saying
+// the whole phrase ('phrase' 8), then building it from cards ('build' 3). The deck shows them on their own tab (a
+// speech bubble beside the deck at the top).
 'use strict';
 (function () {
   const C = G.cards = {};
-  C.GROW = { say: 5, pick: 2, find: 2, match: 2, carry: 1, tap: 1, give: 1 };
+  C.GROW = { say: 5, pick: 2, find: 2, match: 2, carry: 1, tap: 1, give: 1, phrase: 8, build: 3 }; // (phrase, build: phrases.js)
   C.PASSIVE = ['carry', 'tap', 'give'];
   C.GAP = 30;                       // play seconds between two passive growths of one word
   C.LV = [0, 2, 6, 12, 20, 32, 46]; // seed, sprout, leaves, bud, flower, two flowers, three
@@ -9507,6 +9628,8 @@ G.store = {
   const D = () => G.data;
   const rec = id => (G.words ? G.words.rec(id) : null);
   const met = id => !!G.state && !!G.words && G.words.met(id);
+  const item = id => (G.words ? G.words.item(id) : D().words[id]); // a word or a phrase (words.js)
+  const isPhrase = id => !!(G.words && G.words.isPhrase(id));
 
   // ---------- points and levels ----------
   C.raw = id => { const r = rec(id); return r ? +r.gp || 0 : 0; };
@@ -9525,7 +9648,7 @@ G.store = {
   let spot = null, lastTap = null;
   C.at = (x, y) => { spot = { x, y, f: G.frame }; };
   C.grow = function (id, how, o = {}) {
-    if (!G.state || !D().words[id] || !met(id)) return 0;
+    if (!G.state || !item(id) || !met(id)) return 0;
     const r = rec(id); if (!r) return 0;
     const add = o.add != null ? o.add : (C.GROW[how] || 1);
     if (C.PASSIVE.indexOf(how) >= 0) {
@@ -9537,10 +9660,10 @@ G.store = {
     r.gp = Math.round(((+r.gp || 0) + add) * 10) / 10;
     const to = C.pts(id);
     C.log.push({ id, how, add, from, to }); if (C.log.length > 60) C.log.shift();
-    pop(id, { from, to, how, x: o.x, y: o.y, said: how === 'say', small: C.PASSIVE.indexOf(how) >= 0 });
+    pop(id, { from, to, how, x: o.x, y: o.y, said: how === 'say' || how === 'phrase', small: C.PASSIVE.indexOf(how) >= 0 });
     return add;
   };
-  C.show = function (id, o = {}) { if (!D().words[id]) return; const p = C.pts(id); pop(id, Object.assign({ from: p, to: p, how: 'show' }, o)); };
+  C.show = function (id, o = {}) { if (!item(id)) return; const p = C.pts(id); pop(id, Object.assign({ from: p, to: p, how: 'show' }, o)); };
 
   // ---------- cards popping up ----------
   const pops = [];
@@ -9590,7 +9713,7 @@ G.store = {
     if (deckVis > 0) deckVis--;
     for (let i = pops.length - 1; i >= 0; i--) {
       const p = pops[i]; p.t++;
-      if (p.t === 1) { G.audio.sfx(p.fresh ? 'note' : 'pop'); if (p.fresh) G.speak(G.baseForm(p.id)); }
+      if (p.t === 1) { G.audio.sfx(p.fresh ? 'note' : 'pop'); if (p.fresh) G.speak(isPhrase(p.id) && G.phrase ? G.phrase.sentence(p.id) : G.baseForm(p.id)); }
       if (p.t > 0) deckVis = Math.max(deckVis, 40);
       const gl = p.said ? GROW_SAY : GROW;
       if (!p.fresh && p.t >= IN && p.t <= IN + gl) {
@@ -9660,6 +9783,7 @@ G.store = {
   };
   // a whole card at x, y (top-left), o: {s scale, pts (the plant, e.g. while it grows), hi (selected), st (stage)}
   C.drawCard = function (ctx, id, x, y, o = {}) {
+    if (isPhrase(id)) return drawPhraseCard(ctx, id, x, y, o);
     const wd = D().words[id]; if (!wd) return;
     const st = o.st != null ? o.st : (G.words ? G.words.stage(id) : 1), s = o.s || 1, gold = st >= 3, isMet = st >= 1;
     const pts = o.pts != null ? o.pts : C.pts(id);
@@ -9679,6 +9803,46 @@ G.store = {
     if (st >= 4 && ((G.frame >> 4) & 3) === 0) { R(ctx, 5, 5, 1, 3, '#ffffff'); R(ctx, 4, 6, 3, 1, '#ffffff'); }
     ctx.restore();
   };
+  // a speech bubble (a phrase's mark): x, y its top-left, about 13 x 11 at scale 1 (o.dots: three dots in it)
+  C.bubble = function (ctx, x, y, k = 1, col = '#ffffff', ink = '#10102a') {
+    ctx.save(); ctx.translate(Math.round(x), Math.round(y)); if (k !== 1) ctx.scale(k, k);
+    R(ctx, 1, 0, 11, 9, ink); R(ctx, 0, 1, 13, 7, ink); R(ctx, 2, 9, 3, 2, ink); R(ctx, 2, 11, 1, 1, ink);  // outline and tail
+    R(ctx, 1, 1, 11, 7, col); R(ctx, 3, 8, 1, 2, col);
+    R(ctx, 3, 4, 1, 1, ink); R(ctx, 6, 4, 1, 1, ink); R(ctx, 9, 4, 1, 1, ink);                                 // ...
+    ctx.restore();
+  };
+  // a phrase's card: the word it was last said with as its picture (its speech bubble in the corner), the frame as its
+  // label, the same rim (blue, gold once remembered) and plant as a word's card
+  // a label in one line, or two (split at the space that balances them best) when one doesn't fit
+  function labelLines(s, w) {
+    if (G.textWidth(s) <= w || s.indexOf(' ') < 0) return [s];
+    let best = null;
+    for (let i = s.indexOf(' '); i >= 0; i = s.indexOf(' ', i + 1)) { const d = Math.max(G.textWidth(s.slice(0, i)), G.textWidth(s.slice(i + 1))); if (!best || d < best.d) best = { d, i }; }
+    return [s.slice(0, best.i), s.slice(best.i + 1)];
+  }
+  function drawPhraseCard(ctx, id, x, y, o) {
+    const ph = G.phrase, st = o.st != null ? o.st : (G.words ? G.words.stage(id) : 1), s = o.s || 1, gold = st >= 3, isMet = st >= 1;
+    const pts = o.pts != null ? o.pts : C.pts(id);
+    ctx.save(); ctx.translate(Math.round(x), Math.round(y)); if (s !== 1) ctx.scale(s, s);
+    if (o.a != null) ctx.globalAlpha *= o.a;
+    R(ctx, 2, 3, C.W, C.H - 1, 'rgba(0,0,16,0.35)');
+    R(ctx, 1, 0, C.W - 2, C.H, '#10102a'); R(ctx, 0, 1, C.W, C.H - 2, '#10102a');
+    R(ctx, 1, 1, C.W - 2, C.H - 2, !isMet ? '#c8bca0' : gold ? (o.hi ? '#fff070' : '#f0c030') : (o.hi ? '#b8e8ff' : '#6898e0'));
+    R(ctx, 3, 3, C.W - 6, C.H - 6, gold ? '#fff4c8' : '#f4fbff');
+    // the picture a bit smaller than a word's (24 px): the frame's words need two lines ("Me / llamo", "¿Dónde / está?")
+    ctx.globalAlpha *= isMet ? 1 : 0.5;
+    if (ph) ph.drawPic(ctx, ph.cardPic(id), (C.W - 24) / 2, 5, 1.5, o.t);
+    ctx.globalAlpha /= isMet ? 1 : 0.5;
+    C.bubble(ctx, C.W - 16, 1, 1, gold ? '#fff8d0' : '#ffffff'); // the phrase's mark: a speech bubble
+    const lab = isMet ? (ph ? ph.label(id) : id) : '? ? ?', lines = labelLines(lab, C.W - 6), col = !isMet ? '#b0a080' : gold ? '#a06008' : '#2860a8';
+    lines.forEach((ln, k) => {
+      const sq = Math.min(1, (C.W - 6) / Math.max(1, G.textWidth(ln))), y = lines.length > 1 ? 31 + k * 8 : 34;
+      ctx.save(); ctx.translate(C.W / 2, 0); ctx.scale(sq, 1); G.textC(ctx, ln, 0, y, col, null); ctx.restore();
+    });
+    if (isMet) C.drawPlant(ctx, pts, C.W / 2, C.H - 3, { gold: st >= 4, s: 2 });
+    ctx.restore();
+  }
+
   // the deck: a 20x20 button (like G.iconBtn) with a little stack of cards, and how many cards beside it
   C.drawDeck = function (ctx, x, y, o = {}) {
     x = Math.round(x); y = Math.round(y);
@@ -9744,12 +9908,19 @@ G.store = {
   }
 
   // ---------- the deck: every card, newest first; tap one to hear it ----------
+  // Two groups: the word cards (the deck's own picture, top left) and, once a phrase is met, the phrases (a speech
+  // bubble beside it: "Frases", src/phrases.js); the one showing is lit.
   const COLS = 6, ROWS = 2, PER = COLS * ROWS;
   class Deck {
-    constructor(w) {
+    constructor(w, o) {
       G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; this.pg = 0; this.sel = 0; this.hop = {};
-      this.ids = G.words.list(1).sort((a, b) => (rec(b).met || 0) - (rec(a).met || 0) || (a < b ? -1 : 1));
+      this.words = G.words.list(1).sort((a, b) => (rec(b).met || 0) - (rec(a).met || 0) || (a < b ? -1 : 1));
+      this.phrases = G.phrase ? G.phrase.list(1) : [];
+      this.setGroup(o && o.group === 'frases' && this.phrases.length ? 'frases' : 'words');
     }
+    setGroup(g) { this.group = g; this.ids = g === 'frases' ? this.phrases : this.words; this.pg = 0; this.sel = 0; }
+    wordsXY() { return [44, 8]; }
+    frasesXY() { return [70, 8]; }
     pages() { return Math.max(1, Math.ceil(this.ids.length / PER)); }
     onPage() { return this.ids.slice(this.pg * PER, this.pg * PER + PER); }
     cardRect(k) { return { x: 12 + (k % COLS) * 50, y: 31 + Math.floor(k / COLS) * 91, w: C.W, h: C.H }; }
@@ -9757,10 +9928,12 @@ G.store = {
     nextXY() { return [G.W / 2 + 42, 4]; }
     closeXY() { return [G.W - 30, 8]; }
     turn(d) { if (this.pages() < 2) return; this.pg = (this.pg + d + this.pages()) % this.pages(); this.sel = 0; G.audio.sfx('note'); }
-    say(k) { const id = this.onPage()[k]; if (!id) return; this.sel = k; this.hop[id] = this.t; G.speak(G.baseForm(id)); G.audio.sfx('cursor'); }
+    say(k) { const id = this.onPage()[k]; if (!id) return; this.sel = k; this.hop[id] = this.t; G.speak(isPhrase(id) && G.phrase ? G.phrase.sentence(id) : G.baseForm(id)); G.audio.sfx('cursor'); }
     update() {
       this.t++;
       if (G.input.p('B') || G.closeHit(...this.closeXY())) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); return; }
+      if (this.phrases.length && G.btnHit(...this.frasesXY())) { if (this.group !== 'frases') { this.setGroup('frases'); G.audio.sfx('note'); } return; }
+      if (this.phrases.length && G.btnHit(...this.wordsXY())) { if (this.group !== 'words') { this.setGroup('words'); G.audio.sfx('note'); } return; }
       if (this.pages() > 1 && G.btnHit(...this.prevXY())) { this.turn(-1); return; }
       if (this.pages() > 1 && G.btnHit(...this.nextXY())) { this.turn(1); return; }
       const ids = this.onPage();
@@ -9777,7 +9950,14 @@ G.store = {
       const u = Math.min(1, this.t / 8);
       ctx.fillStyle = 'rgba(4,6,24,' + (0.5 * u) + ')'; ctx.fillRect(0, 0, G.W, G.H);
       G.win(ctx, 6, 6, G.W - 12, G.H - 12, { fill1: '#2c7a4a', fill2: '#14502a', alpha: 1 }); // a green table to lay the cards on
-      C.drawDeck(ctx, 44, 8, { still: true });
+      if (this.phrases.length) { // the two groups: the word cards and the phrases (a speech bubble); the one showing is lit
+        const lit = (xy, on) => { R(ctx, xy[0] - 3, xy[1] - 3, 26, 26, on ? '#f8e060' : '#1c5a34'); R(ctx, xy[0] - 2, xy[1] - 2, 24, 24, on ? '#fff6b0' : '#246a40'); };
+        lit(this.wordsXY(), this.group === 'words'); lit(this.frasesXY(), this.group === 'frases');
+        const [bx, by] = this.frasesXY(), on = G.input.holding(bx - 4, by - 4, 28, 28) > 0;
+        R(ctx, bx + 1, by, 18, 20, '#000010'); R(ctx, bx, by + 1, 20, 18, '#000010'); R(ctx, bx + 1, by + 1, 18, 18, on ? '#f0d060' : '#8898e0'); R(ctx, bx + 2, by + 2, 16, 16, on ? '#304cc0' : '#1c2c8c');
+        C.bubble(ctx, bx + 3, by + 4, 1);
+      }
+      C.drawDeck(ctx, ...this.wordsXY(), { still: true, n: this.words.length });
       G.closeBtn(ctx, ...this.closeXY());
       if (this.pages() > 1) {
         G.iconBtn(ctx, 'back', ...this.prevXY()); G.iconBtn(ctx, 'next', ...this.nextXY());
@@ -9797,7 +9977,7 @@ G.store = {
     }
   }
   G.Deck = Deck;
-  G.deck = function () { const w = new G.Wait(); G.push(new Deck(w)); return w; };
+  G.deck = function (o) { const w = new G.Wait(); G.push(new Deck(w, o)); return w; };
 })();
 
 </script>
@@ -10435,7 +10615,7 @@ G.store = {
   // it flies into the deck in the corner. (It used to be a notebook page; the notebook comes later, docs/PLAYTEST_NOTES.md.)
   let noteUntil = 0;
   I.note = function (ids, o = {}) {
-    ids = (Array.isArray(ids) ? ids : [ids]).filter(id => D().words[id]);
+    ids = (Array.isArray(ids) ? ids : [ids]).filter(id => (G.words.item ? G.words.item(id) : D().words[id])); // (a word or a phrase: phrases.js)
     const w = new G.Wait();
     if (!ids.length) { w.resolve(); return w; }
     ids.forEach((id, k) => { if (G.cards) G.cards.show(id, Object.assign({ fresh: true, delay: k * 36 }, o)); });
@@ -11270,13 +11450,17 @@ G.store = {
   // Only topics with a met word have a page (G.pages.visible, intro.js). On a page: each met word's picture and word
   // (blue, or gold once remembered), its card's plant (cards.js: it grows as the word is used) and a little mic if it was said; the
   // words still to meet are empty dotted frames. Tap a word to hear it; < > (or left / right) turns the page.
+  // The phrases (src/phrases.js) have a page of their own, first: "Frases", each one as her speech bubble with the word it
+  // was last said with, its card's plant; tap one to hear it.
   class Notebook {
     constructor(w, start) {
       G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; this.list = G.pages.visible();
+      if (G.phrase && G.phrase.on() && G.phrase.list(1).length) this.list.unshift('frases');
       this.pi = Math.max(0, this.list.indexOf(start)); this.wi = 0; this.flip = 0;
     }
     page() { return this.list[this.pi]; }
-    words() { return this.page() ? D().pages[this.page()].words : []; }
+    frases() { return this.page() === 'frases'; }
+    words() { return this.frases() ? G.phrase.ids() : this.page() ? D().pages[this.page()].words : []; }
     // tap areas (shared with draw): word k on the page, the < > page buttons around the page dots, close
     cols() { return this.words().length > 9 ? 4 : 3; } // (a page of 10, the numbers: four narrower columns)
     cellRect(k) { const c = this.cols(); return c === 4 ? { x: 18 + (k % 4) * 72, y: 36 + Math.floor(k / 4) * 58, w: 70, h: 56 } : { x: 22 + (k % 3) * 94, y: 36 + Math.floor(k / 3) * 58, w: 90, h: 56 }; }
@@ -11284,7 +11468,7 @@ G.store = {
     nextXY() { return [G.W / 2 + 62, 4]; }
     closeXY() { return [G.W - 30, 8]; }
     turn(dx) { if (this.list.length < 2) return; this.pi = (this.pi + dx + this.list.length) % this.list.length; this.wi = 0; this.flip = 8 * dx; G.audio.sfx('note'); }
-    say(k) { const id = this.words()[k]; if (id && S().seen(id)) { G.speak(G.baseForm(id)); return true; } G.audio.sfx('boop'); return false; }
+    say(k) { const id = this.words()[k]; if (id && S().seen(id)) { G.speak(this.frases() ? G.phrase.sentence(id) : G.baseForm(id)); return true; } G.audio.sfx('boop'); return false; }
     update() {
       this.t++; if (this.flip) this.flip -= Math.sign(this.flip);
       const d = G.input.repDir(14, 5), n = this.words().length;
@@ -11320,11 +11504,13 @@ G.store = {
         const x = Math.round(G.W / 2 - (n * step - (step - dw)) / 2 + k * step);
         ctx.fillStyle = k === this.pi ? '#a05020' : '#c8a070'; ctx.fillRect(x, 11, dw, 6); ctx.fillStyle = '#7a4a20'; ctx.fillRect(x, 17, dw, 1);
       });
-      const ws = this.words(), got = ws.filter(id => S().seen(id)).length, tp = D().topics[D().pages[pid].topic];
+      const ws = this.words(), got = ws.filter(id => S().seen(id)).length, tp = this.frases() ? { name: 'Frases', en: 'Phrases' } : D().topics[D().pages[pid].topic];
       G.textC(ctx, G.fill(tp.name), G.W / 2, 25, '#a05020', null);
+      if (this.frases()) G.cards.bubble(ctx, G.W / 2 - G.textWidth(tp.name) / 2 - 18, 22, 1);
       G.textR(ctx, got + '/' + ws.length, G.W - 40, 25, '#a08060', null);
       if (G.enVisible()) G.text(ctx, G.fill(tp.en), 22, 25, '#a09070', null);
       const dx = this.flip * 3;
+      if (this.frases()) { this.drawFrases(ctx, ws, dx); return; }
       ws.forEach((id, k) => {
         const R = this.cellRect(k), cx = R.x + dx + (R.w - 90) / 2, cy = R.y + 2, sel = k === this.wi, st = S().stage(id);
         if (st < 1) { // still to meet: an empty dotted frame
@@ -11348,6 +11534,24 @@ G.store = {
       });
     }
   }
+  // the phrases' page: her speech bubble with each phrase (its frame and the word it was last said with), the plant of its
+  // card, a mic once said aloud; a phrase not met yet is a dotted bubble
+  Notebook.prototype.drawFrases = function (ctx, ws, dx) {
+    const P = G.phrase;
+    ws.forEach((id, k) => {
+      const R = this.cellRect(k), x = R.x + dx, y = R.y + 2, sel = k === this.wi, st = S().stage(id);
+      if (st < 1) { ctx.fillStyle = '#d0c0a0'; for (let i = 0; i < 70; i += 4) { ctx.fillRect(x + 4 + i, y + 6, 2, 1); ctx.fillRect(x + 4 + i, y + 40, 2, 1); } for (let i = 0; i < 34; i += 4) { ctx.fillRect(x + 4, y + 6 + i, 1, 2); ctx.fillRect(x + 74, y + 6 + i, 1, 2); } return; }
+      if (sel) { ctx.fillStyle = '#f8e0a0'; ctx.fillRect(x - 2, y - 2, R.w, R.h); }
+      const hop = sel ? Math.round(Math.abs(Math.sin(this.t / 8)) * -2) : 0;
+      const bx = x + 20, by = y + hop; // a speech bubble with the word it was last said with
+      ctx.fillStyle = '#10102a'; ctx.fillRect(bx + 1, by, 44, 38); ctx.fillRect(bx, by + 1, 46, 36); ctx.fillRect(bx + 6, by + 37, 5, 3); ctx.fillRect(bx + 6, by + 40, 2, 2);
+      ctx.fillStyle = st >= 3 ? '#fff4c8' : '#ffffff'; ctx.fillRect(bx + 1, by + 1, 44, 36); ctx.fillRect(bx + 7, by + 37, 2, 3);
+      P.drawPic(ctx, P.cardPic(id), bx + 7, by + 3, 2, this.t);
+      G.textC(ctx, P.label(id), x + 43, y + 45, st >= 3 ? '#a06008' : '#2860a8', null);
+      if (G.cards) G.cards.drawPlant(ctx, G.cards.pts(id), x + 83, y + 38, { s: 2, gold: st >= 4 });
+      const r = G.words.rec(id); if (r && r.said) G.mic.glyph(ctx, x + 1, y + 2, '#2a8a9a');
+    });
+  };
   G.notebook = function (start) { const w = new G.Wait(); G.push(new Notebook(w, start)); return w; };
 
   // ---------- Misiones: who asked, and what they want (pictures only) ----------
@@ -13930,6 +14134,9 @@ G.store = {
     try { yield* G.chapters.ask(npc, nm + ': ' + Q[0], Q[1], ans, others, { show: kind === 'best' ? null : show }); } finally { if (G.vlog) G.vlog.greet = null; }
     H.add(npc, 1, 'greet'); // (marks today's greeting even when no heart is left to give)
     yield 20;
+    // a friend you haven't swapped names with says theirs ("Me llamo Pepe. ¿Y tú?"), or some days asks what you like
+    // ("¿Qué te gusta?"): that's the day's question with them (src/phrases.js, docs/LEARNING_PLAN_2.md Phase 2)
+    if (G.phrase && ((yield* G.phrase.meetName(npc)) || (yield* G.phrase.likeAsk(npc)))) { yield* H.milestones(npc); return true; }
     // one word that's due, from what they know about
     const pool = H.POOLS[npc] || [];
     const due = G.review.next({ filter: id => pool.includes(id) && !GREET.includes(id) });
@@ -14835,6 +15042,8 @@ G.store = {
           if (cry(id)) G.textC(ctx, cry(id), x + r.w / 2, y + 43, '#e06010', null);
           if (R.said) G.mic.glyph(ctx, x + r.w - 10, y + 14, '#2a8a9a');
           if (R.counted) G.text(ctx, '\u0005', x + 3, y + 14, '#e0a010', '#5a2c04');
+          const fav = G.phrase && G.phrase.fav(); // her favourite animal (Lola asked: "Me gusta el oso", src/phrases.js): a heart pinned on it
+          if (fav && fav.id === AN().KINDS[id].word && G.hearts) G.hearts.heart(ctx, x + 4, y + 24, true, 1); // (left of its picture, under the star: clear of its name and its sound)
         } else {
           ctx.globalAlpha = 0.8; ctx.imageSmoothingEnabled = false;
           ctx.drawImage(G.tinted(G.icon(w), '#3a3048', 'albsil' + id), x + r.w / 2 - 16, y + 2, 32, 32); ctx.globalAlpha = 1;
@@ -14870,6 +15079,15 @@ G.store = {
         G.text(ctx, nm, r.x + fw + 8, r.y + 5, '#604020', null);
         H.row(ctx, who, r.x + fw + 8, r.y + 16);
         if (H.sticker(who)) { ctx.fillStyle = '#f8c820'; ctx.beginPath(); ctx.arc(r.x + r.w - 10, r.y + 10, 6, 0, Math.PI * 2); ctx.fill(); G.text(ctx, '\u0005', r.x + r.w - 13, r.y + 7, '#ffffff', '#a06000'); }
+        const fav = lola && G.phrase && G.phrase.fav(); // what you told her you like best (src/phrases.js): your face, a bubble, a heart, the animal
+        if (fav && G.data.words[fav.id]) {
+          const fx = r.x + r.w - 130, fy = r.y + 4;
+          ctx.fillStyle = '#5a3810'; ctx.fillRect(fx - 1, fy - 1, 20, 20); H.face(ctx, 'player', fx, fy, 18, this.t);
+          ctx.fillStyle = '#10102a'; ctx.fillRect(fx + 22, fy - 1, 40, 20); ctx.fillRect(fx + 20, fy + 8, 2, 3);
+          ctx.fillStyle = '#ffffff'; ctx.fillRect(fx + 23, fy, 38, 18); ctx.fillRect(fx + 21, fy + 9, 2, 1);
+          H.heart(ctx, fx + 25, fy + 6, true, 1); G.drawIcon16(ctx, fav.id, fx + 39, fy + 1);
+          G.text(ctx, 'Me gusta', fx + 66, fy + 6, '#a03060', null);
+        }
         if (lola && Z) { // where you've met her: each place's picture, bright where she said hello
           const met = (G.state.world && G.state.world.lolaZ) || {};
           Z.ids().filter(z => z !== 'villa').forEach((z, i) => { const x = r.x + fw + 8 + i * 22, y = r.y + 28; ctx.globalAlpha = met[z] ? 1 : 0.3; G.drawIcon16(ctx, Z.def(z).icon, x, y); ctx.globalAlpha = 1; if (met[z]) G.text(ctx, '\u0003', x + 13, y + 9, '#f04878', null); });
@@ -15517,18 +15735,29 @@ G.MAPDATA = {
   function* gift(who) {
     const it = giftFor(who); if (!it) return false;
     const egg = it.id === 'huevo' && who === 'rosa';
+    function* take() { // they take it: its card grows, thank you, a heart
+      B.take(it.id, { col: it.col, q: null });
+      G.audio.jingle('item');
+      if (G.cards) G.cards.grow(it.id, 'give', { x: G.W / 2, y: G.H / 2 }); // giving it grows its card (cards.js)
+      yield* say(who, TT('¡[' + it.id + ']! ¡[gracias], {name}!', 'Thank you, {name}!'));
+      if (egg) { G.hearts.add('rosa', 1, 'care'); jobStar(G.field, 'huevo', G.W / 2, 90); }
+      else G.hearts.add(who, 1, 'gift');
+      yield 30;
+    }
+    // Tengo ___ (src/phrases.js): they ask what you have, you say it ("Tengo una flor") or build it, and they take it;
+    // the back button keeps it
+    const tg = G.phrase && G.words.met(it.id) ? yield* G.phrase.tengo(who, it, { cancel: true, onGet: take }) : null;
+    if (tg) {
+      if (tg.cancel) yield* say(who, TT('¡Oh! Bueno...', 'Oh! All right...'));
+      else yield* G.hearts.milestones(who);
+      return true;
+    }
     yield* say(who, TT('¡Oh! ¿Un regalo? ¿Para mí?', 'Oh! A present? For me?'));
     if (G.words.met('si') && G.words.met('no')) { // (before sí and no are met, tapping them with it in your hands is the yes)
       const r = yield G.choose({ prompt: '¿Para ' + G.nameOf(who).replace(/ (el|la) .*/, '') + '?', en: 'Give it?', show: B.icon(it), choices: words('si', 'no'), layout: 'cards', mic: true });
       if (r.result !== 0) { yield* say(who, TT('¡Oh! Bueno...', 'Oh! All right...')); return true; }
     }
-    B.take(it.id, { col: it.col, q: null });
-    G.audio.jingle('item');
-    if (G.cards) G.cards.grow(it.id, 'give', { x: G.W / 2, y: G.H / 2 }); // giving it grows its card (cards.js)
-    yield* say(who, TT('¡[' + it.id + ']! ¡[gracias], {name}!', 'Thank you, {name}!'));
-    if (egg) { G.hearts.add('rosa', 1, 'care'); jobStar(G.field, 'huevo', G.W / 2, 90); }
-    else G.hearts.add(who, 1, 'gift');
-    yield 30;
+    yield* take();
     yield* G.hearts.milestones(who);
     return true;
   }
@@ -15537,6 +15766,9 @@ G.MAPDATA = {
     if (!SHOP[who] || !chDone(who === 'marta' ? 'c6' : 'c4') || B.full()) return false;
     const items = SHOP[who].filter(k => !B.has(k, { q: null }) && G.words.met(k)); if (!items.length) return false; // (a word not met yet waits for its chapter)
     yield* say(who, TT('¡[hola]! ¿Qué quieres?', 'Hello! What would you like?'));
+    // Quiero ___ (src/phrases.js): say it to get it (or build it from the cards); the back button: nothing today
+    const ph = G.phrase ? yield* G.phrase.quiero(who, items, { cancel: true, onGet: function* (k) { B.add(items[k]); yield* say(who, TT('¡Aquí tienes! ¡[' + items[k] + ']!', 'Here you are!')); } }) : null;
+    if (ph) { if (ph.cancel) yield* say(who, TT('¡[adios]!', 'Bye!')); return true; }
     const r = yield G.choose({ prompt: '¿Qué quieres?', en: 'What would you like? (or "no")', choices: words(...items, 'no'), layout: 'cards', mic: true, cancel: true });
     const k = r.result;
     if (k < 0 || k >= items.length) { yield* say(who, TT('¡[adios]!', 'Bye!')); return true; }
@@ -18546,6 +18778,12 @@ G.MAPDATA = {
   };
   function* remind(who, f) { // the nearest one still hiding: its name and the picture of the place
     const L = left(); if (!L.length) return;
+    // ¿Dónde está ___? (src/phrases.js): she asks Nico about the one she wants, he holds up the picture of its place
+    const kinds = L.map(h => h.kind).filter((k, i, a) => a.indexOf(k) === i);
+    if (G.phrase && (yield* G.phrase.donde(who, kinds, function* (k) {
+      const h = L.find(x => x.kind === kinds[k]) || L[0], sp = spot(h.spot);
+      yield sayShow(who, { icon: sp.place }, TT('¡' + (W(h.kind).es.split(' ')[0] === 'la' ? 'La' : 'El') + ' [' + h.kind + ']! ¡Mira!', 'There! Look near this place!'));
+    }))) return;
     const p = f && f.player, d = h => { const sp = spot(h.spot); return (sp.map === f.mapId ? 0 : 100) + (p ? Math.abs(sp.at[0] - p.x) + Math.abs(sp.at[1] - p.y) : 0); };
     const h = L.slice().sort((a, b) => d(a) - d(b))[0], sp = spot(h.spot), art = W(h.kind).es.split(' ')[0];
     yield sayShow(who, { icon: sp.place }, TT('¿Y ' + art + ' [' + h.kind + ']? ¡Mira!', 'Where is it hiding? Look near this place!'));
@@ -19223,8 +19461,8 @@ G.MAPDATA = {
   C.show = function* (who, f) {
     const h = C.held(); if (!h || who === 'canelo') return false;
     if (who === 'tomas' && h.id === 'carta') {
-      bag().take('carta', { q: null }); G.audio.jingle('item'); bump('carta');
-      yield say(who, null, TT('¡Mi [carta]! ¡[gracias], {name}!', 'My letter! Thank you, {name}!'));
+      const back = function* () { bag().take('carta', { q: null }); G.audio.jingle('item'); bump('carta'); yield say(who, null, TT('¡Mi [carta]! ¡[gracias], {name}!', 'My letter! Thank you, {name}!')); };
+      if (!(G.phrase && G.words.met('carta') && (yield* G.phrase.tengo('tomas', 'carta', { onGet: back })))) yield* back(); // "Tengo una carta" (src/phrases.js)
       if (G.hearts) { G.hearts.add('tomas', 1, 'care'); yield 20; yield* G.hearts.milestones('tomas'); }
       return true;
     }
@@ -19807,7 +20045,8 @@ G.MAPDATA = {
       const z = Z.def(zone), w = st(); if (!isObj(w.lola)) w.lola = {};
       const first = !w.lola.met; w.lola.met = true;
       if (Z.lolaTalked(f.mapId) && G.favores && (yield* G.favores.talk('lola', f))) return; // (her favour of the day, a zone's)
-      yield sayP('lola', null, first ? TT(met('hola') ? '¡[hola], {name}! ¡Soy Lola!' : '¡Hola, {name}! ¡Soy Lola!', 'Hi, {name}! I\'m Lola. I explore everywhere!') : TT(met('hola') ? '¡[hola], {name}!' : '¡Hola, {name}!', 'Hi, {name}!'));
+      const intro = first && !(G.phrase && G.phrase.named('lola')); // (she just said "Me llamo Lola": src/phrases.js)
+      yield sayP('lola', null, intro ? TT(met('hola') ? '¡[hola], {name}! ¡Soy Lola!' : '¡Hola, {name}! ¡Soy Lola!', 'Hi, {name}! I\'m Lola. I explore everywhere!') : TT(met('hola') ? '¡[hola], {name}!' : '¡Hola, {name}!', 'Hi, {name}!'));
       if (z) yield sayP('lola', { icon: z.icon }, TT('¡' + z.name + '!', 'This is ' + (z.en || z.name) + '!'));
       w.lola[f.mapId] = day(); G.st.autosave();
       if (z && z.lola) { yield* z.lola(f); return; }
@@ -20332,8 +20571,9 @@ G.MAPDATA = {
   function* nievesSide(f) {
     if (!hotWho() || hotDone()) return false;
     if (iceHeld() || bag().has('helado')) { yield* sayShow('nieves', { face: hotWho() }, T('¡Para ' + G.nameOf(hotWho()).replace(/^(Don|Doña) /, '') + '!', 'For ' + G.nameOf(hotWho()) + '! They are so hot.')); return true; }
-    yield* quiz('nieves', '¿Qué quieres?', 'What would you like? (an ice cream!)', 'helado', ['concha', 'elsol', 'arena', 'cubetaarena'], { show: 'helado' });
-    bag().add('helado'); G.st.autosave();
+    // Quiero un helado (src/phrases.js): say it to get it; else the question as before
+    const ph = G.phrase ? yield* G.phrase.quiero('nieves', ['helado'], { onGet: function* () { bag().add('helado'); G.st.autosave(); yield* sayShow('nieves', 'helado', T('¡Un [helado]! ¡Aquí tienes!', 'An ice cream! Here you are!')); } }) : null;
+    if (!ph) { yield* quiz('nieves', '¿Qué quieres?', 'What would you like? (an ice cream!)', 'helado', ['concha', 'elsol', 'arena', 'cubetaarena'], { show: 'helado' }); bag().add('helado'); G.st.autosave(); }
     yield* sayShow('nieves', { face: hotWho() }, T('¡Para ' + G.nameOf(hotWho()).replace(/^(Don|Doña) /, '') + '! ¡Qué [caliente]!', 'Take it to ' + G.nameOf(hotWho()) + ': they are so hot!'));
     return true;
   }
@@ -21003,8 +21243,13 @@ G.MAPDATA = {
     const [dx, dy] = P('bosque', 'cabinDoor');
     for (let k = 0; k < 3; k++) { G.audio.sfx('select'); for (let i = 0; i < 4; i++) CK.puff('dust', dx * TL + 12 + (Math.random() - 0.5) * 30, dy * TL - 20, { vy: -0.6, life: 40 }); yield 20; }
     p.baked = true; st().pies = (st().pies | 0) + 1; G.audio.jingle('promote'); CK.confetti();
-    bag().add('pay');
-    yield* sayShow('lupe', { icon: 'pay' }, T('¡Un pay! ¡Para ti!', 'A blackberry pie! For you! (share it: {dog} loves pie)'));
+    // Quiero un pay (src/phrases.js): the pie (a picture: el pay) or blackberries, whichever she asks for
+    const PAY = { id: 'pay', es: 'el pay', icon: 'pay', alt: 'pay / pai / pastel / tarta / pay de moras' };
+    const ph = G.phrase ? yield* G.phrase.quiero('lupe', [PAY].concat(met('mora') ? ['mora'] : []), { onGet: function* (k) {
+      const it = k === 1 ? 'mora' : 'pay'; bag().add(it); G.st.autosave();
+      yield* sayShow('lupe', { icon: it }, T(it === 'pay' ? '¡Un pay! ¡Aquí tienes!' : '¡[mora:Moras]! ¡Aquí tienes!', it === 'pay' ? 'A blackberry pie! Here you are! (share it: {dog} loves pie)' : 'Blackberries! Here you are!'));
+    } }) : null;
+    if (!ph) { bag().add('pay'); yield* sayShow('lupe', { icon: 'pay' }, T('¡Un pay! ¡Para ti!', 'A blackberry pie! For you! (share it: {dog} loves pie)')); }
     G.st.autosave();
   }
   if (G.carry) Object.assign(G.carry.DOG, { pay: 'eat', mora: 'eat', bellota: 'sniff' });
@@ -22852,7 +23097,10 @@ G.MAPDATA = {
     c.baked = true; c.on = false; st().cookiesN = (st().cookiesN | 0) + 1; G.audio.jingle('promote'); CK.confetti(); G.st.autosave();
     yield* sayShow('abuela', { icon: 'galletas' }, T('¡Galletas! ¡Para ti!', 'Cookies! One for you (and one for {dog}).'));
     if (met('seis')) yield* quiz('abuela', '¿Cuántas?', 'How many cookies are on the plate?', 'seis', ['cinco', 'siete', 'cuatro'], { show: { icon: 'galleta', count: 6 } });
-    if (!held()) bag().add('galleta'); G.st.autosave();
+    // Quiero una galleta (src/phrases.js): she asks for one and gets it; else it's yours as before
+    const give = function* () { if (!held()) bag().add('galleta'); G.st.autosave(); yield* sayShow('abuela', 'galleta', T('¡Aquí tienes!', 'Here you are!')); };
+    if (!(G.phrase && met('galleta') && (yield* G.phrase.quiero('abuela', ['galleta'], { onGet: give })))) { if (!held()) bag().add('galleta'); }
+    G.st.autosave();
   }
   // ---------- the photo wall (after chapter 3): who's who ----------
   function* photoWall(f) {
@@ -23842,6 +24090,8 @@ G.MAPDATA = {
   const CUPS = 4; // (you, Lucho, Mateo, Lola: four cups)
   function* pourCups(f, o = {}) {
     const c = o.c || choco(), p = f.player, lu = npcAt(f, 'lucho');
+    // the daily one: Quiero chocolate (src/phrases.js) before he pours (the story's own chapter pours as it always did)
+    if (!o.c && G.phrase && met('chocolate')) yield* G.phrase.quiero('lucho', ['chocolate'], { onGet: function* () { yield* sayShow('lucho', 'chocolate', T('¡Chocolate! ¡Ahorita!', 'Hot chocolate! Coming right up!')); } });
     yield* sayShow('lucho', { icon: 'chocolate', count: CUPS }, T('¡Una taza para cada quien!', 'A cup for everyone: for you, for me, for Mateo and for Lola. Tap the pot!'));
     const pot = P('montana_refugio', 'pot');
     for (let k = (c.n | 0); k < CUPS; k++) {
@@ -24598,7 +24848,9 @@ G.MAPDATA = {
   // tapping the one it's for: they take it, it's from someone, a heart and a star; every other letter, a reply
   P.deliver = function* (who, f) {
     const it = P.letter(); if (!it || it.to !== who) return false;
-    yield* CK.sayShow(who, { icon: 'carta' }, TT(met('carta') ? '¡Una [carta]! ¿Para mí?' : '¡Oh! ¿Para mí?', 'A letter! For me?'));
+    const forMe = function* () { yield* CK.sayShow(who, { icon: 'carta' }, TT(met('carta') ? '¡Una [carta]! ¿Para mí?' : '¡Oh! ¿Para mí?', 'A letter! For me?')); };
+    // "¿Qué tienes?" "Tengo una carta" (src/phrases.js), then they see it's for them
+    if (!(G.phrase && met('carta') && (yield* G.phrase.tengo(who, 'carta', { onGet: forMe })))) yield* forMe();
     bag().take('carta', { q: 'post', to: who }); G.audio.jingle('item');
     if (G.cards && met('carta')) G.cards.grow('carta', 'give', { x: G.W / 2, y: G.H / 2 });
     if (it.from && it.from !== who) yield* CK.sayShow(who, { face: it.from }, TT('¡Es de ' + short(it.from) + '!', 'It\'s from ' + (it.from === 'canelo' ? G.dogName() : nm(it.from)) + '!'));
@@ -25315,6 +25567,10 @@ G.MAPDATA = {
 //   dogspot  the dog's paw-print bubble on screen (his thing to do in this zone): the hand taps it
 //   warmup   the dog's daily warm-up (warmup.js), its first question: the hand taps the big mic and a mouth talks (say
 //            it!), or, without the mic, glides over the cards and taps one (never the answer)
+//   phrasesay a phrase's request or its invitation (phrases.js), its big mic: the hand taps it, her face's mouth talks
+//            and her speech bubble lights up one piece after the other (the frame, then the word): say the whole thing
+//   phrase   the phrase builder (after phrasesay was seen, when she waits, or without a mic): the hand taps the frame
+//            card, then a word card (never the answer of a request that has one)
 //   (zones)  a zone's own new action (G.zones.demos: {kind, find(f) -> tile}): the beach's 'fillpail' (the empty pail
 //            in your hands: the hand taps the water's edge)
 // The map's demos wait for a moment of standing about (DM.IDLE, so they don't get in the way of a child who is busy).
@@ -25323,7 +25579,7 @@ G.MAPDATA = {
 'use strict';
 (function () {
   const DM = G.demo = {}, T = G.TILE;
-  DM.KINDS = ['answer', 'mic', 'canelo', 'pickup', 'give', 'putdown', 'puzzle', 'seek', 'bus', 'worldmap', 'dogspot', 'warmup'];
+  DM.KINDS = ['answer', 'mic', 'canelo', 'pickup', 'give', 'putdown', 'puzzle', 'seek', 'bus', 'worldmap', 'dogspot', 'warmup', 'phrasesay', 'phrase'];
   DM.IDLE = 90;    // frames standing about on the map before a map demo (1.5 s)
   DM.cur = null;
   let idle = 0, scan = 0;
@@ -25359,6 +25615,19 @@ G.MAPDATA = {
   // ---------- when each one comes up ----------
   function onQuestion(s) {
     const n = name(s);
+    if (n === 'PhraseAsk' && !s.won && !s.result && s.t >= 20) { // a phrase (phrases.js): say the whole thing; or build it
+      const m = s.mic, f = s.faceRect(), mouth = { x: f.x + f.w / 2, y: f.y + f.h - 12 };
+      if (m && m.shown && m.shown() && m.can && m.can() && !DM.shown('phrasesay')) {
+        const r = m.o.rect(); book().mic = book().mic || G.frame || 1;
+        start('phrasesay', [{ x: r.x + r.w / 2, y: r.y + r.h / 2 + 2, move: 22, act: 'tap', hold: 4 }, { x: r.x + r.w / 2, y: r.y + r.h / 2 + 2, move: 1, act: 'talk', hold: 110 }], { mic: r, mouth, mouthK: 0.75 });
+        return true;
+      }
+      if (s.invite == null && !DM.shown('phrase') && (DM.shown('phrasesay') || !(m && m.shown && m.shown())) && s.t >= (m && m.shown && m.shown() ? 300 : 20) && !s.placed.frame && s.placed.slot < 0) {
+        const R = s.rects(), ks = R.map((r, k) => k).filter(k => k > 0 && !s.off[k - 1] && (s.free || k - 1 !== s.answer)), k = ks.length ? ks[Math.floor(Math.random() * ks.length)] : 1;
+        if (R[0] && R[k]) { start('phrase', [{ x: R[0].x + R[0].w / 2, y: R[0].y + 40, move: 22, act: 'tap', hold: 12 }, { x: R[k].x + R[k].w / 2, y: R[k].y + 40, move: 18, act: 'tap', hold: 22 }]); return true; }
+      }
+      return false;
+    }
     if (n === 'Choice' && s.o.warmup && s.cards && s.o.answer != null && !s.won && s.t >= 14 && !DM.shown('warmup')) { // the dog's warm-up (warmup.js): say it, or tap
       const m = s.mic;
       if (m && m.shown && m.shown() && m.can && m.can()) {
@@ -25472,7 +25741,7 @@ G.MAPDATA = {
     if (c.carry && c.down && G.carry) G.drawIcon16(ctx, G.carry.pic(c.carry), Math.round(c.x - 8), Math.round(c.y - 22)); // carried along
     if (c.drag != null && c.down) { ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(c.x - 30), Math.round(c.y - 12), 60, 24); G.textC(ctx, G.baseForm(c.drag), c.x, c.y - 4, '#2860a8', null); }
     G.hint.hand(ctx, { x: c.x, y: c.y, dir: 'up' }, c.push);
-    if (c.talk) { const mx = c.mic ? c.mic.x + c.mic.w / 2 : c.x, my = c.mic ? (c.mic.y < 30 ? c.mic.y + c.mic.h + 10 : c.mic.y - 16) : c.y - 16; ctx.globalAlpha = Math.min(1, c.a); ctx.save(); ctx.translate(mx, my); ctx.scale(1.3, 1.3); mouth(ctx, 0, 0, c.talk); ctx.restore(); } // a mouth talking, over the mic (under it near the top: the warm-up's big mic)
+    if (c.talk) { const mx = c.mouth ? c.mouth.x : c.mic ? c.mic.x + c.mic.w / 2 : c.x, my = c.mouth ? c.mouth.y : c.mic ? (c.mic.y < 30 ? c.mic.y + c.mic.h + 10 : c.mic.y - 16) : c.y - 16; ctx.globalAlpha = Math.min(1, c.a); ctx.save(); ctx.translate(mx, my); ctx.scale(c.mouthK || 1.3, c.mouthK || 1.3); mouth(ctx, 0, 0, c.talk); ctx.restore(); } // a mouth talking, over the mic (under it near the top: the warm-up's big mic; c.mouth: her own face, phrases.js)
     ctx.restore();
   };
 })();
@@ -25553,8 +25822,11 @@ G.MAPDATA = {
     const score = id => late(id) + (G.zones && G.zones.ofWord(id) !== zone ? 2 : 0) + (Wd.slipping(id) ? 1 : 0) + (earlier(id) ? 5 : 0);
     const sc = {}; L.forEach(id => { sc[id] = score(id); });
     L.sort((a, b) => sc[b] - sc[a] || Wd.stage(a) - Wd.stage(b) || (Wd.rec(a).last || 0) - (Wd.rec(b).last || 0));
+    // a phrase that's due comes too, as the last card (src/phrases.js: "Quiero..." to the dog; docs/LEARNING_PLAN_2.md Phase 2)
+    const ph = G.phrase && G.phrase.on() ? G.phrase.due()[0] : null;
     const out = [], forms = new Set();
-    for (const id of L) { const b = G.baseForm(id); if (forms.has(b)) continue; forms.add(b); out.push(id); if (out.length >= n) break; }
+    for (const id of L) { const b = G.baseForm(id); if (forms.has(b)) continue; forms.add(b); out.push(id); if (out.length >= n - (ph ? 1 : 0)) break; }
+    if (ph) out.push(ph);
     return out;
   };
 
@@ -25645,6 +25917,7 @@ G.MAPDATA = {
   function* ask(c, id) {
     const Wd = G.words, st = Wd.stage(id), wd = G.data.words[id];
     const extra = { who: 'canelo', cancel: true, cancelIcon: 'skip', onCancel: () => { c.skipped = true; }, drawExtra: (ctx, s) => drawCards(ctx, s, c), warmup: { k: c.i, n: c.ids.length } };
+    if (Wd.isPhrase && Wd.isPhrase(id)) return !!(yield* G.phrase.warm(id, extra)); // (a phrase: say the whole thing to the dog)
     if (Wd.needsReintro(id)) return !!(yield* G.intro.again(id, { who: null, extra })); // (slipping: met again)
     if (WU.FORMS[wd.topic]) return !!(yield* WU.FORMS[wd.topic](id, extra));
     // two other met words: the same topic first, never one that sounds like another card (the mic hears them all)
@@ -25664,11 +25937,11 @@ G.MAPDATA = {
   // ---------- drawing ----------
   // over a question: the dog's cards, one per word (done ones with their sprout, this one bobbing, the rest faded)
   function drawCards(ctx, s, c) {
-    const ph = s.lines.length * 16 + 10 + (s.o.show ? 58 : 0), y = 8 + ph - 15;
+    const ph = s.lines.length * 16 + 10 + (s.o.show ? 58 : 0), b = s.box ? s.box() : null, y = b ? b.y + b.h + 3 : 8 + ph - 15; // (a phrase's question: under its box, over her face)
     c.ids.forEach((id, k) => {
-      const x = 40 + k * 12, now = k === c.i, bob = now ? Math.round(Math.abs(Math.sin(G.frame / 8)) * -2) : 0;
+      const x = (b ? 18 : 40) + k * (b ? 11 : 12), now = k === c.i, bob = now ? Math.round(Math.abs(Math.sin(G.frame / 8)) * -2) : 0;
       ctx.globalAlpha = k < c.i || now ? 1 : 0.35;
-      G.mic.cardGlyph(ctx, x, y + bob, 5);
+      if (G.words.isPhrase && G.words.isPhrase(id) && G.cards.bubble) G.cards.bubble(ctx, x - 6, y - 5 + bob, 1); else G.mic.cardGlyph(ctx, x, y + bob, 5);
       if (k < c.i && c.res[k]) { ctx.fillStyle = '#f8d040'; ctx.fillRect(x + 3, y - 6, 2, 2); }
       ctx.globalAlpha = 1;
     });
@@ -25683,6 +25956,714 @@ G.MAPDATA = {
 })();
 
 </script>
+<script>/* src/phrases.js */
+// ===== Phrases: "say it to get it" (docs/LEARNING_PLAN_2.md, Phase 2) =====
+// A phrase is a FRAME with a SLOT for a word she knows: "Quiero ___" + el helado -> "Quiero un helado". Six patterns
+// (content/es/words.js C.phrases): Me llamo ___ (meeting a friend), Quiero ___ (shops and food), ___, por favor (a bonus
+// on any request), ¿Dónde está ___? (Nico's hint in hide-and-seek), Me gusta ___ (Lola asks her favourite animal;
+// friends ask what she likes), Tengo ___ (giving what she carries: a present, a letter).
+// Phrases are learnable items in the word model (words.js: the same record, stages, boxes and history, kept in
+// G.state.phrases.r), with their own cards (cards.js: a speech bubble on the card, the frame as its label, the word it
+// was last said with as its picture), a "Frases" tab in the deck, a page in the notebook (menus.js) and on the
+// grown-ups' Learning page (dashboard.js).
+//
+// Saying it makes it happen [decided with the parent]:
+//   the whole phrase   ("Quiero un helado")  they do it, and the phrase's card and the word's card grow a lot
+//   the key word only  ("helado")            they still do it; then the frame is shown as a picture-sentence (her
+//                                             speech bubble: "Quiero [helado]") and she's invited to say the whole
+//                                             thing: one more try, a bonus if she does, never in the way
+//   "por favor"        anywhere: the polite bonus (the "___, por favor" card grows, "¡Qué amable!", a heart)
+//   a wrong word       (a request with one right answer: Tengo ___ with what she holds) the card wobbles, greys out
+//   the frame alone    ("Quiero") the frame lights up, "¿...?" over the empty slot: say what
+//   nothing heard      "¡Otra vez!"
+//   taps (the builder) tap the frame card and a word card: they go into her bubble, the sentence is read aloud, it
+//                      counts as a built phrase (productive, below saying: it can't make a phrase gold)
+// Matching: G.speech.matchPhrase (speech.js): lenient (articles, accents, ¿¡, word order, small mishearings, frame
+// synonyms: quisiera, mi nombre es, dónde están...). No colour for el / la: grammar is by ear (people say it right).
+//
+// Each pattern is introduced once, one at a time (never two in a few minutes), wherever it comes up first in the world:
+// two friends model it in a little comic strip (Lola: "Quiero pan." -> she gets bread; Nico: "Quiero una galleta."),
+// then "¡Ahora tú!" (PhraseModel). A pattern said only as its key word 3 times is modelled again (slipping, words.js).
+//
+// API (G.phrase, short P):
+//   P.on()  phrases are on (off in tests unless they ask: tools/harness.js {phrases: true} or PHRASES=1)
+//   P.def(id) P.ids() P.met(id) P.list(minStage) P.due()    P.sentence(id, slot) ('Quiero un helado.')  P.label(id)
+//   P.slot(s) a slot: a word id, {name: true} (her name), {face: npc, es: 'Lola'}, {id, es: 'el pay', icon, alt}
+//   P.ready(id, o)   generator: introduces the pattern if it's new (or modelled again when slipping) -> false: not now
+//   P.ask(id, o)     generator -> {k, how: 'full' | 'key' | 'built' | 'polite', polite, again, slot} | {cancel} | null
+//                    o: {who, prompt, en, slots: [slot...] (the word cards), more (more slots heard, no card), answer
+//                    (index of the right slot) | free: true (any), show (a picture held up), cancel (a way out),
+//                    onGet: function* (k, res) {...} (they do it: before the invitation), noInvite, cued, extra...}
+//   P.request(id, o) generator: P.ready + P.ask; null when phrases are off or the pattern can't be introduced now (the
+//                    caller then does what it did before). A request for 'f_quiero' may introduce "por favor" instead.
+//   Placements: P.meetName(npc) (Me llamo), P.quiero(who, slots, o), P.donde(who, kinds, onGet), P.tengo(who, it, o),
+//   P.favTalk(f) / P.fav() (Lola's question, her favourite animal), P.likeAsk(npc) (a friend asks what she likes),
+//   P.warm(id, extra) (the dog's warm-up), P.drawSentence(ctx, ...) (her speech bubble), P.drawPic.
+// Saved: G.state.phrases = {r: {id: record}, intro: {id: {d, at}}, named: {npc: day}, fav: {id, d}, likes: {npc: {w, d}},
+//   last: play s of the last introduction}.
+'use strict';
+(function () {
+  const P = G.phrase = {};
+  const D = () => G.data, Wd = () => G.words, H = () => G.hearts;
+  const TT = (t, en) => ({ t, en });
+  const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+  const day = () => Wd().day();
+  P.GAP = 240;       // play seconds between two introductions (one pattern at a time)
+  P.NO_NAME = ['mama', 'canelo', 'abuela', 'abuelo', 'bebe']; // (your Mom, your dog, your grandparents, a baby)
+
+  // ---------- the patterns ----------
+  P.def = id => (D().phrases && D().phrases[id]) || null;
+  P.ids = () => (D().phraseOrder || Object.keys(D().phrases || {})).filter(P.def);
+  P.met = id => Wd().met(id);
+  P.list = (min = 1) => P.ids().filter(id => Wd().stage(id) >= min);
+  P.due = () => P.list(1).filter(id => Wd().due(id)).sort((a, b) => Wd().overdue(b) - Wd().overdue(a));
+  P.off = () => !!((typeof window !== 'undefined' && window.__phrasesOff) || (G.debug && G.debug.noPhrases));
+  P.on = () => !!G.state && !P.off();
+  function st() {
+    const s = G.state; if (!isObj(s.phrases)) s.phrases = {};
+    const p = s.phrases; for (const k of ['r', 'intro', 'named', 'likes']) if (!isObj(p[k])) p[k] = {};
+    return p;
+  }
+  P.state = () => (G.state ? st() : null);
+  P.introduced = id => !!(G.state && st().intro[id]);
+  P.named = npc => !!(G.state && st().named[npc] != null);
+  // the mic's frames (speech.js matchPhrase): the content's spoken forms
+  for (const id of P.ids()) G.speech.FRAMES[id] = P.def(id);
+
+  // ---------- slots: what goes in the frame ----------
+  // a slot -> {id, word (a word id), es ('el helado'), icon (a picture), face (a face instead), name, say (what the mic hears)}
+  P.slot = function (s) {
+    if (s && s.es != null && s.say != null) return s; // (already made)
+    if (typeof s === 'string') {
+      const w = D().words[s]; if (!w) return { id: s, es: s, icon: s, say: s };
+      return { id: s, word: s, es: w.es.split(' / ')[0], icon: w, say: [w.es, w.alt].filter(Boolean).join(' / ') };
+    }
+    if (s && s.name) { const n = G.st.playerName(); return { id: '_name', name: true, face: 'player', es: n, say: n }; }
+    if (s && s.face) { const n = s.es || (G.nameOf(s.face) || '').replace(/^(Profesora|Señor|Señora|Don|Doña) /, '').replace(/ (el|la) .*/, ''); return { id: '_' + s.face, face: s.face, es: n, say: n }; }
+    const o = Object.assign({}, s); o.es = o.es || o.id; o.icon = o.icon || o.id; o.say = [o.es, o.alt].filter(Boolean).join(' / ');
+    if (o.word && D().words[o.word]) { const w = D().words[o.word]; o.say = [o.say, w.es, w.alt].filter(Boolean).join(' / '); }
+    return o;
+  };
+  const plural = s => /^(los|las) /.test(s.es);
+  // the slot as said in this frame: Quiero UN HELADO, Quiero PAN, ¿Dónde está EL GATO?, Me llamo LUZ, Me gusta EL ROJO
+  P.slotText = function (id, s) {
+    s = P.slot(s); const d = P.def(id) || {}, art = d.art || '';
+    if (s.name || s.face) return s.es;
+    const es = String(s.es).split(' / ')[0], m = /^(el|la|los|las) (.*)$/.exec(es);
+    if (art === 'el') return m ? es : s.word && D().words[s.word].topic === 'colores' ? 'el ' + es : es;
+    if (art === 'un') {
+      if (!m) return es;
+      if ((D().mass || []).indexOf(s.word || s.id) >= 0 || m[1] === 'los' || m[1] === 'las') return m[2];
+      return (m[1] === 'el' ? 'un ' : 'una ') + m[2];
+    }
+    return m ? m[2] : es;
+  };
+  // the frame's words around the slot: {before, after} ('¿Dónde está', '?'); a plural slot takes the frame's plural
+  P.parts = function (id, s) {
+    const d = P.def(id) || { es: '___' }, es = s && d.plural && plural(P.slot(s)) ? d.plural : d.es, k = es.indexOf('___');
+    return k < 0 ? { before: es, after: '' } : { before: es.slice(0, k).trim(), after: es.slice(k + 3) };
+  };
+  const cap = t => t.replace(/^([¿¡]?)(\p{L})/u, (m, a, b) => a + b.toUpperCase());
+  // the whole sentence, as said ('Quiero un helado.', '¿Dónde está el gato?', 'Una galleta, por favor.')
+  P.sentence = function (id, s) {
+    s = P.slot(s || P.cardSlot(id));
+    const p = P.parts(id, s), t = ((p.before ? p.before + ' ' : '') + P.slotText(id, s) + p.after).replace(/\s+([,?!.])/g, '$1').trim();
+    return cap(/[.?!]$/.test(t) ? t : t + '.');
+  };
+  // the card's label: the frame alone ('Quiero', '¿Dónde está?', 'por favor')
+  P.label = id => { const d = P.def(id); return d ? d.es.replace('___', '').replace(/\s+([?])/, '$1').replace(/^,\s*/, '').replace(/\s+/g, ' ').trim() : id; };
+  // the card's picture: the slot it was last said with (or the pattern's own)
+  // the slot it was last said with (a word, her name, a face, a picture), or null
+  P.lastSlot = function (id) {
+    const r = G.state ? Wd().rec(id) : null; if (!r || !r.slot) return null;
+    if (r.slot === '_name') return { name: true }; if (r.slot.charAt(0) === '_') return { face: r.slot.slice(1) };
+    if (D().words[r.slot]) return r.slot; return r.slotPic ? { id: r.slot, es: r.slotEs || r.slot, icon: r.slotPic } : null;
+  };
+  // the slot a phrase is said with when nothing else is given (its card speaking): the last one, else a usual one
+  P.cardSlot = function (id) {
+    const d = P.def(id) || {}, l = P.lastSlot(id); if (l) return l;
+    if (d.anySlot) return { name: true };
+    const L = P.SLOTS[id] || []; return L.find(w => G.state && Wd().met(w)) || L[0] || d.icon;
+  };
+  // the card's picture: the slot it was last said with, else the pattern's own picture
+  P.cardPic = id => { const l = P.lastSlot(id), d = P.def(id) || {}; if (!l && d.anySlot) return { face: 'player' }; const s = P.slot(l || d.icon); return s.face ? { face: s.face } : s.icon; };
+  // a picture: a face (a portrait in a square) or an icon, at x, y, k times 16 px
+  P.drawPic = function (ctx, pic, x, y, k = 2, t) {
+    if (pic && pic.face) {
+      const w = 16 * k; ctx.fillStyle = '#10102a'; ctx.fillRect(Math.round(x), Math.round(y), w, w);
+      if (H()) { ctx.save(); ctx.beginPath(); ctx.rect(Math.round(x) + 1, Math.round(y) + 1, w - 2, w - 2); ctx.clip(); H().face(ctx, pic.face, Math.round(x) + 1, Math.round(y) + 1, w - 2, t || 0); ctx.restore(); }
+      return;
+    }
+    if (pic) G.drawIcon16(ctx, pic, Math.round(x), Math.round(y), k);
+  };
+  const slotPic = s => (s.face ? { face: s.face } : s.icon);
+  const slotLabel = s => (s.face || s.name ? s.es : s.word ? G.baseForm(s.word) : String(s.es).replace(/^(el|la|los|las) /, ''));
+
+  // ---------- her speech bubble: the frame and the slot as a picture-sentence ----------
+  // (x, y, w, h: the bubble; o: {tail: 'left' | 'down', frame: 'ghost' | 'on' | 'lit', slot: null (empty) | a slot,
+  //  pulse, t, glow (0..1), col (the frame's colour), small (scale-1 text)}) -> {frame: rect, slot: rect}
+  P.drawSentence = function (ctx, x, y, w, h, id, o = {}) {
+    const R = (a, b, c, d, col) => { ctx.fillStyle = col; ctx.fillRect(Math.round(a), Math.round(b), Math.round(c), Math.round(d)); };
+    const ink = '#10102a', paper = o.glow ? '#fff8c8' : '#ffffff';
+    // the bubble: a rounded box and its tail
+    R(x + 2, y, w - 4, h, ink); R(x, y + 2, w, h - 4, ink); R(x + 1, y + 1, w - 2, h - 2, ink);
+    R(x + 2, y + 1, w - 4, h - 2, paper); R(x + 1, y + 2, w - 2, h - 4, paper);
+    if (o.tail === 'down') { for (let i = 0; i < 7; i++) { R(x + 18 + i, y + h - 1 + i, 9 - i, 1, ink); R(x + 19 + i, y + h - 1 + i, 7 - i, 1, paper); } }
+    else { const ty = y + Math.round(h / 2); for (let i = 0; i < 8; i++) { R(x - i - 1, ty - 4 + Math.round(i / 2), 1, 9 - i, ink); R(x - i, ty - 3 + Math.round(i / 2), 1, 7 - i, paper); } }
+    if (o.glow) { ctx.globalAlpha = 0.35 * o.glow; R(x + 2, y + 2, w - 4, h - 4, '#f8e060'); ctx.globalAlpha = 1; }
+    const s = o.slot ? P.slot(o.slot) : null, p = P.parts(id, s);
+    const sb = o.small ? 22 : 34, gap = 6;
+    let k = o.small ? 1 : 2;
+    const tw = str => (str ? G.textWidth(str) * k : 0);
+    let total = tw(p.before) + (p.before ? gap : 0) + sb + (p.after.trim() ? gap + tw(p.after.trim()) : 0);
+    if (total > w - 12 && k === 2) { k = 1; total = tw(p.before) + (p.before ? gap : 0) + sb + (p.after.trim() ? gap + tw(p.after.trim()) : 0); }
+    let cx = x + Math.round((w - total) / 2);
+    const mid = y + Math.round(h / 2) - (s && !o.noWord ? 4 : 0);
+    const fcol = o.frame === 'ghost' ? '#b8bcd0' : o.frame === 'lit' ? '#20a040' : (o.col || '#2860a8');
+    const out = {};
+    const word = str => {
+      const ww = tw(str), bob = o.frame === 'lit' || (o.pulseFrame && (o.t >> 3) & 1) ? -1 : 0;
+      if (k === 2) G.bigText(ctx, str, cx + ww / 2, mid - 7 + bob, 2, fcol, null); else G.text(ctx, str, cx, mid - 4 + bob, fcol, null);
+      const r = { x: cx, y: mid - 9, w: ww, h: 18 }; cx += ww + gap; return r;
+    };
+    if (p.before) out.frame = word(p.before);
+    // the slot: its picture (and the slot as said under it), or an empty dashed box with a "?"
+    const bx = cx, by = mid - Math.round(sb / 2), pulse = !s && o.pulse ? Math.round(Math.sin((o.t || 0) / 6) * 1.5) : 0;
+    if (s) {
+      P.drawPic(ctx, slotPic(s), bx + (sb - (o.small ? 16 : 32)) / 2, by + (sb - (o.small ? 16 : 32)) / 2, o.small ? 1 : 2, o.t);
+      if (!o.noWord) G.textC(ctx, P.slotText(id, s), bx + sb / 2, by + sb + 1, '#604020', null);
+    } else {
+      const c = o.slotHint ? '#f0a020' : '#8890c0';
+      for (let i = 0; i < sb + pulse * 2; i += 4) { R(bx - pulse + i, by - pulse, 2, 1, c); R(bx - pulse + i, by + sb + pulse - 1, 2, 1, c); R(bx - pulse, by - pulse + i, 1, 2, c); R(bx + sb + pulse - 1, by - pulse + i, 1, 2, c); }
+      if (k === 2) G.bigText(ctx, '?', bx + sb / 2, by + sb / 2 - 7, 2, c, null); else G.textC(ctx, '?', bx + sb / 2, by + sb / 2 - 4, c, null);
+    }
+    out.slot = { x: bx, y: by, w: sb, h: sb }; cx += sb + gap;
+    if (p.after.trim()) { const a = p.after.trim(); if (!p.before) out.frame = word(a); else word(a); }
+    return out;
+  };
+
+  // =====================================================================
+  //  Counting it: the word model, the history, the cards (words.js, history.js, cards.js)
+  // =====================================================================
+  // how: 'full' (the whole phrase said), 'again' (said whole after the invitation), 'key' (the key word only: a miss of
+  // the phrase, the word said), 'built' (tapped together), 'polite' (the slot + "por favor": the "por favor" phrase)
+  P.credit = function (sc, how, k, at) {
+    const id = sc.id, s = sc.slots[k], r = Wd().rec(id, true), [bx, by] = at.frame, [sx, sy] = at.slot;
+    const rec = () => { r.slot = s.word || s.id; if (!s.word && !s.face && !s.name) { r.slotPic = typeof s.icon === 'string' ? s.icon : null; r.slotEs = s.es; } };
+    if (how === 'full' || how === 'again') {
+      Wd().answerRight(id, { said: true, mode: 'say', firstTry: how === 'full' && !sc.phMiss, noGrow: true, review: Wd().isOld(id) });
+      r.said = (r.said | 0) + 1; rec();
+      if (G.cards) G.cards.grow(id, 'phrase', { x: bx, y: by });
+    } else if (how === 'built') {
+      Wd().answerRight(id, { mode: 'both', firstTry: !sc.phMiss, noGrow: true, review: Wd().isOld(id) }); rec();
+      if (G.cards) G.cards.grow(id, 'build', { x: bx, y: by });
+    } else if (how === 'key' && !sc.phMiss) { Wd().answerWrong(id); sc.phMiss = true; } // (it still works; the phrase wasn't said)
+    // the word in the slot
+    const w = s.word;
+    if (w && Wd().met(w)) {
+      const shown = !!sc.slotView(k).label, said = how !== 'built';
+      if (how === 'again') { if (G.cards) G.cards.grow(w, 'say', { add: 3, x: sx, y: sy }); } // (the bonus)
+      else {
+        if (said && G.mic) G.mic.award(w, sx, sy);
+        if (!sc.free) Wd().answerRight(w, { said, mode: said ? (shown ? 'both' : 'say') : (shown ? 'both' : 'pic'), firstTry: !sc.slotMiss, cued: !!sc.o.cued, review: Wd().isOld(w) });
+        else if (!said && G.cards) G.cards.grow(w, 'pick', { x: sx, y: sy });
+        if (how === 'full' && G.cards) G.cards.grow(w, 'say', { add: 3, x: sx, y: sy }); // (the whole phrase: a bigger boost)
+      }
+    }
+    G.st.autosave();
+  };
+  // "por favor" heard with a request: the "___, por favor" phrase (met right now if she says it before its introduction)
+  P.polite = function (sc, k, at) {
+    const id = 'f_porfavor'; if (!P.def(id) || sc.id === id) return;
+    if (!P.met(id)) { Wd().meet(id, 'said', { who: sc.o.who }); st().intro[id] = { d: day(), at: 'said' }; }
+    const r = Wd().rec(id), s = sc.slots[k];
+    Wd().answerRight(id, { said: true, mode: 'say', noGrow: true }); r.said = (r.said | 0) + 1; if (s) r.slot = s.word || s.id;
+    if (G.cards) G.cards.grow(id, 'phrase', { x: at.frame[0] + 60, y: at.frame[1] });
+    const who = sc.o.who; if (who && H() && H().WHO.includes(who)) H().add(who, 1, 'care');
+    G.st.autosave();
+  };
+
+  // =====================================================================
+  //  Introducing a pattern: two friends model it, then "¡Ahora tú!" (PhraseModel)
+  // =====================================================================
+  const FIRST = id => (G.nameOf(id) || '').replace(/^(Profesora|Señor|Señora|Don|Doña|Abuela) /, '').replace(/ (el|la) .*/, '');
+  P.shortName = FIRST;
+  // the words a pattern is usually said with (the models' slots when the moment has too few of its own)
+  P.SLOTS = {
+    f_quiero: ['pan', 'galleta', 'manzana', 'helado', 'agua', 'leche', 'platano', 'naranja', 'queso', 'chocolate', 'mora'],
+    f_porfavor: ['pan', 'agua', 'galleta', 'manzana', 'helado', 'leche', 'chocolate'],
+    f_donde: ['gato', 'perro', 'pato', 'conejo', 'pelota', 'rana', 'pajaro', 'gallina', 'oso', 'ardilla', 'cangrejo', 'vaca', 'llama'],
+    f_gusta: ['gato', 'perro', 'helado', 'pan', 'manzana', 'pelota', 'oso', 'pato', 'conejo', 'galleta', 'flor'],
+    f_tengo: ['manzana', 'pelota', 'flor', 'concha', 'hoja', 'carta', 'hueso', 'galleta', 'bellota'],
+  };
+  // where a thing might be (the listener's answer to "¿Dónde está...?" in a model)
+  const PLACES = ['arbol', 'casa', 'flor', 'fuente', 'granja', 'parque', 'banco'];
+  const metW = id => !!D().words[id] && Wd().met(id) && G.iconDrawn(id);
+  // the two models: [{who (says it), to (hears it), slot}]
+  P.models = function (id, o = {}) {
+    const who = o.who && o.who !== 'player' ? o.who : null;
+    const askers = ['lola', 'nico'], hear = a => (who && who !== a ? who : askers.find(x => x !== a));
+    if (id === 'f_llamo') return askers.map(a => ({ who: a, to: hear(a), slot: { face: a } }));
+    const fromMoment = (o.slots || []).map(P.slot).filter(s => !s.word || metW(s.word));
+    const extra = (P.SLOTS[id] || []).filter(metW).map(P.slot);
+    const pool = [];
+    for (const s of fromMoment.concat(extra)) if (!pool.some(p => p.id === s.id)) pool.push(s);
+    if (!pool.length) pool.push(P.slot(P.def(id).icon));
+    return askers.map((a, i) => ({ who: a, to: hear(a), slot: pool[i % pool.length], place: PLACES[(i * 3 + day()) % PLACES.length] }));
+  };
+  class PhraseModel {
+    constructor(id, models, o, w) {
+      G.toastT = 0; this.transparent = true; this.id = id; this.models = models; this.o = o; this.w = w; this.t = 0;
+      this.row = 0; this.rt = 0; this.n = models.length + (o.noNow ? 0 : 1); this.done = false;
+    }
+    hintXY() { return this.row >= this.n - 1 && this.rt > 50 ? [G.W / 2, G.H - 26] : null; }
+    rowY(r) { return 12 + r * 66; }
+    update() {
+      this.t++; this.rt++;
+      const m = this.models[this.row], last = this.row >= this.models.length;
+      if (!last) {
+        if (this.rt === 6) G.speak(P.sentence(this.id, m.slot));
+        if (this.rt === 70) { G.audio.sfx(this.id === 'f_gusta' ? 'chime' : 'pop'); }
+        if (this.rt === 96) G.speak(this.reply(m));
+        if (this.rt >= 150) this.next();
+      } else if (this.rt === 4) { G.speak('¡Ahora tú!'); G.audio.sfx('note'); }
+      if (G.input.tap() || G.input.p('A') || G.input.p('B')) {
+        if (!last && this.rt > 12) this.next();
+        else if (last && this.rt > 30) { G.audio.sfx('ok'); G.pop(); this.w.resolve(true); }
+      }
+    }
+    next() { this.row++; this.rt = 0; if (this.row >= this.n) { G.pop(); this.w.resolve(true); } }
+    reply(m) {
+      const d = P.def(this.id);
+      if (this.id === 'f_llamo') return '¡Hola, ' + P.slot(m.slot).es + '!';
+      return G.fill(d.reply || '¡Muy bien!');
+    }
+    draw(ctx) {
+      const R = (a, b, c, d, col) => { ctx.fillStyle = col; ctx.fillRect(Math.round(a), Math.round(b), Math.round(c), Math.round(d)); };
+      ctx.globalAlpha = Math.min(1, this.t / 8) * 0.5; R(0, 0, G.W, G.H, '#080c28'); ctx.globalAlpha = 1;
+      G.win(ctx, 6, 6, G.W - 12, G.H - 12, { fill1: '#fdf6e4', fill2: '#efe2c4', alpha: 1 });
+      const rows = Math.min(this.row + 1, this.n);
+      for (let r = 0; r < rows; r++) {
+        const y = this.rowY(r), lt = r === this.row ? this.rt : 999, last = r >= this.models.length;
+        if (last) { this.drawNow(ctx, y, lt); continue; }
+        const m = this.models[r], pop = Math.min(1, lt / 10);
+        this.face(ctx, m.who, 14, y + 4, 40);
+        this.face(ctx, m.to, G.W - 56, y + 4, 40);
+        // the bubble pops in; its frame lights up while it's said
+        ctx.save(); const cx = 62 + 83, cy = y + 25; ctx.translate(cx, cy); ctx.scale(0.4 + 0.6 * pop, 0.4 + 0.6 * pop); ctx.translate(-cx, -cy);
+        P.drawSentence(ctx, 62, y + 2, 166, 46, this.id, { slot: m.slot, frame: lt > 6 && lt < 70 ? 'lit' : 'on', col: '#a05020', t: this.t });
+        ctx.restore();
+        // what happens: the thing goes to the one who asked (Quiero, por favor), or from the one who has it (Tengo),
+        // a heart (Me gusta), the place where it is (¿Dónde está?), a wave (Me llamo)
+        const s = P.slot(m.slot), k = Math.max(0, Math.min(1, (lt - 70) / 26)), e = k * k * (3 - 2 * k);
+        const fx = G.W - 36, tx = 34, yy = y + 24;
+        if (lt >= 70 && k < 1) {
+          if (this.id === 'f_quiero' || this.id === 'f_porfavor') P.drawPic(ctx, slotPic(s), fx + (tx - fx) * e - 16, yy - Math.sin(k * Math.PI) * 20 - 16, 2);
+          else if (this.id === 'f_tengo') P.drawPic(ctx, slotPic(s), tx + (fx - tx) * e - 16, yy - Math.sin(k * Math.PI) * 20 - 16, 2);
+        }
+        if (lt >= 96 || (this.id === 'f_donde' && lt >= 70)) { // where it is: the place, and it peeking out
+          if (this.id === 'f_donde') { const bx = G.W - 86, by = y + 10; R(bx, by, 24, 24, '#10102a'); R(bx + 1, by + 1, 22, 22, '#d8ecff'); G.drawIcon16(ctx, m.place, bx + 4, by + 6); P.drawPic(ctx, slotPic(s), bx + 7, by + 1 - Math.round(Math.abs(Math.sin(lt / 8)) * 3), 0.625); }
+        }
+        if (lt >= 96) { // the one who heard it answers (under their face)
+          const txt = this.reply(m), rw = G.textWidth(txt) + 10 + (this.id === 'f_gusta' ? 10 : 0), rx = G.W - 12 - rw, ry = y + 50;
+          G.win(ctx, rx, ry, rw, 14, { fill1: '#ffffff', fill2: '#f0f0f8', alpha: 1 });
+          if (this.id === 'f_gusta' && H()) H().heart(ctx, rx + 4, ry + 4, true, 1);
+          G.text(ctx, txt, rx + 5 + (this.id === 'f_gusta' ? 10 : 0), ry + 4, '#203080', null);
+        }
+      }
+    }
+    // the last row: her face, her bubble with the frame and an empty slot, "¡Ahora tú!"
+    drawNow(ctx, y, lt) {
+      this.face(ctx, 'player', 14, y + 4, 40);
+      const pop = Math.min(1, lt / 10);
+      ctx.save(); const cx = 145, cy = y + 25; ctx.translate(cx, cy); ctx.scale(0.4 + 0.6 * pop, 0.4 + 0.6 * pop); ctx.translate(-cx, -cy);
+      P.drawSentence(ctx, 62, y + 2, 166, 46, this.id, { slot: null, frame: 'on', col: '#a05020', pulse: true, t: this.t });
+      ctx.restore();
+      const b = Math.round(Math.abs(Math.sin(this.t / 9)) * -3);
+      G.textC(ctx, '¡Ahora tú!', G.W - 40, y + 6 + b, '#d04010', null);
+      if (G.mic && G.mic.on()) { // a mic: say it
+        ctx.fillStyle = '#10102a'; ctx.beginPath(); ctx.arc(G.W - 40, y + 32, 13, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#e85078'; ctx.beginPath(); ctx.arc(G.W - 40, y + 32, 12, 0, Math.PI * 2); ctx.fill();
+        G.mic.glyph(ctx, G.W - 43, y + 28, '#ffffff');
+        G.mic.waves(ctx, G.W - 40, y + 32, 15, '#f8a0c0', 1, this.t >> 1);
+      }
+      if (lt > 30) G.moreArrow(ctx, G.W - 22, G.H - 18, this.t);
+    }
+    // a face in a frame, the name on a strip at its bottom
+    face(ctx, who, x, y, w) {
+      const R = (a, b, c, d, col) => { ctx.fillStyle = col; ctx.fillRect(a, b, c, d); };
+      R(x - 2, y - 2, w + 4, w + 4, '#5a3810'); R(x - 1, y - 1, w + 2, w + 2, '#f8e0a0');
+      if (H()) H().face(ctx, who, x, y, w, this.t);
+      const nm = who === 'player' ? G.st.playerName() : FIRST(who) || G.nameOf(who) || '';
+      ctx.globalAlpha = 0.7; R(x, y + w - 9, w, 9, '#10102a'); ctx.globalAlpha = 1;
+      G.textC(ctx, nm, x + w / 2, y + w - 8, '#fff8e0', null);
+    }
+  }
+  G.PhraseModel = PhraseModel;
+  // one pattern at a time: none introduced in the last P.GAP play seconds, and every word of the moment met a while ago
+  P.canIntro = function (id, o = {}) {
+    if (!P.on() || !P.def(id)) return false;
+    const last = st().last; if (last != null && Wd().now() - last < P.GAP) return false;
+    const fresh = (o.slots || []).some(s => { const w = typeof s === 'string' ? s : s && s.word; const r = w && Wd().rec(w); return !!r && r.st >= 1 && r.met != null && r.ms === Wd().sess() && Wd().now() - r.met < 60; });
+    return !fresh;
+  };
+  P.intro = function* (id, o = {}) {
+    const w = new G.Wait(); G.push(new PhraseModel(id, P.models(id, o), o, w)); yield w;
+    if (o.again) { Wd().reintroduced(id); return; }
+    Wd().meet(id, 'phrase', { who: o.who });
+    st().intro[id] = { d: day(), at: (G.field && G.field.mapId) || '' }; st().last = Wd().now();
+    if (G.intro) yield G.intro.note([id]);
+    for (let i = 0; i < 90 && G.cards && G.cards.popping(id); i++) yield 1; // (her new card says itself and flies into the deck first: the request's bubble stays clear)
+    G.st.autosave();
+  };
+  // introduce it if it's new (false: not now; the caller does what it did before); model it again when it's slipping
+  P.ready = function* (id, o = {}) {
+    if (!P.on() || !P.def(id)) return false;
+    if (!P.met(id)) { if (!P.canIntro(id, o)) return false; yield* P.intro(id, o); return true; }
+    if (Wd().needsReintro(id)) yield* P.intro(id, Object.assign({}, o, { again: true, noNow: true }));
+    return true;
+  };
+
+  // =====================================================================
+  //  Say it to get it: the request (PhraseAsk)
+  // =====================================================================
+  const GOLD = '#f8d860', BLUE = '#a8d8ff';
+  const fit = (s, w) => { if (G.textWidth(s) <= w || !s.includes(' ')) return [s]; let best = null; for (let i = s.indexOf(' '); i >= 0; i = s.indexOf(' ', i + 1)) { const d = Math.abs(G.textWidth(s.slice(0, i)) - G.textWidth(s.slice(i + 1))); if (!best || d < best.d) best = { d, i }; } return [s.slice(0, best.i), s.slice(best.i + 1)]; };
+  class PhraseAsk {
+    constructor(id, o, w) {
+      G.toastT = 0; this.transparent = true; this.id = id; this.def = P.def(id); this.o = o; this.w = w; this.t = 0;
+      this.slots = (o.slots || []).map(P.slot);
+      this.cardsN = this.slots.length; // (the word cards; o.more are heard but have no card)
+      this.slots = this.slots.concat((o.more || []).map(P.slot).filter(s => !this.slots.some(x => x.id === s.id)));
+      this.free = !!o.free || o.answer == null; this.answer = o.answer;
+      this.invite = o.invite != null ? o.invite : null;
+      this.placed = { frame: this.invite != null, slot: this.invite != null ? this.invite : -1 };
+      this.off = {}; this.miss = null; this.won = null; this.lit = 0; this.ask = 0; this.sel = 0; this.politeT = 0; this.tries = 0; this.fly = [];
+      this.prompt = G.fill(this.invite != null ? '' : (o.prompt || this.def.prompt || ''));
+      this.lines = this.prompt ? G.richLayout(this.prompt, this.textW()) : [];
+      this.mic = G.mic && G.mic.on() ? new G.MicBtn(this, { rect: () => this.micRect(), ready: () => !this.won && this.t > 10 && (!this.miss || this.miss.t > 8), heard: a => this.heard(a), again: () => this.hear() }) : null;
+      G.richIds(this.prompt).forEach(i => G.st.see(i));
+      if (this.invite != null) G.speak(P.sentence(id, this.slots[this.invite])); else if (this.prompt) G.speak(this.prompt);
+    }
+    onEnter() { if (this.mic) this.mic.arm(); }
+    onExit() { if (this.mic) this.mic.off(); }
+    // ---------- where things are ----------
+    left() { return this.o.cancel ? 30 : 0; }
+    textW() { return G.W - 24 - 34 - 30 - (this.o.show ? 40 : 0) - this.left(); }
+    box() { return { x: 12, y: 6, w: G.W - 24, h: Math.max(32, this.lines.length * 16 + 12) }; }
+    bubble() { const b = this.box(); return { x: 66, y: b.y + b.h + 8, w: 188, h: 56 }; }
+    faceRect() { const u = this.bubble(); return { x: 12, y: u.y + 6, w: 44, h: 44 }; }
+    micRect() { const u = this.bubble(); return { x: G.W - 58, y: u.y + 5, w: 46, h: 46 }; }
+    spk() { return [G.W - 38, 12]; }
+    backXY() { return this.o.cancelIcon === 'skip' ? [4, 4] : [18, 12]; }
+    cancelHit() { return this.o.cancelIcon === 'skip' ? G.skipHit(...this.backXY()) : G.btnHit(...this.backXY()); }
+    nextRect() { return { x: G.W - 50, y: G.H - 44, w: 40, h: 34 }; }
+    // the cards: the frame card first, then a card per word (o.slots)
+    rects() {
+      if (this.invite != null) return [];
+      const n = 1 + this.cardsN, cw = 58, gap = n > 4 ? 6 : 10, tw = n * cw + (n - 1) * gap, x0 = Math.round((G.W - tw) / 2), y0 = G.H - 86;
+      const out = []; for (let k = 0; k < n; k++) out.push({ x: x0 + k * (cw + gap), y: y0, w: cw, h: 78 });
+      return out;
+    }
+    // how a word card looks: its picture; its word too while it's only met (stage 1), a name always (o.words: always)
+    slotView(k) {
+      const s = this.slots[k]; if (!s) return {};
+      const st = s.word ? Wd().stage(s.word) : 1, label = s.face || s.name || !s.word || st <= 1 || this.o.words ? slotLabel(s) : null;
+      return { pic: slotPic(s), label, col: st >= 3 ? GOLD : BLUE };
+    }
+    // the bubble's parts on screen (the frame's words, the slot box): for the cards that fly in, the growth that pops up
+    parts() { const u = this.bubble(); return this._parts || { frame: { x: u.x + 10, y: u.y + 18, w: 60, h: 18 }, slot: { x: u.x + u.w - 50, y: u.y + 10, w: 34, h: 34 } }; } // (as last drawn)
+    at() { const p = this.parts(); return { frame: [p.frame.x + p.frame.w / 2, p.frame.y], slot: [p.slot.x + p.slot.w / 2, p.slot.y] }; }
+    // where the cards that grow pop up: under her bubble (the finished sentence stays in sight), the phrase's on the left
+    growAt() { const u = this.bubble(); return { frame: [u.x + 40, G.H - 4], slot: [u.x + u.w - 20, G.H - 4] }; }
+    hintXY() { return null; } // (never point at a word: it's her choice, or the answer)
+    // ---------- what she does ----------
+    hear() { G.speak(this.placed.slot >= 0 ? P.sentence(this.id, this.slots[this.placed.slot]) : P.label(this.id)); }
+    heard(alts) {
+      const m = G.speech.matchPhrase(this.id, this.slots.map(s => s.say), alts), ok = k => k >= 0 && !this.off[k] && (this.free || k === this.answer);
+      this.lastHeard = m;
+      if (this.invite != null) { // one more try: the whole thing, for a bonus
+        this.tries++;
+        if (m.full && (m.slot < 0 || m.slot === this.invite || this.free)) { this.win('again', this.invite, m.polite); return; }
+        if (m.slot >= 0 || m.frame) { this.lit = 30; this.finish({ again: false }, 40); G.fx.say('¡Bien!', ...this.sayAt(), '#a8f0ff', true); return; }
+        this.mic.miss(); return;
+      }
+      if (m.full && (ok(m.slot) || (m.slot < 0 && this.def.anySlot))) { this.win('full', m.slot < 0 ? 0 : m.slot, m.polite); return; }
+      if (ok(m.slot) && m.polite && this.id !== 'f_porfavor') { this.win('polite', m.slot, true); return; }
+      if (ok(m.slot)) { this.win('key', m.slot, m.polite); return; }
+      if (m.slot >= 0 && m.slot < this.cardsN && !this.off[m.slot]) { if (m.frame) this.lit = 50; this.wrong(m.slot); return; }
+      if (m.frame) { this.lit = 70; this.ask = 70; G.audio.sfx('huh'); G.fx.say('¿...?', ...this.slotAt(), '#ffd8a8', true); return; }
+      this.mic.miss();
+    }
+    sayAt() { const u = this.bubble(); return [u.x + u.w / 2, u.y - 6]; }
+    slotAt() { const p = this.parts(); return [p.slot.x + p.slot.w / 2, p.slot.y - 6]; }
+    // a wrong word (a request with one right answer): its card wobbles and greys out; the answer's word: a miss
+    wrong(k) {
+      this.off[k] = true; this.miss = { k, t: 0 }; G.audio.sfx('boop'); G.fx.shake = 4;
+      const r = this.rects()[k + 1]; G.fx.say('¡Casi!', r ? r.x + r.w / 2 : G.W / 2, r ? r.y - 8 : G.H - 100, '#ffd8a8');
+      const a = this.slots[this.answer]; if (!this.slotMiss && a && a.word && Wd().met(a.word)) Wd().answerWrong(a.word);
+      this.slotMiss = true;
+      if (this.placed.slot === k) this.placed.slot = -1;
+    }
+    tapCard(k) {
+      if (this.won) return;
+      if (k === 0) { // the frame card goes into her bubble
+        if (this.placed.frame) { G.speak(P.label(this.id)); return; }
+        this.placed.frame = true; G.audio.sfx('select'); this.flyIn(0);
+        G.speak(P.parts(this.id, this.placed.slot >= 0 ? this.slots[this.placed.slot] : null).before || P.label(this.id));
+      } else {
+        const j = k - 1; if (this.off[j]) { G.audio.sfx('boop'); return; }
+        if (!this.free && j !== this.answer) { this.wrong(j); return; }
+        this.placed.slot = j; G.audio.sfx('select'); this.flyIn(k);
+        if (!this.placed.frame) G.speak(P.slotText(this.id, this.slots[j]));
+      }
+      if (this.placed.frame && this.placed.slot >= 0) { G.speak(P.sentence(this.id, this.slots[this.placed.slot])); this.win('built', this.placed.slot, false); }
+    }
+    flyIn(k) { const r = this.rects()[k]; if (r) this.fly.push({ k, x: r.x + r.w / 2, y: r.y + 30, t: 0 }); }
+    win(how, k, polite) {
+      if (this.won) return;
+      this.won = { how, k, t: 0, polite: !!polite }; this.placed.slot = k;
+      if (how === 'full' || how === 'again' || how === 'built') this.placed.frame = true;
+      const at = this.at(), ga = this.growAt();
+      P.credit(this, how, k, ga);
+      if (polite || how === 'polite') { P.polite(this, k, ga); this.politeT = 70; }
+      G.audio.sfx(how === 'key' ? 'chime' : 'micstar'); G.fx.burst(...at.slot);
+      if (how === 'full' || how === 'again') { G.fx.ring(at.frame[0], at.frame[1] + 9, 30, '#70e0ff', 24); for (let i = 0; i < 6; i++) G.fx.twinkle(this.bubble().x + Math.random() * this.bubble().w, this.bubble().y + Math.random() * this.bubble().h); }
+      const praise = how === 'full' || how === 'again' ? '¡Muy bien dicho!' : how === 'built' ? '¡Muy bien!' : '¡Bien!';
+      G.fx.say(this.politeT ? '¡Qué amable!' : praise, ...this.sayAt(), how === 'built' ? '#f8e060' : this.politeT ? '#ffb8d8' : '#a8f0ff', true);
+      if (this.mic && how !== 'built') this.mic.win();
+      const res = how === 'again' ? { again: true } : { k, how, polite: !!(polite || how === 'polite'), slot: this.slots[k], said: how !== 'built' };
+      this.finish(res, how === 'key' ? 46 : 60);
+    }
+    finish(res, after) { this.result = res; this.closeT = after; }
+    cancel() { G.audio.sfx('cancel'); G.pop(); if (this.o.onCancel) this.o.onCancel(); this.w.resolve({ cancel: true }); }
+    // ---------- every frame ----------
+    update() {
+      this.t++; if (this.miss) this.miss.t++; if (this.lit > 0) this.lit--; if (this.ask > 0) this.ask--; if (this.politeT > 0) this.politeT--;
+      this.fly = this.fly.filter(f => ++f.t < 14);
+      if (this.result) { if (this.won) this.won.t++; if (--this.closeT <= 0) { G.pop(); this.w.resolve(this.result); } return; }
+      if (this.mic && this.mic.update()) return;
+      if (G.input.p('C') || (G.speakerHit(...this.spk()) && G.input.eat())) { if (this.invite != null) this.hear(); else G.speak(this.prompt); return; }
+      const R = this.rects(), calm = !this.miss || this.miss.t > 8;
+      if (G.input.tap() && this.t > 8) {
+        if (this.o.cancel && this.cancelHit()) { this.cancel(); return; }
+        if (this.invite != null && G.tapIn(this.nextRect())) { G.audio.sfx('ok'); this.finish({ again: false }, 1); return; }
+        const u = this.bubble(); if (G.tapIn(u.x, u.y, u.w, u.h)) { this.hear(); return; }
+        const k = R.findIndex(r => G.tapIn(r.x - 4, r.y - 4, r.w + 8, r.h + 6));
+        if (k >= 0 && calm) { this.sel = k; this.tapCard(k); }
+        return;
+      }
+      if (this.invite != null) { if (G.input.p('A')) { G.audio.sfx('ok'); this.finish({ again: false }, 1); } return; }
+      const d = G.input.repDir(14, 6);
+      if (d === 'left' || d === 'right') { this.sel = (this.sel + (d === 'left' ? R.length - 1 : 1)) % R.length; G.audio.sfx('cursor'); }
+      if (G.input.p('A') && this.t > 8 && calm) this.tapCard(this.sel);
+      if (G.input.p('B') && this.o.cancel) this.cancel();
+    }
+    // ---------- drawing ----------
+    draw(ctx) {
+      const o = this.o, b = this.box(), won = this.won, wt = won ? won.t : 0;
+      // the one asking: their face, their words (a speaker to hear them again), a picture held up
+      if (this.invite == null) {
+        G.win(ctx, b.x, b.y, b.w, b.h);
+        const fx = b.x + 4 + this.left();
+        if (o.who && H()) { ctx.fillStyle = '#10102a'; ctx.fillRect(fx, b.y + 3, 26, 26); H().face(ctx, o.who, fx + 1, b.y + 4, 24, this.t); }
+        G.richDraw(ctx, this.lines, fx + (o.who ? 32 : 4), b.y + 6 + Math.max(0, Math.round((b.h - 12 - this.lines.length * 16) / 2)));
+        if (o.show) G.drawIcon16(ctx, o.show, G.W - 80, b.y + 2, 2);
+        G.speakerBtn(ctx, ...this.spk());
+        if (o.cancel) { if (o.cancelIcon === 'skip') G.skipBtn(ctx, ...this.backXY(), this.t); else G.iconBtn(ctx, 'back', ...this.backXY()); }
+      } else G.speakerBtn(ctx, ...this.spk());
+      if (o.drawExtra) { try { o.drawExtra(ctx, this); } catch (e) { console.error(e); } }
+      // her face and her speech bubble (the picture-sentence)
+      const f = this.faceRect(), u = this.bubble();
+      ctx.fillStyle = '#10102a'; ctx.fillRect(f.x - 2, f.y - 2, f.w + 4, f.h + 4); ctx.fillStyle = '#f8e0a0'; ctx.fillRect(f.x - 1, f.y - 1, f.w + 2, f.h + 2);
+      if (H()) H().face(ctx, 'player', f.x, f.y, f.w, this.t);
+      const sOn = this.placed.slot >= 0 ? this.slots[this.placed.slot] : null, demo = G.demo && G.demo.cur && G.demo.cur.top === this && G.demo.cur.kind === 'phrasesay' && G.demo.cur.talk ? G.demo.cur.talk : 0;
+      const frameState = won && (won.how === 'key' || won.how === 'polite') ? 'ghost' : this.placed.frame || this.lit > 0 || (demo && (demo >> 4) % 3 === 0) ? (this.lit > 0 || (won && wt < 30) || demo ? 'lit' : 'on') : this.invite != null ? 'on' : 'ghost';
+      const glow = won ? Math.max(0, 1 - wt / 40) : this.invite != null ? 0.3 + 0.3 * Math.sin(this.t / 8) : 0;
+      ctx.save();
+      if (won && wt < 12) { const s = 1 + 0.08 * Math.sin(wt / 12 * Math.PI), cx = u.x + u.w / 2, cy = u.y + u.h / 2; ctx.translate(cx, cy); ctx.scale(s, s); ctx.translate(-cx, -cy); }
+      this._parts = P.drawSentence(ctx, u.x, u.y, u.w, u.h, this.id, { slot: sOn, frame: frameState, col: Wd().stage(this.id) >= 3 ? '#b07000' : '#2860a8', pulse: true, t: this.t, glow, slotHint: this.ask > 0 || (demo && (demo >> 4) % 3 === 1), pulseFrame: this.invite != null });
+      ctx.restore();
+      if (this.politeT > 0 && H()) for (let i = 0; i < 3; i++) { const k = (70 - this.politeT + i * 12) % 40; H().heart(ctx, f.x + 8 + i * 12, f.y - 4 - k, true, 1); }
+      // the word cards (and the frame card) that fly into the bubble
+      for (const fl of this.fly) { const p = this.parts(), tg = fl.k === 0 ? p.frame : p.slot, e = fl.t / 14, x = fl.x + (tg.x + tg.w / 2 - fl.x) * e, y = fl.y + (tg.y + tg.h / 2 - fl.y) * e - Math.sin(e * Math.PI) * 20; ctx.globalAlpha = 1 - e * 0.5; if (fl.k === 0) G.cards.bubble(ctx, x - 13, y - 11, 2); else P.drawPic(ctx, slotPic(this.slots[fl.k - 1]), x - 16, y - 16, 2, this.t); ctx.globalAlpha = 1; }
+      if (this.invite != null) this.drawInvite(ctx); else this.drawCards(ctx);
+      if (this.mic) this.mic.draw(ctx);
+    }
+    drawCards(ctx) {
+      const R = this.rects(), won = this.won, keys = G.hint && G.hint.keyboard && G.hint.keyboard();
+      R.forEach((r, k) => {
+        const sel = keys && k === this.sel && !won, frame = k === 0, j = k - 1, placed = frame ? this.placed.frame : this.placed.slot === j;
+        const off = !frame && this.off[j], m = this.miss, wob = m && m.k === j && m.t < 16 ? Math.round(Math.sin(m.t * 1.7) * 3 * (1 - m.t / 16)) : 0;
+        const bob = sel ? Math.round(Math.sin(this.t / 6) * 1.5) : 0, x = r.x + wob, y = r.y - bob;
+        if (placed) { // (it's in her bubble now: a dashed place where it was)
+          ctx.fillStyle = '#8890c0'; for (let i = 0; i < r.w; i += 4) { ctx.fillRect(x + i, y, 2, 1); ctx.fillRect(x + i, y + r.h - 1, 2, 1); } for (let i = 0; i < r.h; i += 4) { ctx.fillRect(x, y + i, 1, 2); ctx.fillRect(x + r.w - 1, y + i, 1, 2); }
+          return;
+        }
+        if (frame) { // the frame card: a speech bubble and the frame's words
+          G.win(ctx, x, y, r.w, r.h, sel ? { fill1: '#fff8d0', fill2: '#f8e8a0', alpha: 1 } : { fill1: '#ffffff', fill2: '#e8f0ff', alpha: 1 });
+          G.cards.bubble(ctx, x + r.w / 2 - 13, y + 8, 2, '#ffffff');
+          const L = fit(P.label(this.id), r.w - 12), col = Wd().stage(this.id) >= 3 ? '#b07000' : '#2860a8'; // (a margin inside the card's rim: "por / favor")
+          L.forEach((l, i) => G.textC(ctx, l, x + r.w / 2, y + 44 + i * 10 - (L.length - 1) * 4, col, null));
+          return;
+        }
+        const v = this.slotView(j);
+        G.win(ctx, x, y, r.w, r.h, off ? { fill1: '#5c6074', fill2: '#363a4c' } : sel ? { fill1: '#3a56c8', fill2: '#1c2c8c' } : {});
+        ctx.globalAlpha = off ? 0.5 : 1;
+        if (v.pic && v.pic.face) { ctx.fillStyle = '#f4ecd8'; ctx.fillRect(x + r.w / 2 - 17, y + 11, 34, 34); P.drawPic(ctx, v.pic, x + r.w / 2 - 16, y + 12, 2, this.t); }
+        else G.drawIcon16(ctx, v.pic, x + r.w / 2 - 16, y + 12, 2, 'card');
+        if (v.label) { const L = fit(v.label, r.w - 4); L.forEach((l, i) => G.textC(ctx, l, x + r.w / 2, y + Math.min(56, r.h - 9) - (L.length - 1 - i) * 9 + (L.length > 1 ? 2 : 0), off ? '#a8acb8' : v.col)); }
+        ctx.globalAlpha = 1;
+      });
+    }
+    // the invitation: her bubble with the whole phrase, the big mic, a "go on" arrow (never in the way)
+    drawInvite(ctx) {
+      const n = this.nextRect(); // "not now, go on": the skip arrows (as the dog's warm-up), a little bigger
+      ctx.save(); ctx.translate(n.x + 2, n.y + 2); ctx.scale(1.4, 1.4); G.skipBtn(ctx, 0, 0, this.t); ctx.restore();
+      const u = this.bubble(), y = u.y + u.h + 16;
+      // the whole phrase is two pieces: the frame card and the word, side by side (say both!)
+      const s = this.slots[this.invite], cx = G.W / 2 - 40;
+      G.win(ctx, cx - 30, y, 60, 56, { fill1: '#ffffff', fill2: '#e8f0ff', alpha: 1 }); G.cards.bubble(ctx, cx - 13, y + 6, 2); { const L = fit(P.label(this.id), 50); L.forEach((l, i) => G.textC(ctx, l, cx, y + 38 + i * 9 - (L.length - 1) * 5, '#2860a8', null)); } // ("¿Dónde / está?": both lines)
+      G.bigText(ctx, '+', G.W / 2, y + 22, 2, '#f8e060');
+      G.win(ctx, cx + 50, y, 60, 56, { fill1: '#ffffff', fill2: '#fff0d0', alpha: 1 }); P.drawPic(ctx, slotPic(s), cx + 64, y + 6, 2, this.t);
+      const L = fit(P.slotText(this.id, s), 56); L.forEach((l, i) => G.textC(ctx, l, cx + 80, y + 40 + i * 8 - (L.length - 1) * 3, '#604020', null));
+    }
+  }
+  G.PhraseAsk = PhraseAsk;
+  P.cur = () => { const s = G.top(); return s instanceof PhraseAsk ? s : null; };
+
+  // the request itself (no introduction here: P.ready first) -> its result
+  P.ask = function* (id, o = {}) {
+    if (!P.def(id)) return null;
+    const w = new G.Wait(); G.push(new PhraseAsk(id, o, w));
+    const r = yield w; const res = r.result || {};
+    if (res.cancel) return res;
+    if (o.onGet) yield* o.onGet(res.k, res);
+    // the key word only: they did it; now the whole phrase, shown as a picture-sentence, one more try (never in the way)
+    if (res.how === 'key' && G.mic && G.mic.on() && !o.noInvite) {
+      const w2 = new G.Wait(); G.push(new PhraseAsk(id, Object.assign({}, o, { invite: res.k, cancel: false, prompt: '' }), w2));
+      const r2 = yield w2; res.again = !!(r2.result && r2.result.again);
+    }
+    return res;
+  };
+  // introduce if new, then ask; null: phrases off, or a pattern that can't be introduced now (the caller's old way)
+  // A request for "Quiero" may introduce "___, por favor" instead (once Quiero is known: one pattern at a time).
+  P.request = function* (id, o = {}) {
+    if (!P.on()) return null;
+    if (id === 'f_quiero' && o.polite !== false && P.met('f_quiero') && Wd().stage('f_quiero') >= 2 && !P.met('f_porfavor') && P.canIntro('f_porfavor', o)) id = 'f_porfavor';
+    if (!(yield* P.ready(id, o))) return null;
+    return yield* P.ask(id, o);
+  };
+
+  // =====================================================================
+  //  Where they live (data-driven helpers the content calls; each returns null when phrases are off: the old way)
+  // =====================================================================
+  const say = (who, show, ...pages) => G.say(pages, Object.assign({ portrait: G.portraitOf(who), name: G.nameOf(who), who }, show ? { show } : {}));
+  // ---------- Me llamo ___: a friend says their name, she says hers ----------
+  P.wantsName = npc => P.on() && !!H() && H().WHO.includes(npc) && P.NO_NAME.indexOf(npc) < 0 && !P.named(npc);
+  P.meetName = function* (npc) {
+    if (!P.wantsName(npc)) return false;
+    if (!(yield* P.ready('f_llamo', { who: npc }))) return false;
+    const nm = FIRST(npc);
+    yield* P.ask('f_llamo', { who: npc, prompt: '¡Hola! Me llamo ' + nm + '. ¿Y tú?', en: 'Hi! My name is ' + nm + '. And you? (say "Me llamo" and your name)', slots: [{ name: true }], free: true,
+      onGet: function* () { yield say(npc, null, TT('¡Hola, {name}! ¡Mucho gusto!', 'Hello, {name}! Nice to meet you!')); } });
+    st().named[npc] = day(); G.st.autosave();
+    return true;
+  };
+  // ---------- Quiero ___: shops and food (the thing comes when it's asked for) ----------
+  P.quiero = function* (who, slots, o = {}) {
+    return yield* P.request('f_quiero', Object.assign({ who, slots, free: true, prompt: '¿Qué quieres?', en: 'What would you like? Say "Quiero..." (or tap)' }, o));
+  };
+  // ---------- ¿Dónde está ___?: a hint from Nico in hide-and-seek ----------
+  P.donde = function* (who, kinds, onGet) {
+    return yield* P.request('f_donde', { who, slots: kinds.slice(0, 3), free: true, prompt: '¿Sí?', en: 'Ask Nico where one is hiding: "¿Dónde está el...?"', onGet });
+  };
+  // ---------- Tengo ___: giving what she carries ----------
+  const CARRY = ['flor', 'manzana', 'pelota', 'concha', 'hoja', 'carta', 'hueso', 'galleta', 'pan', 'helado', 'bellota', 'queso', 'leche', 'agua', 'huevo'];
+  P.tengo = function* (who, it, o = {}) {
+    if (!P.on()) return null;
+    const id = it.id || it, others = CARRY.filter(k => k !== id && metW(k)).sort(() => G.rand() - 0.5).slice(0, 2);
+    const slots = [id].concat(others).sort(() => G.rand() - 0.5);
+    const r = yield* P.request('f_tengo', Object.assign({ who, slots, answer: slots.indexOf(id), prompt: '¿Qué tienes?', en: 'What do you have? Say "Tengo..."', cancel: o.cancel }, o));
+    return r;
+  };
+  // ---------- Me gusta ___: Lola asks her favourite animal (pinned in the album); friends ask what she likes ----------
+  P.fav = () => (G.state && isObj(st().fav) ? st().fav : null);
+  const albumMet = () => (G.animals ? G.animals.list().filter(a => G.animals.met(a) && G.animals.KINDS[a] && metW(G.animals.KINDS[a].word)).map(a => G.animals.KINDS[a].word) : []);
+  P.favReady = () => P.on() && !P.fav() && albumMet().length >= 3;
+  P.favBubble = () => ({ icon: 'gracias' });
+  // Lola, once she has said hello in this place today: "¿Qué animal te gusta?" (any album animal she has met)
+  P.favTalk = function* (f) {
+    if (!P.favReady() || !f || !(G.zones && G.zones.lolaTalked && G.zones.lolaTalked(f.mapId)) || (G.chapters && G.chapters.alert('lola'))) return false;
+    const all = albumMet(), cards = all.slice().sort(() => G.rand() - 0.5).slice(0, 3);
+    const r = yield* P.request('f_gusta', { who: 'lola', slots: cards, more: all, free: true, prompt: '¡{name}! ¿Qué animal te gusta?', en: 'Which animal do you like best? Say "Me gusta el..."',
+      onGet: function* (k, res) {
+        const w = res.slot.word || res.slot.id; st().fav = { id: w, d: day() }; G.st.autosave();
+        G.audio.jingle('item');
+        yield say('lola', w, TT('¡El [' + w + ']! ¡A mí también me gusta!', 'The ' + (D().words[w] ? D().words[w].en.replace('the ', '') : w) + '! I like it too! (it\'s in your album now, with a heart)'));
+      } });
+    return r != null;
+  };
+  // a friend asks what she likes (some days, after the greeting; at most one a day in the whole world)
+  const LIKE = ['comida', 'colores'], LIKE_EXTRA = ['helado', 'chocolate', 'mora'];
+  P.likeAsk = function* (npc) {
+    if (!P.on() || !H() || !P.met('f_gusta')) return false;
+    const L = st().likes, d = day();
+    if (L._d === d || (L[npc] && d - L[npc].d < 7)) return false;
+    let h = 0; for (const c of npc + d) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    if (h % 3) return false; // (some days)
+    const pool = (H().POOLS[npc] || []).concat(LIKE_EXTRA).filter(w => D().words[w] && (LIKE.includes(D().words[w].topic) || LIKE_EXTRA.includes(w)) && metW(w));
+    const cards = pool.filter((w, i) => pool.indexOf(w) === i).sort(() => G.rand() - 0.5).slice(0, 3);
+    if (cards.length < 2) return false;
+    const col = D().words[cards[0]].topic === 'colores';
+    const r = yield* P.request('f_gusta', { who: npc, slots: cards, free: true, prompt: col ? '¿Qué color te gusta?' : '¿Qué te gusta?', en: 'What do you like? Say "Me gusta..."',
+      onGet: function* (k, res) { L[npc] = { w: res.slot.word, d }; L._d = d; G.st.autosave(); yield say(npc, null, TT('¡A mí también!', 'Me too!')); } });
+    return r != null;
+  };
+
+  // ---------- the dog's warm-up (warmup.js): a phrase that's due ----------
+  const WARM = {
+    f_quiero: () => ({ prompt: '¿Qué quieres?', slots: P.SLOTS.f_quiero }),
+    f_porfavor: () => ({ prompt: '¿Qué quieres?', slots: P.SLOTS.f_porfavor }),
+    f_llamo: () => ({ prompt: '¿Cómo te llamas?', slots: [{ name: true }] }),
+    f_donde: () => ({ prompt: '¿Qué buscas?', slots: P.SLOTS.f_donde }),
+    f_gusta: () => ({ prompt: '¿Qué te gusta?', slots: P.SLOTS.f_gusta }),
+    f_tengo: () => ({ prompt: '¿Qué tienes?', slots: P.SLOTS.f_tengo, one: true }),
+  };
+  P.warm = function* (id, extra) {
+    const W = WARM[id] && WARM[id](); if (!W) return false;
+    let slots = W.slots.filter(s => typeof s !== 'string' || metW(s)).sort(() => G.rand() - 0.5).slice(0, 3);
+    if (!slots.length) slots = [P.def(id).icon];
+    const o = Object.assign({ who: 'canelo', prompt: W.prompt, slots, free: !W.one, noInvite: false }, extra || {});
+    if (W.one) { o.answer = 0; o.show = slots[0]; }
+    if (Wd().needsReintro(id)) yield* P.intro(id, Object.assign({}, o, { again: true, noNow: true }));
+    const r = yield* P.ask(id, o);
+    return !!(r && !r.cancel && (r.how === 'full'));
+  };
+
+  // =====================================================================
+  //  Wrapping the people (after all the content has loaded): Me llamo the first time you meet a zone's people and Lola;
+  //  Lola's favourite-animal question (the town's friends say their name at their next greeting: hearts.js H.greet)
+  // =====================================================================
+  function wrap(def) {
+    const id = def.id; if (!id || def._phr || !H() || !(id in H().ZONE)) return;
+    def._phr = true;
+    const t0 = def.talk, a0 = def.alert;
+    def.talk = function* (f, n) {
+      let named = false;
+      if (G.state && P.wantsName(id) && !(H().greetsWith(id) && !H().did(id, 'greet'))) named = yield* P.meetName(id); // (a greeting due: after it, hearts.js)
+      if (id === 'lola' && !named && G.state && P.on() && (yield* P.favTalk(f))) return;
+      if (t0) yield* t0.call(this, f, n);
+    };
+    if (id === 'lola') def.alert = function () {
+      const a = a0 ? a0.apply(this, arguments) : null; if (a) return a;
+      const f = G.field; return f && G.state && P.favReady() && G.zones.lolaTalked(f.mapId) && !(G.chapters && G.chapters.alert('lola')) ? P.favBubble() : null;
+    };
+  }
+  for (const m in G.maps) for (const def of G.maps[m].npcs || []) wrap(def);
+})();
+
+</script>
 <script>/* src/dashboard.js */
 // ===== Learning: the grown-ups' page of what the child actually knows and keeps (docs/LEARNING_PLAN_2.md, Phase 1) =====
 // The grown-ups menu's "Learning" row (behind the held gear, so English labels). Five tabs:
@@ -25692,6 +26673,7 @@ G.MAPDATA = {
 //              counts), and a bar per day for the last two weeks (the goal band 70-80%)
 //   Words      by place (Villa Sol and the five zones, picture tabs): each word's picture, its Spanish, a strength bar
 //              (four stages, the box under it), said aloud (a mic), last met or used, slipping; scroll; tap: hear it
+//              (and a last tab, a speech bubble: the phrases, src/phrases.js, Phase 2: the same rows)
 //   Check      ten words to ask away from the game (some strong, some slipping or due): the picture, the Spanish and the
 //              English for the grown-up; tap right or not yet (the card stays a moment with its mark), skip or stop; the
 //              answers count as practice (history.js H.checkAnswer: right = a recall, not yet = a miss) and the last
@@ -25802,6 +26784,7 @@ G.MAPDATA = {
     L.push('Retention (right on the first try when a word comes back after a day or more): ' + (o.r7.n ? o.r7.pct + '% in the last 7 days (' + o.r7.right + ' of ' + o.r7.n + ')' : 'no words back after a day yet this week') + (o.ra.n ? ', ' + o.ra.pct + '% overall (' + o.ra.right + ' of ' + o.ra.n + ').' : '.'));
     L.push('Said aloud: ' + (o.spoken.all ? o.spoken.pct + '% of practice (' + o.spoken.said + ' of ' + o.spoken.all + ').' : 'no practice recorded yet.'));
     if (o.slipping.length) L.push('Slipping (' + o.slipping.length + '): ' + o.slipping.map(es).join(', ') + '.');
+    if (o.phrases && o.phrases.met) L.push('Phrases: ' + o.phrases.met + ' of ' + o.phrases.of + ' met (' + H().phraseIds().filter(id => G.words.met(id)).map(id => G.phrase ? G.phrase.label(id) : id).join(', ') + '); said aloud ' + o.phrases.said + ' times, ' + o.phrases.today + ' today.');
     if (o.check) L.push('Last word check: ' + o.check.right + ' of ' + o.check.of + ' (' + dateOf(o.check.d) + ').');
     const td = H().day().met; if (td.length) L.push('New today: ' + td.map(es).join(', ') + '.');
     const q = DB.tonight(0); if (q) L.push('Tonight\'s question: ' + q.es + ' (' + q.en + ') A good answer: ' + q.ans.es);
@@ -25832,7 +26815,7 @@ G.MAPDATA = {
   }
   DB.strength = strength;
 
-  const ZONES = () => (G.zones ? G.zones.ids() : ['villa']);
+  const ZONES = () => (G.zones ? G.zones.ids() : ['villa']).concat(G.phrase && G.phrase.on() ? ['frases'] : []); // (the phrases' tab last)
   class LearningDash {
     constructor(w, o) {
       G.toastT = 0; this.w = w; this.t = 0; this.tab = Math.max(0, DB.TABS.indexOf((o && o.tab) || 'Overview'));
@@ -25858,7 +26841,7 @@ G.MAPDATA = {
     sayXY() { return [256, 64]; }
     anotherRect() { return { x: 90, y: 192, w: 140, h: 22 }; }
     tonightSayXY() { return [G.W - 34, 66]; }
-    rows() { if (!this.rowsCache || this.rowsCache.zone !== this.zone || this.rowsCache.t !== G.frame >> 5) { const L = H().zoneRows(this.zone); L.sort((a, b) => b.met - a.met); this.rowsCache = { zone: this.zone, t: G.frame >> 5, L }; } return this.rowsCache.L; } // (met words first, in notebook order)
+    rows() { if (!this.rowsCache || this.rowsCache.zone !== this.zone || this.rowsCache.t !== G.frame >> 5) { const L = this.zone === 'frases' ? H().phraseRows() : H().zoneRows(this.zone); L.sort((a, b) => b.met - a.met); this.rowsCache = { zone: this.zone, t: G.frame >> 5, L }; } return this.rowsCache.L; } // (met words first, in notebook order; the phrases' tab: the phrases)
     maxScroll() { return Math.max(0, this.rows().length * 18 - this.listBox().h); }
     notice(s) { this.note = s; this.noteT = 180; }
     // the page's numbers, worked out again twice a second (they're drawn every frame)
@@ -25904,7 +26887,7 @@ G.MAPDATA = {
       const tap = G.input.tap();
       if (tap && G.tapIn(b)) {
         const L = this.rows(), i = Math.floor((tap.y - b.y + this.scroll) / 18);
-        if (L[i]) { this.hi = { id: L[i].id, t: this.t }; G.speak(G.baseForm(L[i].id)); }
+        if (L[i]) { this.hi = { id: L[i].id, t: this.t }; G.speak(this.zone === 'frases' && G.phrase ? G.phrase.sentence(L[i].id) : G.baseForm(L[i].id)); }
       }
     }
     updCheck() {
@@ -26004,14 +26987,20 @@ G.MAPDATA = {
         ['Slipping', o.slipping.length ? o.slipping.length + ': ' + o.slipping.map(es).join(', ') : 'none'],
         ['Last check', o.check ? o.check.right + ' of ' + o.check.of + ', ' + ago(o.check.ago) : 'none yet (the Check tab)'],
         ['Warm-up', this.warmLine(o.warmup)],
+        ['Phrases', this.phraseLine(o.phrases)],
       ];
       lines.forEach(([a, b], k) => {
-        const y = 112 + k * 14;
+        const y = 110 + k * 13;
         G.text(ctx, a, 10, y, COL.dim);
         G.text(ctx, fit(b, G.W - 92), 82, y, k === 3 && o.slipping.length ? COL.slip : COL.white);
       });
-      G.text(ctx, 'Each count includes the stronger words: a solid word', 10, 198, '#8890c0');
-      G.text(ctx, 'is also remembered, known and met.', 10, 208, '#8890c0');
+      G.text(ctx, 'Each count includes the stronger words: a solid word', 10, 200, '#8890c0');
+      G.text(ctx, 'is also remembered, known and met.', 10, 210, '#8890c0');
+    }
+    // the phrases (src/phrases.js): how many met, said aloud in all and today, built from cards
+    phraseLine(p) {
+      if (!p || !p.met) return 'none met yet (Me llamo, Quiero, ¿Dónde está?, Me gusta, Tengo, por favor)';
+      return p.met + ' of ' + p.of + ' met; said ' + p.said + (p.said === 1 ? ' time' : ' times') + ' (' + p.today + ' today)' + (p.built ? ', built ' + p.built : ''); // (fits the line: "said" is aloud, the row's name says so)
     }
     warmLine(w) {
       const today = w && w.d === G.today(), L = w && w.last;
@@ -26055,11 +27044,11 @@ G.MAPDATA = {
         const r = this.zoneRect(k), on = z === this.zone, zd = G.zones ? G.zones.def(z) : null;
         G.win(ctx, r.x, r.y, r.w, r.h, on ? { fill1: '#3a56c8', fill2: '#1c2c8c', alpha: 1 } : { fill1: '#18205e', fill2: '#10164a', alpha: 1 });
         if (on) { ctx.fillStyle = COL.yel; ctx.fillRect(r.x + 2, r.y + r.h - 3, r.w - 4, 1); }
-        G.drawIcon16(ctx, zd ? zd.icon : 'sol', r.x + 5, r.y + 2);
+        if (z === 'frases') G.cards.bubble(ctx, r.x + 6, r.y + 4, 1); else G.drawIcon16(ctx, zd ? zd.icon : 'sol', r.x + 5, r.y + 2);
       });
-      const zd = G.zones ? G.zones.def(this.zone) : null, nm = rows.filter(r => r.met).length, ns = rows.filter(r => r.slip).length;
-      G.text(ctx, fit(zd ? zd.name : 'Villa Sol', 130), 184, 49, COL.white);
-      G.text(ctx, nm + ' of ' + rows.length + ' met' + (ns ? ', ' + ns + ' slipping' : ''), 184, 59, ns ? COL.slip : COL.dim);
+      const zd = G.zones ? G.zones.def(this.zone) : null, nm = rows.filter(r => r.met).length, ns = rows.filter(r => r.slip).length, nx = 6 + Z.length * 29 + 4;
+      G.text(ctx, fit(this.zone === 'frases' ? 'Phrases' : zd ? zd.name : 'Villa Sol', G.W - nx - 6), nx, 49, COL.white);
+      G.text(ctx, fit(nm + ' of ' + rows.length + ' met' + (ns ? ', ' + ns + ' slipping' : ''), G.W - nx - 6), nx, 59, ns ? COL.slip : COL.dim);
       G.text(ctx, 'Word', 30, 70, '#8890c0'); G.text(ctx, 'Stage', 116, 70, '#8890c0'); G.text(ctx, 'Said', 160, 70, '#8890c0'); G.text(ctx, 'Last met/used', 190, 70, '#8890c0');
       ctx.save(); ctx.beginPath(); ctx.rect(b.x, b.y, b.w, b.h); ctx.clip();
       rows.forEach((w, k) => {
@@ -26067,7 +27056,9 @@ G.MAPDATA = {
         const hi = this.hi && this.hi.id === w.id && this.t - this.hi.t < 40;
         if (hi) { ctx.fillStyle = 'rgba(248,224,96,0.18)'; ctx.fillRect(r.x, r.y, r.w, r.h); }
         else if (k % 2) { ctx.fillStyle = 'rgba(136,152,224,0.08)'; ctx.fillRect(r.x, r.y, r.w, r.h); }
-        ctx.globalAlpha = w.met ? 1 : 0.35; G.drawIcon16(ctx, w.id, 10, r.y + 1); ctx.globalAlpha = 1;
+        ctx.globalAlpha = w.met ? 1 : 0.35;
+        if (this.zone === 'frases' && G.phrase) { G.phrase.drawPic(ctx, G.phrase.cardPic(w.id), 10, r.y + 1, 1, this.t); G.cards.bubble(ctx, 18, r.y - 1, 0.6); } else G.drawIcon16(ctx, w.id, 10, r.y + 1);
+        ctx.globalAlpha = 1;
         const lab = G.baseForm(w.id), col = !w.met ? '#6870a0' : w.st >= 3 ? COL.gold : COL.met;
         G.text(ctx, fit(lab, 82), 30, r.y + 6, col);
         if (!w.met) { G.text(ctx, 'not met yet', 116, r.y + 6, '#5a6290'); return; }

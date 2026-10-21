@@ -37,7 +37,7 @@
 //                    onGet: function* (k, res) {...} (they do it: before the invitation), noInvite, cued, extra...}
 //   P.request(id, o) generator: P.ready + P.ask; null when phrases are off or the pattern can't be introduced now (the
 //                    caller then does what it did before). A request for 'f_quiero' may introduce "por favor" instead.
-//   Placements: P.meetName(npc) (Me llamo), P.quiero(who, slots, o), P.donde(who, kinds, place), P.tengo(who, it, o),
+//   Placements: P.meetName(npc) (Me llamo), P.quiero(who, slots, o), P.donde(who, kinds, onGet), P.tengo(who, it, o),
 //   P.favTalk(f) / P.fav() (Lola's question, her favourite animal), P.likeAsk(npc) (a friend asks what she likes),
 //   P.warm(id, extra) (the dog's warm-up), P.drawSentence(ctx, ...) (her speech bubble), P.drawPic.
 // Saved: G.state.phrases = {r: {id: record}, intro: {id: {d, at}}, named: {npc: day}, fav: {id, d}, likes: {npc: {w, d}},
@@ -105,7 +105,7 @@
     return k < 0 ? { before: es, after: '' } : { before: es.slice(0, k).trim(), after: es.slice(k + 3) };
   };
   const cap = t => t.replace(/^([¿¡]?)(\p{L})/u, (m, a, b) => a + b.toUpperCase());
-  // the whole sentence, as said ('Quiero un helado.', '¿Dónde está el gato?', 'Un pan, por favor.')
+  // the whole sentence, as said ('Quiero un helado.', '¿Dónde está el gato?', 'Una galleta, por favor.')
   P.sentence = function (id, s) {
     s = P.slot(s || P.cardSlot(id));
     const p = P.parts(id, s), t = ((p.before ? p.before + ' ' : '') + P.slotText(id, s) + p.after).replace(/\s+([,?!.])/g, '$1').trim();
@@ -354,6 +354,7 @@
     Wd().meet(id, 'phrase', { who: o.who });
     st().intro[id] = { d: day(), at: (G.field && G.field.mapId) || '' }; st().last = Wd().now();
     if (G.intro) yield G.intro.note([id]);
+    for (let i = 0; i < 90 && G.cards && G.cards.popping(id); i++) yield 1; // (her new card says itself and flies into the deck first: the request's bubble stays clear)
     G.st.autosave();
   };
   // introduce it if it's new (false: not now; the caller does what it did before); model it again when it's slipping
@@ -543,7 +544,7 @@
         if (frame) { // the frame card: a speech bubble and the frame's words
           G.win(ctx, x, y, r.w, r.h, sel ? { fill1: '#fff8d0', fill2: '#f8e8a0', alpha: 1 } : { fill1: '#ffffff', fill2: '#e8f0ff', alpha: 1 });
           G.cards.bubble(ctx, x + r.w / 2 - 13, y + 8, 2, '#ffffff');
-          const L = fit(P.label(this.id), r.w - 6), col = Wd().stage(this.id) >= 3 ? '#b07000' : '#2860a8';
+          const L = fit(P.label(this.id), r.w - 12), col = Wd().stage(this.id) >= 3 ? '#b07000' : '#2860a8'; // (a margin inside the card's rim: "por / favor")
           L.forEach((l, i) => G.textC(ctx, l, x + r.w / 2, y + 44 + i * 10 - (L.length - 1) * 4, col, null));
           return;
         }
@@ -563,7 +564,7 @@
       const u = this.bubble(), y = u.y + u.h + 16;
       // the whole phrase is two pieces: the frame card and the word, side by side (say both!)
       const s = this.slots[this.invite], cx = G.W / 2 - 40;
-      G.win(ctx, cx - 30, y, 60, 56, { fill1: '#ffffff', fill2: '#e8f0ff', alpha: 1 }); G.cards.bubble(ctx, cx - 13, y + 6, 2); G.textC(ctx, fit(P.label(this.id), 56)[0], cx, y + 38, '#2860a8', null);
+      G.win(ctx, cx - 30, y, 60, 56, { fill1: '#ffffff', fill2: '#e8f0ff', alpha: 1 }); G.cards.bubble(ctx, cx - 13, y + 6, 2); { const L = fit(P.label(this.id), 50); L.forEach((l, i) => G.textC(ctx, l, cx, y + 38 + i * 9 - (L.length - 1) * 5, '#2860a8', null)); } // ("¿Dónde / está?": both lines)
       G.bigText(ctx, '+', G.W / 2, y + 22, 2, '#f8e060');
       G.win(ctx, cx + 50, y, 60, 56, { fill1: '#ffffff', fill2: '#fff0d0', alpha: 1 }); P.drawPic(ctx, slotPic(s), cx + 64, y + 6, 2, this.t);
       const L = fit(P.slotText(this.id, s), 56); L.forEach((l, i) => G.textC(ctx, l, cx + 80, y + 40 + i * 8 - (L.length - 1) * 3, '#604020', null));

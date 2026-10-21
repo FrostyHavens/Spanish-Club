@@ -333,7 +333,7 @@
     // the phrases (src/phrases.js): how many met, said aloud in all and today, built from cards
     phraseLine(p) {
       if (!p || !p.met) return 'none met yet (Me llamo, Quiero, ¿Dónde está?, Me gusta, Tengo, por favor)';
-      return p.met + ' of ' + p.of + ' met; said aloud ' + p.said + (p.said === 1 ? ' time' : ' times') + ' (' + p.today + ' today)' + (p.built ? ', built ' + p.built : '');
+      return p.met + ' of ' + p.of + ' met; said ' + p.said + (p.said === 1 ? ' time' : ' times') + ' (' + p.today + ' today)' + (p.built ? ', built ' + p.built : ''); // (fits the line: "said" is aloud, the row's name says so)
     }
     warmLine(w) {
       const today = w && w.d === G.today(), L = w && w.last;
