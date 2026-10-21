@@ -483,14 +483,14 @@
     ],
   };
   G.maps.bosque_cueva = {
-    name: 'La cueva', icon: 'cueva', rows: MD.bosque_cueva.rows, music: 'castle',
+    name: 'La cueva', icon: 'cueva', rows: MD.bosque_cueva.rows, music: 'castle', indoor: true,
     exits: [{ x: P('bosque_cueva', 'door')[0], y: P('bosque_cueva', 'door')[1], to: 'bosque', tx: CAVE_FRONT[0], ty: CAVE_FRONT[1], dir: 'down', sfx: 'step' }],
     animals: [{ kind: 'oso', area: 'osa', on: '{' }, { kind: 'luciernaga', n: 4, area: 'luces', on: '{%' }],
     things: { tiles: { '%': 'hongo', '}': 'cueva', w: 'agua' } },
     npcs: [K.canelo(8, 7)],
   };
   G.maps.bosque_cabana = {
-    name: 'La casa de Doña Lupe', icon: 'casa', rows: MD.bosque_cabana.rows, music: 'headquarters',
+    name: 'La casa de Doña Lupe', icon: 'casa', rows: MD.bosque_cabana.rows, music: 'headquarters', indoor: true,
     exits: [{ x: P('bosque_cabana', 'door')[0], y: P('bosque_cabana', 'door')[1], to: 'bosque', tx: CABIN[0], ty: CABIN[1] + 1, dir: 'down' }],
     things: { tiles: { j: 'cama', t: null } },
     poke: (f, x, y) => { if (f.map.get(x, y) !== 'v') return false; G.audio.sfx('select'); CK.puff('dust', x * TL + 12, y * TL, { vy: -0.6, life: 40 }); return true; }, // her oven: warm
