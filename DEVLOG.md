@@ -2,6 +2,11 @@
 
 A running record of what changed in Club de Español and why. Newest first.
 
+## 2026-10-21 — Bus stops and signposts are easy to tap
+- The bus stop's round sign is drawn mostly above its own map square, so tapping the picture landed on the empty
+  square above and nothing happened. Now a tap anywhere on the sign, its pole, or a margin around them opens the bus;
+  the same for the zone signposts' boards (`G.zones.hitAt`, used by `field.js` tapTarget). `tools/test-signs.js`.
+
 ## 2026-10-17 — The world connected (step 7 of the open world): Tomás's letters, friends everywhere, the world's progress
 With all five places built, the parent asked for what makes them ONE world for a 7-year-old: people she recognizes
 everywhere, reasons to travel between places, and progress she can see. All of it is in a new file, `src/connect.js`

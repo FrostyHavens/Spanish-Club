@@ -130,7 +130,9 @@
       const drawn = up => pick(ppl.filter(n => n.talk && n.spec && !n.hidden && !(up && n.id === 'canelo') && wx >= n.x * T + n.ox && wx < n.x * T + n.ox + T && wy >= (n.y - up) * T + n.oy && wy < (n.y - up + 1) * T + n.oy));
       const c = this.map.get(tx, ty);
       const story = (G.chapters && G.chapters.spotAt(this, tx, ty)) || G.intro.spotAt(this, tx, ty); // a puzzle's thing on a counter is the thing, not the person behind it
-      let n = drawn(0) || talker(tx, ty) || (story ? null : drawn(1) || talker(tx, ty + 1)); // (a story's place wins over the head of someone standing below it: the bushes of chapter 5)
+      const sign = G.zones && G.zones.hitAt ? G.zones.hitAt(this, wx, wy) : null; // the bus stop / a signpost: their whole picture, with room to spare
+      let n = drawn(0) || (sign ? null : talker(tx, ty) || (story ? null : drawn(1) || talker(tx, ty + 1))); // (a story's place wins over the head of someone standing below it: the bushes of chapter 5)
+      if (sign && !n) return { search: true, x: sign.x, y: sign.y, special: true };
       if (n && (n.ghost || n.id === 'canelo') && ((G.carry && G.carry.at(this, tx, ty)) || (G.zones && G.zones.special(this, tx, ty)))) n = null; // (Canelo standing on a thing to pick up: the thing)
       if (!n && !story && COUNTER.includes(c)) n = DIR4.map(d => talker(tx + G.DIRS[d][0], ty + G.DIRS[d][1])).find(Boolean);
       if (n) return { npc: n, x: n.x, y: n.y };

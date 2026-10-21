@@ -142,6 +142,17 @@
     return null;
   };
   Z.special = (f, x, y) => !!(Z.busAt(f, x, y) || Z.postAt(f, x, y) || Z.dogSpotAt(f, x, y));
+  // a tap near the bus stop's sign or a signpost's board -> its tile. They are drawn mostly above their own tile (the
+  // round bus sign sits 8 px over it), so a child tapping the picture used to land on the empty tile above. The tap
+  // area covers the whole drawing plus a generous margin (PAD, game px). (field.js tapTarget)
+  const PAD = 8;
+  Z.hitAt = function (f, wx, wy) {
+    const inR = (x0, y0, x1, y1) => wx >= x0 - PAD && wx < x1 + PAD && wy >= y0 - PAD && wy < y1 + PAD;
+    const z = Z.def(Z.of(f.mapId));
+    if (z && z.bus && z.bus.map === f.mapId) { const [x, y] = z.bus.at; if (inR(x * T, y * T - 20, x * T + T, y * T + T)) return { x, y, bus: true }; } // sign (12 px circle above) + pole
+    for (const p of f.def.posts || []) { const [x, y] = p.at; if (inR(x * T, y * T - 8, x * T + T, y * T + T)) return { x, y, post: true }; } // board (from 6 px above) + post
+    return null;
+  };
 
   // ---------- the dog's thing to do in each zone ----------
   function* dogRun(f, sp) {
