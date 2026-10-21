@@ -2,6 +2,109 @@
 
 A running record of what changed in Club de Español and why. Newest first.
 
+## 2026-10-21 — Polish Sprint 1: the arrow never loops, her save can be backed up, right Spanish, a day in 15 minutes
+The first sprint of the polish plan (`docs/AUDIT_2026-10.md` section 5, items 1.1-1.12). Built as four parallel jobs,
+merged, reviewed and run through the full test suite.
+
+**The guide never loops (1.1-1.6, 1.12).**
+- *Root cause:* the rules for "something waits in there" and "this talk can run" differed from the rules the arrow
+  used once there.
+  - After "¡A explorar!" the town said "go into the house" for chapter 1, which hadn't started; inside, the arrow
+    skipped it and pointed back out. Following the arrow gave 147 door trips.
+  - Lola's heart bubble showed whenever 3 album animals were met, but her talk needed a phrase that couldn't be
+    introduced yet, so she said hello 14+ times in a row.
+- *Fix:* they now share one check: `waitsIn(m, {started})` for doors and `P.canRun` / `P.favCan` for phrase bubbles
+  and their talks.
+- *Safety net:* any round trip through the same door for the same goal, or a talk repeated word for word, sets that
+  goal aside for about 3 minutes and is logged in `G.guide.loops`. The tests require that log to stay empty.
+- *Zone stories:* the "puppy later" rule now applies only in Villa Sol, so the forest, park, beach and grandparents'
+  chapters are found by following the arrow.
+- *Corner buttons:* nothing the arrow points at hides under one. The target wins the tap (`G.guide.wins`), and the
+  arrow is drawn clear of the button. The grandparents' bus stop moved down the road. Exits on a map's top row now
+  count as on screen (going north to the forest stopped one tile short).
+- *World map:* the letter's picture can be tapped and an arrow marks the destination. Her own pick of a place beats
+  the letter errand, which waits until she's done there.
+- *A zone's play:* the day's play prefers things in the zone she's in (`C.here`); otherwise the arrow shows the way
+  back to town instead of disappearing.
+- *Tests:* new `tools/test-live.js` plays the live game with warm-up, phrases and listen-and-do on, both opener
+  choices and a first zone visit, following only the arrow. It fails on loops, repeated talks, 20 s with nothing to
+  follow, or the corner menu opening. On the old code it failed with 147 door trips and Lola's hello 14 times.
+  `test-world.js` checks 266 places on 21 maps against the corner buttons.
+
+**Back up and restore (1.7, before the winter break).**
+- *Where:* new `src/backup.js`, a row in the grown-ups menu on the title and in play.
+- *Back up:* one file, `club-de-espanol-<names>-<date>.json`, with every slot and the settings. It opens the share
+  sheet when the device can share files (Save to Files, Mail, AirDrop), otherwise downloads. "Show as text" with a
+  Copy button covers the rest. It backs up the game in memory, so it's complete even if saves have been failing.
+- *Restore:* from a file or pasted text.
+  - It validates everything first, then shows each slot's name and words next to this device's, and the backup's
+    date. Cancel is the default.
+  - The current data is kept for "Undo restore".
+  - The backup's three slots replace this device's three. This is also how a game moves between the iPad and Windows.
+- *Storage:* `navigator.storage.persist()` asks the browser to keep the data. Grown-ups see "Storage: kept / may be
+  cleared" and "Saved just now / Not saved since 10:42 (storage full)".
+- *Failed saves:* after 3 in a row, a small grey cloud under the deck button tells her too (no text, nothing red).
+- *Reminders:* the Learning page shows "Last backup: never / 9 days ago - back up now" after 7 days, and "Going on a
+  trip or a break? Back up first."
+- *L8:* an unreadable slot's text is kept (`spanishclub_slotN_bad`) before a new game could overwrite it.
+
+**Crash guards (1.8).**
+- *The game loop:* each part of a frame is caught on its own, and the loop always re-arms. A screen that throws 3
+  times in half a second is closed; the map and the bottom screen never are.
+- *Talks and cutscenes:* one that throws is dropped and its half-open text box closed. The map unlocks (a try/finally
+  around every talk, event and menu in `field.js`).
+- *Map systems:* each one runs and draws on its own.
+- *Problem log:* the last 20 errors, including uncaught ones and rejected promises, are kept in `spanishclub_errors`.
+  A "Problem log" row has Share/Copy and Clear.
+
+**Spanish (1.9, H5, H6, L3, L4).**
+- *One helper takes the article from the word:* `G.requests.the`, with el/la/los/las, un/una, el agua and el águila,
+  al/del, tu/tus, plurals, capitals; `G.requests.lo` for ¡Búscalo!/¡Búscala!; `G.requests.o` for ¿Cuántos?/¿Cuántas?.
+- *Line registry:* every line built from a word is registered in `G.requests.LINES`, and new `tools/test-spanish.js`
+  runs every word through every one (1 of 13 checks passed on the old code).
+- *Fixed:*
+  - "¿Y para la cabra?" (the finale)
+  - "¡para el parque!"
+  - "¿Y la rana? ¡Búscala!"
+  - "¡La tortuga! ¡A mí también me gusta!"
+  - "¡Me encanta la nieve!"
+  - "¡Tócate la nariz!" / "Simón dice: tócate…"
+  - "¡Mira! ¡Una llama!"
+  - "Mamá osa"
+  - "¿Cuántas manzanas?"
+  - "¡Adiós, tortuguitas!"
+  - "Toca al perro grande" (the personal a)
+  - **"¡Qué calor!" / "Tiene mucho calor"** in place of "¡Qué caliente!" about a person
+  - "¡Mejores amigas!" for two girls
+- *Capitals:* a word starting a sentence is drawn with a capital (147 places). "¿[comoestas]?" no longer shows "¿¿…??".
+- *Mateo's board:* "Dame" only asks for things you can hold (`noHold`): the sun and clouds become "Toca" or "¿Dónde
+  está?".
+- *Mic alternatives:* "zorra" and "salte" are gone.
+- *Dashboard:* the bee no longer "lives in a flower".
+- The full before → after list is in `docs/SPANISH_REVIEW.md`, for the native-speaker check.
+
+**The silent maps get a song (1.10).**
+- The barn and the grandparents' place play `rancho`, a new procedural G-major waltz (flute and a strummed harp,
+  about 47 s).
+- Rosa's house plays `headquarters`; the bakery keeps the town waltz going.
+- The 2.7-second `inn` tune stays the bedtime lullaby.
+- `tools/test-day.js` checks that every map's music loops.
+
+**A day fits a 15-minute sitting (1.11).**
+- *Sunset:* at 12.5 minutes (was 18), or a minute after the day's chapter ends if 6+ minutes have passed. Never forced.
+- *The ¡Hoy! card:* counts by calendar date (`G.state.hist.hoy`), so closing and reopening the game the same day keeps
+  the day's words.
+- *Bedtime choice:* two big pictures, *¡A dormir!* or *¡A pasear!*. The walk takes her and Canelo by bus, at night, to
+  a visited place with a night animal she hasn't found. Lola names it when she taps it, then it's bed and morning.
+- *Night animals:* they come out when the sun sets while she's in a place.
+- The forest cave and Doña Lupe's house are indoor, so a bus ride from there fades instead of driving through the
+  room.
+- *Known, for Sprint 2:* most sittings now include a night, and a night counts as a new word-day, so review gaps run
+  about half as long in calendar terms until 2.1 bases due dates on calendar days.
+
+**Tests:** new `test-live`, `test-backup`, `test-crash`, `test-spanish` and `test-day`, plus new sections in
+`test-world`, `test-connect`, `test-guide` and `test-listen`.
+
 ## 2026-10-21 — La huerta: la zanahoria, el elote, el jitomate (the parent's choice)
 Three vegetable words for Abuelo's garden at La casa de los abuelos (Mexican Spanish), on a new notebook page, *La
 huerta* (180 words, 26 pages); everything else as it was.
