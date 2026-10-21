@@ -173,7 +173,7 @@
     if (c.carry && c.down && G.carry) G.drawIcon16(ctx, G.carry.pic(c.carry), Math.round(c.x - 8), Math.round(c.y - 22)); // carried along
     if (c.drag != null && c.down) { ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(c.x - 30), Math.round(c.y - 12), 60, 24); G.textC(ctx, G.baseForm(c.drag), c.x, c.y - 4, '#2860a8', null); }
     G.hint.hand(ctx, { x: c.x, y: c.y, dir: 'up' }, c.push);
-    if (c.talk) { const mx = c.mic ? c.mic.x + c.mic.w / 2 : c.x, my = (c.mic ? c.mic.y : c.y) - 16; ctx.globalAlpha = Math.min(1, c.a); ctx.save(); ctx.translate(mx, my); ctx.scale(1.3, 1.3); mouth(ctx, 0, 0, c.talk); ctx.restore(); } // a mouth talking, over the mic
+    if (c.talk) { const mx = c.mic ? c.mic.x + c.mic.w / 2 : c.x, my = c.mic ? (c.mic.y < 30 ? c.mic.y + c.mic.h + 10 : c.mic.y - 16) : c.y - 16; ctx.globalAlpha = Math.min(1, c.a); ctx.save(); ctx.translate(mx, my); ctx.scale(1.3, 1.3); mouth(ctx, 0, 0, c.talk); ctx.restore(); } // a mouth talking, over the mic (under it near the top: the warm-up's big mic)
     ctx.restore();
   };
 })();

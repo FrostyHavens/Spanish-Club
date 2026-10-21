@@ -311,7 +311,7 @@
   // child knows and keeps: src/dashboard.js), Misiones (story progress), back to title. Nothing to save by hand: volumes, the voice, English help, the D-pad and speaking are kept per device
   // (G.prefs), and the game saves itself.
   // Up/down picks a row, left/right moves a volume, A changes the others; tap a row, tap or drag along a volume bar.
-  const ROW_H = 15, ROW_Y = 25, BAR = 168, CELL = 12; // volume bars: 10 cells from x = BAR; the speaker just left of it = 0
+  const ROW_H = 15, ROW_Y = 24, BAR = 168, CELL = 12; // volume bars: 10 cells from x = BAR; the speaker just left of it = 0
   class GrownUps {
     constructor(w, o) { this.transparent = true; this.w = w; this.o = o || {}; this.t = 0; this.i = 0; this.drag = null; this.tick = 0; }
     rows() {

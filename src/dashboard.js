@@ -21,6 +21,7 @@
   DB.TABS = ['Overview', 'Retention', 'Words', 'Check', 'Tonight'];
   const COL = { yel: '#f8e060', dim: '#a8b0d8', white: '#ffffff', met: '#a8d8ff', known: '#70b0ff', gold: '#f8d860', solid: '#f8b030', slip: '#f8a040', good: '#60d070', bad: '#f07070', line: '#303a78' };
   const STAGE_COL = [COL.met, COL.known, COL.gold, COL.solid];
+  const CHECK_HOLD = 22; // frames the card just answered stays, with its tick or cross, before the next word
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const fit = (s, w) => { s = String(s); if (G.textWidth(s) <= w) return s; while (s.length > 1 && G.textWidth(s + '..') > w) s = s.slice(0, -1); return s + '..'; };
   const es = id => (D().words[id] ? D().words[id].es.split(' / ')[0] : id); // with its article: el oso
@@ -169,8 +170,12 @@
     rows() { if (!this.rowsCache || this.rowsCache.zone !== this.zone || this.rowsCache.t !== G.frame >> 5) { const L = H().zoneRows(this.zone); L.sort((a, b) => b.met - a.met); this.rowsCache = { zone: this.zone, t: G.frame >> 5, L }; } return this.rowsCache.L; } // (met words first, in notebook order)
     maxScroll() { return Math.max(0, this.rows().length * 18 - this.listBox().h); }
     notice(s) { this.note = s; this.noteT = 180; }
+    // the page's numbers, worked out again twice a second (they're drawn every frame)
+    memo(k, fn) { const m = this.memos || (this.memos = {}), t = G.frame >> 5; if (!m[k] || m[k].t !== t || m[k].v !== this.ver) m[k] = { t, v: this.ver, x: fn() }; return m[k].x; }
     close() { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); }
-    setTab(k) { if (k === this.tab) return; this.tab = k; G.audio.sfx('cursor'); this.hi = null; }
+    setTab(k) { if (k === this.tab) return; this.tab = k; G.audio.sfx('cursor'); this.hi = null; this.ver = (this.ver | 0) + 1; }
+    // the check's card just answered (shown a moment with its tick or cross; taps wait), or null
+    held() { const h = this.hi; return h && h.ids && this.t - h.t < CHECK_HOLD ? h : null; }
     // what the page shows (tests read it)
     view() {
       const o = H().overview();
@@ -212,14 +217,19 @@
       }
     }
     updCheck() {
+      if (this.held()) return;
       const c = H().checkCur();
       if (!c) { if (G.tapIn(this.startRect()) || G.input.p('A')) { if (H().checkStart()) G.audio.sfx('ok'); else { G.audio.sfx('error'); this.notice('No words met yet'); } } return; }
       const id = c.ids[c.i];
       if (G.speakerHit(...this.sayXY()) || G.input.p('C')) { G.speak(G.baseForm(id)); return; }
-      if (G.tapIn(this.yesRect())) { H().checkAnswer(true); G.audio.sfx('chime'); this.hi = { id, ok: 1, t: this.t }; return; }
-      if (G.tapIn(this.noRect())) { H().checkAnswer(false); G.audio.sfx('boop'); this.hi = { id, ok: 0, t: this.t }; return; }
+      if (G.tapIn(this.yesRect())) { this.answer(c, true); G.audio.sfx('chime'); return; }
+      if (G.tapIn(this.noRect())) { this.answer(c, false); G.audio.sfx('boop'); return; }
       if (G.tapIn(this.skipRect())) { H().checkAnswer(null); G.audio.sfx('cursor'); return; }
       if (G.tapIn(this.stopRect())) { H().checkStop(); G.audio.sfx('cancel'); }
+    }
+    answer(c, ok) { // record it (history.js), and hold the card a moment with its mark
+      const i = c.i; H().checkAnswer(ok);
+      this.hi = { id: c.ids[i], ok: ok ? 1 : 0, t: this.t, ids: c.ids, r: c.r.slice(), i }; this.ver = (this.ver | 0) + 1;
     }
     updTonight() {
       const q = DB.tonight(this.tq);
@@ -284,7 +294,7 @@
       if (this.noteT > 0) { const w = G.textWidth(this.note) + 16; G.win(ctx, (G.W - w) / 2, 196, w, 18, { fill1: '#2a6a3a', fill2: '#103a1c', alpha: 1 }); G.textC(ctx, this.note, G.W / 2, 201, COL.yel); }
     }
     drawOverview(ctx) {
-      const o = H().overview();
+      const o = this.memo('o', () => H().overview());
       [['met', o.met, STAGE_COL[0]], ['known', o.known, STAGE_COL[1]], ['remembered', o.remembered, STAGE_COL[2]], ['solid', o.solid, STAGE_COL[3]]].forEach(([lab, n, col], k) => {
         const x = 8 + k * 77;
         G.win(ctx, x, 49, 73, 38, { fill1: '#202a78', fill2: '#121a50', alpha: 1 });
@@ -319,7 +329,7 @@
       return 'not yet today; ' + (w ? w.n | 0 : 0) + ' in all' + (w && w.k ? ', ' + w.k + ' skipped' : '');
     }
     drawRetention(ctx) {
-      const r7 = H().retention({ days: 7 }), ra = H().retention({ all: true });
+      const r7 = this.memo('r7', () => H().retention({ days: 7 })), ra = this.memo('ra', () => H().retention({ all: true }));
       G.textC(ctx, 'Right on the first try when a word comes back', G.W / 2, 50, COL.dim);
       G.textC(ctx, 'after a day or more away', G.W / 2, 60, COL.dim);
       [[r7, 'last 7 days', 88], [ra, 'all time', 232]].forEach(([r, lab, cx]) => {
@@ -328,7 +338,7 @@
         G.textC(ctx, r.n ? r.right + ' of ' + r.n + ' words' : 'no data yet', cx, 107, COL.dim);
       });
       // the last 14 days: a bar for each (its retention), the goal band 70-80%
-      const L = H().retentionByDay(14), x0 = 36, base = 184, top = base - 46, hgt = p => Math.round(46 * p / 100), sw = 19, cw = 14 * sw;
+      const L = this.memo('byDay', () => H().retentionByDay(14)), x0 = 36, base = 184, top = base - 46, hgt = p => Math.round(46 * p / 100), sw = 19, cw = 14 * sw;
       G.text(ctx, 'Last 14 days', 10, 119, COL.dim);
       ctx.fillStyle = COL.line; ctx.fillRect(x0 - 4, base + 1, cw + 2, 1);
       ctx.globalAlpha = 0.22; ctx.fillStyle = COL.good; ctx.fillRect(x0 - 4, base - hgt(80), cw + 2, hgt(80) - hgt(70)); ctx.globalAlpha = 1;
@@ -388,26 +398,33 @@
       G.text(ctx, 'Tap a word to hear it. Dashes: its review box (1-5).', 8, 210, '#8890c0');
     }
     drawCheck(ctx) {
+      const h = this.held(); if (h) return this.drawCard(ctx, h.ids, h.r, h.i, h);
       const c = H().checkCur(), last = H().checkLast();
       if (!c) {
         G.text(ctx, fit('Ask ' + name() + ' ' + H().CHECK_N + ' words, away from the game.', G.W - 20), 10, 52, COL.white);
         G.wrap('Show each picture, or say the English ("How do you say the dog?"), and listen for the Spanish. Tap right or not yet: the answers count as practice.', G.W - 22).forEach((l, i) => G.text(ctx, l, 10, 66 + i * 11, COL.dim));
         textBtn(ctx, this.startRect(), last ? 'Start a new check' : 'Start the check', { fill: '#2a7a3a', rim: '#a8e8b0' });
-        if (!last) return;
+        if (!last) { G.wrap('The words: about half that need it (slipping, due for review, new), half strong ones, mixed.', G.W - 22).forEach((l, i) => G.text(ctx, l, 10, 150 + i * 11, '#8890c0')); return; }
         G.text(ctx, 'Last check: ' + last.right + ' of ' + last.of + ' right, ' + ago(last.ago) + ' (' + dateOf(last.d) + ')', 10, 146, COL.yel);
-        last.ids.forEach((id, k) => { // the words, two columns, with how they went
-          const x = 10 + (k % 2) * 154, y = 158 + Math.floor(k / 2) * 10, v = last.r[k];
+        const half = Math.ceil(last.ids.length / 2);
+        last.ids.forEach((id, k) => { // the words in the order asked (two columns, top to bottom), with how they went
+          const x = 10 + (k < half ? 0 : 154), y = 158 + (k < half ? k : k - half) * 10, v = last.r[k];
           if (v === 1) tick(ctx, x, y + 1, COL.good, 0.7); else if (v === 0) cross(ctx, x + 1, y + 1, COL.bad, 0.7); else G.text(ctx, '-', x + 2, y, COL.dim);
           G.text(ctx, fit(es(id), 136), x + 12, y, v === 0 ? '#f0b0b0' : COL.white);
         });
         const L = H().checks(); if (L.length > 1) G.textR(ctx, 'Before: ' + L.slice(-6, -1).map(x => H().checkScore(x).right + '/' + H().checkScore(x).of).join('  '), G.W - 10, 210, COL.dim);
         return;
       }
-      const id = c.ids[c.i], wd = D().words[id];
-      G.text(ctx, 'Word ' + (c.i + 1) + ' of ' + c.ids.length, 10, 50, COL.white);
-      c.ids.forEach((x, k) => { const v = c.r[k], px = G.W - 10 - (c.ids.length - k) * 9; ctx.fillStyle = '#000010'; ctx.fillRect(px - 1, 49, 8, 8); ctx.fillStyle = k === c.i ? COL.yel : v === 1 ? COL.good : v === 0 ? COL.bad : k < c.i ? '#6070b0' : COL.line; ctx.fillRect(px, 50, 6, 6); });
+      this.drawCard(ctx, c.ids, c.r, c.i, null);
+    }
+    // a word of the check: its picture, Spanish and English, what to ask, the answer buttons (h: the card just answered)
+    drawCard(ctx, ids, r, i, h) {
+      const id = ids[i], wd = D().words[id];
+      G.text(ctx, 'Word ' + (i + 1) + ' of ' + ids.length, 10, 50, COL.white);
+      ids.forEach((x, k) => { const v = r[k], px = G.W - 10 - (ids.length - k) * 9; ctx.fillStyle = '#000010'; ctx.fillRect(px - 1, 49, 8, 8); ctx.fillStyle = k === i && !h ? COL.yel : v === 1 ? COL.good : v === 0 ? COL.bad : k < i ? '#6070b0' : COL.line; ctx.fillRect(px, 50, 6, 6); });
       G.win(ctx, 24, 60, G.W - 48, 104, { fill1: '#fffaf0', fill2: '#f0e4c8', alpha: 1 });
-      G.drawIcon16(ctx, wd, 36, 72, 3, 'card');
+      ctx.fillStyle = '#000010'; ctx.fillRect(33, 69, 54, 54); ctx.fillStyle = '#8898e0'; ctx.fillRect(34, 70, 52, 52); ctx.fillStyle = '#d4e4f8'; ctx.fillRect(35, 71, 50, 50); // (light blue: a white bone shows)
+      G.drawIcon16(ctx, wd, 36, 72, 3);
       const sx = 190;
       G.bigText(ctx, fit(es(id), 108), sx, 84, 2, '#a06008', '#f8e8b0');
       G.textC(ctx, fit(wd.en, 160), sx, 106, '#4a3a2a', null);
@@ -418,10 +435,13 @@
       textBtn(ctx, this.noRect(), 'Not yet', { fill: '#902838', rim: '#f0a8b0', dx: 8, glyph: (cx, r) => cross(cx, r.x + 14, r.y + 10, '#ffffff') });
       textBtn(ctx, this.skipRect(), 'Skip', { fill: '#24308a' });
       textBtn(ctx, this.stopRect(), 'Stop', { fill: '#24308a' });
-      if (this.hi && this.hi.ok != null && this.t - this.hi.t < 30) { const a = 1 - (this.t - this.hi.t) / 30; ctx.globalAlpha = a; if (this.hi.ok) tick(ctx, G.W / 2 - 18, 62, COL.good, 4); else cross(ctx, G.W / 2 - 18, 62, COL.bad, 4); ctx.globalAlpha = 1; }
+      if (h) { // its mark over the picture
+        const mark = h.ok ? tick : cross, x = h.ok ? 40 : 42, y = h.ok ? 80 : 78;
+        mark(ctx, x + 1, y + 1, '#000010', 4); mark(ctx, x, y, h.ok ? COL.good : COL.bad, 4);
+      }
     }
     drawTonight(ctx) {
-      const q = DB.tonight(this.tq);
+      const q = this.memo('q' + this.tq, () => DB.tonight(this.tq));
       G.text(ctx, 'Tonight\'s question, for dinner', 10, 50, COL.yel);
       if (!q) { G.wrap('Nothing yet: after a little play, a question from the day\'s words shows up here.', G.W - 24).forEach((l, i) => G.text(ctx, l, 10, 70 + i * 12, COL.dim)); return; }
       G.drawIcon16(ctx, q.id, 12, 66, 2, 'card');
