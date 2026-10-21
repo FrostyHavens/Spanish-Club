@@ -9,6 +9,7 @@
   function newGame(slot) {
     G.st.newGame();
     const sc = new Blank(); G.replace(sc);
+    sc.tasks.onError = () => { if (G.scenes.indexOf(sc) >= 0) G.toTitle(); }; // (a black screen with nothing going on is a dead end)
     sc.tasks.add((function* () {
       G.fade.a = 0;
       const r = yield G.creator();

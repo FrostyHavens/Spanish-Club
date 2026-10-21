@@ -92,14 +92,16 @@
   // (`bound`: loaded from it, or a new game once its character and name are chosen) is ever written, so the
   // title screen's throwaway state, or a test's G.st.newGame(), can never overwrite a save. Nothing here throws.
   S.slot = null;   // the slot being played (1..3), null on the title screen
-  let bound = null, timer = 0;
+  let bound = null, timer = 0, badSlot = null;
   const has = k => { try { return localStorage.getItem(k) != null; } catch (e) { return false; } };
   const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
   const valid = s => isObj(s) && (isObj(s.words) || isObj(s.flags) || isObj(s.loc));
   // a stored game, read over a fresh one (older saves get any newer fields), or null when empty / unreadable
-  S.read = function (n) {
+  S.read = n => S.parse(G.store.get(S.slotKey(n)));
+  // the same for a game object (a slot's, or one in a backup: backup.js); it is changed in place; null when not a game
+  S.parse = function (s) {
     try {
-      const s = G.store.get(S.slotKey(n)); if (!valid(s)) return null;
+      if (!valid(s)) return null;
       const f = fresh();
       for (const k in f) if (f[k] !== null && (s[k] == null || typeof s[k] !== typeof f[k] || Array.isArray(s[k]))) s[k] = f[k];
       if (!isObj(s.look)) s.look = null;
@@ -113,8 +115,9 @@
     } catch (e) { return null; }
   };
   // what the slot screen shows: null for an empty slot
-  S.summary = function (n) {
-    const s = S.read(n); if (!s) return null;
+  S.summary = n => S.summaryOf(S.read(n), n);
+  S.summaryOf = function (s, n) { // (s: a parsed game, S.parse)
+    if (!s) return null;
     return { slot: n, name: s.name || D().player.name, look: s.look, stars: s.stars | 0, savedAt: s.savedAt || 0,
       words: Object.keys(s.words).filter(id => { const r = s.words[id]; return r && (r.st == null || r.st >= 1); }).length }; // words in the notebook (met; an older save's seen words count)
   };
@@ -124,16 +127,63 @@
   S.loadSlot = function (n) {
     const s = S.read(n); if (!s) return false;
     clearTimeout(timer); timer = 0;
-    G.state = devicePrefs(s); S.slot = n; bound = s;
+    G.state = devicePrefs(s); S.slot = n; bound = s; badSlot = null;
+    Object.assign(status, { at: s.savedAt || 0, fails: 0, why: null });
     if (G.chapters) G.chapters.migrate(); // a game from before the chapters: its errands map onto them (chapters.js)
     if (G.words) G.words.newSession('load'); // a new session (and a new day on a new date)
     return true;
   };
-  // a new game (G.state, after the creator) takes slot n from now on, saved right away
-  S.begin = function (n) { S.slot = n; bound = G.state; if (G.words && !G.state.wm.sess) G.words.newSession('new'); return S.saveNow(); };
+  // a new game (G.state, after the creator) takes slot n from now on, saved right away. A slot that holds something
+  // unreadable (shown as empty: L8) is copied to spanishclub_slotN_bad first (see keepBad).
+  S.begin = function (n) {
+    S.slot = n; bound = G.state; Object.assign(status, { at: 0, fails: 0, why: null });
+    badSlot = S.damaged(n) ? n : null;
+    if (G.words && !G.state.wm.sess) G.words.newSession('new');
+    return S.saveNow();
+  };
   // leaving the game (back to the title): save, then stop saving
   S.close = function () { S.saveNow(); S.slot = null; bound = null; };
+  // stop saving the game in play, without a last save (a restore or its undo replaces the slots: backup.js)
+  S.detach = function () { clearTimeout(timer); timer = 0; S.slot = null; bound = null; };
+  // the game in play (what the next save writes), or null on the title
+  S.playing = () => (S.slot && G.state && G.state === bound ? G.state : null);
   S.erase = function (n) { G.store.del(S.slotKey(n)); if (S.slot === n) { S.slot = null; bound = null; } };
+  // ---------- An unreadable slot (L8) ----------
+  // A slot whose text is there but doesn't read as a game shows as empty on the slot screen; before a new game is
+  // written over it, its text is kept in 'spanishclub_slotN_bad' (another one already there: '..._bad_<time>'), so a
+  // grown-up can still send it to be rescued (backups carry these copies too, backup.js). If even that copy can't be
+  // written, the new game isn't written there either: its saves count as failed (the grown-ups see it; the child's cloud).
+  S.damaged = n => { const r = G.store.raw(S.slotKey(n)); return r != null && r !== '' && r !== 'null' && !S.read(n); };
+  S.badKeys = () => G.store.keys().filter(k => /^spanishclub_slot\d_bad/.test(k)).sort();
+  function keepBad(n) {
+    if (badSlot !== n) return true;
+    const raw = G.store.raw(S.slotKey(n)); if (raw == null || !S.damaged(n)) { badSlot = null; return true; }
+    let k = S.slotKey(n) + '_bad'; const there = G.store.raw(k);
+    if (there === raw) { badSlot = null; return true; }
+    if (there != null) k += '_' + Date.now();
+    if (!G.store.setRaw(k, raw)) return false;
+    badSlot = null; return true;
+  }
+  // ---------- Did the last save land? (C4: a failed save used to be silent: 37 stars in the game, 0 in storage) ----------
+  // at: when the game in play was last written (just loaded: when it was saved before); fails: failed writes in a row
+  // (storage full, private browsing, a state that can't be written); why: the browser's reason for the last one.
+  // Grown-ups see S.saveLine() ("Saved just now" / "Not saved since 10:42 (storage full)") in the grown-ups menu, on
+  // the Learning page and in Back up / restore; after 3 failed saves in a row the child sees a small grey cloud by the
+  // map's menu button (S.troubled(), field.js), gone with the next save that works.
+  const status = S.status = { at: 0, fails: 0, why: null };
+  S.TROUBLE = 3;
+  S.troubled = () => !!S.slot && status.fails >= S.TROUBLE;
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  S.when = function (ms) { // 10:42, or Oct 20 10:42 on another day
+    const d = new Date(ms), n = new Date();
+    return (d.toDateString() === n.toDateString() ? '' : MON[d.getMonth()] + ' ' + d.getDate() + ' ') + d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
+  };
+  S.saveLine = function () {
+    if (!S.slot) return null;
+    if (status.fails) return 'Not saved since ' + (status.at ? S.when(status.at) : 'it began') + (/quota/i.test(status.why || '') ? ' (storage full)' : '');
+    const s = (Date.now() - status.at) / 1000;
+    return !status.at ? 'Not saved yet' : s < 90 ? 'Saved just now' : s < 3600 ? 'Saved ' + Math.round(s / 60) + ' min ago' : 'Saved at ' + S.when(status.at);
+  };
   // Once per device: the save from before slots existed is copied into slot 1 if that's empty. The legacy key
   // stays; a marker stops it coming back after slot 1 is deleted.
   S.migrate = function () {
@@ -161,8 +211,11 @@
       if (!S.slot || !G.state || G.state !== bound) return false;
       snapLoc();
       G.state.savedAt = Date.now();
-      return G.store.set(S.slotKey(S.slot), G.state);
-    } catch (e) { return false; }
+      const ok = keepBad(S.slot) && G.store.set(S.slotKey(S.slot), G.state);
+      if (ok) Object.assign(status, { at: G.state.savedAt, fails: 0, why: null });
+      else { status.fails++; status.why = G.store.err; }
+      return ok;
+    } catch (e) { status.fails++; return false; }
   };
   // Save soon (within ~0.6 s; many calls in a row make one write). Call it after changing G.state.
   S.autosave = function () { if (!timer && S.slot && G.state === bound) timer = setTimeout(S.saveNow, 600); };

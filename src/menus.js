@@ -332,12 +332,15 @@
 
   // ---------- Grown-ups menu (behind the held gear; English labels) ----------
   // Volumes, voice, English help, on-screen buttons, speaking (the kids' mic), microphone test, controls, Learning (what the
-  // child knows and keeps: src/dashboard.js), Misiones (story progress), back to title. Nothing to save by hand: volumes, the voice, English help, the D-pad and speaking are kept per device
-  // (G.prefs), and the game saves itself.
+  // child knows and keeps: src/dashboard.js), Misiones (story progress), Back up / restore (whether the game is saving, the
+  // last backup, a file or text to keep or to move the game to another device: src/backup.js), the Problem log (errors the
+  // game caught and got past), back to title. Nothing to save by hand: volumes, the voice, English help, the D-pad and
+  // speaking are kept per device (G.prefs), and the game saves itself.
   // Up/down picks a row, left/right moves a volume, A changes the others; tap a row, tap or drag along a volume bar.
+  // More than 12 rows (in a game) are 13 px tall from y 22, so all of them fit above the help line.
   const ROW_H = 15, ROW_Y = 24, BAR = 168, CELL = 12; // volume bars: 10 cells from x = BAR; the speaker just left of it = 0
   class GrownUps {
-    constructor(w, o) { this.transparent = true; this.w = w; this.o = o || {}; this.t = 0; this.i = 0; this.drag = null; this.tick = 0; }
+    constructor(w, o) { this.transparent = true; this.w = w; this.o = o || {}; this.t = 0; this.i = 0; this.drag = null; this.tick = 0; this.n = this.rows().length; }
     rows() {
       const voices = G.spanishVoices(), cur = G.currentVoice(), mic = typeof G.micTest === 'function';
       const R = [
@@ -353,21 +356,25 @@
         { id: 'help', label: 'Controls and tips', right: '>', help: 'The keys, and how the game teaches.' },
       ];
       if (!this.o.title) R.push({ id: 'learning', label: 'Learning', right: '>', off: !G.state || !G.dashboard, col: '#f8d860', help: 'What has stuck: retention, words by place, a check, a question.' },
-        { id: 'story', label: 'Story progress', right: '>', off: !G.state, help: 'Misiones: the chapter going on, its steps, the bag, the badges.' },
-        { id: 'title', label: 'Back to title', right: '>', help: 'Progress is saved automatically.' });
+        { id: 'story', label: 'Story progress', right: '>', off: !G.state, help: 'Misiones: the chapter going on, its steps, the bag, the badges.' });
+      const B = G.backup, fail = !!(G.st.slot && G.st.status.fails), days = B ? B.daysSince() : null, errs = G.errlog.list();
+      if (B) R.push({ id: 'backup', label: 'Back up / restore', right: fail ? 'NOT SAVED' : days == null ? 'no backup yet' : days === 0 ? 'backed up today' : 'last backup ' + days + (days === 1 ? ' day ago' : ' days ago'),
+        rcol: fail ? '#f8a040' : B.overdue() ? '#f8e060' : null, help: [G.st.saveLine(), B.lastLine()].filter(Boolean).join('. ') + '.' },
+      { id: 'problems', label: 'Problem log', right: errs.length ? String(errs.length) : 'none', help: errs.length ? 'Last: ' + errs[errs.length - 1].msg : 'Errors the game caught and got past. None so far.' });
+      if (!this.o.title) R.push({ id: 'title', label: 'Back to title', right: '>', help: 'Progress is saved automatically.' });
       return R;
     }
     // tap areas (shared with draw): row k, its volume bar (with the speaker = 0 and the number), close
-    rowRect(k) { return { x: 10, y: ROW_Y + k * ROW_H, w: G.W - 20, h: ROW_H }; }
+    rowRect(k) { const big = this.n <= 12, h = big ? ROW_H : 13; return { x: 10, y: (big ? ROW_Y : 22) + k * h, w: G.W - 20, h }; }
     barRect(k) { const r = this.rowRect(k); return { x: BAR - 18, y: r.y, w: r.x + r.w - (BAR - 18), h: r.h }; }
     level(x) { return x < BAR ? 0 : Math.min(10, Math.floor((x - BAR) / CELL) + 1); }
-    closeXY() { return [G.W - 30, 8]; }
+    closeXY() { return [G.W - 30, this.n > 12 ? 4 : 8]; } // (more than 12 rows: the window starts higher, clear of the first row)
     vol(kind, v, sample) { const b = G.prefs[kind]; G.audio.setVolume(kind, v); const ch = G.prefs[kind] !== b; if (ch && sample) this.sample(kind); return ch; }
     sample(kind) { if (kind === 'sfx') G.audio.sfx('coin'); else if (kind === 'voice') G.speak('¡Hola!'); }
     close() { G.audio.sfx('cancel'); G.pop(); this.w.resolve(); }
     update() {
       this.t++;
-      const rows = this.rows();
+      const rows = this.rows(); this.n = rows.length;
       if (this.i >= rows.length) this.i = rows.length - 1;
       // a finger on a volume bar sets it as it slides (sounds as it changes; the voice speaks when let go)
       const dk = rows.findIndex((r, k) => { const b = this.barRect(k); return r.vol && G.input.holding(b.x, b.y, b.w, b.h); });
@@ -410,16 +417,19 @@
       } else if (r.id === 'help') { G.audio.sfx('ok'); G.controlsHelp(); }
       else if (r.id === 'story') { if (r.off) { G.audio.sfx('error'); return; } G.audio.sfx('ok'); G.questLog(); }
       else if (r.id === 'learning') { if (r.off) { G.audio.sfx('error'); return; } G.audio.sfx('ok'); G.dashboard.open(); }
+      else if (r.id === 'backup') { G.audio.sfx('ok'); G.backup.open(); }
+      else if (r.id === 'problems') { G.audio.sfx('ok'); G.backup.problems(); }
       else if (r.id === 'title') { G.audio.sfx('ok'); G.toTitle(); }
     }
     draw(ctx) {
-      const rows = this.rows();
-      G.win(ctx, 6, 6, G.W - 12, G.H - 12);
-      G.text(ctx, 'GROWN-UPS', 16, 14, '#f8e060');
-      G.textR(ctx, 'Progress saves by itself', G.W - 40, 14, '#8890c0');
+      const rows = this.rows(); this.n = rows.length;
+      const tall = this.n > 12, hy = tall ? 9 : 14;
+      G.win(ctx, 6, tall ? 2 : 6, G.W - 12, tall ? G.H - 6 : G.H - 12);
+      G.text(ctx, 'GROWN-UPS', 16, hy, '#f8e060');
+      G.textR(ctx, 'Progress saves by itself', G.W - 40, hy, '#8890c0');
       G.closeBtn(ctx, ...this.closeXY());
       rows.forEach((r, k) => {
-        const R = this.rowRect(k), y = R.y + 4, sel = k === this.i, col = r.off ? '#7078a0' : sel ? '#f8e060' : r.col || '#ffffff', xr = R.x + R.w - 4;
+        const R = this.rowRect(k), y = R.y + (R.h >> 1) - 3, sel = k === this.i, col = r.off ? '#7078a0' : sel ? '#f8e060' : r.col || '#ffffff', xr = R.x + R.w - 4;
         if (sel) { ctx.fillStyle = 'rgba(248,224,96,0.13)'; ctx.fillRect(R.x + 2, R.y + 1, R.w - 4, R.h - 2); }
         else { ctx.fillStyle = 'rgba(136,152,224,0.22)'; ctx.fillRect(R.x + 14, R.y + R.h - 1, R.w - 28, 1); }
         if (sel && (this.t >> 3) % 4 !== 3) G.text(ctx, '\u0002', R.x + 4, y, '#f8e060');
@@ -427,15 +437,15 @@
         if (r.vol) {
           const v = G.prefs[r.vol];
           volIcon(ctx, r.vol === 'sfx' ? 'sound' : r.vol, BAR - 15, R.y + 3, !v);
-          for (let s = 0; s < 10; s++) { const h = 3 + s; ctx.fillStyle = s < v ? (sel ? '#f8d030' : '#c8d0f0') : '#303a78'; ctx.fillRect(BAR + s * CELL + 1, R.y + ROW_H - 1 - h, CELL - 2, h); }
+          for (let s = 0; s < 10; s++) { const h = 3 + s; ctx.fillStyle = s < v ? (sel ? '#f8d030' : '#c8d0f0') : '#303a78'; ctx.fillRect(BAR + s * CELL + 1, R.y + R.h - 1 - h, CELL - 2, h); }
           G.textR(ctx, String(v), xr, y, v ? '#ffffff' : '#7078a0');
         } else if (r.on != null) { // a switch
-          const sx = xr - 26, sy = R.y + 2;
+          const sx = xr - 26, sy = R.y + ((R.h - 11) >> 1);
           ctx.fillStyle = '#000010'; ctx.fillRect(sx - 1, sy - 1, 28, 13);
           ctx.fillStyle = r.on ? '#40a848' : '#404870'; ctx.fillRect(sx, sy, 26, 11);
           ctx.fillStyle = '#f0f0ff'; ctx.fillRect(r.on ? sx + 15 : sx + 1, sy + 1, 10, 9);
           G.textR(ctx, r.on ? 'On' : 'Off', sx - 5, y, r.on ? '#80e080' : '#a8b0d8');
-        } else G.textR(ctx, r.right, xr, y, col);
+        } else G.textR(ctx, r.right, xr, y, r.rcol && !sel && !r.off ? r.rcol : col);
       });
       let h = rows[this.i].help || '';
       while (h.length > 3 && G.textWidth(h) > G.W - 32) h = h.slice(0, -3) + '..';

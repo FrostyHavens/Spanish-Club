@@ -7,6 +7,13 @@
   const COUNTER = 'etaY';             // people are talked to across these (see interact)
   const THING = 'rlkgPLYZteaujJOHEUmA';      // objects a tap walks up to and searches (fences, walls, trees, water: just walk)
   const DIR4 = ['up', 'down', 'left', 'right'];
+  // the map's own systems, updated in this order every frame: the living town (ambient.js: critters, people who look at
+  // you, walkers), Canelo (pet.js: his tricks and his bed), friends calling you by name as you pass (hearts.js), the
+  // animals (animals.js: ducks, hens, the fish...), Round B errands (errands.js: who stands where, Canelo lost, Nico
+  // tagging along), the story's moments that start by themselves (chapters.js), the dog's warm-up the first time you're
+  // free each day (warmup.js: after the story's own), hide-and-seek (seek.js), the next thing to do (guide.js). Each runs
+  // on its own: one that throws is logged (G.oops) and the rest, and walking, go on.
+  const HOOKS = ['ambient', 'pet', 'hearts', 'animals', 'errands', 'chapters', 'warmup', 'seek', 'guide'];
 
   class Field {
     constructor(mapId, x, y, dir) {
@@ -17,6 +24,7 @@
       this.npcs = [];
       (this.def.npcs || []).forEach(n => { if (!n.cond || n.cond()) this.addNpc(n); });
       this.t = 0; this.tasks = new G.Tasks(); this.cam = { x: 0, y: 0 };
+      this.tasks.onError = (e, gen) => this.recover(gen);
       this.locked = false; this.stepCount = 0;
       G.field = this;
       this.snapCam();
@@ -92,7 +100,7 @@
           else { // arrived (or can't get any closer): face the target, then talk / search like A
             const r = this.route; this.route = null;
             if (pl && pl.face) p.dir = pl.face;
-            if (pl && pl.act) { this.locked = true; yield* this.interact(r.npc); this.locked = false; continue; } // (the one tapped, when two share a tile)
+            if (pl && pl.act) { yield* this.act(this.interact(r.npc)); continue; } // (the one tapped, when two share a tile)
             if (pl && r.name && G.world) G.world.arrive(this, r); // a thing with a word: it names itself (world.js)
           }
         }
@@ -107,13 +115,23 @@
             if (this.stepCount % 2 === 0) G.audio.sfx('step');
             if (ex) { this.route = null; yield* this.useExit(ex); continue; }
             const ev = (this.def.events || []).find(e => e.x === p.x && e.y === p.y && (!e.once || !G.state.flags['ev_' + this.mapId + e.x + '_' + e.y]) && (!e.cond || e.cond()));
-            if (ev) { this.route = null; if (ev.once) G.state.flags['ev_' + this.mapId + ev.x + '_' + ev.y] = true; this.locked = true; yield* ev.run(this); this.locked = false; }
+            if (ev) { this.route = null; if (ev.once) G.state.flags['ev_' + this.mapId + ev.x + '_' + ev.y] = true; yield* this.act(ev.run(this)); }
           }
           continue;
         }
-        if (G.input.p('A')) { this.locked = true; yield* this.interact(); this.locked = false; continue; }
-        if (G.input.p('B') || this.menuReq) { this.menuReq = false; this.locked = true; yield* G.fieldMenu(this); this.locked = false; continue; }
+        if (G.input.p('A')) { yield* this.act(this.interact()); continue; }
+        if (G.input.p('B') || this.menuReq) { this.menuReq = false; yield* this.act(G.fieldMenu(this)); continue; }
       }
+    }
+    // A talk, an event, a door's own scene or the menu: the map is locked while it runs and unlocked when it ends, even
+    // when it fails (H7: one error in a talk used to leave the map locked for good). The task runner (core.js) logs the
+    // error and closes the screens it had just opened; recover() then starts walking again.
+    *act(gen) { this.locked = true; try { return yield* gen; } finally { this.locked = false; } }
+    recover(gen) { // a task of this map threw: the map is free again; walking (and the townsfolk's wandering) start over
+      this.locked = false; this.route = null; this.menuReq = false;
+      const p = this.player; p.moving = false; p.ox = 0; p.oy = 0; // (a step cut short lands on its tile)
+      if (gen === this.walker) this.tasks.add(this.walker = this.playerWalk());
+      if (gen === this.wander) this.tasks.add(this.wander = this.npcAI());
     }
     // ---------- tap-to-walk ----------
     // What a tap on the map means: talk to someone (their tile, the tile above where the head and bubble are,
@@ -176,7 +194,7 @@
       return { dir, face: found ? goals.get(found) : null, act: !!(found && (r.npc || r.search)) };
     }
     *useExit(ex) {
-      if (ex.run) { this.locked = true; const ok = yield* ex.run(this); this.locked = false; if (ok === false) return; }
+      if (ex.run) { const ok = yield* this.act(ex.run(this)); if (ok === false) return; }
       if (!ex.to) return;
       G.audio.sfx(ex.sfx || 'door');
       yield G.fadeTo(1, 0.08);
@@ -249,13 +267,24 @@
         }
       }
     }
-    start() { this.tasks.add(this.playerWalk()); this.tasks.add(this.npcAI()); }
+    start() { this.tasks.add(this.walker = this.playerWalk()); this.tasks.add(this.wander = this.npcAI()); }
     onExit() { if (G.world) G.world.leave(this); }
     update() {
       this.t++;
-      if (G.world && G.world.update(this)) G.input.eat(); // the say-it-back mic used this frame's tap or key (world.js)
+      try { if (G.world && G.world.update(this)) G.input.eat(); } catch (e) { G.oops(e, 'map world'); } // the say-it-back mic used this frame's tap or key (world.js)
       // keys win over a tap walk, and a cutscene (the field locked) ends it rather than pausing it
       if (this.route && (this.locked || G.input.dir() || ['up', 'down', 'left', 'right', 'A', 'B'].some(k => G.input.p(k)))) this.route = null;
+      try { this.tapped(); } catch (e) { G.oops(e, 'map tap'); this.route = null; }
+      this.tasks.update(); // (a task that throws is dropped and logged there; recover() frees the map)
+      for (const k of HOOKS) { const m = G[k]; if (m && m.update) try { m.update(this); } catch (e) { G.oops(e, 'map ' + k); } }
+      const ct = this.camTarget(); this.cam.x += (ct.x - this.cam.x) * 0.3; this.cam.y += (ct.y - this.cam.y) * 0.3;
+      if (Math.abs(ct.x - this.cam.x) < 0.5) this.cam.x = ct.x; if (Math.abs(ct.y - this.cam.y) < 0.5) this.cam.y = ct.y;
+      if (this.banner) this.banner.t--;
+      G.state.playTime += 1 / 60;
+      G.st.fieldTick && G.st.fieldTick(this); // autosave: new map, after each interaction or event, every ~15 s
+      if (G.input.p('M')) G.audio.toggleMute();
+    }
+    tapped() {
       if (!this.locked && G.input.tap()) { // the menu button (= B, eats the tap), else tap-to-walk (field tasks still see the tap)
         if (G.btnHit(...HUD)) { G.input.eat(); this.menuReq = true; this.route = null; }
         else if (G.carry && G.carry.tapHud(this, G.input.tap())) { G.input.eat(); this.route = null; } // the thing in your hands, in the corner: put it down (carry.js)
@@ -266,26 +295,26 @@
           else { const an = !tt.npc && !tt.exit && !tt.special && G.animals && G.animals.hit(this, tap); this.route = an ? G.animals.tapped(this, an) : tt; this.plan(this.route); }
         }
       }
-      this.tasks.update();
-      if (G.ambient) G.ambient.update(this); // the living town (ambient.js): critters, people who look at you, walkers
-      if (G.pet) G.pet.update(this); // Canelo, your dog: his tricks and his bed (pet.js)
-      if (G.hearts) G.hearts.update(this); // friends call you by name as you pass (hearts.js)
-      if (G.animals) G.animals.update(this); // ducks, hens, the fish, the frog, the rabbit, the horse, the goat (animals.js)
-      if (G.errands) G.errands.update(this); // Round B errands: who stands where, Canelo lost, Nico tagging along (errands.js)
-      if (G.chapters) G.chapters.update(this); // the story: a chapter's moments that start by themselves (chapters.js)
-      if (G.warmup) G.warmup.update(this); // the dog's warm-up, the first time you're free each day (warmup.js; after the story's own)
-      if (G.seek) G.seek.update(this); // hide-and-seek: who hides where, Canelo sniffing out a trail (seek.js)
-      if (G.guide) G.guide.update(this); // the next thing to do, always in sight; Canelo trots that way (guide.js)
-      const ct = this.camTarget(); this.cam.x += (ct.x - this.cam.x) * 0.3; this.cam.y += (ct.y - this.cam.y) * 0.3;
-      if (Math.abs(ct.x - this.cam.x) < 0.5) this.cam.x = ct.x; if (Math.abs(ct.y - this.cam.y) < 0.5) this.cam.y = ct.y;
-      if (this.banner) this.banner.t--;
-      G.state.playTime += 1 / 60;
-      G.st.fieldTick && G.st.fieldTick(this); // autosave: new map, after each interaction or event, every ~15 s
-      if (G.input.p('M')) G.audio.toggleMute();
     }
+    // Drawn in layers, each caught on its own (one that throws is logged and the rest are still drawn: the menu button
+    // always is): the ground, things on it, people and animals, what's over them, the corner.
     draw(ctx) {
       const T = G.TILE, cx = Math.round(this.cam.x), cy = Math.round(this.cam.y);
       ctx.fillStyle = '#000'; ctx.fillRect(0, 0, G.W, G.H);
+      try { this.drawGround(ctx, T, cx, cy); } catch (e) { this.drawFail(e, ctx, 'ground'); }
+      try { this.drawUnder(ctx); } catch (e) { this.drawFail(e, ctx, 'under'); }
+      let ents = [];
+      try { ents = this.drawPeople(ctx, T, cx, cy); } catch (e) { this.drawFail(e, ctx, 'people'); }
+      try { this.drawOver(ctx, T, cx, cy, ents); } catch (e) { this.drawFail(e, ctx, 'over'); }
+      if (!this.locked && G.top() === this) G.iconBtn(ctx, 'menu', ...HUD);
+      if (G.top() === this && G.st.troubled() && G.saveCloud) G.saveCloud(ctx, HUD[0] + 2, HUD[1] + 25, this.t); // saves keep failing: a small grey cloud under the menu button (backup.js; its card count is to its left)
+      try {
+        if (G.errands) G.errands.drawHud(this, ctx); // what you carry, Luna's clipboard (errands.js)
+        if (G.seek) G.seek.drawHud(this, ctx); // who is still hiding (seek.js)
+      } catch (e) { this.drawFail(e, ctx, 'corner'); }
+    }
+    drawFail(e, ctx, part) { ctx.globalAlpha = 1; if (G.ctxReset) G.ctxReset(); G.oops(e, 'map draw ' + part); }
+    drawGround(ctx, T, cx, cy) {
       const x0 = Math.floor(cx / T), y0 = Math.floor(cy / T);
       for (let y = y0; y <= y0 + Math.ceil(G.H / T) + 1; y++) for (let x = x0; x <= x0 + Math.ceil(G.W / T) + 1; x++) {
         if (x < 0 || y < 0 || x >= this.map.w || y >= this.map.h) continue;
@@ -310,6 +339,8 @@
           for (const [ax, ay] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const px = mx + i + ax * s + o, py = my + i + ay * s + o; ctx.fillRect(ax ? px - 3 : px, py, 4, 1); ctx.fillRect(px, ay ? py - 3 : py, 1, 4); }
         }
       }
+    }
+    drawUnder(ctx) {
       if (G.ambient) G.ambient.draw(this, ctx, 'ground'); // birds on the ground, shadows
       if (G.animals) G.animals.draw(this, ctx, 'ground'); // lily pads, ripples, swimmers, shadows
       if (G.pet) G.pet.drawUnder(this, ctx); // Canelo's cushion and bowl at home
@@ -319,6 +350,8 @@
       if (G.seek) G.seek.draw(this, ctx); // animals hiding (hide-and-seek: an ear, a tail peeking out; seek.js)
       if (G.chapters) G.chapters.draw(this, ctx, 'under'); // a chapter's own things on the ground (chapters.js)
       if (G.intro && G.intro.drawUnder) G.intro.drawUnder(this, ctx); // a find-it puzzle's picture bubbles (intro.js)
+    }
+    drawPeople(ctx, T, cx, cy) { // -> the people drawn (their bubbles go over everything: drawOver)
       const ents = this.npcs.filter(n => n.spec && !n.hidden).concat(this.player.hidden ? [] : [this.player]); // (hidden: on the bus)
       const zoo = G.animals ? G.animals.ents(this) : []; // land animals, drawn in order with the people
       for (const e of ents.concat(zoo).sort((a, b) => (a.sy != null ? a.sy : a.y * T + a.oy) - (b.sy != null ? b.sy : b.y * T + b.oy))) {
@@ -329,6 +362,9 @@
         const img = G.unitSprite(e.spec, e.dir, fr), bob = Math.abs(e.ox + e.oy) >= 6 && Math.abs(e.ox + e.oy) <= 18 ? 1 : 0; // a hop mid-step
         ctx.drawImage(img, Math.round(e.x * T + e.ox - cx), Math.round(e.y * T + e.oy - cy - 3) - bob);
       }
+      return ents;
+    }
+    drawOver(ctx, T, cx, cy, ents) {
       if (G.carry) G.carry.drawHeld(this, ctx); // what you hold, up over your head (carry.js)
       if (G.zones) G.zones.drawTop(this, ctx); // signposts, the bus stop, the bus, the dog's paw-print bubbles (zones.js)
       if (G.ambient) G.ambient.draw(this, ctx, 'air'); // birds in flight, butterflies, the cat
@@ -354,9 +390,6 @@
         if (ic) G.drawIcon16(ctx, ic, this.banner.text ? (G.W - w) / 2 + 12 : G.W / 2 - 8, 13);
         G.textC(ctx, this.banner.text, G.W / 2 + (ic ? 10 : 0), 17, '#f8e060'); ctx.globalAlpha = 1;
       }
-      if (!this.locked && G.top() === this) G.iconBtn(ctx, 'menu', ...HUD);
-      if (G.errands) G.errands.drawHud(this, ctx); // what you carry, Luna's clipboard (errands.js)
-      if (G.seek) G.seek.drawHud(this, ctx); // who is still hiding (seek.js)
     }
   }
   G.Field = Field;
