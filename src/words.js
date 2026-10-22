@@ -488,7 +488,7 @@
   // ---------- the new-word budget: review-first pacing (AUDIT 2.9) ----------
   const B = G.budget = {};
   B.LIMITS = { win: 300, per5: 5, session: 6, hard: 8 }; // (the older counts: the audit, the grown-ups)
-  B.PACE = { backlog: 5, cap: 8, rate: [2.5, 1.8, 1.5], qmax: 6 }; // backlog: new things only at or under it; cap: new items a calendar day; rate: the soft target a play day, years 1, 2, 3+
+  B.PACE = { backlog: 5, cap: 8, floor: 2, rate: [2.5, 1.8, 1.5], qmax: 6 }; // floor: a little new every play day, even with a backlog // backlog: new things only at or under it; cap: new items a calendar day; rate: the soft target a play day, years 1, 2, 3+
   B.OPEN = false; // true: no pacing (the open world of 2026-10-17); tests: open(..., { openPacing: true })
   B.open = () => B.OPEN || !!(G.debug && G.debug.openPacing) || (typeof window !== 'undefined' && !!window.__openPacing);
   B.story = () => !!(G.chapters && G.chapters.running && G.chapters.running()); // (a chapter's beat: the story)
@@ -533,7 +533,7 @@
     const t = B.today();
     if (t + n > B.PACE.cap) return 'cap';
     const bl = B.backlog();
-    if (bl > B.PACE.backlog) return 'backlog';
+    if (bl > B.PACE.backlog && t + n > B.PACE.floor) return 'backlog';
     if (t + n > B.target() && bl > 0) return 'target';
     return null;
   };

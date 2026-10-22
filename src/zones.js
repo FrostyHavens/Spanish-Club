@@ -87,8 +87,9 @@
   }
   Z.state = () => (G.state ? st() : null);
   Z.visited = id => !!(G.state && st().visited[id]);
+  Z.newToday = id => { const v = G.state && st().visited[id]; return !!v && v.date === G.today(); }; // (first visited today: chapters.js lets its first chapter open)
   Z.visitedIds = () => Z.ids().filter(Z.visited);
-  Z.visit = id => { if (!G.state || !Z.def(id) || Z.visited(id)) return false; st().visited[id] = { d: G.words ? G.words.day() : 0 }; G.st.autosave(); return true; };
+  Z.visit = id => { if (!G.state || !Z.def(id) || Z.visited(id)) return false; st().visited[id] = { d: G.words ? G.words.day() : 0, date: G.today() }; G.st.autosave(); return true; };
   Z.want = () => { const w = G.state && st().want; return w && !Z.visited(w) ? w : null; };
   // the place she picked herself on the world map today (by bus, or a "?" to walk to), while she's on her way there or in
   // it: her choice leads (the guide: Tomás's letter waits meanwhile, guide.js). Over once she leaves it (Z.enter)
