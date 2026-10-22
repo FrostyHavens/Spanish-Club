@@ -27,6 +27,8 @@ async function play(g, m, x, y, dir, upTo, o = {}) {
     G.debug.dayShift = (G.debug.dayShift || 0) + 1; G.words.newSession('load'); // (the next day)
     G.goto(m, x, y, dir);
   }, [m, x, y, dir, upTo, o]);
+  await g.until(m => G.field && G.field.mapId === m && G.fade.a === 0, m, 'arriving in ' + m);
+  await g.frames(40); await settle(g, 'arriving in ' + m); // (arriving may ask something first, a moment after: the place's name "¿Dónde estás?", a review: all due the next day)
   await g.fieldIdle(m);
   await g.frames(10);
 }
@@ -138,6 +140,7 @@ run('the barn, hide-and-seek, doors that say why', [
         const h = await g.ev(i => G.state.seek.list[i], i);
         const sp = await g.ev(id => G.seek.SPOTS.find(p => p.id === id), h.spot);
         await g.ev(([m, x, y]) => { if (m === 'granja') G.goto(m, 6, 6, 'up'); else G.goto(m, x, y + 2, 'up'); }, [sp.map, sp.at[0], sp.at[1]]);
+        await g.until(m => G.field && G.field.mapId === m && G.fade.a === 0, sp.map, 'arriving in ' + sp.map); await g.frames(40); await settle(g, 'arriving in ' + sp.map); // (arriving may ask something first, a moment after: the place's name "¿Dónde estás?", a review)
         await g.fieldIdle(sp.map); await g.ev(() => { G.field.banner = null; }); await g.frames(20);
         await g.shot('hiding_' + h.kind + '_' + h.spot);
         const r = await g.ev(() => { const h = G.state.seek.list.find(h => !h.found); return G.seek.where(h); });

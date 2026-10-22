@@ -264,6 +264,9 @@ async function rules(browser) {
     await g.fieldIdle('villa');
     const r = await g.ev(() => {
       const B = G.budget, W = G.words, o = {};
+      // the floor: a little new every play day even with a backlog (2: the first two of the day come, a third waits)
+      o.floor = { floor: B.PACE.floor, can: B.canIntro(1), why2: B.why(2), why3: B.why(3) };
+      B.PACE.floor = 0; // (the rules below, without the floor)
       o.start = { bl: B.backlog(), why: B.why(), can: B.canIntro(1), story: B.canIntro(1, { story: true }), target: B.target() };
       // reviewed down to 5: room again, up to today's target (2 on the first play day of 2.5 a day: the half carries)
       ['casa', 'perro', 'gato'].forEach(id => W.answerRight(id, { mode: 'text' }));
@@ -282,8 +285,10 @@ async function rules(browser) {
       G.debug.dayShift = 0;
       // phrases are new items too: a busy day holds them back, and the open switch lets everything through
       o.phrase = (() => { G.debug.noPhrases = false; const was = G.phrase.off; G.phrase.off = () => false; const v = [G.phrase.canIntro('f_quiero')]; G.budget.OPEN = true; v.push(B.canIntro(50), G.phrase.canIntro('f_quiero')); G.budget.OPEN = false; G.phrase.off = was; return v; })();
+      B.PACE.floor = o.floor.floor;
       return o;
     });
+    check('pacing: the floor: with 8 due and nothing new yet today, the first 2 new items still come; a third waits', r.floor.floor === 2 && r.floor.can && r.floor.why2 === null && r.floor.why3 === 'backlog', JSON.stringify(r.floor));
     check('pacing: 8 words due today: the backlog is 8, no new word in the open world; the story may', r.start.bl === 8 && r.start.why === 'backlog' && !r.start.can && r.start.story, JSON.stringify(r.start));
     check('pacing: reviewed down to 5: room again', r.five.bl === 5 && r.five.can, JSON.stringify(r.five));
     check('pacing: today\'s soft target met (2 on the first day of 2.5 a day), with reviews still due: no more', r.atTarget.today === 2 && r.atTarget.why === 'target', JSON.stringify(r.atTarget));
@@ -301,6 +306,7 @@ async function beach(browser) {
   try {
     const due8 = ['casa', 'perro', 'gato', 'arbol', 'flor', 'pan', 'leche', 'agua'].map(id => [id, 2, 2, 3, 0]);
     await game(g, { old: due8, done: G_DONE() });
+    await g.ev(() => { G.budget.PACE.floor = 0; }); // (the backlog's hold, without the day's floor of 2)
     await g.ev(() => { const z = G.zones.def('playa'); G.zones.visit && G.zones.visit('playa'); G.goto('playa', z.entry.x, z.entry.y, 'down'); });
     await g.fieldIdle('playa');
     await g.ev(() => { window.__sp = []; const o = G.speak; G.speak = t => { window.__sp.push(t); o(t); }; });
@@ -355,6 +361,7 @@ async function story(browser) {
     const due8 = ['casa', 'perro', 'gato', 'arbol', 'flor', 'pan', 'leche', 'agua'].map(id => [id, 2, 2, 3, 0]);
     await game(g, { old: due8, done: G_DONE(), map: 'villa' });
     await g.fieldIdle('villa');
+    await g.ev(() => { G.budget.PACE.floor = 0; }); // (the backlog's hold, without the day's floor of 2)
     // a chapter of its own line (a test chapter) whose beat introduces a word, on a day with 8 reviews due
     await g.ev(() => {
       const CH = G.chapters;

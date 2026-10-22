@@ -173,7 +173,8 @@ async function favores(browser) {
     check('palabra: Luna has a star bubble', await g.ev(() => { const a = G.field.npc('luna').alert(); return !!a && a.icon === 'estrella'; }));
     await g.ev(() => { G.state.heartlog = null; G.hearts.mark('luna', 'greet'); }); // (her greeting is done for today: straight to the palabra)
     await g.tapTile(...await g.ev(() => { const n = G.field.npc('luna'); return [n.x, n.y]; }));
-    await g.drive(() => G.top().constructor.name === 'Choice' && G.top().o.show && G.top().t > 10, 'the palabra del día');
+    await g.drive(() => G.top().constructor.name === 'Choice' && G.top().o.show, 'the palabra del día'); // (stop as soon as it's up: drive() answers a question it sees)
+    await g.until(() => G.top().constructor.name === 'Choice' && G.top().t > 10, null, 'the palabra del día settled');
     await g.shot('palabra');
     check('palabra: a picture only, its word among four (words, no pictures), and a mic', await g.ev(() => { const s = G.top(); return s.ch.length === 4 && s.ch.every((c, k) => !s.view(k).icon) && !!s.mic && s.o.show === s.ch[s.o.answer].word; }));
     check('palabra: said out loud: a speaking star', (await speak(g)).star);

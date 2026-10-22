@@ -53,7 +53,7 @@ class Game {
   // poll a page-side condition (with a timeout) instead of sleeping
   async until(fn, arg, what, timeout = 20000) {
     try { await this.page.waitForFunction(fn, arg, { timeout, polling: 50 }); }
-    catch (e) { throw new Error('timed out waiting for ' + what + ' (top scene: ' + await this.scene().catch(() => '?') + ')'); }
+    catch (e) { throw new Error('timed out waiting for ' + what + ' (top scene: ' + await this.scene().catch(() => '?') + (await this.ev(() => { const s = G.top(); return s && s.o && s.o.prompt ? ': "' + s.o.prompt + '"' : ''; }).catch(() => '')) + ')'); }
   }
   async frames(n) { const f = await this.ev(() => G.frame); await this.page.waitForFunction(f => G.frame >= f, f + n, { polling: 'raf' }); }
   // a point in GAME pixels (320x224) on the screen, through the canvas' on-screen rect

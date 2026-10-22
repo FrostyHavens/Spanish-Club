@@ -11,6 +11,8 @@ async function start(g) {
   await g.ev(() => {
     G.st.newGame(); G.state.name = 'Luz'; G.state.flags.intro = true; G.goto('villa', 5, 18, 'down');
     window.__sfx = []; const sfx = G.audio.sfx; G.audio.sfx = n => { window.__sfx.push(n); sfx(n); };
+    window.__dust = 0; const walk = G.fx.walk; G.fx.walk = (...a) => { const r = walk(...a); if (G.fx.live('dust') > 0) window.__dust++; return r; }; // (a puff is short-lived too)
+    window.__rip = []; const rip = G.fx.ripple; G.fx.ripple = (x, y) => { window.__rip.push([x, y]); return rip(x, y); }; // (a ring lives 15 frames: a slow page can outlast it before the check)
   });
   await g.fieldIdle('villa');
 }
@@ -27,12 +29,12 @@ async function touchRun(browser) {
   try {
     await start(g);
     // a tap: ripple + soft click, and starting to walk puffs dust
-    await g.ev(() => { window.__sfx.length = 0; });
+    await g.ev(() => { window.__sfx.length = 0; window.__rip.length = 0; });
     await g.tapTile(10, 21);
-    check('fx: a tap leaves a ripple and a soft click', await g.ev(() => G.fx.live('ring') > 0) && await heard(g, 'tap'));
+    check('fx: a tap leaves a ripple and a soft click', await g.ev(() => window.__rip.length > 0) && await heard(g, 'tap'));
     await g.frames(3);
     check('fx: ...exactly once (one ring, one click)', await g.ev(() => G.fx.live('ring') <= 1 && window.__sfx.filter(n => n === 'tap').length === 1), await g.ev(() => JSON.stringify([G.fx.live('ring'), window.__sfx])));
-    await g.until(() => G.fx.live('dust') > 0, null, 'a dust puff', 3000);
+    await g.until(() => window.__dust > 0, null, 'a dust puff', 3000);
     check('fx: starting to walk puffs dust', true);
     await still(g, 'ripple_dust');
     await g.until(() => !G.field.route && !G.field.player.moving, null, 'the walk to end');
@@ -176,8 +178,9 @@ async function keyboardRun(browser) {
     check('desktop fx: Enter finishes the line, then closes it', true);
     await g.fieldIdle('villa');
     // walking with the keys puffs dust once
+    await g.ev(() => { window.__dust = 0; });
     await g.page.keyboard.down('ArrowLeft');
-    await g.until(() => G.fx.live('dust') > 0, null, 'a dust puff', 3000);
+    await g.until(() => window.__dust > 0, null, 'a dust puff', 3000);
     await g.page.keyboard.up('ArrowLeft');
     check('desktop fx: walking with the keys puffs dust', true);
     await g.until(() => !G.field.player.moving, null, 'the step to end');
