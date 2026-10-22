@@ -149,6 +149,7 @@
       else if (G.input.p('B') || G.closeHit()) l.abort();
     }
     finish(r) {
+      if (G.mic && G.mic.note) G.mic.note(r); // (the Learning page's speaking status, mic.js)
       const word = this.word0 || this.word(), target = G.data.words[word].es; // every form counts: 'rojo / roja', 'la manzana'
       const m = r.ok ? G.speech.match(target, r.alternatives) : { pass: false, score: 0, heard: '', i: -1 };
       const v = r.ok ? G.speech.grade(m.score) : 'ERROR';

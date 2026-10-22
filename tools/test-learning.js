@@ -6,8 +6,9 @@
 //   src/warmup.js    the dog's warm-up: once a day the first time free, due words (most overdue, earlier days, other
 //                    places first), the big mic, cards growing, the dog's party; skippable; never during a story beat;
 //                    the guide after; the ghost hand the first time
-//   src/dashboard.js the grown-ups' Learning page: overview, retention, words by place, the word check, tonight's
-//                    question, share; every number checked against the model
+//   src/dashboard.js the grown-ups' Learning page: overview, memory, words by place, the word check, tonight's
+//                    question, share; every number checked against the model (the honest numbers in depth:
+//                    tools/test-dashboard.js)
 //   NODE_PATH=$(npm root -g) node tools/test-learning.js [screenshot dir]
 'use strict';
 const { open, check, run } = require('./harness');
@@ -420,13 +421,14 @@ async function dashboard(browser) {
     check('dashboard: overview: days played (12 of the 14, today\'s new words included) and the minutes', ov.days === 12 && ov.mins >= 12 * 15, JSON.stringify([ov.days, ov.mins, ov.today]));
     const s0 = await g.ev(() => G.hist.day().s); await g.frames(130);
     check('dashboard: time on the Learning page isn\'t play time', await g.ev(s0 => G.hist.day().s === s0, s0));
-    // retention
-    await g.tapRect(await g.ev(() => G.top().tabRect(1)));
-    await g.frames(6); await still(g, 'dash_retention');
-    const rt = await g.ev(() => { const v = G.top().view(); return { tab: v.tab, r7: v.r7, by: v.byDay.map(d => d.n), r7b: G.hist.retention({ days: 7 }) }; });
-    check('dashboard: retention: last 7 days and all time, with the counts; a bar per day for two weeks', rt.tab === 'Retention' && rt.r7.n === rt.r7b.n && rt.r7.pct === rt.r7b.pct && rt.by.length === 14 && rt.by.filter(Boolean).length >= 8, JSON.stringify(rt));
+    // memory (2026-10, AUDIT 2.8: recognition with lucky taps taken out, and recall, instead of one "retention")
+    const tab = name => g.ev(n => G.top().tabRect(G.dashboard.TABS.indexOf(n)), name);
+    await g.tapRect(await tab('Memory'));
+    await g.frames(6); await still(g, 'dash_memory');
+    const rt = await g.ev(() => { const v = G.top().view(); return { tab: v.tab, r7: v.overview.recog7, r7b: G.hist.recognition({ days: 7 }), rc: v.overview.recall7, rcb: G.hist.recall({ days: 7 }) }; });
+    check('dashboard: memory: recognition (last 7 days, lucky taps taken out) and recall from memory, as the history counts them', rt.tab === 'Memory' && rt.r7.n === rt.r7b.n && rt.r7.pct === rt.r7b.pct && rt.r7.n >= 8 && rt.rc.n === rt.rcb.n, JSON.stringify(rt));
     // words by place
-    await g.tapRect(await g.ev(() => G.top().tabRect(2)));
+    await g.tapRect(await tab('Words'));
     await g.frames(6); await still(g, 'dash_words');
     const wv = await g.ev(() => {
       const s = G.top(), out = {};
@@ -449,7 +451,7 @@ async function dashboard(browser) {
     await g.frames(4); await still(g, 'dash_words_bosque');
     check('dashboard: words: another place\'s tab', await g.ev(() => G.top().zone === G.zones.ids()[2] && G.top().scroll === 0));
     // the word check
-    await g.tapRect(await g.ev(() => G.top().tabRect(3)));
+    await g.tapRect(await tab('Check'));
     await g.frames(6); await still(g, 'dash_check');
     await g.tapRect(await g.ev(() => G.top().startRect()));
     const ck = await g.ev(() => { const c = G.hist.checkCur(), W = G.words; return { n: c.ids.length, met: c.ids.every(id => W.met(id) && G.iconDrawn(id)), slip: c.ids.includes('cuac'), strong: c.ids.filter(id => W.stage(id) >= 3).length, uniq: new Set(c.ids).size }; });
@@ -472,7 +474,7 @@ async function dashboard(browser) {
     check('dashboard: check: done: its score (5 of 9: one skipped) is the last check\'s, shown on the page and the overview', !last.cur && last.last.right === 5 && last.last.of === 9 && last.view.right === 5, JSON.stringify(last.last));
     await g.frames(6); await still(g, 'dash_check_done');
     // tonight's question
-    await g.tapRect(await g.ev(() => G.top().tabRect(4)));
+    await g.tapRect(await tab('Tonight'));
     await g.frames(6); await still(g, 'dash_tonight');
     const tq = await g.ev(() => { const L = G.dashboard.tonights(); return { L: L.map(q => ({ es: q.es, words: q.words, met: q.words.every(id => G.words.met(id)), en: !!q.en, ans: !!(q.ans && q.ans.es && q.ans.en), why: q.why })), first: G.top().view().tonight }; });
     check('dashboard: tonight: a Spanish question with its English and an answer, from today\'s words first', tq.L.length >= 3 && tq.L.every(q => q.en && q.ans) && /today/.test(tq.L[0].why), JSON.stringify(tq.L.slice(0, 4)));
@@ -487,7 +489,7 @@ async function dashboard(browser) {
     await g.tapRect(await g.ev(() => G.top().shareRect()));
     await g.until(() => !!window.__shared, null, 'the share sheet', 3000);
     const sh = await g.ev(() => window.__shared.text);
-    check('dashboard: share: the summary as text (name, days, words, retention, said aloud, slipping, the check, tonight\'s question)', /Luz/.test(sh) && /Played 12 days/.test(sh) && /Retention/.test(sh) && /Said aloud/.test(sh) && /Slipping/.test(sh) && /cuac/.test(sh) && /Last word check: 5 of 9/.test(sh) && /Tonight's question: ¿/.test(sh), sh);
+    check('dashboard: share: the summary as text (name, days, words, recognition, said aloud, slipping, the check, tonight\'s question)', /Luz/.test(sh) && /Played 12 days/.test(sh) && /Recognition/.test(sh) && /Said aloud/.test(sh) && /Slipping/.test(sh) && /cuac/.test(sh) && /Last word check: 5 of 9/.test(sh) && /Tonight's question: ¿/.test(sh), sh);
     await g.ev(() => { delete navigator.share; navigator.share = undefined; window.__clip = null; Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: t => { window.__clip = t; return Promise.resolve(); } } }); });
     await g.frames(45);
     await g.tapRect(await g.ev(() => G.top().shareRect()));
