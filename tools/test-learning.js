@@ -304,11 +304,12 @@ async function warmup(browser) {
     check('warm-up: at the end the dog jumps for joy and gets a treat', await g.ev(() => window.__anims.includes('jump') && window.__anims.includes('eat') && window.__anims.includes('bring') && window.__anims.filter(k => k === 'wag').length >= 3));
     check('warm-up: ...and gives a heart', await g.ev(() => G.hearts.today('canelo') >= 1));
     const d = await today(g);
-    check('warm-up: the history: each word\'s retrieval with its gap (casa said, 4 days; concha picked, 1 day...)', d.w.casa && d.w.casa[0] === 4 && d.w.casa[1] === 'S' && d.w.concha[0] === 1 && d.w.concha[1] === 'P' && d.w.oso && d.w.perro && d.w.perro[0] === 4, JSON.stringify(d.w));
+    check('warm-up: the history: each word\'s retrieval with its gap (casa said first, from memory, 4 days; concha picked from pictures alone the next day, from memory too...)', d.w.casa && d.w.casa[0] === 4 && d.w.casa[1] === 'F' && d.w.concha[0] === 1 && d.w.concha[1] === 'V' && d.w.oso && d.w.perro && d.w.perro[0] === 4, JSON.stringify(d.w));
     check('warm-up: saved: today\'s done, 4 of 4 right', await g.ev(() => { const w = G.hist.state().wu; return w.d === G.today() && w.n === 1 && w.last.right === 4 && w.last.of === 4; }));
     // the guide carries on after; the dog follows again
     await g.frames(40);
-    check('warm-up: after it the map is free, the dog follows again, and the guide still points at something to do', await g.ev(() => { const n = G.pet.npc(G.field); return G.top() === G.field && !G.field.locked && !n.busy && !!G.guide.goal(G.field); }), await g.ev(() => JSON.stringify(G.guide.goal(G.field) && G.guide.goal(G.field).why)));
+    await g.until(() => { const n = G.pet.npc(G.field); return G.top() === G.field && !G.field.locked && !n.busy; }, null, 'the map free after the warm-up', 8000).catch(() => {}); // (under load the dog can still be trotting back)
+    check('warm-up: after it the map is free, the dog follows again, and the guide still points at something to do', await g.ev(() => { const n = G.pet.npc(G.field); return G.top() === G.field && !G.field.locked && !n.busy && !!G.guide.goal(G.field); }), await g.ev(() => JSON.stringify([G.guide.goal(G.field) && G.guide.goal(G.field).why, G.top() && G.top().constructor.name, G.field.locked, G.pet.npc(G.field).busy, G.state.wm.pace])));
     await g.until(() => !!G.guide.at, null, 'the guide\'s arrow', 5000);
     await still(g, 'wu_after');
     // once a day: another map, the same day: nothing
