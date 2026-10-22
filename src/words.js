@@ -71,6 +71,13 @@
 //                            met or used; the same day it is a plain pick, P)
 //                        parent: a grown-up's check (mode 'parent': the history's C, recall from memory)
 //                        forced: the only answer left (the last pair of a page puzzle): a cued pick, nothing moves
+//                      Who passes what (the engine can't see the screen): G.ask (learn.js) passes recall: true with
+//                      mode 'pic' when the answer's card is a picture only, no card in the question has a label, the
+//                      answer isn't written in the prompt (absent, or masked: a speaker) and it isn't cued (the review's
+//                      "hear it, pick the picture", the warm-up's picture cards); say-it-first passes {mode: 'say',
+//                      recall: true, said: true}; the grown-ups' check passes parent (history.js); a page puzzle's last
+//                      pair passes forced; listen-and-do passes mode 'listen'. (pet.js: a care card said to the dog has
+//                      no word on it: it could pass recall: true too.) Without recall: true a picture-only pick is a P
 //                        how: 'answer' (G.ask: a question whose answer is a word not met yet meets it with the right
 //                          pick; in the open world on a day with no room for new words it doesn't: G.budget.defer)
 //   W.answerWrong(id, {parent})  a miss: back to box 2 or 1, due again soon (3 misses: slipping)

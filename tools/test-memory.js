@@ -185,7 +185,7 @@ async function stages(browser) {
       // listen-and-do taps, cued picks and forced pairs: no stage (and cued / forced: no box)
       const b = id => W.rec(id).box;
       W.addTime(5000); const pb = [b('pan'), b('leche'), b('agua')];
-      W.answerRight('pan', { mode: 'listen' }); W.answerRight('leche', { cued: true }); W.answerRight('agua', { mode: 'match', forced: true });
+      W.answerRight('pan', { mode: 'listen' }); W.answerRight('leche', { cued: true }); W.answerRight('agua', { forced: true }); // (forced: the last page-puzzle pair joining by itself, src/intro.js)
       o.never = { st: ['pan', 'leche', 'agua'].map(W.stage), box: [b('pan') - pb[0], b('leche') - pb[1], b('agua') - pb[2]] };
       W.answerRight('flor', { mode: 'listen' }); W.answerRight('flor', { mode: 'listen' }); o.listenGold = W.stage('flor');
       o.letters2 = ['pan', 'leche', 'agua'].map(id => H.day().w[id][1]).join();
