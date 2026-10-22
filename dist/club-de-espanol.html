@@ -9579,7 +9579,7 @@ G.store = {
   H.IDLE = 180 * 60;    // frames without a touch or a key before play time stops counting (3 min)
   H.CHECK_N = 10;       // words in a grown-ups' check
   H.KIND = { P: 'pick', p: 'pick', K: 'pick', R: 'recall', r: 'recall', S: 'say', s: 'say', E: 'say', L: 'listen', l: 'listen', m: 'miss', C: 'parent', c: 'parent' };
-  const ADULT = ['GrownUps', 'LearningDash', 'MicTest', 'Controls', 'QuestLog']; // grown-ups' screens: not play time
+  const ADULT = ['GrownUps', 'LearningDash', 'MicTest', 'Controls', 'QuestLog', 'Backup', 'ProblemLog']; // grown-ups' screens: not play time
   const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
   const W = () => G.words, D = () => G.data;
   const today = () => G.today(), dn = () => G.words.dayNum();
@@ -12961,13 +12961,13 @@ G.store = {
   // b: check()'s b. Nothing changes unless it all worked. Afterwards nothing of the game in play is saved again (G.st.detach):
   // the caller goes to the title.
   B.restore = function (b) {
-    const keep = snapshot();
+    const keep = snapshot(), prevUndo = G.store.raw(UNDO_KEY); // (a failed restore puts the earlier undo copy back)
     if (!G.store.setRaw(UNDO_KEY, JSON.stringify(keep))) return no('There isn\'t room on this device to keep a copy of what\'s here now, so nothing was changed.' + full());
     let ok = true;
     for (let n = 1; n <= 3 && ok; n++) { const g = b.slots[n - 1], k = G.st.slotKey(n); if (g) ok = G.store.setRaw(k, JSON.stringify(g)); else G.store.del(k); }
     if (ok) ok = G.store.setRaw(MIGRATED_KEY, '1'); // (an old pre-slot save never comes back over them)
     if (ok && b.prefs && G.store.raw(PREF_KEY) == null) ok = G.store.set(PREF_KEY, b.prefs); // (a device with no settings yet: the backup's)
-    if (!ok) { const why = full(); putBack(keep.keys); G.store.del(UNDO_KEY); return no('The backup didn\'t fit in this browser\'s storage, so nothing was changed.' + why); }
+    if (!ok) { const why = full(); putBack(keep.keys); G.store.del(UNDO_KEY); if (prevUndo != null) G.store.setRaw(UNDO_KEY, prevUndo); return no('The backup didn\'t fit in this browser\'s storage, so nothing was changed.' + why); }
     G.st.detach(); reloadPrefs();
     if (!(G.prefs.lastBackup >= b.at)) G.audio.setPref('lastBackup', b.at); // (this device's games are now the ones in that backup)
     return { ok: true };
@@ -13113,7 +13113,10 @@ G.store = {
         const k = ids.find(id => GRID[id][1] === r && (GRID[id][0] === c || id === 'undo'));
         if (k && k !== this.sel) { this.sel = k; G.audio.sfx('cursor'); }
       }
-      if (G.input.p('A') && this.sel !== fired) this.press(this.sel);
+      if (G.input.p('A') && this.sel !== fired) { // (the on-screen A button: not inside a tap, so iPad Safari won't open the share sheet or the file picker)
+        if (G.touch && (this.sel === 'file' || this.sel === 'backup')) { G.audio.sfx('cursor'); this.notice('Tap the button itself', COL.dim); }
+        else this.press(this.sel);
+      }
     }
     press(id) {
       if (id === 'backup') this.backup();
@@ -13366,6 +13369,7 @@ G.store = {
     // in your hands top-left (carry.js). Nothing the guide points at may hide under them (guide.js wins, tools/test-world.js)
     corners() {
       const r = [{ k: 'menu', x: HUD[0] - 4, y: HUD[1] - 4, w: G.BTN + 8, h: G.BTN + 8 }];
+      if (G.saveCloud && G.st.troubled()) r.push({ k: 'cloud', x: HUD[0] + 2, y: HUD[1] + 24, w: 16, h: 11 }); // the grey 'saves failing' cloud (backup.js)
       const h = G.carry && G.carry.hud && G.carry.hud(); if (h) r.push(Object.assign({ k: 'hand' }, h));
       return r;
     }
@@ -20273,7 +20277,7 @@ G.MAPDATA = {
   DY.step = function () {
     const f = G.field;
     if (!f || !G.state || G.scenes.indexOf(f) < 0) return;
-    if (!base || base.state !== G.state) newDay(); // a new game, or one just opened: a new session
+    if (!base || base.state !== G.state || (G.frame % 600 === 0 && base.hoy.d !== G.today() && !f.evening && !DY.walk)) newDay(); // a new game, one just opened, or one left open overnight: a new session
     G.sessionTime += 1 / 60;
     if (G.words) G.words.step(); // the word model's play clock (words.js)
     if (G.frame % 30 === 0) sweep();
@@ -20902,7 +20906,7 @@ G.MAPDATA = {
     out.sort((a, b) => d(a) - d(b));
     return out[0] || null;
   }
-  const go = (why, c) => (c ? { why, map: c.map, at: c.at, icon: pic(c.id, c.col) } : null);
+  const go = (why, c) => (c ? { why, map: c.map, at: c.at, icon: pic(c.id, c.col), pick: true } : null); // (a pick-up)
   const fetchOk = () => !!G.pet && G.pet.mine() && !(G.errands && G.errands.lost());
   const pageAt = f => { // a notebook page puzzle that's ready (a sparkle), this map first
     let best = null;
@@ -20937,8 +20941,8 @@ G.MAPDATA = {
   // (the guide shows the way there)
   C.plan = function (f) {
     if (!G.state || !f || !G.errands) return null;
-    const h = C.held(), far = [];
-    const here = g => { if (!g) return null; if (C.here(f, g)) return g; far.push(g); return null; };
+    const h = C.held(), far = []; let busy = false;
+    const here = g => { if (!g || (busy && g.pick)) return null; if (C.here(f, g)) return g; far.push(g); return null; };
     let g = null;
     if (h) { // what you hold, to whoever would love it
       const w = C.likerFor(h.it); if (w && (g = here({ why: 'give ' + h.id + ' to ' + w, who: w, icon: pic(h.id, h.col) }))) return g;
@@ -20946,6 +20950,7 @@ G.MAPDATA = {
       if (h.id === 'huevo' && !G.errands.jobDone('huevo') && reach('rosa') && (g = here({ why: 'the egg to Rosa', who: 'rosa', icon: pic('huevo') }))) return g;
       if (h.id === 'pan' && chDone('c6') && !G.errands.jobDone('patos') && (g = here({ why: 'bread for the ducks', map: 'villa', at: [37, 21], icon: 'pato' }))) return g;
       if (C.DOG[h.id] && fetchOk() && (C.DOG[h.id] !== 'fetch' || (st().play.n[h.id] | 0) < 5) && (g = here({ why: (C.DOG[h.id] === 'fetch' ? 'throw it for Canelo' : 'Canelo: ' + h.id), dog: true, icon: pic(h.id, h.col) }))) return g;
+      busy = far.length > 0; // what you hold is wanted elsewhere: picking up something else here would only swap it down (an egg and an apple, back and forth)
     }
     const k0 = day() % C.ORDER.length;
     for (let i = 0; i < C.ORDER.length; i++) {
@@ -21868,7 +21873,7 @@ G.MAPDATA = {
     }
     bag().take('concha', { col: h.col, q: null }); st().shells[h.col] = 1; G.audio.jingle('item'); G.st.autosave();
     const n = PL.shellsHave().length, nums = ['uno', 'dos', 'tres', 'cuatro', 'cinco'];
-    yield* sayShow('lola', { list: PL.shellsHave().map(shellPic) }, T('¡Una [concha]! ¡[gracias:Gracias]!', 'A shell! Thank you! (' + n + ' of 5 colours)'));
+    yield* sayShow('lola', { list: PL.shellsHave().map(shellPic) }, T('¡Una ' + G.requests.np({ thing: 'concha', col: h.col, def: false }).text + '! ¡[gracias:Gracias]!', 'A ' + G.data.words[h.col].en + ' shell! Thank you! (' + n + ' of 5 colours)')); // (its colour: each shell a different line, and colour practice)
     if (met(nums[n - 1])) yield* quiz('lola', '¿Cuántas?', 'How many shells has she got now?', nums[n - 1], nums.filter((k, i) => Math.abs(i - (n - 1)) === 1), { show: { icon: 'concha', count: n } });
     if (PL.shellsDone()) {
       CK.confetti(); G.audio.jingle('promote');
@@ -22571,7 +22576,7 @@ G.MAPDATA = {
     if (st().leaves[h.col]) { yield* sayShow('lola', { list: BQ.leavesHave().map(leafPic) }, T('¡Ya la tengo! ¡Otra!', 'I have that one already! Find another colour.')); return; }
     bag().take('hoja', { col: h.col, q: null }); st().leaves[h.col] = 1; G.audio.jingle('item'); G.st.autosave();
     const n = BQ.leavesHave().length, nums = ['uno', 'dos', 'tres'];
-    yield* sayShow('lola', { list: BQ.leavesHave().map(leafPic) }, T('¡Una [hoja]! ¡[gracias:Gracias]!', 'A leaf! Thank you! (' + n + ' of 3 colours)'));
+    yield* sayShow('lola', { list: BQ.leavesHave().map(leafPic) }, T('¡Una ' + G.requests.np({ thing: 'hoja', col: h.col, def: false }).text + '! ¡[gracias:Gracias]!', 'A ' + G.data.words[h.col].en + ' leaf! Thank you! (' + n + ' of 3 colours)')); // (its colour: each leaf a different line)
     if (met(nums[n - 1])) yield* quiz('lola', '¿Cuántas?', 'How many leaves has she got now?', nums[n - 1], nums.filter((k, i) => i !== n - 1), { show: { icon: 'hoja', count: n } });
     if (BQ.leavesDone()) {
       CK.confetti(); G.audio.jingle('promote');
@@ -26596,12 +26601,12 @@ G.MAPDATA = {
 //   idle ~4 s      Canelo trots a few tiles toward the goal, barks and looks back at you
 // The goal, most important first: (on a night walk after the Hoy card, day.js: the night animal she came to see) >
 // the story's chapter (its beat: a person, a place, an animal, a door, a find-it puzzle; the next chapter's giver; a
-// review day's teacher) > home at sunset > a favour going on or offered > a place she asked for on the world map >
-// Tomás's letter in your hands (to whoever it's for; another place: the bus stop, src/connect.js; it waits while she's
-// in a place she picked herself) > a zone's task > Nico's
-// hide-and-seek (only the edge arrow: the peeking ears are the game; the arrow over one after a long wait) > Canelo's
+// review day's teacher) > home at sunset > a favour going on or offered > Tomás's letter in your hands (to whoever
+// it's for; another place: the bus stop, src/connect.js; it waits while she's in a place she picked herself) > a zone's
+// task > Nico's hide-and-seek (only the edge arrow: the peeking ears are the game; the arrow over one after a long
+// wait) > a place she asked for on the world map > Canelo's
 // "?", Luna's palabra del día, Inés's pages, a side job, anyone else with a bubble > (the next chapter, then Tomás's
-// letter of the day, exploring, a letter that waited) > the day's play (src/carry.js, this part of the world first: what
+// letter of the day, a letter that waited, exploring) > the day's play (src/carry.js, this part of the world first: what
 // you hold to whoever would love it, or Canelo; empty-handed, today's next play: fetch, an apple for Luna, a flower for
 // Mamá, the bone, an egg for Rosa, bread for the ducks, a page puzzle... and a game of fetch is always there). So there
 // is never a dead end: between chapters, while today's new words are used up, before the evening chapter, the arrow
@@ -26775,7 +26780,7 @@ G.MAPDATA = {
   const postOffer = f => (G.post && G.post.offerGoal ? G.post.offerGoal(f) : null); // (Tomás's letter of the day: after the story's next chapter)
   // the night walk after the Hoy card (day.js): the arrow on the night animal she came to see, before anything else
   const nightWalk = f => (G.day && G.day.walkGoal ? G.day.walkGoal(f) : null);
-  const TIERS = [nightWalk, chapterGoal, sunsetGoal, favourGoal, wantGoal, postGoal, zoneTask, seekGoal, reviewGoal, zoneGoal, chapterLater, postOffer, exploreGoal, postLater, playGoal, puppyGoal];
+  const TIERS = [nightWalk, chapterGoal, sunsetGoal, favourGoal, postGoal, zoneTask, seekGoal, wantGoal, reviewGoal, zoneGoal, chapterLater, postOffer, postLater, exploreGoal, playGoal, puppyGoal];
 
   // on another map: the door that leads there (from town, its door; from a building, the way out)
   function viaDoor(f, g) {

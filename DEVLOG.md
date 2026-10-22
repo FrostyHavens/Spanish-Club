@@ -105,6 +105,22 @@ merged, reviewed and run through the full test suite.
 **Tests:** new `test-live`, `test-backup`, `test-crash`, `test-spanish` and `test-day`, plus new sections in
 `test-world`, `test-connect`, `test-guide` and `test-listen`.
 
+**Review.** An independent review of the merged work (6 reviewers, each finding checked by a skeptic) confirmed 8
+problems, all fixed:
+- following the arrow could swap an egg and an apple back and forth on one tile;
+- a letter that waited sent her out to explore and then turned her around on the road;
+- a "?" she asked for on the world map outranked a zone task she was doing;
+- a game left open overnight kept yesterday's ¡Hoy! card;
+- the grey "not saved" cloud covered an arrow moved below the menu button;
+- the backup screens counted as her play time;
+- a restore that didn't fit lost the earlier undo copy;
+- the on-screen A on the iPad couldn't open the share sheet (it now says "Tap the button itself").
+
+The live test also caught Lola thanking her with the same line for every shell, so she now names each one's colour:
+*¡Una concha azul! ¡Gracias!*, *¡Una hoja roja!*
+
+Full suite: 35 files, all passing. The beach test flaked once under load and passed when run by itself.
+
 ## 2026-10-21 — La huerta: la zanahoria, el elote, el jitomate (the parent's choice)
 Three vegetable words for Abuelo's garden at La casa de los abuelos (Mexican Spanish), on a new notebook page, *La
 huerta* (180 words, 26 pages); everything else as it was.
