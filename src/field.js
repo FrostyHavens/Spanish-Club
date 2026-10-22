@@ -218,7 +218,7 @@
       const story = (G.chapters && G.chapters.spotAt(this, fx, fy)) || G.intro.spotAt(this, fx, fy); // a puzzle's thing on a counter: search it
       if (!n && !story) { const t = this.map.get(fx, fy); if (t === 'e' || t === 't' || t === 'a' || t === 'Y') { const [dx, dy] = G.DIRS[this.player.dir]; n = this.npcs.find(o => o.x === fx + dx && o.y === fy + dy && !o.hidden); } }
       if (n && n.talk) {
-        this.talkWith = n; // (who this talk is with: the guide tells a talk it led to that's the same as last time, guide.js)
+        this.talkWith = n; this.talkN0 = G.said ? G.said.n : 0; // (who this talk is with, and the lines said before it: the guide tells a talk it led to that's the same as last time, guide.js)
         const back = { u: 'down', d: 'up', l: 'right', r: 'left' }[this.player.dir[0]];
         const prev = n.dir; if (!n.fixed) n.dir = back;
         if (typeof n.talk === 'function') yield* n.talk(this, n);

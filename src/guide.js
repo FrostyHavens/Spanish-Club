@@ -250,7 +250,7 @@
   }
   // the same talk: a talk begins (the map locked) with the person the arrow was on; it ends (free again) -> ended
   function talkCheck(f, free) {
-    if (!free) { if (!talk && shown && f.talkWith && shown.pts && shown.pts.length === 1 && shown.pts[0].npc === f.talkWith) talk = { k: f.mapId + '|' + shown.why, why: shown.why, npc: f.talkWith, n0: G.said.n, sig: shown.sig }; return; }
+    if (!free) { if (!talk && shown && f.talkWith && shown.pts && shown.pts.length === 1 && shown.pts[0].npc === f.talkWith) talk = { k: f.mapId + '|' + shown.why, why: shown.why, npc: f.talkWith, n0: f.talkN0 != null ? f.talkN0 : G.said.n, sig: shown.sig }; return; } // (n0: from the talk's start, its first line too)
     if (talk) { const lines = G.saidSince(talk.n0).join(' | '); if (lines) ended = Object.assign(talk, { lines }); talk = null; }
     f.talkWith = null;
   }
