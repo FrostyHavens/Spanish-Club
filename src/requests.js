@@ -179,9 +179,9 @@
   function actSentence(r) {
     const w = WD(r.thing); if (!w) return null;
     const F = cap(w.es.split(' / ')[0]), n = r.num ? RQ.numOf(r.num) : 0;
-    const times = r.num ? [tok(r.num, RQ.numWord(r.num, 'f')), RQ.numWord(r.num, 'f'), n === 1 ? 'vez' : 'veces'] : null;
-    const text = tok(r.thing, F) + (times ? ' ' + times[0] + ' ' + times[2] : ''), say = F + (times ? ' ' + times[1] + ' ' + times[2] : '');
-    return { text: text + '.', say: say + '.', np: '¡' + say + '!', npText: '¡' + text + '!' };
+    const times = r.num ? [tok(r.num, RQ.numWord(r.num, 'f')), RQ.numWord(r.num, 'f'), n === 1 ? 'vez' : 'veces'] : null, end = /[?!]$/.test(F) ? '' : '.'; // (a word with its own marks, ¿cómo estás?: as it is)
+    const text = tok(r.thing, F) + (times && end ? ' ' + times[0] + ' ' + times[2] : ''), say = F + (times && end ? ' ' + times[1] + ' ' + times[2] : '');
+    return { text: text + end, say: say + end, np: '¡' + say + '!', npText: '¡' + text + '!' };
   }
   // a part of her body: "Tócate la nariz." "Tócate los ojos."
   function selfSentence(r) {

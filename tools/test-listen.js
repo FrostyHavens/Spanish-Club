@@ -6,7 +6,8 @@
 //           three), the ramp (one detail, then two)
 //   scene   the listen-and-do scene on an iPad page (a fake recognizer): the request spoken and written with no picture
 //           for its words, the speaker to hear it again, the ghost hands; right (the friend reacts, one 'listen' credit
-//           per tested word, cards grow, the counts); wrong (it wobbles, the right one glows and is said; one more try);
+//           per tested word, cards grow, the counts); wrong (it wobbles, the right one glows and is said; one more try;
+//           the half she got right is only heard: a wrong pick credits no word);
 //           counting into the basket (one credit for the word however many are counted); a wrong count counted out
 //           loud; "¿Cuántas?" said with the mic, and a wrong number; the ramp to two details; the Learning page
 //   world   favours in two places (Doña Lupe in the forest, Don Pepe in Villa Sol: an ear in their bubble, two
@@ -279,7 +280,7 @@ async function scene(browser) {
     await g.until(np => window.__said.includes(np), r2.np, 'the right one said');
     await g.frames(20); await still(g, 'wrong_shown');
     const col2 = r2.tray[r2.answer].col, thing2 = r2.tray[r2.answer].thing, add2 = await added(), ci = r2.words.indexOf(col2), ti = r2.words.indexOf(thing2);
-    check('scene: ...and said ("' + r2.np + '"); the colour word a miss (m), the thing she got right a listen (L)', add2[ci] === 'm' && add2[ti] === 'L', add2.join(' '));
+    check('scene: ...and said ("' + r2.np + '"); the colour word a miss (m), the thing she happened to get right only heard: no credit for a wrong pick (AUDIT M2)', add2[ci] === 'm' && add2[ti] === '', add2.join(' '));
     check('scene: ...a "go on" arrow (never blocked)', await g.ev(() => G.top().pt > 20));
     await tapCell(g, r2.answer);
     await g.until(() => window.__r !== undefined, null, 'the right one given');
