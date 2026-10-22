@@ -235,6 +235,7 @@ async function zone(browser) {
       G.state.quests.c1 = 'done'; G.chapters.start('c2'); // (a Villa Sol chapter going on)
       G.chapters.add({ id: 'tmontana1', line: 'montana', title: 'Prueba', en: 'test', giver: 'lola', words: [], icon: 'montana', col: '#e04040' });
       G.chapters.script('tmontana1', [{ who: 'lola', run: function* () { yield 10; } }, { who: 'lola', run: function* () { yield 10; } }]);
+      G.chapters.EXEMPT.push('tmontana1'); // (about the lines, not the story's pacing: with this day's new words it would wait for room, tested in test-memory.js)
     });
     check('zone: a zone\'s chapter (its own line) is offered while a Villa Sol chapter is going on', await g.ev(() => G.chapters.current() === 'c2' && G.chapters.next('montana') === 'tmontana1' && !G.chapters.gate('tmontana1') && !!G.field.npc('lola').alert()));
     await g.tapTile(...await g.ev(() => { const n = G.field.npc('lola'); return [n.x, n.y]; }));
