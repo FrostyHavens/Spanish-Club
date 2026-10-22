@@ -1,6 +1,6 @@
 // The word model and what's built on it (docs/LEARNING_DESIGN.md): src/words.js (stages, Leitner boxes over sessions and
 // days with a mocked clock and date, one star per word a day, old saves migrated, the review engine's order, the new-word
-// budget), learn.js (G.ask's cards chosen by the answer's stage, cued answers, `learn:` only meeting co-listed words,
+// budget's counts; its pacing: tools/test-memory.js), learn.js (G.ask's cards chosen by the answer's stage, cued answers, `learn:` only meeting co-listed words,
 // distractors from met words), ui.js (unmet words are pictures only and stay unmet), intro.js (show / watch / listen /
 // find introductions, the small celebration, review questions, page puzzles), menus.js (the notebook) and world.js
 // (tap-anything within the budget).
@@ -13,7 +13,8 @@ async function game(g, o = {}) {
   await g.ev(o => {
     G.st.newGame(); G.state.name = 'Luz'; G.state.flags.intro = true; G.debug.dayShift = 0;
     G.words.newSession('new');
-    for (const [id, st] of Object.entries(o.st || {})) { G.words.meet(id, 'test'); const r = G.words.rec(id); r.st = st; r.fu = 0; r.box = Math.max(1, st); r.due = null; r.dd = G.words.day() + 5; r.dc = null; }
+    const dn = G.words.dayNum(), ago = n => { const d = new Date((dn - n) * 864e5); return d.getUTCFullYear() + '-' + (d.getUTCMonth() + 1) + '-' + d.getUTCDate(); };
+    for (const [id, st] of Object.entries(o.st || {})) { G.words.meet(id, 'test'); const r = G.words.rec(id); r.st = st; r.fu = 0; r.box = Math.max(1, st); r.due = null; r.dd = G.words.day() + 5; r.dc = null; r.mdate = ago(3); r.mdn = dn - 3; } // (a word already at a stage was met on an earlier day: gold needs a later day than that, words.js)
     G.goto(o.map || 'villa', o.x || 22, o.y || 13, o.dir || 'up');
   }, o);
   await g.fieldIdle(o.map || 'villa');
@@ -35,9 +36,9 @@ async function model(browser) {
       W.addTime(91); o.due90 = W.due('gato');
       const a1 = W.answerRight('gato', { mode: 'both' }); o.a1 = a1; o.fu1 = r.fu; o.st2 = r.st;
       W.addTime(100); o.due100 = W.due('gato');
-      const early = W.answerRight('gato', { mode: 'text' }); o.early = { st: r.st, fu: r.fu }; // asked too soon: stage moves, schedule doesn't
+      const early = W.answerRight('gato', { mode: 'text' }); o.early = { st: r.st, fu: r.fu }; // asked too soon: the schedule doesn't move; the day it was met, no gold
       W.addTime(300); o.due400 = W.due('gato');
-      W.answerRight('gato', { mode: 'text' }); o.after2 = { box: r.box, fu: r.fu, dd: r.dd - W.day(), st: r.st };
+      W.answerRight('gato', { mode: 'text' }); o.after2 = { box: r.box, fu: r.fu, dc: r.dc - W.dayNum(), st: r.st };
       // a cued answer changes nothing
       const c = W.answerRight('perro', { cued: true }); o.cuedMeets = { st: W.stage('perro'), cue: W.rec('perro').cue };
       W.addTime(91); W.answerRight('perro', { cued: true }); o.cued = { st: W.stage('perro'), fu: W.rec('perro').fu };
@@ -48,8 +49,8 @@ async function model(browser) {
     check('model: an unmet word is stage 0; meeting it -> stage 1, box 1, its first follow-up', m.unmet === 0 && m.metNew && !m.metAgain && m.st1 === 1 && m.fu === 1 && m.box === 1 && !m.dueNow, JSON.stringify(m));
     check('model: the first follow-up is due after 1.5 minutes of play', m.due90);
     check('model: an uncued first try -> known (stage 2), a star, the second follow-up (+6 min)', m.a1.stage === 2 && m.a1.star && m.fu1 === 2 && m.st2 === 2 && !m.due100, JSON.stringify(m));
-    check('model: recalled from word-only cards -> remembered (stage 3, gold), but asked too soon its schedule waits', m.early.st === 3 && m.early.fu === 2, JSON.stringify(m.early));
-    check('model: after both follow-ups: box 2, due the next day', m.due400 && m.after2.box === 2 && m.after2.fu === 0 && m.after2.dd === 1, JSON.stringify(m.after2));
+    check('model: recalled from word-only cards the day it was met: still known (gold needs a later day), and asked too soon its schedule waits', m.early.st === 2 && m.early.fu === 2, JSON.stringify(m.early));
+    check('model: after both follow-ups: box 2, due the next day', m.due400 && m.after2.box === 2 && m.after2.fu === 0 && m.after2.dc === 1, JSON.stringify(m.after2));
     check('model: answering an unmet word meets it (a cued use); cued answers never move the stage or the box', m.cuedMeets.st === 1 && m.cuedMeets.cue === 1 && m.cued.st === 1 && m.cued.fu === 1, JSON.stringify(m));
     check('model: a miss drops it a box and brings it back in 1.5 minutes', m.miss.box === 1 && m.miss.in === 90, JSON.stringify(m.miss));
 
@@ -59,12 +60,12 @@ async function model(browser) {
       W.meet('casa', 'show'); const r = W.rec('casa'); r.fu = 0;
       W.addTime(100); W.answerRight('casa', { mode: 'both' }); o.star1 = G.state.stars - s0;
       W.answerRight('casa', { mode: 'text' }); o.star2 = G.state.stars - s0; // a second first try today: no second star
-      o.today = { st: r.st, box: r.box, dd: r.dd - W.day() };
+      o.today = { st: r.st, box: r.box, dc: r.dc - W.dayNum() };
       const days = [];
-      for (let k = 1; k <= 9; k++) { // a session on each of the next days (a new calendar date)
+      for (let k = 1; k <= 12; k++) { // a session on each of the next days (a new calendar date)
         G.debug.dayShift = k; W.newSession('load');
         days.push({ day: W.day(), due: W.due('casa'), st: r.st, box: r.box });
-        if (W.due('casa')) W.answerRight('casa', { mode: 'pic' });
+        if (W.due('casa')) W.answerRight('casa', { mode: 'pic', recall: true }); // (picture-only cards, nothing written: a recall from memory on a later day)
       }
       o.days = days; o.stars = G.state.stars - s0;
       // the same calendar day, but a new morning in the game (day.js): a new day too
@@ -74,8 +75,8 @@ async function model(browser) {
       return o;
     });
     check('model: one star per word per day, from first tries', d.star1 === 1 && d.star2 === 1, JSON.stringify(d));
-    check('model: right on the next days moves it up the boxes: due the next day, then +2, then +4 days (box 2 -> 3 -> 4 -> 5)', d.days.filter(x => x.due).map(x => x.day - d.days[0].day + 1).join() === '1,3,7' && JSON.stringify(d.days.filter(x => x.due).map(x => x.box)) === '[2,3,4]', JSON.stringify(d.days));
-    check('model: remembered on a later day (3 uncued first tries over 2+ days) -> solid (stage 4)', d.days[d.days.length - 1].st === 4, JSON.stringify(d.days));
+    check('model: right on the next days moves it up the boxes: due the next day, then +3, then +7 calendar days (box 2 -> 3 -> 4 -> 5)', d.days.filter(x => x.due).map(x => x.day - d.days[0].day + 1).join() === '1,4,11' && JSON.stringify(d.days.filter(x => x.due).map(x => x.box)) === '[2,3,4]', JSON.stringify(d.days));
+    check('model: recalled from memory on later days (2+ days apart) -> solid (stage 4)', d.days[d.days.length - 1].st === 4, JSON.stringify(d.days));
     check('model: a star on each day it came back', d.stars === 1 + d.days.filter(x => x.due).length, JSON.stringify(d));
     check('model: a new morning is a new day; a reload on the same date is a new session, not a new day', d.night === 1 && d.load.day === 1 && d.load.sess === 1, JSON.stringify(d));
 
@@ -104,20 +105,20 @@ async function model(browser) {
     check('review: a missed word comes back right after the follow-ups', rv.missed.indexOf('uno') === 2, JSON.stringify(rv.missed));
     check('review: topic / exclude / filter', rv.topic.sort().join() === 'gato,perro' && rv.ex.indexOf('gato') < 0 && rv.ex.indexOf('perro') >= 0 && rv.next === 'uno', JSON.stringify(rv));
 
-    // the budget
+    // the budget: the older counts (the audit), and review-first pacing (2026-10, words.js G.budget: tools/test-memory.js)
     const b = await g.ev(() => {
-      const B = G.budget, W = G.words; B.OPEN = false; // (the counting engine, as it was; the game runs with B.OPEN: no word limit)
+      const B = G.budget, W = G.words;
       const o = { start: [B.recent(), B.session(), B.canIntro(1)] };
       ['pan', 'leche', 'queso', 'huevo'].forEach(id => W.meet(id, 'test'));
-      o.nine = [B.recent(), B.session(), B.left(), B.canIntro(1), B.canIntro(1, { hard: true })]; // 5 (above) + 4 = 9 met this session
-      W.addTime(301); o.later = [B.recent(), B.session(), B.canIntro(1), B.pending()];
-      W.newSession('load'); o.next = [B.session(), B.canIntro(5), B.canIntro(6)];
-      B.OPEN = true; o.open = B.canIntro(50);
+      o.nine = [B.recent(), B.session(), B.left(), B.canIntro(1), B.today(), B.why()]; // 5 (above) + 4 = 9 met this session, and today
+      W.addTime(301); o.later = [B.recent(), B.session(), B.pending()];
+      W.newSession('load'); o.next = [B.session(), B.canIntro(1), B.canIntro(1, { story: true })];
+      B.OPEN = true; o.open = B.canIntro(50); B.OPEN = false;
       return o;
     });
-    check('budget: words met in the last 5 minutes and this session; no more than 5 per 5 min, 6 a session (8 hard)', b.nine[0] === 9 && b.nine[1] === 9 && b.nine[2] === 0 && !b.nine[3] && !b.nine[4], JSON.stringify(b));
-    check('budget: a new session starts a new count', b.next[0] === 0 && b.next[1] && b.next[2] === false, JSON.stringify(b));
-    check('budget: in the game there is no word limit (canIntro is always true)', b.open === true);
+    check('budget: words met in the last 5 minutes and this session are counted; no more than 5 per 5 min, 6 a session (B.left)', b.nine[0] === 9 && b.nine[1] === 9 && b.nine[2] === 0, JSON.stringify(b));
+    check('budget: a new session starts a new count', b.next[0] === 0, JSON.stringify(b));
+    check('budget: pacing: 9 new words today is past the 8 a calendar day: no more in the open world (a new session doesn\'t change that; the story still may); B.OPEN lets everything through', !b.nine[3] && b.nine[4] === 9 && b.nine[5] === 'cap' && !b.next[1] && b.next[2] && b.open === true, JSON.stringify(b));
     check('model: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
 }
@@ -297,7 +298,7 @@ async function notebook(browser) {
     check('page: 4 words only met: still no sparkle (they must be known: picked once without a cue)', await g.ev(() => !G.pages.ready('cosas')));
     await g.ev(() => ['arbol', 'flor', 'fuente', 'banco'].forEach(id => { const r = G.words.rec(id); r.st = 2; }));
     check('page: known this session: not yet (at the earliest the next session)', await g.ev(() => !G.pages.ready('cosas')));
-    await g.ev(() => ['arbol', 'flor', 'fuente', 'banco'].forEach(id => { G.words.rec(id).ms = G.words.sess() - 1; }));
+    await g.ev(() => ['arbol', 'flor', 'fuente', 'banco'].forEach(id => { const r = G.words.rec(id); r.ms = G.words.sess() - 1; r.mdn = G.words.dayNum() - 1; })); // (known before this session: met on an earlier day)
     check('page: 4 words known before this session -> its sparkle is a page puzzle', await g.ev(() => G.pages.ready('cosas')));
     const s0 = await g.ev(() => G.state.stars);
     await g.tapTile(13, 9);

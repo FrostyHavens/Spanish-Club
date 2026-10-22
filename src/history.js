@@ -12,8 +12,13 @@
 //      events: one letter per retrieval, in order: P pick, R recall (word-only cards, a page match), S said aloud,
 //        L listen (the word understood in a spoken instruction with no picture: listen-and-do, src/listen.js, one per
 //        word per request) (capital: right on the first try; p, r, s, l: right after a miss), K a cued pick (it could be
-//        matched), E said right after hearing it (an echo), m a miss, C / c a grown-up's check right / wrong. (Up to
-//        H.EVMAX a word a day.) An L that comes first on a day the word is back after 1+ days counts for retention.
+//        matched; a page puzzle's forced last pair too), E said right after hearing it (an echo), m a miss, C / c a
+//        grown-up's check right / wrong, and RECALLED FROM MEMORY (2026-10, AUDIT 2.3 / 2.6; always first try):
+//        F said before any written cue (say-it-first: words.js answerRight {mode: 'say', recall: true, said: true}),
+//        V picked from picture-only cards with no written word on screen, on a later calendar day than the word was last
+//        met or used (answerRight {mode: 'pic', recall: true}; the same day it is a P). F, V and C (H.MEM) are the
+//        stages' evidence for solid (words.js). (Up to H.EVMAX a word a day.) An L that comes first on a day the word is
+//        back after 1+ days counts for retention.
 //   old: { days, s, rn, rr, pr, sp, cy, cn }   the folded days' totals (see stats below)
 //   pre: seconds of play before the history began (an older save's G.state.playTime)
 //   chk: { cur: {d, at, ids, r: [1 | 0 | null], i} | null, log: [{d, at, ids, r}] }   the grown-ups' word checks
@@ -29,7 +34,8 @@
 // API (G.hist, short H): (o.days: the last n calendar days including today; o.all: everything, the folded days too)
 //   H.state()                 the saved object          H.day(key?) a day's record (today's by default, made on demand)
 //   H.days()                  the kept days' keys, oldest first
-//   H.events(o)               [{day, n, word, kind: 'pick'|'recall'|'say'|'listen'|'miss'|'parent', first, ok, cued, echo, gap}]
+//   H.events(o)               [{day, n, word, kind: 'pick'|'recall'|'say'|'listen'|'miss'|'parent', first, ok, cued, echo,
+//                             mem (recalled from memory: F, V, C), gap}]   H.isMem(letter)
 //   H.stats(o)                {rn, rr (retention: first events after a day or more, right first try), pr (practice
 //                             events, the grown-ups' checks apart), sp (said aloud), cy, cn (checks right / wrong), s}
 //   H.retention(o)            {n, right, pct}  (pct null with no data)      H.retentionByDay(n) [{key, n, right, pct}]
@@ -49,7 +55,9 @@
   H.EVMAX = 60;         // events kept per word per day (a dog trick can be said fifty times...)
   H.IDLE = 180 * 60;    // frames without a touch or a key before play time stops counting (3 min)
   H.CHECK_N = 10;       // words in a grown-ups' check
-  H.KIND = { P: 'pick', p: 'pick', K: 'pick', R: 'recall', r: 'recall', S: 'say', s: 'say', E: 'say', L: 'listen', l: 'listen', m: 'miss', C: 'parent', c: 'parent' };
+  H.KIND = { P: 'pick', p: 'pick', K: 'pick', R: 'recall', r: 'recall', S: 'say', s: 'say', E: 'say', L: 'listen', l: 'listen', m: 'miss', C: 'parent', c: 'parent', F: 'say', V: 'recall' };
+  H.MEM = 'FVC'; // recalled from memory: said before any written cue, picked from pictures alone on a later day, a grown-up's check
+  H.isMem = c => !!c && c.length === 1 && H.MEM.indexOf(c) >= 0;
   const ADULT = ['GrownUps', 'LearningDash', 'MicTest', 'Controls', 'QuestLog', 'Backup', 'ProblemLog']; // grown-ups' screens: not play time
   const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
   const W = () => G.words, D = () => G.data;
@@ -131,7 +139,7 @@
   };
 
   // ---------- reading ----------
-  const CAP = c => c === 'P' || c === 'R' || c === 'S' || c === 'L' || c === 'C';
+  const CAP = c => c === 'P' || c === 'R' || c === 'S' || c === 'L' || c === 'C' || c === 'F' || c === 'V';
   // one day's numbers: rn / rr retention (each word's first event that day, after a day or more: was it right first
   // try? a cued pick or an echo is no test, and a check before it means it was just seen), pr practice (every event but
   // the grown-ups' checks), sp said aloud, cy / cn checks right / wrong, s seconds played
@@ -140,7 +148,7 @@
     for (const id in d.w) {
       const e = d.w[id]; if (!Array.isArray(e) || typeof e[1] !== 'string') continue;
       const ev = e[1], gap = e[0];
-      for (const c of ev) { if (c === 'C') o.cy++; else if (c === 'c') o.cn++; else { o.pr++; if (c === 'S' || c === 's' || c === 'E') o.sp++; } }
+      for (const c of ev) { if (c === 'C') o.cy++; else if (c === 'c') o.cn++; else { o.pr++; if (c === 'S' || c === 's' || c === 'E' || c === 'F') o.sp++; } }
       const c0 = ev[0];
       if (c0 && gap >= minGap && c0 !== 'C' && c0 !== 'c' && c0 !== 'K' && c0 !== 'E') { o.rn++; if (CAP(c0)) o.rr++; }
     }
@@ -180,7 +188,7 @@
       const key = keys(st()).find(k => st().d[k] === d);
       for (const id in d.w) {
         const e = d.w[id]; if (!Array.isArray(e) || typeof e[1] !== 'string') continue;
-        [...e[1]].forEach((c, i) => out.push({ day: key, n: d.n, word: id, kind: H.KIND[c], first: CAP(c) || c === 'K' || c === 'E', ok: c !== 'm' && c !== 'c', cued: c === 'K' || c === 'E', echo: c === 'E', gap: i ? 0 : e[0] }));
+        [...e[1]].forEach((c, i) => out.push({ day: key, n: d.n, word: id, kind: H.KIND[c], first: CAP(c) || c === 'K' || c === 'E', ok: c !== 'm' && c !== 'c', cued: c === 'K' || c === 'E', echo: c === 'E', mem: H.isMem(c), gap: i ? 0 : e[0] }));
       }
     }
     return out;
@@ -220,7 +228,7 @@
       for (const id in d.w) {
         if (!W().isPhrase(id)) continue;
         const e = d.w[id]; if (!Array.isArray(e) || typeof e[1] !== 'string') continue;
-        for (const c of e[1]) { if (c === 'S' || c === 's' || c === 'E') { out.said++; if (k === td) out.today++; } else if (c === 'P' || c === 'p') out.built++; }
+        for (const c of e[1]) { if (c === 'S' || c === 's' || c === 'E' || c === 'F') { out.said++; if (k === td) out.today++; } else if (c === 'P' || c === 'p') out.built++; }
       }
     }
     return out;

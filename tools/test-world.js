@@ -1,5 +1,5 @@
 // The open world (docs/WORLD_PLAN.md, src/zones.js): naming the dog and the {dog} fill, the skip path (go explore),
-// no word budget, every path walkable from Villa Sol to each zone's first map, the bus and the world map (fast travel,
+// no word budget for the story (review-first pacing for the open world: words.js), every path walkable from Villa Sol to each zone's first map, the bus and the world map (fast travel,
 // "?" places), the dog's spots, hide-and-seek in a zone, the album by zone (the Pokédex), save and load.
 // NODE_PATH=$(npm root -g) node tools/test-world.js [screenshot dir]
 'use strict';
@@ -98,10 +98,10 @@ async function budget(browser) {
     const r = await g.ev(() => {
       G.state.quests.c1 = 'done';
       for (const id of ['perro', 'guau', 'ven', 'gato', 'miau', 'buenosdias', 'hueso', 'sientate', 'si', 'no', 'manzana']) G.words.meet(id, 't'); // (11 met today, all only met)
-      return { c2: G.chapters.gate('c2'), today: G.chapters.newToday(), s1: G.chapters.stage1(), can: G.budget.canIntro(20), canHard: G.budget.canIntro(50, { hard: true }) };
+      return { c2: G.chapters.gate('c2'), today: G.chapters.newToday(), s1: G.chapters.stage1(), can: G.budget.canIntro(1), why: G.budget.why(), story: G.budget.canIntro(5, { story: true }) };
     });
     check('budget: 11 new words today, 10+ only met: the next chapter still opens (no "budget", "busy", "soon")', r.c2 === null && r.today >= 11 && r.s1 >= 10, JSON.stringify(r));
-    check('budget: G.budget.canIntro is always true (no daily word limit)', r.can && r.canHard);
+    check('budget: review-first pacing (words.js): past 8 new words today the open world\'s introductions wait; the story\'s chapters still introduce theirs', !r.can && r.why === 'cap' && r.story, JSON.stringify(r));
     check('budget: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
 }

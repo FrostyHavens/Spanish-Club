@@ -27,6 +27,10 @@
 // "Say it first" (learn.js G.sayFirst: a review question's picture and big mic alone, then the cards) is ON (Chromium
 // has a recognizer): drive() skips it like a child who doesn't talk (a tap off the mic, or Enter), then taps the answer;
 // to say it, a test answers the mic itself (tools/test-questions.js). A page puzzle's last pair joins by itself (drive waits).
+// Review-first pacing (src/words.js G.budget: in the open world new words wait while reviews are due, about 2-3 a day,
+// never more than 8 a calendar day; the story always introduces its own) is ON, the way she plays. A test that must meet
+// more of a zone's words in one day than that may turn it off: open(..., { openPacing: true }) (sparingly), or
+// OPEN_PACING=1.
 'use strict';
 const path = require('path'), fs = require('fs'), os = require('os');
 const { chromium } = require('playwright');
@@ -238,6 +242,7 @@ async function open(browser, name, touch, o = {}) {
   await page.addInitScript(on => { window.__warmupOff = !on; }, !!(o.warmup || process.env.WARMUP === '1')); // (the dog's warm-up: off unless asked)
   await page.addInitScript(on => { window.__phrasesOff = !on; }, !!(o.phrases || process.env.PHRASES === '1')); // (the phrases: off unless asked)
   await page.addInitScript(on => { window.__listenOff = !on; }, !!(o.listen || process.env.LISTEN === '1')); // (listen and do: off unless asked)
+  await page.addInitScript(on => { window.__openPacing = on; }, !!(o.openPacing || process.env.OPEN_PACING === '1')); // (review-first pacing: ON unless asked)
   await page.addInitScript(() => { // log which input event each speak() call runs in (speech must start inside a tap)
     window.__speak = [];
     const ss = window.speechSynthesis, sp = ss && ss.speak.bind(ss);

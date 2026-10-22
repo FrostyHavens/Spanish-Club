@@ -1,5 +1,5 @@
-// ===== The story in chapters: one path of 21 chapters (docs/CURRICULUM.md), each opening when the last is done and
-// today's new-word budget allows =====
+// ===== The story in chapters: one path of 21 chapters (docs/CURRICULUM.md), each opening when the last is done (and a
+// morning one only on a new morning) =====
 // The chapter table (title, giver, new words, badge) is content/es/words.js (G.data.chapters); each chapter's script is
 // registered by a content file (content/es/story-*.js) with G.chapters.script(id, beats, opts). A chapter is also a
 // quest (G.state.quests[id] = 'active' | 'done'), so Misiones, badges and S.done(id) work as for the older errands.
@@ -25,9 +25,11 @@
 //
 // Opening (gate(id) -> null when it may start, else why not):
 //   'prev'      the chapter before isn't done          'unwritten'  no script yet
-//   (there is no word budget any more (2026-10-17, the open world: docs/WORLD_PLAN.md): 'budget', 'soon' and 'busy'
-//    are gone; a review day is only an offer now: with 10+ words only met, Luna or Mamá has a notebook bubble and
-//    asks 5 of them (.needsReview(), .review(who)), but nothing waits for it)
+//   (there is no word budget for the story (2026-10-17, the open world: docs/WORLD_PLAN.md): 'budget', 'soon' and
+//    'busy' are gone; a review day is only an offer now: with 10+ words only met, Luna or Mamá has a notebook bubble and
+//    asks 5 of them (.needsReview(), .review(who)), but nothing waits for it. Review-first pacing (2026-10, words.js
+//    G.budget) holds back only the open world's new words: a beat's introductions always happen (G.budget.story() is
+//    true while a beat plays: .running()), in every line, Villa Sol's and the zones', and count toward the day)
 //   'morning'   a morning chapter opens only as the first chapter of a session (a new day, a night at home)
 //   'evening'   an evening chapter opens only in the evening at home (after C8 the sunset comes ~5 minutes later)
 //   (a chapter done whose line then waits for the morning, or has no more, is the day's story: after 6 minutes of
