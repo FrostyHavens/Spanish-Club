@@ -116,10 +116,10 @@ async function ipad(browser) {
     check('tap: the learning card asks "¡Dile a Canelo!" with picture cards and a mic', await g.ev(() => G.top().o.prompt === '¡Dile a Canelo!' && G.top().ch[G.top().o.answer].word === 'sientate' && !!G.top().mic));
     await g.shot('practice_question');
     await g.tapRect(await g.ev(() => G.top().rects()[G.top().o.answer]));
-    // (met in Mamá's lesson, known when said at the menu, remembered now: its word card picked without its picture)
-    await g.until(() => G.top().constructor.name === 'WordCard', null, 'the gold word card');
-    check('learned: the third good try remembers siéntate: the gold "¡Palabra de oro!" card', await g.ev(() => G.st.knows('sientate')));
-    await g.drive(() => G.pet.knows('sientate') && G.hearts.get('canelo') === 1 && G.top().constructor.name !== 'WordCard', 'siéntate learned');
+    // (met in Mamá's lesson today, known when said at the menu: picked now, the third good try. Its gold card waits: since
+    // Sprint 2 (words.js) gold needs a recall-type answer on a later calendar day than the word was met)
+    await g.drive(() => G.pet.knows('sientate') && G.hearts.get('canelo') === 1 && !['Choice', 'WordCard'].includes(G.top().constructor.name), 'siéntate learned');
+    check('learned: the third good try: siéntate known (stage 2); no gold card on the day it was met', await g.ev(() => G.st.stage('sientate') === 2 && !G.words.rec('sientate').gold));
     await g.frames(30); await g.shot('sit_learned');
     check('learned: 3 good tries -> Canelo knows siéntate, and a heart from Canelo', await g.ev(() => G.pet.knows('sientate') && !G.pet.learning() && G.hearts.get('canelo') === 1));
     await waitMenu(g);

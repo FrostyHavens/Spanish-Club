@@ -259,7 +259,9 @@ async function ask(browser) {
     check('ask: the frame alone ("tengo"): it lights up, "¿...?" over the empty slot, no miss', await g.ev(() => { const s = G.top(); return s.lit > 0 && s.ask > 0 && !s.result && !G.hist.day().w.flor; }));
     await g.frames(6); await still(g, 'frame_only');
     await say(g, 'tengo una manzana');
-    check('ask: a wrong word ("tengo una manzana" holding a flower): its card greys out, the answer\'s word a miss', await g.ev(() => { const s = G.top(); return s.off[1] && !s.result && G.hist.day().w.flor[1] === 'm'; }));
+    check('ask: a wrong word said ("tengo una manzana" holding a flower): "¡Otra vez!", nothing greyed, no miss (the recognizer never marks her wrong: S2 review #7)', await g.ev(() => { const s = G.top(); return s.mic.sad > 0 && !s.off[1] && !s.result && !G.hist.day().w.flor; }));
+    await g.tapRect(await g.ev(() => G.top().rects()[2]));
+    check('ask: a wrong word tapped: its card greys out, the answer\'s word a miss', await g.ev(() => { const s = G.top(); return s.off[1] && !s.result && G.hist.day().w.flor[1] === 'm'; }));
     await g.frames(6); await still(g, 'wrong_word');
     await say(g, 'tengo una flor');
     await g.until(() => window.__r !== undefined, null, 'Tengo to end');

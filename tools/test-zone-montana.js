@@ -16,7 +16,8 @@ const fresh = (g, o = {}) => g.ev(o => {
   Object.assign(G.state.flags, { opener: true, dogSkip: true, petStart: true, canelo: true, intro: true });
   G.words.meet('hola', 't'); if (!o.demo) G.demo.skip();
   if (o.visit !== false) { G.zones.visit('villa'); G.zones.visit('montana'); }
-  for (const w of o.words || []) G.words.meet(w, 't');
+  const y = new Date(G.now() - 864e5), ago = y.getFullYear() + '-' + (y.getMonth() + 1) + '-' + y.getDate(); // (words she knows came on an earlier day: today's new words, the pacing's, count only today's)
+  for (const w of o.words || []) { G.words.meet(w, 't'); Object.assign(G.words.rec(w), { mdate: ago, mdn: G.words.dayNum() - 1 }); }
   for (const q of o.done || []) G.state.quests[q] = 'done';
   if (o.lola !== false) G.state.world.lola = { met: true, montana: G.words.day() }; // (Lola said hello today: her bubble is done)
   G.goto(o.map || 'montana', o.x == null ? 12 : o.x, o.y == null ? 23 : o.y, 'down');
@@ -274,6 +275,14 @@ async function side(browser) {
     await idle(g);
     await g.ev(() => { G.abuelos.putOn(G.field, 'gorro'); });
     check('side: the sled and today\'s tracks have picture bubbles', await g.ev(() => ['sled', 'tracks'].every(id => { const s = G.montana.SIDE.find(s => s.id === id); return s.on() && s.icon(); })));
+    // "Salta dos veces" from the dog's card up here (src/listen.js L.doIt): her character jumps, the mountain's own drawing
+    // set aside meanwhile (S2 review #15: it put itself back every frame, and she stood still)
+    const mt = await g.ev(() => { const d = {}; G.montana.hook(d); window.__drawMT = d.drawSelf; window.__acts = []; G.field.tasks.add((function* () { yield* G.listen.doIt({ verb: 'act', thing: 'salta', n: 2 }); window.__doneAct = true; })()); return true; });
+    await g.until(() => !!G.field.player.act && G.frame - G.field.player.act.f0 > 6, null, 'the jump', 8000);
+    const mt1 = await g.ev(() => ({ k: G.field.player.act.k, mine: G.field.player.drawSelf === window.__drawMT }));
+    await g.until(() => window.__doneAct, null, 'the jumps done', 8000);
+    await g.frames(4);
+    check('side: "Salta dos veces" on the mountain: she jumps (the park\'s move draws her, not the mountain\'s pose); then the mountain\'s again', mt && mt1.k === 'salta' && !mt1.mine && await g.ev(() => G.field.player.drawSelf === window.__drawMT), JSON.stringify(mt1));
     const sl = await g.ev(() => G.MAPDATA.montana.pos.sled);
     await tapAt(g, sl[0], sl[1], sl[0], sl[1] + 1);
     await drv(g, () => !!G.field.player.sled && G.field.player.sled.y > 7 * 24, 'el trineo, then sledding down');

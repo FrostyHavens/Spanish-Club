@@ -59,7 +59,7 @@ const game = (g, o = {}) => g.ev(o => {
   for (const id of o.today || []) { const r = meet(id); Object.assign(r, { st: 2, fu: 0 }); }
   G.cards.grow = grow;
   window.__anims = []; const an = G.pet.anim; G.pet.anim = (n, k, a) => { window.__anims.push(k); return an(n, k, a); };
-  window.__starts = []; const st = G.warmup.start; G.warmup.start = (f, ids) => { window.__starts.push({ day: G.today(), running: !!G.chapters.running(), locked: !!(G.field && G.field.locked), ids: (ids || []).slice() }); return st(f, ids); };
+  window.__starts = []; const st = G.warmup.start; G.warmup.start = (f, ids, o) => { window.__starts.push({ day: G.today(), running: !!G.chapters.running(), locked: !!(G.field && G.field.locked), ids: (ids || []).slice(), res: o && o.res ? o.res.slice() : null }); return st(f, ids, o); };
   if (o.demoSkip) G.demo.skip();
   G.goto(o.map || 'villa', o.x || 22, o.y || 13, o.dir || 'down');
 }, o);
@@ -250,6 +250,7 @@ async function warmup(browser) {
   const { ctx, g } = await openWith(browser, 'learn-warmup', true, { warmup: true });
   try {
     await game(g, { words: WORDS, notDue: ['hola', 'pan', 'cama'], today: ['gato'] });
+    await g.ev(() => { G.sayFirst.n = G.sayFirst.EVERY - 1; }); // (casa, known: its "say it first" turn, 1 in 3)
     await g.until(() => !!G.warmup.cur(), null, 'the warm-up', 12000);
     const c0 = await cur(g);
     check('warm-up: the first time free on a new day, the dog\'s warm-up starts by itself', !!c0 && c0.phase === 'bring');
@@ -262,8 +263,9 @@ async function warmup(browser) {
     await still(g, 'wu_dropped');
     check('warm-up: he drops it at your feet: the card on the ground (and a skip button with two arrows)', true);
 
-    // the first card: casa (known): say it first (docs/AUDIT_2026-10.md 2.6): its picture held up with its question, the
-    // big mic right beside it and no cards yet (they come if she doesn't say it), the skip button
+    // the first card: casa (known), its turn to say it first (docs/AUDIT_2026-10.md 2.6; 1 in 3 for a known word): its
+    // picture held up with its question, the big mic right beside it and no cards yet (they come if she doesn't say it),
+    // the skip button
     await g.until(() => G.top().constructor.name === 'Choice' && G.top().o.warmup && G.top().t > 10, null, 'the first card');
     const q1 = await g.ev(() => { const s = G.top(); return { ans: s.ch[s.o.answer].word, show: s.o.show, big: s.big(), mic: s.mic && s.mic.o.rect(), say: !!s.say, prompt: s.o.prompt, skip: s.skip(), back: s.backXY(), n: s.ch.length, others: s.ch.filter((c, k) => k !== s.o.answer).map(c => c.word), met: s.ch.every(c => G.words.met(c.word)) }; });
     check('warm-up: a known word: say it first: its picture held up, "¿Qué es?", the big mic beside it, no cards yet', q1.ans === 'casa' && q1.show === 'casa' && q1.big && q1.mic && q1.mic.w >= 44 && q1.say && q1.prompt === '¿Qué es?', JSON.stringify(q1));
@@ -506,4 +508,27 @@ async function dashboard(browser) {
   } finally { await ctx.close(); }
 }
 
-run('Learning plan 2, Phase 1: measure and review', [['the learning history', history], ['slipping words', slipping], ['the dog\'s warm-up (iPad)', warmup], ['the warm-up across days: never during a beat, skipping, too few words (iPad)', warmupDays], ['the grown-ups\' Learning page (iPad)', dashboard]]);
+// the dog's warm-up and a map change in the middle of it (a bus ride): it goes on on the new map from the next card, and
+// a later day's comes as always (before, its scene went with the old map and no warm-up came again in that page session)
+async function warmupMove(browser) {
+  const { ctx, g } = await openWith(browser, 'learn-warmup3', true, { warmup: true });
+  try {
+    await game(g, { words: WORDS, notDue: ['hola', 'pan', 'cama'], today: ['gato'], demoSkip: true });
+    await g.until(() => !!G.warmup.cur(), null, 'the warm-up', 12000);
+    const ids = await g.ev(() => G.warmup.cur().ids.slice());
+    // the first card answered, the dog wagging: the map changes under it (the bus, a door)
+    await g.drive(() => { const c = G.warmup.cur(); if (c && c.res.length === 1 && c.phase === 'wag' && !window.__moved) { window.__moved = 1; G.goto('playa', 10, 3, 'down'); } return !!window.__moved; }, 'the first card answered');
+    await g.until(() => G.warmup.pending() || (!!G.warmup.cur() && G.warmup.cur().f === G.field), null, 'the warm-up to notice', 8000);
+    await g.until(() => !!G.warmup.cur() && G.warmup.cur().f === G.field && G.field.mapId === 'playa', null, 'the warm-up going on at the beach', 15000);
+    const c1 = await g.ev(() => { const c = G.warmup.cur(); return { ids: c.ids, res: c.res.slice(), starts: window.__starts.length, last: window.__starts[window.__starts.length - 1] }; });
+    check('warm-up: a map change in the middle (a bus ride): it goes on on the new map, from the next card (' + c1.ids.join(', ') + ')', c1.ids.join() === ids.join() && c1.res.join() === '1' && c1.starts === 2 && c1.last.res && c1.last.res.join() === '1', JSON.stringify(c1));
+    await g.drive(() => !G.warmup.cur() && G.top() === G.field && !G.field.locked, 'the rest of the warm-up');
+    check('warm-up: ...all its cards asked once, counted as one warm-up', await g.ev(n => { const w = G.hist.state().wu; return w.n === 1 && w.last.of === n && w.last.right === n; }, ids.length), await g.ev(() => JSON.stringify(G.hist.state().wu)));
+    await nextDay(g);
+    await g.until(() => !!G.warmup.cur(), null, 'the next day\'s warm-up', 15000).catch(() => {});
+    check('warm-up: ...and the next day\'s comes as always (nothing left holding it back)', await g.ev(() => window.__starts.length === 3 || G.warmup.wait(G.field) !== 'going'), await g.ev(() => JSON.stringify([window.__starts.length, G.warmup.wait(G.field)])));
+    check('warm-up (move): no console errors', !g.errors.length, g.errors.join('\n'));
+  } finally { await ctx.close(); }
+}
+
+run('Learning plan 2, Phase 1: measure and review', [['the learning history', history], ['slipping words', slipping], ['the dog\'s warm-up (iPad)', warmup], ['the warm-up across days: never during a beat, skipping, too few words (iPad)', warmupDays], ['the warm-up and a map change in the middle (iPad)', warmupMove], ['the grown-ups\' Learning page (iPad)', dashboard]]);

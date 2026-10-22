@@ -16,7 +16,8 @@ const fresh = (g, o = {}) => g.ev(o => {
   Object.assign(G.state.flags, { opener: true, dogSkip: true, petStart: true, canelo: true, intro: true });
   G.words.meet('hola', 't'); if (!o.demo) G.demo.skip();
   if (o.visit !== false) { G.zones.visit('villa'); G.zones.visit('abuelos'); }
-  for (const w of o.words || []) G.words.meet(w, 't');
+  const y = new Date(G.now() - 864e5), ago = y.getFullYear() + '-' + (y.getMonth() + 1) + '-' + y.getDate(); // (words she knows came on an earlier day: today's new words, the pacing's, count only today's)
+  for (const w of o.words || []) { G.words.meet(w, 't'); Object.assign(G.words.rec(w), { mdate: ago, mdn: G.words.dayNum() - 1 }); }
   for (const q of o.done || []) G.state.quests[q] = 'done';
   G.goto(o.map || 'abuelos', o.x == null ? 19 : o.x, o.y == null ? 12 : o.y, 'down');
 }, o);
@@ -259,6 +260,18 @@ async function dress(browser) {
     await tapNpc(g, 'abuelo', 1, 0);
     await drv(g, () => free() && G.words.met('chamarra'), 'the jacket');
     check('night: la chamarra met and on (green, over your shirt)', await g.ev(() => G.abuelos.wear().chamarra && G.field.player.spec.outfit === G.abuelos.wear().chamarra));
+    // (a busy night: the jacket is given and named but its word waits; the moment comes back a later night while its word
+    // is still unmet, once a day: S2 review #4, it used to be lost when the pacing's queue dropped it)
+    await g.ev(() => { const W = G.words, r = W.rec('chamarra'); r.st = 0; r.box = 0; G.state.abuelos.jacketD = null; window.__cap = G.budget.PACE.cap; G.budget.PACE.cap = 0; G.budget.unqueue('chamarra'); G.budget.flush(); });
+    check('night: (its word not met) Abuelo has his jacket in his bubble again', await g.ev(() => { const a = G.field.npc('abuelo').alert(); return a && a.icon === 'chamarra'; }));
+    await tapNpc(g, 'abuelo', 1, 0);
+    await drv(g, () => free() && G.state.abuelos.jacketD === G.words.day(), 'the jacket on a busy night');
+    check('night: a busy night: the jacket given and named, its word waiting (queued); no jacket bubble again tonight', await g.ev(() => !G.words.met('chamarra') && G.budget.queue().includes('chamarra') && (G.field.npc('abuelo').alert() || {}).icon !== 'chamarra'));
+    await g.ev(() => { G.budget.PACE.cap = window.__cap; G.words.newSession('night'); }); // (the next night: a new game day)
+    check('night: the next night, its word still unmet: the jacket bubble once more', await g.ev(() => { const a = G.field.npc('abuelo').alert(); return a && a.icon === 'chamarra'; }));
+    await tapNpc(g, 'abuelo', 1, 0);
+    await drv(g, () => free() && G.words.met('chamarra'), 'the jacket again');
+    check('night: ...and now, with room, la chamarra is met', await g.ev(() => G.words.met('chamarra')));
     await g.frames(20); await g.shot('jacket_night');
     await g.ev(() => { G.debug.sunsetAt = null; });
     check('dress: no console errors', !g.errors.length, g.errors.join('\n'));
@@ -333,6 +346,19 @@ async function side(browser) {
     await g.until(() => !!G.field.player.swing, null, 'swinging'); await g.frames(50); await g.shot('swing');
     await g.until(() => free() && !G.field.player.swing, null, 'the swing done');
     check('side: the swing in the orchard', await g.ev(() => G.abuelos.state().swings === 1));
+    // a busy day (no room for a new word, words.js pacing): el jitomate is only held up and named, ONCE, not at every bed
+    // (S2 review #5: the same deferred moment replayed at each pick); the basket game still plays to its end
+    await g.until(() => free(), null, 'the map free');
+    await g.ev(() => { window.__cap = G.budget.PACE.cap; G.budget.PACE.cap = 0; G.abuelos.state().garden.d = -1; window.__n0 = G.said.n; });
+    await goto(g, 'abuelos', 11, 15);
+    await tapNpc(g, 'abuelo', 1, 0);
+    await drv(g, () => free() && !!G.errands.bag.has('canastaverduras', { q: 'huerto' }), 'the basket (jitomate held up)');
+    await picks('jitomate');
+    await tapNpc(g, 'abuelo', 1, 0);
+    await drv(g, () => free() && G.abuelos.state().garden.done, 'the tomatoes to Abuelo');
+    const jt = await g.ev(() => ({ shown: G.saidSince(window.__n0).filter(l => /jitomate/.test(l) && /Mira/.test(l)).length, met: G.words.met('jitomate'), q: G.budget.queue().includes('jitomate'), done: G.abuelos.state().gardens }));
+    await g.ev(() => { G.budget.PACE.cap = window.__cap; });
+    check('garden: on a busy day el jitomate is held up and named once (not at every bed), waits in the queue, and the basket game ends (' + JSON.stringify(jt) + ')', jt.shown === 1 && !jt.met && jt.q && jt.done === 3, JSON.stringify(jt));
     check('side: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
 }

@@ -14,7 +14,8 @@ const fresh = (g, o = {}) => g.ev(o => {
   Object.assign(G.state.flags, { opener: true, dogSkip: true, petStart: true, canelo: true, intro: true });
   G.words.meet('hola', 't'); if (!o.demo) G.demo.skip();
   if (o.visit !== false) { G.zones.visit('villa'); G.zones.visit('juegos'); }
-  for (const w of o.words || []) G.words.meet(w, 't');
+  const y = new Date(G.now() - 864e5), ago = y.getFullYear() + '-' + (y.getMonth() + 1) + '-' + y.getDate(); // (words she knows came on an earlier day: today's new words, the pacing's, count only today's)
+  for (const w of o.words || []) { G.words.meet(w, 't'); Object.assign(G.words.rec(w), { mdate: ago, mdn: G.words.dayNum() - 1 }); }
   G.goto(o.map || 'juegos', o.x == null ? 20 : o.x, o.y == null ? 9 : o.y, 'down');
 }, o);
 const idle = (g, map = 'juegos') => g.fieldIdle(map);
@@ -253,6 +254,26 @@ async function side(browser) {
     await tapNpc(g, 'ana', 0, 1);
     await drv(g, () => free() && G.juegos.state().simon.done, 'Simón dice');
     check('side: Simón dice played', await g.ev(() => G.juegos.state().simons === 1));
+    // ---- a favour waiting once her games are done: tapping her runs it, never Simón dice again in its way (S2 review #9:
+    // the bubble stayed, the guide sent her back, and every tap played Simón dice) ----
+    await g.ev(() => { G.state.quests.c7 = 'done'; const d = G.words.day(); G.state.fav = { day: d, list: [{ who: 'ana', kind: 'thing', word: 'salta', done: false, on: false }], pal: d }; });
+    check('side: a favour of Ana\'s waiting: her bubble shows it, the guide points at her', await g.ev(() => { const a = G.field.npc('ana').alert(), gl = G.guide.goal(G.field); return !!a && a === G.favores.alert('ana') && !!gl && gl.why === 'favour ana'; }), await g.ev(() => JSON.stringify([G.field.npc('ana').alert(), (G.guide.goal(G.field) || {}).why])));
+    await tapNpc(g, 'ana', 0, 1);
+    await drv(g, () => free() && G.favores.today()[0].done, 'Ana\'s favour');
+    check('side: ...tapping her runs the favour (not Simón dice): done, the bubble gone', await g.ev(() => G.favores.today()[0].done && G.juegos.state().simons === 1 && !G.favores.alert('ana')));
+    // ---- the guide's net would have caught that dead end: a talk the arrow leads to that never touches the favour, twice
+    // (its lines different each time, as Simón dice's were) is set aside and logged (G.guide.loops: test-live fails on it) ----
+    await g.ev(() => { G.state.fav.list.push({ who: 'ana', kind: 'thing', word: 'corre', done: false, on: false }); const n = G.field.npc('ana'); window.__anaTalk = n.talk; n.talk = function* () { yield G.say([{ t: '¡Simón dice: ¡[' + ['salta', 'corre', 'gira'][G.r(3)] + ']! (' + G.frame + ')', en: 'Simon says!' }], { who: 'ana', portrait: G.portraitOf('ana'), name: 'Ana' }); }; G.guide.loops.length = 0; });
+    for (let i = 0; i < 2; i++) {
+      await g.until(() => free() && (G.guide.goal(G.field) || {}).why === 'favour ana' && G.guide.at, null, 'the arrow on Ana', 8000);
+      await g.frames(6);
+      await tapNpc(g, 'ana', 0, 1);
+      await g.until(() => G.field.locked || G.top() !== G.field, null, 'the talk', 8000);
+      await drv(g, () => free(), 'the talk that never does the favour');
+      await g.frames(6);
+    }
+    check('side: ...the guide\'s loop net logs it (a talk that changed nothing of the favour, twice) and sets that goal aside', await g.ev(() => G.guide.loops.some(l => l.kind === 'talk' && l.why === 'favour ana') && (G.guide.goal(G.field) || {}).why !== 'favour ana'), await g.ev(() => JSON.stringify(G.guide.loops)));
+    await g.ev(() => { G.field.npc('ana').talk = window.__anaTalk; G.state.fav.list.forEach(v => { v.done = true; }); G.guide.loops.length = 0; });
     // Pablo's ball (his chapters done: his bubble is the ball)
     await g.ev(() => { G.state.quests.juegos2 = 'done'; G.state.quests.juegos3 = 'done'; });
     check('side: Pablo has a ball in his bubble', await g.ev(() => { const a = G.field.npc('pablo').alert(); return a && a.icon === 'pelota'; }));

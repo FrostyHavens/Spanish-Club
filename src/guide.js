@@ -13,7 +13,8 @@
 // it's for; another place: the bus stop, src/connect.js; it waits while she's in a place she picked herself) > a zone's
 // task > Nico's hide-and-seek (only the edge arrow: the peeking ears are the game; the arrow over one after a long
 // wait) > a place she asked for on the world map > Canelo's
-// "?", Luna's palabra del día, Inés's pages, a side job, anyone else with a bubble > (the next chapter, then Tomás's
+// "?", Luna's palabra del día, Inés's pages, a side job, anyone else with a bubble > (while the next chapter waits for
+// room, chapters.js story pacing: someone here who hasn't said hello today, their greeting reviews a due word) > (the next chapter, then Tomás's
 // letter of the day, a letter that waited, exploring) > the day's play (src/carry.js, this part of the world first: what
 // you hold to whoever would love it, or Canelo; empty-handed, today's next play: fetch, an apple for Luna, a flower for
 // Mamá, the bone, an egg for Rosa, bread for the ducks, a page puzzle... and a game of fetch is always there). So there
@@ -169,6 +170,15 @@
   // (chapter 1 after "go explore" in the opener: the puppy's games at home are the very last suggestion, never a pull.
   // That's Villa Sol's own line only: in a zone, its story's next chapter is offered as usual, AUDIT C3)
   const puppyLater = () => { if (!G.state || !G.state.flags.dogSkip) return false; const L = G.chapters.live(); return !!L && L.id === 'c1' && !L.started; };
+  // story pacing (chapters.js CH.room): while a chapter waits for room and words are due, someone here who hasn't said
+  // hello today (their greeting asks a word that's due: the backlog comes down, then the story goes on)
+  function greetGoal(f) {
+    const CH = G.chapters, H = G.hearts, B = G.budget; if (!CH || !CH.waiting || !H || !B || !CH.waiting() || !B.backlog()) return null;
+    const p = f.player, d = n => Math.abs(n.x - p.x) + Math.abs(n.y - p.y);
+    const town = !G.zones || G.zones.of(f.mapId) === 'villa', greets = id => (H.ZONE[id] ? true : town && H.TOWN.includes(id)); // (whose talk here starts with their greeting: the town's in town, the zones' people and Lola anywhere)
+    const ns = f.npcs.filter(n => n.spec && !n.hidden && n.id !== 'canelo' && greets(n.id) && H.greetsWith(n.id) && !H.did(n.id, 'greet') && !alerting(n)).sort((a, b) => d(a) - d(b));
+    return ns.length ? { why: 'greet ' + ns[0].id, pts: [person(ns[0])] } : null;
+  }
   function chapterLater(f) { if (puppyLater()) return null; GD.laterChapter = true; try { return chapterGoal(f); } finally { GD.laterChapter = false; } }
   function puppyGoal(f) { if (!puppyLater()) return null; GD.laterChapter = true; try { return chapterGoal(f); } finally { GD.laterChapter = false; } }
   // the zone's own things: the dog's spot, ... (zones.js); the way to a place asked for on the world map, or not
@@ -188,7 +198,7 @@
   const postOffer = f => (G.post && G.post.offerGoal ? G.post.offerGoal(f) : null); // (Tomás's letter of the day: after the story's next chapter)
   // the night walk after the Hoy card (day.js): the arrow on the night animal she came to see, before anything else
   const nightWalk = f => (G.day && G.day.walkGoal ? G.day.walkGoal(f) : null);
-  const TIERS = [nightWalk, chapterGoal, sunsetGoal, favourGoal, postGoal, zoneTask, seekGoal, wantGoal, reviewGoal, zoneGoal, chapterLater, postOffer, postLater, exploreGoal, playGoal, puppyGoal];
+  const TIERS = [nightWalk, chapterGoal, sunsetGoal, favourGoal, postGoal, zoneTask, seekGoal, wantGoal, reviewGoal, greetGoal, zoneGoal, chapterLater, postOffer, postLater, exploreGoal, playGoal, puppyGoal];
 
   // on another map: the door that leads there (from town, its door; from a building, the way out)
   function viaDoor(f, g) {

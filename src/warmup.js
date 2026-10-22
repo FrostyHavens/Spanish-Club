@@ -33,6 +33,7 @@
 //   WU.size(d) the cards for d words due   WU.midWait(f) / WU.midPick(f) the mid-session moment's (why not; its words)
 //   WU.update(f) / WU.draw(f, ctx) (field.js, every frame)    WU.start(f, ids) start it now (tests, content)
 //   WU.cur() the one going on: {ids, i, phase: 'bring' | 'ask' | 'party', res: [1 | 0], skipped, mid} or null
+//   WU.pending() one whose map changed in the middle (a bus ride) waits to go on, from its next card, on this map
 //   WU.done() today's has come (done, skipped or too few words)   WU.skip() ends the one going on   WU.skipToday()
 //   WU.HOLDS.push(f => bool)   content holds it back while true (a zone's moment that mustn't be interrupted)
 //   WU.FORMS[topic] = function* (id, extra) { ... return true if right first try }   a topic's own way to ask a word
@@ -57,7 +58,7 @@
   WU.FORMS = {};
   WU.LD = '_ld';     // the card that is a listen-and-do request (src/listen.js), not a word
   const SKIP = [4, 4]; // the skip button (G.skipBtn), the same place on the map and over the questions
-  let cur = null, freeT = 0, sitting = 0, lastST = 0, stRef = null, midSit = -1, endedAt = null;
+  let cur = null, freeT = 0, sitting = 0, lastST = 0, stRef = null, midSit = -1, endedAt = null, pend = null;
   const wu = () => G.hist.state().wu;
   WU.off = () => !!((typeof window !== 'undefined' && window.__warmupOff) || (G.debug && G.debug.noWarmup));
   WU.done = () => !!G.state && wu().d === G.today();
@@ -144,6 +145,14 @@
     if (!G.state || !f) return;
     if (G.state !== stRef || (G.sessionTime || 0) < lastST - 1) { sitting++; stRef = G.state; endedAt = null; } // (a new sitting: a game opened, a new game, a new morning)
     lastST = G.sessionTime || 0;
+    if (cur && cur.f !== f && G.scenes.indexOf(cur.f) < 0) dropped(cur); // (its map was left in the middle: a bus ride)
+    if (pend && pend.state !== G.state) pend = null;
+    if (!cur && pend) { // ...it goes on here, from the card it was on, once this map is free
+      if (WU.off() || blocked(f)) { freeT = 0; return; }
+      if (++freeT < WU.SETTLE) return;
+      freeT = 0; const p = pend; pend = null; WU.start(f, p.ids, { mid: p.mid, res: p.res });
+      return;
+    }
     if (cur) {
       if (cur.f === f && cur.phase !== 'party' && cur.phase !== 'ask' && G.top() === f && G.skipHit(...SKIP)) { G.input.eat(); cur.skipped = true; G.audio.sfx('cancel'); }
       return;
@@ -161,12 +170,24 @@
     if (ids.filter(id => id !== WU.LD).length < WU.MIN) { const w = wu(); w.d = G.today(); w.none = (w.none | 0) + 1; G.st.autosave(); return; } // (the request alone never brings it)
     WU.start(f, ids);
   };
-  // o.mid: the mid-session moment (the day's warm-up has come already)
+  // a warm-up whose map went away in the middle (G.goto: the bus, a door): its scene went with it (no finally ran), so
+  // it would hold every later one back ('going'); the cards left go on on the new map once it's free (pend), or, all
+  // answered (or skipped), it's counted as it ended
+  function dropped(c) {
+    cur = null; freeT = 0;
+    if (c.state !== G.state) return;
+    if (c.skipped || c.res.length >= c.ids.length) { finish(c, !c.skipped); endedAt = G.sessionTime || 0; G.st.autosave(); return; }
+    pend = { ids: c.ids, res: c.res.slice(), mid: c.mid, state: G.state };
+  }
+  WU.pending = () => !!pend;
+  // o.mid: the mid-session moment (the day's warm-up has come already); o.res: the answers so far (one that goes on
+  // after its map changed: it starts at the next card)
   WU.start = function (f, ids, o = {}) {
     f = f || G.field; if (!G.state || !f || cur) return false;
     ids = (ids || (o.mid ? WU.midPick(f) : WU.pick(f))).filter(id => id === WU.LD || G.words.met(id)); if (!ids.length) return false;
     if (o.mid) midSit = sitting; else wu().d = G.today();
-    cur = { f, ids, i: -1, phase: 'bring', res: [], skipped: false, t0: G.frame, card: null, mid: !!o.mid };
+    const res = Array.isArray(o.res) ? o.res.slice(0, ids.length) : [];
+    cur = { f, ids, i: -1, i0: res.length, phase: 'bring', res, skipped: false, t0: G.frame, card: null, mid: !!o.mid, state: G.state };
     if (G.vocabLog) G.vlog.ev({ ty: o.mid ? 'warmup-mid' : 'warmup', ids });
     G.chapters.scene(f, run(f, cur));
     G.st.autosave();
@@ -195,8 +216,8 @@
       if (!c.skipped) yield* fetchCard(f, c, n);
       // 2. the cards, one by one; after every 3 questions he runs off and brings the next card (a moment on the map,
       // never a quiz chain)
-      for (let i = 0; i < c.ids.length && !c.skipped; i++) {
-        if (i > 0 && i % WU.BATCH === 0) yield* fetchCard(f, c, n);
+      for (let i = c.i0 | 0; i < c.ids.length && !c.skipped; i++) {
+        if (i > (c.i0 | 0) && (i - (c.i0 | 0)) % WU.BATCH === 0) yield* fetchCard(f, c, n);
         if (c.skipped) break;
         c.i = i; c.phase = 'ask';
         if (c.card) { const [x, y] = [c.card[0] - f.cam.x, c.card[1] - f.cam.y]; G.fx.burst(x, y - 4); G.audio.sfx('swing'); } // (the card jumps up into the question)

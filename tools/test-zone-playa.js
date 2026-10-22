@@ -14,7 +14,8 @@ const fresh = (g, o = {}) => g.ev(o => {
   Object.assign(G.state.flags, { opener: true, dogSkip: true, petStart: true, canelo: true, intro: true });
   G.words.meet('hola', 't'); if (!o.demo) G.demo.skip();
   if (o.visit !== false) { G.zones.visit('villa'); G.zones.visit('playa'); }
-  for (const w of o.words || []) G.words.meet(w, 't');
+  const y = new Date(G.now() - 864e5), ago = y.getFullYear() + '-' + (y.getMonth() + 1) + '-' + y.getDate(); // (words she knows came on an earlier day: today's new words, the pacing's, count only today's)
+  for (const w of o.words || []) { G.words.meet(w, 't'); Object.assign(G.words.rec(w), { mdate: ago, mdn: G.words.dayNum() - 1 }); }
   G.goto(o.map || 'playa', o.x == null ? 10 : o.x, o.y == null ? 4 : o.y, 'down');
 }, o);
 const idle = (g, map = 'playa') => g.fieldIdle(map);

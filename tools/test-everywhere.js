@@ -11,8 +11,12 @@
 //             "Dame" only for what can be held), every request checked with G.requests.check; the new templates are
 //             in G.requests.LINES (tools/test-spanish.js runs every word through them); a random wrong pick credits
 //             no word; the park's "Salta dos veces" / "Tócate la nariz" done by her character on the map
-//   phrases   a gold phrase's written pattern fades (stage 3 faint, stage 4 not written)
-//   NODE_PATH=$(npm root -g) node tools/test-everywhere.js [screenshot dir]     (ONLY=forest|here|warm|boards|phrases)
+//   phrases   a gold phrase's written pattern fades (stage 3 faint the day it turns gold, then not written)
+//   chains    a moment, not a quiz chain (S2 review #10-#14, #22): Lola's photo once a place a day, a deferred word's
+//             review never on top of one that person asked here today, no word asked again within a few minutes, a
+//             letter's drawing instead of the greeting's word, a photo favour's word re-picked once it was reviewed, its
+//             thank-you's English its own
+//   NODE_PATH=$(npm root -g) node tools/test-everywhere.js [screenshot dir]     (ONLY=forest|here|warm|boards|phrases|chains)
 'use strict';
 const { run, open, check } = require('./harness');
 
@@ -379,7 +383,87 @@ async function phrases(browser) {
   } finally { await ctx.close(); }
 }
 
+// =====================================================================
+//  A moment, not a quiz chain (S2 review #10-#14, #22): at most 3 questions in a talk, one review per person per place a
+//  day, no word asked twice within a few minutes
+// =====================================================================
+async function chains(browser) {
+  const { ctx, g } = await open(browser, 'ev-chains', true);
+  try {
+    await game(g, { words: WORDS(true), done: VILLA_DONE.concat(ZONES_DONE), visit: ['playa', 'bosque'], map: 'bosque', x: 18, y: 27 });
+    await g.fieldIdle('bosque');
+    await g.ev(() => { G.bosque.state().sort = { d: G.words.day(), done: true, round: 0, on: false, gone: {} }; G.state.fav = { day: G.words.day(), list: [], pal: G.words.day() }; G.hearts.mark('lola', 'greet'); delete G.state.world.lola.bosque; });
+    // ---- Lola: a photo on her first hello in a place each day, never on every tap (#10) ----
+    let k = await nq(g), s0 = await g.ev(() => window.__says.length);
+    await tapNpc(g, 'lola');
+    await g.drive(() => free() && G.zones.lolaTalked(G.field.mapId), 'Lola in the forest');
+    const a = (await qs(g, k)).filter(q => q.who === 'lola');
+    k = await nq(g); await g.ev(() => { window.__s0 = window.__says.length; });
+    await tapNpc(g, 'lola');
+    await g.drive(() => free() && window.__says.length > window.__s0, 'Lola again');
+    await g.frames(30);
+    const b = (await qs(g, k)).filter(q => q.who === 'lola');
+    check('chains: Lola\'s photo on her first hello here today (' + (a[0] && a[0].ans) + '), nothing asked when she\'s tapped again', a.length === 1 && BEACH.includes(a[0].ans) && !b.length, JSON.stringify([a, b]));
+    // ---- a deferred word's review never stacks on a review that person already asked here today (#13) ----
+    await g.ev(() => { window.__cap = G.budget.PACE.cap; G.budget.PACE.cap = 0; }); // (a day with no room for a new word)
+    k = await nq(g);
+    await g.ev(() => { G.chapters.scene(G.field, G.intro.show('mapache', { who: 'lola' })); });
+    await g.drive(() => free(), 'Lola holds up a raccoon');
+    const c = await qs(g, k);
+    k = await nq(g);
+    await g.ev(() => { G.chapters.scene(G.field, G.intro.show('zorro', { who: 'elena' })); });
+    await g.drive(() => free(), 'Elena holds up a fox');
+    const d = await qs(g, k);
+    k = await nq(g);
+    await g.ev(() => { G.chapters.scene(G.field, G.intro.show('buho', { who: 'elena' })); });
+    await g.drive(() => free(), 'Elena holds up an owl');
+    const e = await qs(g, k);
+    await g.ev(() => { G.budget.PACE.cap = window.__cap; });
+    check('chains: a busy day: the raccoon only held up and named (queued); no review after it from Lola, who asked one here today', !c.length && await g.ev(() => !G.words.met('mapache') && G.budget.queue().includes('mapache')), JSON.stringify(c));
+    check('chains: ...Elena\'s first deferred word: a review instead (' + (d[0] && d[0].ans) + '); her second: none (one review a person a place a day)', d.length === 1 && d[0].who === 'elena' && !e.length, JSON.stringify([d, e]));
+    // ---- no word asked again within a few minutes, even when it's due again (a miss: back in 90 s) ----
+    const r = await g.ev(() => {
+      const W = G.words, FV = G.favores, w = ['concha', 'cangrejo', 'tortuga', 'estrellamar', 'gaviota'].find(id => W.due(id) && G.review.fresh(id));
+      W.answerWrong(w); W.addTime(W.MISS + 10);
+      const soon = { due: W.due(w), pick: FV.dueWord({ filter: id => id === w, noFallback: true }), any: FV.dueWord({ noFallback: true }) };
+      W.addTime(G.review.REASK);
+      return { w, soon, later: FV.dueWord({ filter: id => id === w, noFallback: true }) };
+    });
+    check('chains: a word missed a moment ago is due again, but no greeting, photo or letter asks it for a few minutes (then they do)', r.soon.due && r.soon.pick === null && r.soon.any !== r.w && r.later === r.w, JSON.stringify(r));
+    // ---- a letter for Elena: the greeting asks no word of its own, the letter's drawing is the day's review (#11, #12) ----
+    await g.ev(() => { G.state.wm.rq = null; // (a new day for the reviews by person and place: Elena asked one above)
+      G.errands.bag.add('carta', { q: 'post', to: 'elena', from: 'paco' }); });
+    k = await nq(g); s0 = await g.ev(() => window.__says.length);
+    await tapNpc(g, 'elena');
+    await g.drive(() => free() && !(G.post.letter() && G.post.letter().to === 'elena'), 'the letter for Elena');
+    const f1 = (await qs(g, k)).filter(q => q.who === 'elena'), l1 = await g.ev(k => window.__says.slice(k).map(l => l.t), s0);
+    check('chains: a letter waiting for her: her greeting, then the letter\'s drawing (' + f1.map(q => q.ans).join(', ') + '): two questions, the greeting asks no word before it', f1.length === 2 && l1.some(t => /Un dibujo/.test(t)) && f1.length <= 3, JSON.stringify([f1, l1]));
+    // ---- a photo favour fixed in the morning on a word reviewed since: another word that's due (#14); its thank-you's
+    // English is its own (#22) ----
+    const fv = await g.ev(() => {
+      const W = G.words, said = [], asked = [], say0 = G.say, ask0 = G.review.ask;
+      const w0 = ['concha', 'cangrejo', 'tortuga', 'estrellamar', 'gaviota'].find(id => W.due(id) && G.review.fresh(id)); W.answerRight(w0, { mode: 'pic' }); // (reviewed: not due any more, used today)
+      const v = { who: 'elena', kind: 'thing', word: w0, done: false, on: false };
+      G.state.fav = { day: W.day(), list: [v], pal: W.day() };
+      G.say = pages => { (Array.isArray(pages) ? pages : [pages]).forEach(p => said.push(p)); return null; };
+      G.review.ask = function* (id) { asked.push(id); };
+      const go = gen => { let x = gen.next(), n = 0; while (!x.done && n++ < 40) x = gen.next(); };
+      const pairs = [];
+      try {
+        go(G.favores.KIND.thing(v));
+        for (let i = 0; i < 24; i++) { said.length = 0; go(G.favores.KIND.thing({ who: 'pepe', kind: 'thing', word: 'oso', done: false, on: false })); const p = said[said.length - 1]; pairs.push(p.t + ' = ' + p.en); }
+      } finally { G.say = say0; G.review.ask = ask0; }
+      return { w0, asked: asked[0], due: W.due(asked[0]), pairs: pairs.filter((p, i) => pairs.indexOf(p) === i) };
+    });
+    check('chains: a photo favour whose word was reviewed since the morning asks another word that\'s due (' + fv.w0 + ' -> ' + fv.asked + ')', fv.asked && fv.asked !== fv.w0 && fv.due, JSON.stringify(fv));
+    const EN = { '¡[gracias], {name}!': 'Thank you, {name}!', '¡Muy bien!': 'Very good!', '¡Eso es! ¡[gracias]!': 'That\'s it! Thank you!' };
+    check('chains: ...its thank-you: each Spanish line with its own English help (' + fv.pairs.join(' | ') + ')', fv.pairs.length >= 2 && fv.pairs.every(p => { const [t, en] = p.split(' = '); return EN[t] === en; }), fv.pairs.join(' | '));
+    check('chains: no console errors', !g.errors.length, g.errors.join('\n'));
+  } finally { await ctx.close(); }
+}
+
 const SECTIONS = [['forest: a beach word reviewed in the forest (iPad)', forest], ['here: nothing to bring that isn\'t here', here], ['warm-up: its size, the mid-session moment (iPad)', warm],
-  ['boards: one in every place, known words, grammar', boards], ['listen: no credit for a wrong pick; the park\'s verbs (iPad)', listenScene], ['phrases: the gold pattern fades (iPad)', phrases]];
+  ['boards: one in every place, known words, grammar', boards], ['listen: no credit for a wrong pick; the park\'s verbs (iPad)', listenScene], ['phrases: the gold pattern fades (iPad)', phrases],
+  ['chains: a moment, not a quiz chain (iPad)', chains]];
 const ONLY = process.env.ONLY;
 run('Reviews everywhere (polish plan 2.5, 2.10)', ONLY ? SECTIONS.filter(([n]) => n.startsWith(ONLY)) : SECTIONS);

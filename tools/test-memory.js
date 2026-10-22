@@ -366,6 +366,28 @@ async function story(browser) {
     const s = await g.ev(() => ({ can: window.__can, st: G.words.stage('pelota'), bl: G.budget.backlog(), today: G.budget.today(), open: G.budget.canIntro(1) }));
     check('story: with 8 reviews due, a chapter\'s beat still introduces its word (its puzzle, its card)', s.can && s.st === 1 && s.bl === 8, JSON.stringify(s));
     check('story: it counts toward the day; the open world still waits', s.today === 1 && !s.open, JSON.stringify(s));
+    // ---- story pacing (the open-world learning audit): a chapter NOT started yet waits for room (a backlog of 8 or
+    // fewer, 4 or fewer new items today); one started always goes on; the first chapters (c1-c3) never wait ----
+    const p = await g.ev(() => {
+      const CH = G.chapters, W = G.words, B = G.budget, f = G.field, out = {};
+      CH.add({ id: 'zt2', line: 'zt', title: 'Prueba 2', en: 'Test 2', giver: 'pepe', words: ['queso'], icon: 'queso' });
+      CH.script('zt2', [{ who: 'pepe', run: function* () { yield 1; } }, { who: 'pepe', run: function* () { yield 1; } }]);
+      const look = () => { B.flush(); const L = CH.lives().find(L => L.id === 'zt2'); return { bl: B.backlog(), today: B.today(), gate: CH.gate('zt2'), alert: !!CH.alert('pepe'), live: !!L, guide: (G.guide.goal(f) || {}).why || null }; };
+      out.room = look();
+      W.meet('naranja', 't'); Object.assign(W.rec('naranja'), { fu: 0, box: 2, due: null, ds: null, dc: W.dayNum() - 1 }); // (a 9th word due)
+      out.busy = look();
+      CH.EXEMPT.push('zt2'); out.exempt = CH.gate('zt2'); CH.EXEMPT.pop();
+      CH.PACED = false; out.off = CH.gate('zt2'); CH.PACED = true;
+      W.answerRight('naranja', { mode: 'pic' }); for (const id of ['queso', 'leche', 'huevo', 'uno', 'dos']) if (!W.met(id)) W.meet(id, 't'); // (the backlog down again, but five new things today)
+      out.today5 = look();
+      CH.start('zt2'); Object.assign(W.rec('casa'), { dc: W.dayNum() - 1 }); out.started = look(); // (started: it goes on, whatever the day)
+      return out;
+    });
+    check('story pacing: with room (' + p.room.bl + ' due, ' + p.room.today + ' new today) the next chapter is live, its giver has its bubble', p.room.gate === null && p.room.live && p.room.alert, JSON.stringify(p.room));
+    check('story pacing: a 9th word due: it waits ("room"): no bubble over its giver, not live, the guide passes it by (' + p.busy.guide + ')', p.busy.bl === 9 && p.busy.gate === 'room' && !p.busy.alert && !p.busy.live && !/zt2/.test(p.busy.guide || ''), JSON.stringify(p.busy));
+    check('story pacing: ...an exempt chapter (the first ones: c1-c3) never waits; the switch off (G.chapters.PACED, openPacing): never', p.exempt === null && p.off === null, JSON.stringify(p));
+    check('story pacing: 5 new things today: it waits too, whatever the backlog (' + p.today5.bl + ')', p.today5.today >= 5 && p.today5.gate === 'room' && !p.today5.alert, JSON.stringify(p.today5));
+    check('story pacing: a chapter already started always goes on (its beat live, its bubble)', p.started.gate === null && p.started.live && p.started.alert, JSON.stringify(p.started));
     noErrors(g, 'story');
   } finally { await ctx.close(); }
 }

@@ -31,6 +31,8 @@
 //    G.budget) holds back only the open world's new words: a beat's introductions always happen (G.budget.story() is
 //    true while a beat plays: .running()), in every line, Villa Sol's and the zones', and count toward the day)
 //   'morning'   a morning chapter opens only as the first chapter of a session (a new day, a night at home)
+//   'room'      story pacing: the review backlog or today's new items leave no room for a new chapter now (CH.room,
+//               below; CH.PACED, CH.EXEMPT): its giver shows nothing for it, the guide passes it by
 //   'evening'   an evening chapter opens only in the evening at home (after C8 the sunset comes ~5 minutes later)
 //   (a chapter done whose line then waits for the morning, or has no more, is the day's story: after 6 minutes of
 //    play the sun sets a minute later: G.day.storyDone)
@@ -120,10 +122,29 @@
     if (k > 0 && !CH.done(same[k - 1])) return 'prev';
     if (c.when === 'evening' && !o.evening) return 'evening';
     if (c.when === 'morning' && st().lastDoneSess === G.words.sess()) return 'morning';
-    // (no new-word budget any more, 2026-10-17: the world is open and play is never blocked by a daily word count;
-    // the teaching rules live inside the activities: one unknown at a time, used again soon after; docs/WORLD_PLAN.md)
+    // (the play itself is never blocked by a daily word count: the world is open; the teaching rules live inside the
+    // activities, docs/WORLD_PLAN.md. But a chapter brings several new words at once, so a NEW one waits for room:)
+    if (CH.paced() && !CH.EXEMPT.includes(id) && !CH.room()) return 'room';
     return null;
   };
+  // Story pacing (S2, the open-world learning audit: 70 of 77 new items came from chapters, the backlog grew every day):
+  // a chapter not started yet (Villa Sol's or a zone's) opens only when there's room: the review backlog (G.budget,
+  // words.js) is CH.PACE.backlog or fewer AND today's new items are CH.PACE.today or fewer. A chapter already started
+  // always finishes and always introduces its words, so a day brings about 4 + one chapter's words. While one waits
+  // ('room'), its giver has no story bubble and no "tomorrow" talk, and the guide doesn't point at it (it isn't live):
+  // the arrow goes to what brings the backlog down or is free play (the dog's cards, greetings and favours, the day's
+  // play). The first chapters that teach how to play (CH.EXEMPT: the opener's day and the first morning) never wait, nor
+  // does anything on the save's first play day (CH.firstDay: a new player who picks "¡A explorar!" finds a zone's first
+  // chapter, AUDIT C3); after that a zone whose first chapter waits still has Lola, its animals, the dog's spot.
+  // One switch: CH.PACED (on); off with G.budget's open() too (tools/harness.js open(..., {openPacing: true}),
+  // OPEN_PACING=1), for tests about a chapter's content.
+  CH.PACED = true;
+  CH.PACE = { backlog: 8, today: 4 };
+  CH.EXEMPT = ['c1', 'c2', 'c3'];
+  CH.paced = () => CH.PACED && !(G.budget && G.budget.open && G.budget.open());
+  CH.firstDay = () => { const m = G.words.wm(); return m.d0 != null && m.d0 >= G.words.dayNum(); }; // (the save's first play day: a new player is never held)
+  CH.room = () => !G.budget || !G.state || CH.firstDay() || (G.budget.backlog() <= CH.PACE.backlog && G.budget.today() <= CH.PACE.today);
+  CH.waiting = () => !!G.state && CH.paced() && CH.lines().some(l => !CH.current(l) && !!CH.next(l) && CH.gate(CH.next(l)) === 'room'); // (a chapter waits for room: guide.js)
   CH.ready = (id, o) => !CH.gate(id, o);
   // the older errands after chapter 10 (errands.js): one a day, on a day with room for new words
   CH.tailGate = () => !!G.state && CH.allWrittenDone() && CH.newToday() <= 3 && CH.newOnDate() <= 4 && CH.stage1() < CH.LIMITS.busy && st().tailDay !== G.words.day();
@@ -245,7 +266,7 @@
     for (const line of CH.lines()) {
       if (CH.current(line)) continue;
       const nx = CH.next(line), c = nx && CH.def(nx), g = nx && CH.gate(nx);
-      if (c && g && c.giver === who && scripts[nx] && g !== 'prev' && g !== 'soon') return g === 'evening' ? { icon: 'noche', wait: true, night: true } : { icon: 'dormir', wait: true, sleep: true };
+      if (c && g && c.giver === who && scripts[nx] && g !== 'prev' && g !== 'soon' && g !== 'room') return g === 'evening' ? { icon: 'noche', wait: true, night: true } : { icon: 'dormir', wait: true, sleep: true }; // (waiting for room: no bubble at all, their own things show)
     }
     return null;
   };
@@ -264,7 +285,7 @@
     for (const line of CH.lines()) {
       if (CH.current(line)) continue;
       const nx = CH.next(line), c = nx && CH.def(nx), g = nx && CH.gate(nx);
-      if (c && g && c.giver === who && scripts[nx] && g !== 'prev' && g !== 'soon') { yield* tomorrow(who, g); return true; }
+      if (c && g && c.giver === who && scripts[nx] && g !== 'prev' && g !== 'soon' && g !== 'room') { yield* tomorrow(who, g); return true; }
     }
     return false;
   };

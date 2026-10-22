@@ -95,10 +95,12 @@ async function touchRun(browser) {
 
     // the first try: no star for the child any more: the word's card pops up by the card picked, grows and flies into
     // the deck in the corner (cards.js); the star is still counted inside (the diploma)
-    // (adiós already known: its picture, pick its word -> remembered, and the gold card)
-    await g.ev(() => { G.words.meet('adios', 'test'); G.words.rec('adios').st = 2; });
+    // (adiós already known, met on an earlier day: its picture, pick its word among word-only cards -> remembered, and the
+    // gold card. Since Sprint 2 gold needs a later calendar day than the word was met, and a known word under its own
+    // picture gets picture + word cards unless the question asks for word-only ones, as Luna's palabra del día does)
+    await g.ev(() => { const W = G.words; W.meet('adios', 'test'); Object.assign(W.rec('adios'), { st: 2, mdn: W.dayNum() - 2, ld: W.dayNum() - 2 }); W.addTime(W.EXPOSE); });
     await g.until(() => !G.cards.busy(), null, 'quiet', 8000);
-    await ask(g, { prompt: '¿...?', show: 'adios', layout: 'cards', choices: cards('hola', 'adios', 'gracias'), answer: 1 });
+    await ask(g, { prompt: '¿...?', show: 'adios', layout: 'cards', display: 'text', choices: cards('hola', 'adios', 'gracias'), answer: 1 });
     await choiceUp(g);
     await g.ev(() => { window.__sfx.length = 0; });
     await g.tapRect(await g.ev(() => G.top().rects()[1]));

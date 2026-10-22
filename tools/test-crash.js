@@ -56,7 +56,8 @@ async function talks(browser) {
     // a talk that throws after its first line
     await g.ev(() => { const n = G.field.npc('mama'); n.alert = () => null; n.talk = function* () { yield G.say('¡Hola!'); throw new Error('test: a talk breaks'); }; });
     await talkToMama(g, () => G.top().constructor.name === 'TextBox');
-    await g.frames(30); await g.tap(160, 190); await g.frames(20); await g.tap(160, 190);
+    // (tap the line away, only while it's up: a tap at (160, 190) once the map is free is the front door, and she walks out)
+    await g.frames(30); for (let i = 0; i < 2 && await g.ev(() => G.top().constructor.name === 'TextBox'); i++) { await g.tap(160, 190); await g.frames(20); }
     await g.until(() => G.errlog.list().length >= 1, null, 'the error to be caught', 5000);
     check('talk: a talk that throws leaves the map free (not locked)', await g.ev(() => G.top() === G.field && !G.field.locked));
     check('talk: ...walking starts again, and the child walks', await g.ev(() => G.field.tasks.list.some(t => t.gen === G.field.walker)) && await walks(g));
