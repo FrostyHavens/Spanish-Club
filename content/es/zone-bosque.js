@@ -574,6 +574,7 @@
         ask: 'Mamá [oso:osa] es...', askEn: 'Mama bear is... (big or small?)', known: othersFor('grande', ['pequeno', 'oso', 'feliz']) });
       c.data.hug = G.frame; G.audio.jingle('item');
       yield 50;
+      if (G.pet && G.pet.mine()) { const d = CK.dog(f); G.pet.place(f, d); yield* G.pet.play('dance'); } // ({dog} wags and hops: the cub is home)
       yield* quiz('elena', '¿Y el osito?', 'And the little cub? How is it?', 'pequeno', ['grande', 'oso'], { show: cub });
       yield* quiz('elena', '¿Y su mamá?', 'And its mother?', 'grande', ['pequeno', 'oso'], { show: 'oso' });
       c.data.home = G.frame; yield 60;

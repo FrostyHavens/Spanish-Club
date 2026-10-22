@@ -195,6 +195,7 @@
     if (!b) return false;
     if (!CH.active(id)) CH.start(id);
     running = { id, k, f, s: G.state };
+    if (f) f.placeAsked = true; // (the story happened here: no "¿Dónde estás?" right after it, a 4th question in a row)
     let r;
     try { r = yield* b.run(f, CH.ctx(id), i); } finally { running = null; }
     if (r === false) { restage(f); return true; }

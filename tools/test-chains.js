@@ -1,18 +1,21 @@
 // Shorter quiz chains (docs/AUDIT_2026-10.md H8, Sprint 3 item 3.1): in the story, at most 3 questions in a row before
 // something happens on the map. Every chapter of every line (Villa Sol's 21, the zones' 3 each) is played on an
-// iPad page, following the guide's arrow like a child (tools/playflow.js when it shows nothing), with the phrases and
-// listen-and-do on (the live game; the dog's warm-up, a moment of its own, stays off), and every question is counted:
+// iPad page, going where the guide points like a child (G.guide.goal; tools/playflow.js when it shows nothing), with
+// the phrases and listen-and-do on (the live game; the dog's warm-up, a moment of its own, stays off), and every
+// question is counted:
 //   a question     G.ask (picture cards, sí / no, a new word's puzzle, a review), a phrase to say, a listen-and-do tray:
 //                  whatever counts toward a talk's questions (words.js G.review.asked)
 //   a map action   she taps the map (walks somewhere, talks to someone, picks up or gives a thing, finds something),
 //                  walks with the keys, someone walks 2+ tiles (the dog runs off, a friend comes over), the dog does
-//                  something (G.pet.play: sits, fetches, digs), a new map. (An animal hopping about by itself is no
-//                  map action: the fish jumps every few seconds; a story animal that comes over is her tap on it next)
+//                  something (G.pet.play: sits, fetches, digs), an animal of the story moves (a.go, a.follow: the hen
+//                  runs off, the rabbit trots into the paddock; an animal hopping about by itself doesn't count), a new map
 // The count goes back to 0 at each map action; it fails if any run of questions is longer than MAX (3), and prints the
-// longest run of each chapter (with its questions) so a chapter that is close to the limit shows up.
+// longest run of each chapter (with its questions) so a chapter that is close to the limit shows up. The chapters'
+// own content back to back: a morning chapter opens at once, the evening comes when one waits for it, and the next
+// chapter starts as soon as it may (its giver is where the arrow then goes).
 //   NODE_PATH=$(npm root -g) node tools/test-chains.js [screenshot dir]
 //   ONLY=villa,playa,bosque,juegos,abuelos,montana: some lines; FROM=c11 / UNTIL=c15: part of Villa Sol's;
-//   CHAINS_SPEED=n game frames per screen frame (default 3)
+//   CHAINS_SPEED=n game frames per screen frame (default 3); DBG=1 prints where it goes
 'use strict';
 const { run, open, check } = require('./harness');
 const { settle, nextTap, toward } = require('./playflow');
@@ -25,9 +28,15 @@ const INSTRUMENT = () => {
   const C = window.__chains = { run: [], runs: [], acts: 0 };
   const where = () => { const r = G.chapters.running && G.chapters.running(); return r ? r.id + '#' + r.k : 'free play'; };
   C.reset = why => { if (C.run.length) C.runs.push({ n: C.run.length, qs: C.run, then: why }); C.run = []; C.acts++; };
+  // an animal of the story set going (a.go: it trots somewhere; a.follow: it follows her): seen each frame, and at once
+  // before a question
+  // (and she herself on a ride the story starts: running with the kite, up the climbing frame, down the slide)
+  const scan = () => { const f = G.field; if (!f) return; const r = f.player && f.player.ride; if (r && r !== C.ride) C.reset('she rides'); C.ride = r; if (!f.zoo) return; for (const a of f.zoo.list) { if (a.go && a.go !== a.__cg) C.reset('animal ' + a.kind); if (a.follow && a.follow !== a.__cf) C.reset('animal ' + a.kind + ' follows'); a.__cg = a.go; a.__cf = a.follow; } };
+  (function tick() { try { scan(); } catch (e) { /* */ } requestAnimationFrame(tick); })();
   // a question (G.ask, a phrase, a listen tray: what counts toward a talk, words.js); its prompt from G.choose / the stack
   const asked = G.review.asked;
   G.review.asked = function () {
+    scan();
     const st = (new Error().stack || '').split('\n').slice(2, 4).join(' '), src = /phrases\.js/.test(st) ? 'phrase' : /listen\.js/.test(st) ? 'listen' : 'ask';
     C.run.push({ at: where(), src, p: src === 'ask' ? '' : src, f: G.frame });
     return asked.apply(this, arguments);
@@ -45,6 +54,7 @@ const INSTRUMENT = () => {
   const walkNpc = FP.walkNpc; FP.walkNpc = function (o, dirs) { if (String(dirs || '').replace(/[^udlr]/g, '').length >= 2) C.reset('walk ' + (o && o.id)); return walkNpc.apply(this, arguments); };
   const play = G.pet.play; G.pet.play = function (k) { C.reset('dog ' + k); return play.apply(this, arguments); };
   const go = G.goto; G.goto = function (m) { C.reset('map ' + m); return go.apply(this, arguments); };
+  const push = G.push; G.push = function (s) { const k = s && s.constructor && s.constructor.name; if (k === 'Night' || k === 'TodayCard') C.reset('night'); return push.apply(this, arguments); }; // (a new day: a new talk)
 };
 
 const freeNow = () => G.top() === G.field && !G.field.locked && G.fade.a === 0 && !G.field.player.moving && !G.field.route;

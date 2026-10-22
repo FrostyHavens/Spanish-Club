@@ -521,8 +521,9 @@
       c.data.wiggle = 'concha';
       yield* meetW('concha', { who: 'paco', prompt: '¡Y una [concha]!', en: 'And a seashell!', known: othersFor('concha', ['cangrejo', 'estrellamar']), show: shellPic('blanco') });
       c.data.wiggle = null;
+      if (G.pet && G.pet.mine()) { const d = CK.dog(f); G.pet.place(f, d); yield* G.pet.play('sniff'); G.pet.sound('whine'); } // ({dog} sniffs at the catch: the crab pinches his nose)
       // back to the sea: hear it, pick its picture
-      yield* ask('paco', '¿Y el [cangrejo]? ¡Al [mar]!', 'Back to the sea! Which one is the crab?', 'cangrejo', ['estrellamar', 'concha'], { pic: true });
+      yield* ask('paco', '¿Y el [cangrejo]? ¡Al [mar]!', 'Back to the sea! Which one is the crab? ({dog} got pinched!)', 'cangrejo', ['estrellamar', 'concha'], { pic: true });
       c.data.gone = { cangrejo: G.frame }; G.audio.sfx('swing'); yield 30;
       yield* ask('paco', '¿Y la [estrellamar]?', 'And the starfish? Which one?', 'estrellamar', ['concha', 'cangrejo'], { pic: true });
       c.data.gone.estrellamar = G.frame; G.audio.sfx('swing'); yield 30;

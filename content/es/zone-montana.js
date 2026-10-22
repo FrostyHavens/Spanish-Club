@@ -856,8 +856,6 @@
       yield* meetW('guantes', { who: 'lucho', prompt: '¡Y [guantes]!', en: 'And gloves (mittens) for your hands!', show: pic('guantes'), known: othersFor('guantes', ['gorro', 'bufanda', 'mano', 'zapatos']) });
       c.data.guantes = 1; yield* wearIt(f, 'guantes');
       yield AB.mirror();
-      yield* quiz('lucho', '¿Qué es?', 'What is this, that you\'re wearing? (say it!)', 'gorro', ['bufanda', 'guantes'], { show: pic('gorro') });
-      yield* quiz('lucho', '¿Y esto?', 'And this?', 'guantes', ['gorro', 'bufanda'], { show: pic('guantes') });
       CH.point(SNOWFIELD[0] * TL + 12, SNOWFIELD[1] * TL);
       try { yield* sayShow('lucho', 'nieve', T('¡Ahora sí! ¡A la [nieve]!', 'Now you\'re ready! Off you go into the snow!')); } finally { CH.point(null); }
     } },
@@ -866,6 +864,8 @@
       const dog = G.pet && G.pet.mine() ? CK.dog(f) : null;
       if (dog) { G.pet.place(f, dog); yield 8; yield* G.pet.play('spin'); for (let i = 0; i < 16; i++) puff('flake', dog.x * TL + 12 + (Math.random() - 0.5) * 20, dog.y * TL + 12, { vy: -1.4 - Math.random(), vx: (Math.random() - 0.5) * 2.6, g: 0.1, life: 34 }); CK.bark(f, dog); }
       for (let i = 0; i < 12; i++) puff('flake', p.x * TL + 12 + (Math.random() - 0.5) * 24, p.y * TL + 8, { vy: -1 - Math.random(), vx: (Math.random() - 0.5) * 2, g: 0.08, life: 36 });
+      yield* quiz('lucho', '¿Qué es?', 'What is this, that keeps you warm? (say it!)', 'gorro', ['bufanda', 'guantes'], { show: pic('gorro') });
+      yield* quiz('lucho', '¿Y esto?', 'And this?', 'guantes', ['gorro', 'bufanda'], { show: pic('guantes') });
       if (met('no') && met('si')) yield* quiz('lucho', '¿Y ahora? ¿Tienes [frio:frío]?', 'And now? Are you cold? (no!)', 'no', ['si'], {});
       CK.confetti(); G.audio.jingle('promote');
       yield* sayShow('lucho', { icon: 'gorro', col: (AB.wear() || {}).gorro || AB.FIRST.gorro }, T('¡Calientit{o/a}! ¡Qué bonit{o/a}!', 'Nice and warm! You look lovely. (Mateo, the weather boy, has an idea... and there\'s a sled at the top of the slope!)'));
