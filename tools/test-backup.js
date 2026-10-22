@@ -59,7 +59,7 @@ async function shareSheet(browser) {
     });
     await scene(g, 'GrownUps');
     const row = await g.ev(() => { const s = G.top(), k = s.rows().findIndex(r => r.id === 'backup'); return { k, r: s.rows()[k], rect: s.rowRect(k), first: s.rowRect(0), last: s.rowRect(s.rows().length - 1), n: s.rows().length, close: s.closeXY() }; });
-    check('backup: the grown-ups menu has Back up / restore and the Problem log, all rows fit (the close button clear of the first)', row.k >= 0 && row.r.right === 'no backup yet' && row.last.y + row.last.h <= 204 && row.n === 14 && row.close[1] + 20 <= row.first.y + (row.first.h >> 1) - 3, JSON.stringify(row));
+    check('backup: the grown-ups menu has Back up / restore and the Problem log, all rows fit (the close button clear of the first)', row.k >= 0 && row.r.right === 'no backup yet' && row.last.y + row.last.h <= 204 && row.n === 15 && row.close[1] + 20 <= row.first.y + (row.first.h >> 1) - 3, JSON.stringify(row));
     await g.frames(4); await g.shot('grownups');
     await g.tapRect(row.rect);
     await scene(g, 'Backup', 'the Back up / restore screen');
@@ -151,7 +151,7 @@ async function restoreFresh(browser) {
     check('restore: a fresh page has no games', await g.ev(() => !G.st.anySave()));
     await g.ev(() => G.grownUps({ title: true }));
     await scene(g, 'GrownUps');
-    check('restore: Back up / restore and the Problem log are in the menu on the title too', await g.ev(() => { const ids = G.top().rows().map(r => r.id); return ids.includes('backup') && ids.includes('problems') && ids.length === 11; }));
+    check('restore: Back up / restore and the Problem log are in the menu on the title too', await g.ev(() => { const ids = G.top().rows().map(r => r.id); return ids.includes('backup') && ids.includes('problems') && ids.includes('prompts') && ids.length === 12; })); // (12 with Speaking prompts, learn.js G.sayFirst)
     for (let n = 0; n < 20 && await g.ev(() => G.top().rows()[G.top().i].id !== 'backup'); n++) await g.press('ArrowDown');
     await g.press('Enter');
     await scene(g, 'Backup');

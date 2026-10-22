@@ -261,10 +261,11 @@ async function warmup(browser) {
     await still(g, 'wu_dropped');
     check('warm-up: he drops it at your feet: the card on the ground (and a skip button with two arrows)', true);
 
-    // the first card: casa (known): its picture held up, the big mic right beside it, word-only cards, the skip button
+    // the first card: casa (known): say it first (docs/AUDIT_2026-10.md 2.6): its picture held up with its question, the
+    // big mic right beside it and no cards yet (they come if she doesn't say it), the skip button
     await g.until(() => G.top().constructor.name === 'Choice' && G.top().o.warmup && G.top().t > 10, null, 'the first card');
-    const q1 = await g.ev(() => { const s = G.top(); return { ans: s.ch[s.o.answer].word, show: s.o.show, big: s.big(), mic: s.mic && s.mic.o.rect(), textOnly: s.ch.every((c, k) => !s.view(k).icon && !!s.view(k).label), skip: s.skip(), back: s.backXY(), n: s.ch.length, others: s.ch.filter((c, k) => k !== s.o.answer).map(c => c.word), met: s.ch.every(c => G.words.met(c.word)) }; });
-    check('warm-up: a known word: its picture held up, the big mic beside it, the cards show only words (recall; no picture gives it away)', q1.ans === 'casa' && q1.show === 'casa' && q1.big && q1.mic && q1.mic.w >= 44 && q1.textOnly, JSON.stringify(q1));
+    const q1 = await g.ev(() => { const s = G.top(); return { ans: s.ch[s.o.answer].word, show: s.o.show, big: s.big(), mic: s.mic && s.mic.o.rect(), say: !!s.say, prompt: s.o.prompt, skip: s.skip(), back: s.backXY(), n: s.ch.length, others: s.ch.filter((c, k) => k !== s.o.answer).map(c => c.word), met: s.ch.every(c => G.words.met(c.word)) }; });
+    check('warm-up: a known word: say it first: its picture held up, "¿Qué es?", the big mic beside it, no cards yet', q1.ans === 'casa' && q1.show === 'casa' && q1.big && q1.mic && q1.mic.w >= 44 && q1.say && q1.prompt === '¿Qué es?', JSON.stringify(q1));
     check('warm-up: ...two other met words, none sounding like it (no cama for casa: the mic hears them all)', q1.n === 3 && q1.met && q1.others.every(w => w !== 'cama'), JSON.stringify(q1.others));
     check('warm-up: ...and the skip button (a picture: two arrows), top left', q1.skip && q1.back[0] === 4 && q1.back[1] === 4);
     await g.until(() => G.demo.cur && G.demo.cur.kind === 'warmup' && G.demo.cur.i >= 1, null, 'the ghost hand on the mic', 8000);
@@ -279,10 +280,11 @@ async function warmup(browser) {
     check('warm-up: saying it answers it (a speaking star, its card grows the most)', await g.ev(() => G.st.saidCount('casa') === window.__said0 + 1) && await g.until(() => G.cards.log.some(l => l.id === 'casa' && l.how === 'say'), null, 'casa\'s card growing', 3000).then(() => true));
     await g.frames(10); await still(g, 'wu_q1_said');
 
-    // the second card: concha (only met): hear it and pick it (picture and word cards; the answer heard, not shown)
+    // the second card: concha (only met): hear it and pick its picture (picture-only cards: no written word to match the
+    // sound, docs/AUDIT_2026-10.md 2.7; the answer heard, not shown)
     await past(g, () => G.top().constructor.name === 'Choice' && G.top().o.warmup && G.top().t > 10 && G.warmup.cur().i === 1 && G.input.ready(), 'the second card');
-    const q2 = await g.ev(() => { const s = G.top(); return { ans: s.ch[s.o.answer].word, show: s.o.show || null, mask: s.o.mask, big: s.big(), both: s.ch.every((c, k) => !!s.view(k).icon && !!s.view(k).label) }; });
-    check('warm-up: a word only met: hear it, pick it (picture + word cards, the word heard: recognition)', q2.ans === 'concha' && !q2.show && q2.mask && q2.mask.includes('concha') && !q2.big && q2.both, JSON.stringify(q2));
+    const q2 = await g.ev(() => { const s = G.top(); return { ans: s.ch[s.o.answer].word, show: s.o.show || null, mask: s.o.mask, big: s.big(), say: !!s.say, pics: s.ch.every((c, k) => !!s.view(k).icon && !s.view(k).label) }; });
+    check('warm-up: a word only met: hear it, pick its picture (picture-only cards, the word heard: recognition; no say step)', q2.ans === 'concha' && !q2.show && q2.mask && q2.mask.includes('concha') && !q2.big && !q2.say && q2.pics, JSON.stringify(q2));
     await still(g, 'wu_q2');
     check('warm-up: the progress: one card per word, the first one done', await g.ev(() => G.warmup.cur().res.join() === '1'));
     await g.ev(() => { G.cards.log.length = 0; });

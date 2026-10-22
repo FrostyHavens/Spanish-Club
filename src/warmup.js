@@ -8,9 +8,14 @@
 // word (words.js) is met again instead (G.intro.again). The first time, a ghost hand shows the mic (demo.js 'warmup').
 // It waits for the story: never during a beat (CH.running), a find-it puzzle, the opener, the bus, a dog lost in a
 // chapter, the evening at home; with fewer than 2 words due it doesn't come (that day). The guide carries on after.
-//   The form, from the word's stage (the answer-card rules: learn.js Choice.view never lets pictures give it away):
-//     met (1)        hear it, pick it (its picture and word among two others: recognition, as for any met word)
-//     known and up   its picture held up: say it (the big mic) or pick its word (word-only cards: recall)
+//   The form, from the word's stage (G.intro.form; the answer-card rules: learn.js Choice.view never lets pictures give
+//   it away, and word-only cards wait for a word well known, docs/AUDIT_2026-10.md 2.7):
+//     met (1)        hear it, pick its picture (picture-only cards: recognition, as for any met word)
+//     known and up   say it first (G.sayFirst, every time here): its picture held up with the question for its kind of
+//                    word (¿Quién es?, ¿Qué hace?, ¿Cuántas hay?...: G.qform) and the big mic beside it, alone; said: a
+//                    recall; else the cards: its word among word-only ones (remembered+) or picture + word (known: a
+//                    reveal, a cued use). Without the mic (off, or "quiet"): known -> hear it, pick its picture;
+//                    remembered+ -> its picture, pick its word (recall)
 //
 // API (G.warmup, short WU):
 //   WU.wait(f) why it can't start now ('done', 'story', 'find', 'busy'... or null: it can)   WU.pick(f, n) the words
@@ -176,17 +181,21 @@
     if (Wd.isPhrase && Wd.isPhrase(id)) return !!(yield* G.phrase.warm(id, extra)); // (a phrase: say the whole thing to the dog)
     if (Wd.needsReintro(id)) return !!(yield* G.intro.again(id, { who: null, extra })); // (slipping: met again)
     if (WU.FORMS[wd.topic]) return !!(yield* WU.FORMS[wd.topic](id, extra));
-    // two other met words: the same topic first, never one that sounds like another card (the mic hears them all)
-    const alike = (a, b) => G.speech && G.speech.score ? Math.max(G.speech.score(G.baseForm(a), G.baseForm(b)), G.speech.score(G.baseForm(b), G.baseForm(a))) >= 0.6 : false;
+    // two other met words: the same topic first, never one that looks or sounds like another card (G.wordsAlike: the mic
+    // hears them all)
     const met = shuffle(Wd.list(1).filter(k => k !== id && G.iconDrawn(k) && G.baseForm(k) !== G.baseForm(id)));
     const pool = [];
     for (const k of met.filter(k => G.data.words[k].topic === wd.topic).concat(met.filter(k => G.data.words[k].topic !== wd.topic))) {
       if (pool.length >= 2) break;
-      if (![id].concat(pool).some(o => alike(o, k))) pool.push(k);
+      if (G.wordsApart([id].concat(pool, [k]))) pool.push(k);
     }
     const ch = G.wordChoices(id, [id].concat(pool), pool.length + 1);
-    const q = st <= 1 ? { prompt: '¿[' + id + ']?', en: 'Which one? (listen, then tap it)' }
-      : { prompt: '¿Qué es?', en: 'What is it? Say it (the big mic), or tap its word.', show: id, micBig: true };
+    // the form (G.intro.form: the question for its kind of word, no give-aways): known and up, with the mic -> say it
+    // first, every time (its picture, its question, the big mic beside it), then its cards; else heard -> its picture,
+    // or (remembered+, no mic) its picture -> its word
+    const q = G.intro.form(id, ch, { say: st >= 2 && G.sayFirst.want(id, { always: true }), recall: true });
+    if (q.show) q.micBig = true; else q.en = 'Which one? (listen, then tap it)';
+    if (q.sayFirst) q.sayEn = q.en + ' Say it (the big mic), or wait for the cards.';
     return !!(yield* G.ask(Object.assign({ choices: ch.choices, answer: ch.answer, layout: 'cards', review: true }, q, extra)));
   }
 

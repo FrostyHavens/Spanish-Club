@@ -19,18 +19,22 @@
 //   meet(id, how, o)  meet a word from a puzzle of your own (not a generator): the model and the small celebration
 //   note(ids, o) -> Wait  the small celebration for words just met: the word's new card pops up (cards.js: its picture,
 //        its blue word, a seed), says the word and flies into the deck; yield it to let the word be heard (~0.6 s)
-//   known(id, n) n met words to go with id in a one-unknown puzzle (another topic, stronger first)
+//   known(id, n) n met words to go with id in a one-unknown puzzle (another topic, stronger first; none alike)
+//   form(id, choices, o) a review question's form for the word's stage (below)
 //   again(id, {who, prompt, en, extra})  a SLIPPING word (words.js: missed 3 times) met again instead of the same
 //        question: it is held up and named like the first time, then a one-unknown puzzle (hear it, pick its picture
 //        among 2 known ones; a cued use: the next questions move it on). G.review.ask does it by itself for a
 //        slipping word not re-introduced yet (W.needsReintro), and so does the dog's warm-up (warmup.js).
 // Content checks G.budget.canIntro(n) before introducing (words.js) and defers when it's false ("¡Mañana!").
-// G.review.ask(id, {who, prompt, en, pool, layout}) one question for a met word, fit for its stage: met -> hear it
-//   (a speaker in the prompt) and pick among picture + word cards; known -> its picture, pick its word; remembered+
-//   -> its picture, say it or pick its word (the mic is on), or hear it and pick its picture. Counted as review.
+// G.review.ask(id, {who, prompt, en, pool, layout}) one question for a met word, fit for its stage (I.form): met or
+//   known -> hear it (a speaker in the prompt) and pick its picture among picture-only cards; remembered+ -> that, or its
+//   picture with the question for its kind of word (G.qform: ¿Quién es?, ¿Qué hace?, ¿De qué color es?, ¿Cuántas hay?...)
+//   and its word among word-only cards (none alike). One in three of them (stage 2+, the mic on, not "quiet") starts with
+//   "say it first" (G.sayFirst, learn.js): the picture and the big mic alone, then the cards. Counted as review.
 // Page puzzles (G.pages): a notebook page's sparkle on the map (maps.js `pages`) is a puzzle: 4 pictures of words from
 //   that page you've met, and their 4 words, shuffled; tap a picture and then its word (or drag the word onto it).
-//   Right: they join and the word is said; wrong: a wobble and "¡Casi!". All four: a star. (A page of three words, La huerta: three.) ready(page) (4+ met words,
+//   Right: they join and the word is said; wrong: a wobble and "¡Casi!". The last pair isn't asked (nothing left to
+//   choose): it joins by itself with a sparkle (a forced pair for the model). All four: a star. (A page of three words, La huerta: three.) ready(page) (4+ met words,
 //   not solved, or solved on an earlier day with 2+ of them due again), words(page), run(page) (yieldable), visible()
 //   (the notebook's pages: those with a met word).
 'use strict';
@@ -67,11 +71,12 @@
   I.meet = function (id, how, o = {}) { const fresh = Wd().meet(id, how || 'meet', o); if (fresh) I.note([id]); return fresh; };
 
   // ---------- picking the known words for a one-unknown puzzle ----------
+  // (never one that looks or sounds like it, or like another of them, while there are others: G.wordsAlike, learn.js)
   I.known = function (id, n = 2, o = {}) {
     const top = D().words[id] && D().words[id].topic, ex = o.exclude || [];
     const c = Wd().list(1).filter(k => k !== id && ex.indexOf(k) < 0 && G.iconDrawn(k) && G.baseForm(k) !== G.baseForm(id));
     const score = k => (D().words[k].topic === top ? 2 : 0) + (Wd().stage(k) >= 2 ? 0 : 1) + G.rand();
-    return c.sort((a, b) => score(a) - score(b)).slice(0, n);
+    return G.pickApart(id, c.sort((a, b) => score(a) - score(b)), n);
   };
   const ask = (id, o, choices, extra) => {
     const ch = shuffle(choices.slice());
@@ -184,17 +189,92 @@
     return out;
   };
 
+  // ---------- the right question for each kind of word (docs/AUDIT_2026-10.md 2.11) ----------
+  // Not "¿Qué es?" for everything: G.qform.of(id, o) -> {kind, t (the question), en (English help), show (the picture held
+  // up), thing (numbers: what is counted)}. By the word's topic (content/es/words.js) and its grammar:
+  //   thing     ¿Qué es?            things, food, places, the body, clothes, the weather's things
+  //   things    ¿Qué son?           a plural-only word (los ojos, los zapatos, las burbujas)
+  //   animal    ¿Quién es?          animals (as the album asks: src/album.js); person: ¿Quién es? (la abuela, el bebé);
+  //   people    ¿Quiénes son?       la familia
+  //   action    ¿Qué hace?          actions shown being done (corre, salta, busca: the command is also "he runs")
+  //   command   ¿Qué le dices?      the dog's commands that aren't "he does" (ven, siéntate, dame la pata)
+  //   like      ¿Qué le gusta hacer?  nadar (a verb as it is: "Le gusta nadar")
+  //   how       ¿Cómo va?           rápido, despacio;  quality: ¿Cómo es? (grande, pequeño, caliente: never "está caliente"
+  //                                 about a person);  weather: ¿Qué tiempo hace? (frío)
+  //   color     ¿De qué color es?   feel: ¿Cómo está? (bien, cansado, feliz, triste);  say: ¿Qué dice? (greetings,
+  //                                 phrases, animal sounds)
+  //   number    ¿Cuántos hay? / ¿Cuántas hay?  with a heap of a met thing to count (its gender: G.requests.o)
+  // Templates built from a word are in G.requests.LINES (tools/test-spanish.js runs every word through them): 'q.howmany'
+  // (the counted thing -> "¿Cuántas hay?") and 'q.ask' (a word -> its question).
+  const Q = G.qform = {};
+  Q.KINDS = {
+    thing: ['¿Qué es?', 'What is it?'], things: ['¿Qué son?', 'What are they?'], animal: ['¿Quién es?', 'Who is it?'],
+    person: ['¿Quién es?', 'Who is it?'], people: ['¿Quiénes son?', 'Who are they?'], action: ['¿Qué hace?', 'What are they doing?'],
+    command: ['¿Qué le dices?', 'What do you tell him?'], like: ['¿Qué le gusta hacer?', 'What do they like to do?'],
+    how: ['¿Cómo va?', 'How does it go?'], quality: ['¿Cómo es?', 'What is it like?'], weather: ['¿Qué tiempo hace?', 'What is the weather like?'],
+    color: ['¿De qué color es?', 'What colour is it?'], feel: ['¿Cómo está?', 'How do they feel?'], say: ['¿Qué dice?', 'What do they say?'],
+    number: [null, 'How many are there?'],
+  };
+  Q.OWN = { ven: 'command', sientate: 'command', pata: 'command', nadar: 'like', rapido: 'how', despacio: 'how', grande: 'quality', pequeno: 'quality', caliente: 'quality', frio: 'weather', familia: 'people' };
+  Q.kind = function (id) {
+    const w = D().words[id]; if (!w) return 'thing';
+    if (Q.OWN[id]) return Q.OWN[id];
+    const t = w.topic, n = G.requests.noun(id);
+    if (t === 'numeros' || w.n) return 'number';
+    if (t === 'colores') return 'color';
+    if (t === 'sentir') return 'feel';
+    if (t === 'saludos' || t === 'sonidos') return 'say';
+    if (!n) return 'action'; // (the park's actions and the dog's tricks: corre, salta, busca, gira)
+    if (t === 'familia') return 'person';
+    if (G.requests.animate(id)) return 'animal';
+    return n.plOnly ? 'things' : 'thing';
+  };
+  // what a number question counts: a met thing with its own picture that can be counted (uno: a masculine one, "uno"
+  // not "una"); none yet: stars
+  Q.thing = function (id) {
+    const ok = k => { const n = G.requests.noun(k); return !!n && !n.plOnly && !(D().mass || []).includes(k) && !G.requests.ONLY.includes(k) && G.iconDrawn(k) && ['thing', 'animal'].includes(Q.kind(k)) && (id !== 'uno' || n.g === 'm'); };
+    const L = Wd().list(1).filter(ok);
+    return L.length ? L[G.r(L.length)] : 'estrella';
+  };
+  Q.of = function (id, o = {}) {
+    const kind = Q.kind(id), K = Q.KINDS[kind];
+    if (kind === 'number') {
+      const thing = o.thing || Q.thing(id), w = D().words[thing], n = G.requests.numOf(id);
+      return { kind, t: L['q.howmany'](thing), en: K[1], show: { icon: w ? w.icon : thing, col: w && w.col, count: n }, thing };
+    }
+    return { kind, t: K[0], en: K[1], show: id };
+  };
+  L['q.howmany'] = id => '¿Cuánt' + G.requests.o(id, true) + ' hay?'; // ¿Cuántas hay? (manzanas) / ¿Cuántos hay? (huevos)
+  L['q.ask'] = id => Q.of(id).t;
+
+  // ---------- a review question's form, fit for the word's stage (G.review.ask, the dog's warm-up) ----------
+  // c: its choices (G.wordChoices); o.say: say it first (G.sayFirst.want); o.recall: a known-well word (stage 3+) asked
+  // from its picture (word-only cards) rather than heard (the warm-up without a mic). -> {prompt, en, show, display,
+  // sayFirst, sayEn, reveal}. No give-aways (docs/AUDIT_2026-10.md 2.7):
+  //   met, known (1-2)   heard (a speaker), picked among picture-only cards: the first review is picture-only
+  //   remembered+ (3+)   heard -> its picture, or (every other time) its picture held up with its question
+  //                      (¿Quién es?, ¿Qué hace?...) -> its word among word-only cards, none alike (else heard)
+  //   say it first       its picture held up with its question and the big mic alone; if it isn't said, the cards:
+  //                      word-only at 3+ (none alike), else picture + word (a reveal: a cued use)
+  I.form = function (id, c, o = {}) {
+    const st = Wd().stage(id), r = Wd().rec(id), K = Q.of(id), apart = G.wordsApart(c.choices.map(x => x.word));
+    const recall = st >= 3 && apart;
+    if (o.say) return { prompt: K.t, en: K.en, show: K.show, sayFirst: true, sayEn: K.en + ' Say it! (the mic)', display: recall ? 'text' : 'both', reveal: !recall };
+    if (recall && (o.recall || r.n % 2 === 0)) return { prompt: K.t, en: K.en, show: K.show, display: 'text' };
+    return { prompt: '¿[' + id + ']?', en: 'Which one? (listen)', display: 'pic' };
+  };
+
   // ---------- a review question for a word, fit for its stage ----------
+  // (its distractors: words of its topic first, then any met word; none looking or sounding like another card)
   G.review.ask = function* (id, o = {}) {
     const st = Wd().stage(id); if (st < 1) return false;
     if (Wd().needsReintro(id)) return yield* I.again(id, { who: o.who || null }); // (slipping: met again, not the same question)
     const top = D().words[id].topic, met = Wd().list(1).filter(k => k !== id && G.baseForm(k) !== G.baseForm(id));
-    let pool = o.pool || met.filter(k => D().words[k].topic === top);
-    if (pool.length < 2) pool = pool.concat(shuffle(met.filter(k => pool.indexOf(k) < 0)).slice(0, 2 - pool.length));
-    const c = G.wordChoices(id, [id].concat(pool), Math.min(3, pool.length + 1));
-    const r = Wd().rec(id), hear = st === 1 || (st >= 3 && (r.n % 2 === 1 || !(G.mic && G.mic.on())));
-    const q = hear ? { prompt: o.prompt || '¿[' + id + ']?', en: o.en || 'Which one? (listen)' } : { prompt: o.prompt || '¿Qué es?', en: o.en || 'What is it?', show: id };
-    return yield* G.ask(Object.assign(q, { choices: c.choices, answer: c.answer, layout: o.layout || 'cards', who: o.who || null, review: Wd().isOld(id) }));  // (a word met a minute ago, Canelo's "?": its first use, not a review)
+    const pool = o.pool || shuffle(met.filter(k => D().words[k].topic === top)).concat(shuffle(met.filter(k => D().words[k].topic !== top)));
+    const c = G.wordChoices(id, [id].concat(pool), Math.min(3, pool.length + 1), o.pool ? {} : { ordered: true });
+    const f = I.form(id, c, { say: G.sayFirst.want(id) });
+    if (o.prompt) Object.assign(f, { prompt: o.prompt, en: o.en || f.en });
+    return yield* G.ask(Object.assign(f, { choices: c.choices, answer: c.answer, layout: o.layout || 'cards', who: o.who || null, review: Wd().isOld(id) }));  // (a word met a minute ago, Canelo's "?": its first use, not a review)
   };
 
   // ---------- page puzzles ----------
@@ -207,6 +287,7 @@
   const ripe = w => { const r = Wd().rec(w); return !!r && r.st >= 2 && (r.ms < Wd().sess() || r.how === 'old' || r.how === 'learn'); };
   const need = id => Math.min(4, pageWords(id).length); // (a page of three words, La huerta: three to match)
   P.need = need;
+  P.AUTO = 22; // frames before the last pair joins by itself (P.lastForced: its word, for the tests)
   P.ready = function (id) {
     if (!G.state || !D().pages[id]) return false;
     const met = pageWords(id).filter(ripe); if (met.length < need(id)) return false;
@@ -250,19 +331,34 @@
     hintXY() { return null; } // never point at an answer
     tryPair(k, j) {
       const pid = this.pics[k], wid = this.words[j];
-      if (this.match[k]) return;
+      if (this.match[k] || this.auto) return;
       if (pid === wid) {
         this.match[k] = true; this.sel = null;
         const r = this.picRect(k); G.audio.sfx('chime'); G.fx.burst(r.x + r.w / 2, r.y + r.h / 2); G.speak(G.baseForm(pid));
         const first = !this.tried[pid];
         Wd().answerRight(pid, { mode: 'match', firstTry: first, review: true, noStar: true });
-        if (Object.keys(this.match).length === this.pics.length) { this.done = 1; G.audio.jingle('item'); G.fx.confetti(40, 200, 1, 20); G.fx.confetti(G.W - 40, 200, -1, 20); }
+        // one pair left: nothing to choose any more, so it isn't "answered": it joins by itself a moment later, with a
+        // little sparkle (docs/AUDIT_2026-10.md 2.7: no forced last pair)
+        const left = this.pics.map((p, i) => i).filter(i => !this.match[i]);
+        if (left.length === 1) this.auto = { k: left[0], t: 0 };
+        else if (!left.length) this.finish();
         return;
       }
       if (!this.tried[pid]) { this.tried[pid] = true; Wd().answerWrong(pid); }
       if (G.vocabLog) G.vlog('wrong', wid, { ans: pid, via: 'page' });
       this.miss = { pk: k, wj: j, t: 0 }; this.sel = null;
       G.audio.sfx('boop'); const r = this.picRect(k); G.fx.say('¡Casi!', r.x + r.w / 2, r.y - 6, '#ffd8a8');
+    }
+    finish() { this.done = 1; G.audio.jingle('item'); G.fx.confetti(40, 200, 1, 20); G.fx.confetti(G.W - 40, 200, -1, 20); }
+    // the last pair joining by itself: its word card glides up to its picture, sparkles, and the word is said. The model
+    // hears it as forced (words.js answerRight {forced}: it proves nothing, so it doesn't count as a recall)
+    autoJoin() {
+      const k = this.auto.k, pid = this.pics[k], r = this.picRect(k);
+      this.match[k] = true; this.auto = null; P.lastForced = pid;
+      G.audio.sfx('note'); G.speak(G.baseForm(pid));
+      for (let i = 0; i < 6; i++) G.fx.twinkle(r.x + 4 + Math.random() * (r.w - 8), r.y + 4 + Math.random() * (r.h + 20));
+      Wd().answerRight(pid, { mode: 'match', forced: true, firstTry: !this.tried[pid], review: true, noStar: true });
+      this.finish();
     }
     tapPic(k) {
       if (this.match[k]) return;
@@ -283,6 +379,7 @@
         return;
       }
       if (G.input.p('B') || G.closeHit(...this.closeXY())) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(false); return; }
+      if (this.auto) { if (++this.auto.t >= P.AUTO) this.autoJoin(); return; } // (the last pair joins by itself)
       const ptr = G.input.ptr;
       // dragging a word card onto a picture
       if (ptr.down && this.drag == null && ptr.held > 6) {
@@ -332,6 +429,7 @@
       this.words.forEach((id, j) => {
         let r = this.wordRect(j); const pk = this.pics.indexOf(id), ok = this.match[pk], sel = this.sel && this.sel.kind === 'word' && this.sel.k === j;
         if (this.drag === j) { const p = G.input.ptr; r = { x: p.x - r.w / 2, y: p.y - r.h / 2, w: r.w, h: r.h }; }
+        if (this.auto && this.auto.k === pk) { const p = this.picRect(pk), u = Math.min(1, this.auto.t / P.AUTO), e = u * u * (3 - 2 * u); r = { x: r.x + (p.x - 2 - r.x) * e, y: r.y + (p.y + 64 - r.y) * e, w: 64, h: r.h + (24 - r.h) * e }; } // (the last word gliding up to its picture)
         const dx = wob(this.miss, this.miss && this.miss.wj === j), bob = sel ? Math.round(Math.sin(this.t / 6) * 1.5) : 0;
         ctx.fillStyle = ok ? '#e8b830' : sel ? '#3a56c8' : '#5a3810'; ctx.fillRect(r.x - 1 + dx, r.y - 1 - bob, r.w + 2, r.h + 2);
         ctx.fillStyle = ok ? '#fff4c8' : sel ? '#dce4ff' : '#ffffff'; ctx.fillRect(r.x + dx, r.y - bob, r.w, r.h);

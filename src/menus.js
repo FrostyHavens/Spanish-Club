@@ -337,7 +337,9 @@
   // game caught and got past), back to title. Nothing to save by hand: volumes, the voice, English help, the D-pad and
   // speaking are kept per device (G.prefs), and the game saves itself.
   // Up/down picks a row, left/right moves a volume, A changes the others; tap a row, tap or drag along a volume bar.
-  // More than 12 rows (in a game) are 13 px tall from y 22, so all of them fit above the help line.
+  // More than 12 rows (in a game) are 13 px tall from y 22 (more than 14: 12 px), so all of them fit above the help line.
+  // Speaking prompts: "on" (a review question can start with "say it first": the picture and the big mic alone, then the
+  // cards; learn.js G.sayFirst) or "quiet" (never; the mic buttons stay): G.prefs.sayFirst (false = quiet), per device.
   const ROW_H = 15, ROW_Y = 24, BAR = 168, CELL = 12; // volume bars: 10 cells from x = BAR; the speaker just left of it = 0
   class GrownUps {
     constructor(w, o) { this.transparent = true; this.w = w; this.o = o || {}; this.t = 0; this.i = 0; this.drag = null; this.tick = 0; this.n = this.rows().length; }
@@ -352,6 +354,9 @@
         { id: 'dpad', label: 'On-screen buttons', on: !!G.prefs.dpad, help: 'Arrows and A B C on the screen. Taps work without.' },
         G.speech.supported() ? { id: 'speak', label: 'Speaking (mic)', on: G.prefs.mic !== false, help: (G.mic.errors.length ? 'Last mic problem: ' + G.mic.errors[G.mic.errors.length - 1].error + '. ' : '') + 'Saying a word out loud grows its card the most. Taps always work.' }
           : { id: 'speak', label: 'Speaking (mic)', right: 'not available', off: true, help: 'No speech recognition here. iPad: Safari + Dictation on.' },
+        // "say it first" (learn.js G.sayFirst): on, or quiet (no say-it-first step anywhere; the mic buttons stay)
+        G.speech.supported() && G.prefs.mic !== false ? { id: 'prompts', label: 'Speaking prompts', right: G.prefs.sayFirst === false ? 'quiet' : 'on', help: G.prefs.sayFirst === false ? 'Quiet: no say-it-first step. Mic buttons stay.' : 'Say it first: picture + mic (4 s), then cards.' }
+          : { id: 'prompts', label: 'Speaking prompts', right: G.speech.supported() ? 'mic off' : 'not available', off: true, help: 'Needs Speaking (mic) on.' },
         { id: 'mic', label: 'Microphone test', right: mic ? '>' : 'not available', off: !mic, help: mic ? 'Does speech recognition hear Spanish words?' : 'The microphone test is not in this version.' },
         { id: 'help', label: 'Controls and tips', right: '>', help: 'The keys, and how the game teaches.' },
       ];
@@ -365,7 +370,7 @@
       return R;
     }
     // tap areas (shared with draw): row k, its volume bar (with the speaker = 0 and the number), close
-    rowRect(k) { const big = this.n <= 12, h = big ? ROW_H : 13; return { x: 10, y: (big ? ROW_Y : 22) + k * h, w: G.W - 20, h }; }
+    rowRect(k) { const big = this.n <= 12, h = big ? ROW_H : this.n <= 14 ? 13 : 12; return { x: 10, y: (big ? ROW_Y : 22) + k * h, w: G.W - 20, h }; }
     barRect(k) { const r = this.rowRect(k); return { x: BAR - 18, y: r.y, w: r.x + r.w - (BAR - 18), h: r.h }; }
     level(x) { return x < BAR ? 0 : Math.min(10, Math.floor((x - BAR) / CELL) + 1); }
     closeXY() { return [G.W - 30, this.n > 12 ? 4 : 8]; } // (more than 12 rows: the window starts higher, clear of the first row)
@@ -410,6 +415,10 @@
       else if (r.id === 'speak') {
         if (r.off) { G.audio.sfx('error'); return; }
         G.audio.setPref('mic', !r.on); G.audio.sfx('ok');
+      }
+      else if (r.id === 'prompts') {
+        if (r.off) { G.audio.sfx('error'); return; }
+        G.audio.setPref('sayFirst', G.prefs.sayFirst === false); G.audio.sfx('ok'); // (on <-> quiet, per device)
       }
       else if (r.id === 'mic') {
         if (r.off) { G.audio.sfx('error'); return; }

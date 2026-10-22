@@ -107,7 +107,69 @@
   // opts.micBig (with opts.show): a big mic right beside the picture held up, the first thing to try (the dog's warm-up,
   // warmup.js). opts.cancel: a way out (a back button; opts.cancelIcon 'skip': the big skip button, G.skipBtn), and
   // opts.onCancel() hears about it. opts.drawExtra(ctx, scene): more to draw over the question (the warm-up's cards).
+  // opts.sayFirst (with opts.show and a word answer; G.sayFirst below): first only the picture and the big mic, pulsing,
+  // for about 4 s (opts.sayEn: the English help meanwhile); said right: answered (scene.said1), else the cards appear.
+  // opts.reveal: the cards keep their pictures under the answer's own picture (a word not known well enough for word-only
+  // cards: picture + word, a matching reveal, so G.ask counts the tap as a cued use, never as a recall).
+  // No give-aways (docs/AUDIT_2026-10.md 2.7): every card of a question writes its word at the same size and, until it
+  // is answered, in the same colour (a short word drawn twice as big, or the one gold word among blue ones, would point
+  // at the answer).
   const GOLD = '#f8d860', BLUE = '#a8d8ff';
+
+  // ---------- "Say it first" (docs/AUDIT_2026-10.md 2.6): the picture and a big mic alone, then the cards ----------
+  // A review question for a word she knows (stage 2+) can start with only its picture and a big pulsing mic, the question
+  // spoken, for about 4 s (SF.WAIT): she taps the mic and says it (the recognizer starts inside that tap, mic.js). Heard
+  // right: a big celebration, and the answer is a recall said before any written cue (words.js answerRight {mode: 'say',
+  // recall, said}). Anything else (another word, nothing, an error), no tap on the mic, or a tap anywhere else: the cards
+  // simply appear (no "wrong", no sad sound, no miss) and she answers by tapping as always. The recognizer may reward,
+  // never judge (speech recognition is unreliable for a child's voice).
+  //   SF.on()          the mic can listen (G.mic.on: supported, "Speaking (mic)" on) and the grown-ups' "Speaking prompts"
+  //                    isn't "quiet" (G.prefs.sayFirst === false, per device; the other mic buttons stay)
+  //   SF.can(id)       a word it can be asked for: known (stage 2+), with its picture, not waiting to be met again
+  //   SF.want(id, o)   should this review question start with it? One in SF.EVERY eligible review questions (the third,
+  //                    the sixth...: a chain of questions isn't slowed at every step), never a word already asked this way
+  //                    today; o.always (the dog's warm-up, its say step): every time it can
+  //   SF.mark(key) SF.doneToday(key)  today's, in memory (a reload starts again); the album's "¿Quién es?" uses 'album:' + id
+  //   SF.n             eligible review questions since the last one (tests set it)   SF.reset()
+  const SF = G.sayFirst = { EVERY: 3, WAIT: 240, n: 0 };
+  let sfDay = { key: '', ids: {} };
+  const sfBook = () => { const k = G.today() + '|' + (G.st && G.st.slot); if (sfDay.key !== k) sfDay = { key: k, ids: {} }; return sfDay.ids; };
+  SF.quiet = () => !!(G.prefs && G.prefs.sayFirst === false);
+  SF.on = () => !SF.quiet() && !!(G.mic && G.mic.on());
+  SF.can = id => SF.on() && !!D().words[id] && S().stage(id) >= 2 && G.iconDrawn(id) && !(G.words.needsReintro && G.words.needsReintro(id));
+  SF.mark = key => { sfBook()[key] = 1; };
+  SF.doneToday = key => !!sfBook()[key];
+  SF.reset = () => { SF.n = 0; sfDay = { key: '', ids: {} }; };
+  SF.want = function (id, o = {}) {
+    if (!SF.can(id)) return false;
+    if (o.always) return true;
+    if (SF.doneToday(id)) return false;
+    if (++SF.n < SF.EVERY) return false;
+    SF.n = 0; return true;
+  };
+
+  // ---------- words that look or sound alike (abuela / abuelo, gato / pato, casa / cama): never side by side ----------
+  // Alike: the written forms (article, accents and ¿¡ aside) are within 2 edits, share a stem (their first 4 letters:
+  // abuel-, gall-, mari-), or sound alike to the mic (G.speech.score 0.6+: the mic hears every card). G.wordsApart(ids):
+  // no two of them alike. G.pickApart(answer, candidates, n): up to n of the candidates, in order, apart from the answer
+  // and from each other (then, if too few, the rest in order).
+  const plainForm = id => G.speech.norm(G.baseForm(id)).replace(/^(el|la|los|las|un|una) /, '');
+  G.wordsAlike = function (a, b) {
+    if (a === b) return true;
+    const x = plainForm(a), y = plainForm(b); if (!x || !y) return false;
+    if (x === y || G.speech.lev(x, y) <= 2) return true;
+    let p = 0; while (p < x.length && p < y.length && x[p] === y[p]) p++;
+    if (p >= 4) return true;
+    const A = G.baseForm(a), B = G.baseForm(b);
+    return Math.max(G.speech.score(A, B), G.speech.score(B, A)) >= 0.6;
+  };
+  G.wordsApart = ids => ids.every((a, i) => ids.every((b, j) => j <= i || !G.wordsAlike(a, b)));
+  G.pickApart = function (answerId, cands, n) {
+    const out = [];
+    for (const id of cands) { if (out.length >= n) break; if (id !== answerId && !out.includes(id) && G.wordsApart([answerId].concat(out, [id]))) out.push(id); }
+    for (const id of cands) { if (out.length >= n) break; if (id !== answerId && !out.includes(id)) out.push(id); }
+    return out;
+  };
   function view(c, disp, isAns) {
     const W = D().words[c.word] && c.img ? c.img : D().words[c.word]; // (c.img: a picture of its own, e.g. the red ball for rojo)
     if (!W) return { label: c.label, icon: c.icon, col: '#ffffff' };
@@ -128,7 +190,11 @@
       this.ch = opts.choices; this.cards = opts.layout === 'cards'; this.disp = opts.display || null;
       // (opts.mic: a free choice, no right answer, like the shops in errands.js: saying any choice picks it, with a star)
       const word = (opts.answer != null && opts.onWrong && !opts.noMic && this.ch[opts.answer] && this.ch[opts.answer].word) || (opts.mic && opts.answer == null && this.ch.some(c => c.word));
-      this.mic = word && G.mic && G.mic.on() ? new G.MicBtn(this, { rect: () => this.micRect(), ready: () => !this.won && this.t > 8 && (!this.miss || this.miss.t > 8), heard: a => this.heard(a) }) : null;
+      this.mic = word && G.mic && G.mic.on() ? new G.MicBtn(this, { rect: () => this.micRect(), ready: () => !this.won && this.t > 8 && (!this.miss || this.miss.t > 8), heard: a => this.heard(a), nohear: () => { if (!this.say) return false; this.reveal('nohear'); return true; } }) : null;
+      // say it first: only the picture and the big mic for now (G.sayFirst); the cards come after
+      const aw = opts.answer != null && this.ch[opts.answer] && this.ch[opts.answer].word;
+      this.say = opts.sayFirst && aw && opts.show && this.mic && SF.on() ? { t: 0 } : null;
+      if (this.say) SF.mark(aw);
       while (this.ch[this.i] && this.ch[this.i].off) this.i++;
       if (G.vocabLog) this.vlog(); // (the dev-only log, vocablog.js)
       G.richIds(opts.prompt || '').forEach(id => S().see(id)); // (met words met again; unmet ones stay unmet)
@@ -164,7 +230,7 @@
         // the answer's own picture above the prompt (or drawn in it): picture cards would be a matching game
         const sh = this.o.show, pic = w => w && (w === aw || w === a.word || (typeof w === 'string' && (D().words[w] === aw || w === (aw && aw.icon))));
         const shown = !!aw && (pic(sh) || (sh && typeof sh === 'object' && pic(sh.icon)) || (this.lines || []).some(L => L.items.some(it => it.id === a.word && G.lookHasPic(it.look))));
-        this.textOnly = this.o.answer != null && (shown || (vs.some((v, i) => this.ch[i].word && v.label && !v.icon) && vs.some((v, i) => this.ch[i].word && v.icon)));
+        this.textOnly = this.o.answer != null && !this.o.reveal && (shown || (vs.some((v, i) => this.ch[i].word && v.label && !v.icon) && vs.some((v, i) => this.ch[i].word && v.icon))); // (o.reveal: a cued matching reveal, G.ask)
       }
       const v = view(this.ch[k], this.disp, k === this.o.answer), c = this.ch[k];
       return this.textOnly && c.word ? Object.assign({}, v, { icon: null, label: v.label || c.label || G.baseForm(c.word) }) : v;
@@ -180,13 +246,42 @@
     onEnter() { if (this.mic) this.mic.arm(); }
     onExit() { if (this.mic) this.mic.off(); }
     big() { return !!(this.o.micBig && this.o.show); } // (the big mic sits beside the picture held up)
-    micRect() { return this.big() ? { x: G.W / 2 + 40, y: 14, w: 46, h: 46 } : { x: G.W - 42, y: G.H - 62, w: 36, h: 36 }; } // the cards and the list keep clear of it (rects)
+    micRect() { return this.big() || this.say || (this.won && this.won.said1) ? { x: G.W / 2 + 40, y: 14, w: 46, h: 46 } : { x: G.W - 42, y: G.H - 62, w: 36, h: 36 }; } // the cards and the list keep clear of it (rects)
     skip() { return this.o.cancelIcon === 'skip'; }
     cancelHit() { return this.skip() ? G.skipHit(...this.backXY()) : G.btnHit(...this.backXY()); }
     cancel() { G.audio.sfx('cancel'); G.pop(); if (this.o.onCancel) this.o.onCancel(); this.w.resolve(-1); }
     heard(alts) { // what the mic heard, against every choice
       const k = G.mic.best(this.ch.map(G.mic.target), alts, this.o.answer);
+      if (this.say) { if (k === this.o.answer) this.sayWin(); else this.reveal('heard'); return; } // (say it first: anything but the word just shows the cards)
       if (k < 0 || this.ch[k].off) this.mic.miss(); else this.pick(k, true);
+    }
+    // say it first: the cards appear (why: 'time' 'tap' 'key' 'heard' 'nohear'); never a miss, never a sad sound
+    reveal(why) { if (!this.say) return; this.say = null; this.revealed = why; this.rv = 0; if (this.mic) this.mic.sad = 0; }
+    // said before any card was shown: the question is answered, with a party (G.ask records a recall said aloud)
+    sayWin() {
+      const o = this.o, k = o.answer, c = this.ch[k], m = this.micRect(), cx = G.W / 2;
+      this.say = null; this.said1 = true; this.i = k;
+      if (G.vocabLog) G.vlog('said-first', c.word, { who: o.who || null });
+      this.mic.win();
+      this.won = { k, t: 0, spoken: true, said1: true }; this.w.resolve(k);
+      G.audio.sfx('chime'); G.fx.burst(cx, 40);
+      G.fx.confetti(cx - 70, 70, -1, 18); G.fx.confetti(cx + 70, 70, 1, 18);
+      G.mic.award(c.word, m.x + m.w / 2, m.y + m.h / 2); // (said: its card grows the most, cards.js)
+      if (o.onRight) o.onRight({ x: cx - 24, y: 16, w: 48, h: 48 }, cx, 150, true); // (the praise under its word)
+    }
+    // the say step, every frame: the mic, the speaker, a way out; any other tap or key, or the time, shows the cards
+    sayStep() {
+      if (this.mic && this.mic.update()) return;
+      const lis = !!this.mic && (this.mic.listening() || !!this.mic.started), demo = !!(G.demo && G.demo.cur && G.demo.cur.top === this);
+      if (!lis && !demo) this.say.t++; // (the time waits while she talks, and while the ghost hand shows the mic)
+      if (G.input.p('C') || (G.speakerHit(...this.spk()) && G.input.eat())) { G.speak(this.o.prompt || ''); return; }
+      if (G.input.tap() && this.t > 8) {
+        if (this.o.cancel && this.cancelHit()) { this.cancel(); return; }
+        G.input.eat(); this.reveal('tap'); return;
+      }
+      if (G.input.p('B') && this.o.cancel) { this.cancel(); return; }
+      if (this.t > 8 && (G.input.p('A') || G.input.repDir(14, 6))) { this.reveal('key'); return; }
+      if (this.say.t >= SF.WAIT) this.reveal('time');
     }
     move(d) {
       const n = this.ch.length; let k = this.i;
@@ -233,8 +328,9 @@
       for (let s = 1; s < n; s++) if (!this.ch[(k + s) % n].off) { this.i = (k + s) % n; break; }
     }
     update() {
-      this.t++; if (this.miss) this.miss.t++;
-      if (this.won) { if (this.mic) { this.mic.t++; if (this.mic.pop) this.mic.pop--; } if (++this.won.t >= (this.won.spoken ? 40 : 24)) G.pop(); return; } // the right card's moment; already answered
+      this.t++; if (this.miss) this.miss.t++; if (this.rv != null) this.rv++;
+      if (this.won) { if (this.mic) { this.mic.t++; if (this.mic.pop) this.mic.pop--; } if (++this.won.t >= (this.won.said1 ? 64 : this.won.spoken ? 40 : 24)) G.pop(); return; } // the right card's moment; already answered
+      if (this.say) { this.sayStep(); return; }
       if (this.mic && this.mic.update()) return;
       const calm = !this.miss || this.miss.t > 8; // no answering again mid-wobble
       const d = G.input.repDir(14, 6);
@@ -260,14 +356,22 @@
       if (o.show) G.drawIcon16(ctx, o.show, G.W / 2 - 24, top + 8, 3, 'card');
       if (o.drawExtra) { try { o.drawExtra(ctx, this); } catch (e) { console.error(e); } }
       G.richDraw(ctx, this.lines, G.W / 2, top + 5 + (o.show ? 58 : 0), { center: true });
-      if (o.en && G.enVisible()) G.enBox(ctx, o.en, top + ph + 1, true);
+      const en = this.say ? o.sayEn || o.en : o.en;
+      if (en && G.enVisible()) G.enBox(ctx, en, top + ph + 1, true);
+      if (this.say || (this.won && this.won.said1)) { this.drawSay(ctx, top + ph); return; }
       const R = this.rects(), won = this.won, wt = won ? won.t : 0;
       // the right card, once picked, shows its picture AND its word (they're seen together: docs/PLAYTEST_NOTES.md)
       const vs = this.ch.map((c, k) => { const v = this.view(k), wd = c.word && D().words[c.word]; return won && won.k === k && wd ? Object.assign({}, v, { label: v.label || c.label || G.baseForm(c.word), icon: v.icon || wd, col: S().stage(c.word) >= 3 ? GOLD : BLUE }) : v; });
       const wob = k => { const m = this.miss; return m && m.k === k && m.t < 16 ? Math.round(Math.sin(m.t * 1.7) * 3 * (1 - m.t / 16)) : 0; }; // a wrong pick wobbles
       const grey = k => { const m = this.miss; return m && m.k === k && m.t < 8 ? m.t / 8 : 1; }; // ...and greys out quickly (0..1)
       const back = k => won && won.k !== k ? Math.min(0.6, wt / 10) : 0; // when the right one pops, the rest step back
+      // one colour for every word of a question until it's answered (a gold word among blue ones would point at it)
+      const colOf = k => (o.answer != null && this.ch[k].word && !(won && won.k === k) ? BLUE : vs[k].col);
+      // one size: the words are drawn twice as big only when every word-only card's word fits that big
+      if (this.bigAll == null) this.bigAll = this.ch.every((c, k) => { const v = this.view(k); return !v.label || !!v.icon || !c.word || G.textWidth(v.label) * 2 <= 52; });
+      const slide = this.rv != null && this.rv < 8 ? Math.round((1 - this.rv / 8) * 30) : 0; // (after "say it first": the cards slide in)
       ctx.globalAlpha = 1;
+      if (slide) { ctx.save(); ctx.translate(0, slide); }
       if (this.cards) {
         const cw = 58, y0 = R[0].y;
         this.ch.forEach((c, k) => {
@@ -282,9 +386,9 @@
           const ic = v.icon || (!v.label || !c.word ? D().words[c.word] || c.icon : null); // (a word-only card has no picture: read it, or say it)
           if (ic) {
             G.drawIcon16(ctx, ic, x + cw / 2 - 16, y0 + 12 - bob, 2, sel && !c.off ? 'sel' : 'card');
-            if (v.label) { const L = fit(v.label, cw - 4); L.forEach((l, j) => G.textC(ctx, l, x + cw / 2, y0 + Math.min(56, h - 9) - (L.length - 1 - j) * 9 + (L.length > 1 ? 2 : 0) - bob, c.off ? '#a8acb8' : v.col)); }
+            if (v.label) { const L = fit(v.label, cw - 4); L.forEach((l, j) => G.textC(ctx, l, x + cw / 2, y0 + Math.min(56, h - 9) - (L.length - 1 - j) * 9 + (L.length > 1 ? 2 : 0) - bob, c.off ? '#a8acb8' : colOf(k))); }
           } else if (v.label) {
-            const big = G.textWidth(v.label) * 2 <= cw - 6, col = c.off ? '#a8acb8' : v.col;
+            const big = this.bigAll && G.textWidth(v.label) * 2 <= cw - 6, col = c.off ? '#a8acb8' : colOf(k);
             if (big) G.bigText(ctx, v.label, x + cw / 2, y0 + 30 - bob, 2, col); else { const L = fit(v.label, cw - 4); L.forEach((l, j) => G.textC(ctx, l, x + cw / 2, y0 + 34 - (L.length - 1) * 5 + j * 10 - bob, col)); }
           }
           const d = back(k); if (d) { ctx.globalAlpha = d; ctx.fillStyle = '#080c28'; ctx.fillRect(x + 1, y0 - bob + 1, cw - 2, h - 2); }
@@ -301,30 +405,53 @@
           ctx.globalAlpha = (c.off ? 1 - 0.7 * grey(k) : 1) * (1 - back(k));
           let tx = x + 18 + dx;
           if (v.icon) { G.drawIcon16(ctx, v.icon, tx, yy - hop); tx += 20; }
-          if (v.label) G.text(ctx, v.label, tx, yy + 5 - hop, sel && v.col === '#ffffff' ? '#f8e060' : v.col);
+          if (v.label) G.text(ctx, v.label, tx, yy + 5 - hop, sel && v.col === '#ffffff' ? '#f8e060' : colOf(k));
           ctx.globalAlpha = 1;
           if (sel && !won && (this.t >> 3) % 4 !== 3) G.text(ctx, '\u0002', x + 8, yy + 5, '#f8e060');
         });
       }
+      if (slide) ctx.restore();
       if (this.mic && (!won || won.spoken)) this.mic.draw(ctx);
+    }
+    // say it first: no cards yet, the big mic pulsing beside the picture; said right: the picture pops and its word shows
+    drawSay(ctx, bottom) {
+      const won = this.won, r = this.micRect(), cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+      if (this.say && this.mic && !this.mic.listening()) for (let i = 0; i < 2; i++) { // "say it!": rings going out from the mic
+        const p = ((this.t + i * 22) % 44) / 44;
+        ctx.globalAlpha = (1 - p) * 0.7; ctx.strokeStyle = '#ffb0c8'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(cx, cy, r.w / 2 + 2 + p * 14, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      if (won) {
+        const c = this.ch[won.k], wd = D().words[c.word], s = won.t < 6 ? 1 + 0.25 * won.t / 6 : 1.25 - 0.25 * Math.min(1, (won.t - 6) / 8);
+        ctx.save(); ctx.translate(G.W / 2, 40); ctx.scale(s, s); ctx.translate(-G.W / 2, -40);
+        G.drawIcon16(ctx, this.o.show, G.W / 2 - 24, 16, 3, 'sel'); ctx.restore(); // (the picture, popping)
+        if (wd && won.t > 4) { const lab = c.label || G.baseForm(c.word), bw = Math.max(64, G.textWidth(lab) * 2 + 16); G.win(ctx, (G.W - bw) / 2, bottom + 4, bw, 26); G.bigText(ctx, lab, G.W / 2, bottom + 10, 2, S().stage(c.word) >= 3 ? GOLD : BLUE); } // its word, now (picture and word together)
+      }
+      if (this.mic) this.mic.draw(ctx);
     }
   }
   G.choose = function (opts) { const a = opts.choices && opts.choices[opts.answer]; G.saidNote(opts.who || '', '? ' + (opts.prompt || '') + ' ' + ((a && a.word) || '')); const w = new G.Wait(); const s = new Choice(opts, w); w.scene = s; G.push(s); return w; };
 
   // ---------- Ask until right ----------
-  // q: {prompt, en, show, choices, answer: index, layout, learn, who, display, mask, intro, review, credit, reintro}
+  // q: {prompt, en, show, choices, answer: index, layout, learn, who, display, mask, intro, review, credit, reintro,
+  //     sayFirst, sayEn}
   // Wrong picks wobble and grey out with a soft boop (no lecture) while the question stays up, so every
   // question can be finished. The right pick pops with praise; a first-try answer earns a star (one per word a day).
   // Saying the right answer out loud (the mic, mic.js) answers too, and earns a speaking star on top.
   // The answer word (when it is a {word}) is what the question practises (words.js): an unmet answer is MET by the
   // right pick (the small notebook celebration), a met one is an active retrieval, cued when it could be found by
   // matching the prompt. q.learn lists other words: they are only met (no credit). q.credit: false leaves the model alone.
-  // How the cards look comes from the answer's stage unless q.display or a choice's own text / pic / look says:
-  //   unmet, met     'both' (picture + word); a met answer in the prompt's words is heard, not shown (q.mask)
-  //   known          'text' (the word only: recall from the prompt's picture or the context), or 'pic' when the
-  //                  prompt says the word (read it -> pick the picture)
+  // How the cards look comes from the answer's stage unless q.display or a choice's own text / pic / look says
+  // (no give-aways, docs/AUDIT_2026-10.md 2.7: word-only cards only for a word well known, stage 3+):
+  //   unmet          'both' (picture + word: it is met by picking it)
+  //   met, known     'pic' when the prompt says the word: heard, not shown (listen -> pick its picture; the first review
+  //                  of a word is picture-only); 'both' with q.reveal when its picture is held up (the cards keep their
+  //                  pictures: a matching reveal, counted as a cued use, never as a recall); else 'both' (the context)
   //   remembered+    'text' when the prompt's picture is the answer (say it / pick its word), else 'pic' with the
   //                  answer heard, not shown (listen -> pick the picture)
+  // q.sayFirst (G.review.ask, the warm-up: G.sayFirst): only the picture and the big mic first; said right, it's a recall
+  // said aloud before any written cue: answerRight {mode: 'say', recall: true, said: true}; else the cards (as above).
   // q.noMic: no mic on this question (say, when saying the answer would only be reading it out).
   // q.wrongAct(k, word): called on a wrong pick (the story reacting to it: Canelo barks instead of coming).
   // Returns true if right on the first try.
@@ -332,11 +459,10 @@
   const showOf = sh => (!sh ? null : typeof sh === 'string' ? (D().words[sh] ? sh : null) : Object.keys(D().words).find(id => D().words[id] === sh) || null);
   G.askDisplay = function (q) {
     const a = q.choices[q.answer], aid = a && a.word && D().words[a.word] ? a.word : null;
-    if (!aid || q.display || q.choices.some(c => c.text || c.pic || c.look)) return { aid, display: q.display || null, mask: q.mask || null };
+    if (!aid || q.display || q.choices.some(c => c.text || c.pic || c.look)) return { aid, display: q.display || null, mask: q.mask || null, reveal: !!q.reveal };
     const st = S().stage(aid), inPrompt = G.richIds(G.fill(q.prompt || '')).indexOf(aid) >= 0, shown = showOf(q.show) === aid;
     if (st <= 0) return { aid, display: 'both', mask: q.mask || null };
-    if (st === 1) return { aid, display: 'both', mask: inPrompt ? [aid] : q.mask || null };
-    if (st === 2) return { aid, display: shown ? 'text' : inPrompt ? 'pic' : 'text', mask: q.mask || null };
+    if (st <= 2) return shown ? { aid, display: 'both', mask: q.mask || null, reveal: true } : { aid, display: inPrompt ? 'pic' : 'both', mask: inPrompt ? [aid] : q.mask || null };
     return { aid, display: shown ? 'text' : 'pic', mask: inPrompt ? [aid] : q.mask || null };
   };
   G.ask = function* (q) {
@@ -346,7 +472,7 @@
     const ids = (q.learn ? (Array.isArray(q.learn) ? q.learn : [q.learn]) : []).filter(id => id !== aid && D().words[id]);
     let tries = 0, spoken = false, scene = null;
     const wq = G.choose(Object.assign({}, q, {
-      choices: ch, display: ad.display, mask: ad.mask,
+      choices: ch, display: ad.display, mask: ad.mask, reveal: !!ad.reveal,
       onWrong(k) { if (!tries && aid) G.words.answerWrong(aid); tries++; G.fx.shake = 4; if (q.wrongAct) q.wrongAct(k, ch[k] && ch[k].word); }, // (q.wrongAct: what a wrong pick does in the story, chapters.js)
       onRight(rect, x, y, sp) {
         spoken = sp;
@@ -354,16 +480,19 @@
       },
     }));
     scene = wq.scene;
-    if (G.vocabLog && aid) { const v = scene.view(q.answer); G.vlog('prompt', aid, { kind, st: st0, mode: v.icon && v.label ? 'both' : v.label ? 'text' : 'pic', cued: scene.cue(q.answer).cued || null, who: q.who || null }); }
+    if (G.vocabLog && aid) { const v = scene.view(q.answer); G.vlog('prompt', aid, { kind, st: st0, mode: scene.say ? 'sayfirst' : v.icon && v.label ? 'both' : v.label ? 'text' : 'pic', cued: scene.cue(q.answer).cued || null, who: q.who || null }); }
     const heard = !!aid && (scene.o.mask || []).indexOf(aid) >= 0; // (the prompt says the answer: saying it back is an echo, for the history)
     const r = yield wq;
     if (r.result !== q.answer) return false; // closed without answering (a question with a way out)
     const first = tries === 0;
     let res = null;
-    if (aid) {
+    if (aid && scene.said1) { // said first, before any card: a recall, said aloud (docs/AUDIT_2026-10.md 2.6)
+      res = G.words.answerRight(aid, { mode: 'say', recall: true, said: true, firstTry: true, review: kind === 'review', how: 'answer' });
+    } else if (aid) {
       const v = scene.view(q.answer), mode = spoken && !v.label ? 'say' : v.icon && v.label ? 'both' : v.label ? 'text' : 'pic';
-      // (q.reintro: a slipping word met again, intro.js G.intro.again: a cued use, it doesn't move the word on)
-      res = G.words.answerRight(aid, { cued: !!q.reintro || !!scene.cue(q.answer).cued, said: spoken, echo: spoken && heard, firstTry: first, mode, review: kind === 'review', how: q.intro ? q.how || 'show' : 'answer' });
+      // (q.reintro: a slipping word met again, intro.js G.intro.again: a cued use, it doesn't move the word on; a reveal,
+      // its own picture held up over picture cards: a cued use too)
+      res = G.words.answerRight(aid, { cued: !!q.reintro || !!ad.reveal || !!scene.cue(q.answer).cued, said: spoken, echo: spoken && heard, firstTry: first, mode, review: kind === 'review', how: q.intro ? q.how || 'show' : 'answer' });
     }
     yield 10;
     // a word met just now: its small celebration (it goes in the notebook); co-listed words are only met
@@ -376,11 +505,15 @@
   };
   // Choices for a word question from a pool of word ids (distractors shuffled in). opts are copied onto each choice.
   // The distractors are words the child has met when the pool has enough of them; otherwise unmet words of another
-  // topic (shown as their pictures only: clearly different, and they stay unmet), then the rest.
+  // topic (shown as their pictures only: clearly different, and they stay unmet), then the rest; never a word that looks
+  // or sounds like another card (G.wordsAlike: abuela / abuelo, gato / pato) while there are others to take.
+  // opts.ordered: the pool is already in the order to take them (G.review.ask: its topic first).
   G.wordChoices = function (answerId, pool, n = 3, opts = {}) {
-    const top = D().words[answerId] ? D().words[answerId].topic : null;
+    const top = D().words[answerId] ? D().words[answerId].topic : null, ordered = !!opts.ordered;
+    if (ordered) { opts = Object.assign({}, opts); delete opts.ordered; }
     const rank = id => (S().seen(id) ? 0 : D().words[id] && D().words[id].topic !== top ? 1 : 2);
-    const others = pool.filter((id, i) => id !== answerId && pool.indexOf(id) === i).map(id => ({ id, k: rank(id) + G.rand() * 0.9 })).sort((a, b) => a.k - b.k).slice(0, n - 1).map(o => o.id);
+    const cands = pool.filter((id, i) => id !== answerId && pool.indexOf(id) === i).map((id, i) => ({ id, k: ordered ? i : rank(id) + G.rand() * 0.9 })).sort((a, b) => a.k - b.k).map(o => o.id);
+    const others = G.pickApart(answerId, cands, n - 1);
     const ids = others.concat([answerId]).sort(() => G.rand() - 0.5);
     return { choices: ids.map(id => Object.assign({ word: id }, opts, opts.label ? { label: opts.label(id) } : {})), answer: ids.indexOf(answerId) };
   };

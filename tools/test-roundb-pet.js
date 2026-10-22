@@ -276,8 +276,16 @@ async function album(browser) {
     check('album: 7/11 met, a star for the counted duck', await g.ev(() => G.album.metCount() === 7 && G.album.counted('pato') && !G.album.full()));
     await g.ev(() => { window.__speak.length = 0; });
     await g.tapRect(await g.ev(() => G.top().cell(1)));
+    // (the first tap on a found animal in an opening of the album asks "¿Quién es?" first, when the mic can listen:
+    // its silhouette and the big mic; a tap reveals it at once, never a fail: tools/test-questions.js)
+    if (await g.ev(() => !!G.top().quien)) {
+      await g.until(() => G.top().quien.t > 10 && G.input.ready(), null, '"¿Quién es?"');
+      await g.tap(30, 200);
+      check('album: "¿Quién es?" first (its silhouette, the mic); a tap reveals it', await g.ev(() => G.top().quien && G.top().quien.ph === 'show'));
+    }
     await g.until(() => window.__speak.some(s => /gato. ¡Miau!/.test(s.text)), null, 'the cat\'s name and sound');
     check('album: tapping a met card says its name and its sound', true);
+    if (await g.ev(() => !!G.top().quien)) { await g.until(() => G.top().quien.t > 26 && G.input.ready(), null, 'the reveal'); await g.tap(30, 200); }
     await g.tapRect(await g.ev(() => G.top().cell(5))); // the rabbit: not met
     check('album: an unmet card is a silhouette that only wobbles', await g.ev(() => G.top().hop[5] && G.top().hop[5].no));
     await g.tapRect(await g.ev(() => G.top().cell(11)));

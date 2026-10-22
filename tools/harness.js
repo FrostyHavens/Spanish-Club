@@ -24,6 +24,9 @@
 // PHRASES=1 (drive() builds a phrase from its cards and taps through an introduction).
 // Listen and do (src/listen.js, src/requests.js: "Dame tres conchas", favours, the warm-up's request) is OFF too unless a
 // test asks: open(..., { listen: true }) (tools/test-listen.js) or LISTEN=1 (drive() does each request right).
+// "Say it first" (learn.js G.sayFirst: a review question's picture and big mic alone, then the cards) is ON (Chromium
+// has a recognizer): drive() skips it like a child who doesn't talk (a tap off the mic, or Enter), then taps the answer;
+// to say it, a test answers the mic itself (tools/test-questions.js). A page puzzle's last pair joins by itself (drive waits).
 'use strict';
 const path = require('path'), fs = require('fs'), os = require('os');
 const { chromium } = require('playwright');
@@ -78,16 +81,16 @@ class Game {
       const s = await this.ev(() => {
         const s = G.top(); if (!s) return {};
         const r = { name: s.constructor.name, t: s.t };
-        if (r.name === 'Choice') Object.assign(r, { answer: s.o.answer == null ? 0 : s.o.answer, rects: s.rects(), off: s.ch.map(c => !!c.off), cards: s.cards, i: s.i, spk: s.spk() });
+        if (r.name === 'Choice') Object.assign(r, { answer: s.o.answer == null ? 0 : s.o.answer, rects: s.rects(), off: s.ch.map(c => !!c.off), cards: s.cards, i: s.i, spk: s.spk(), say: !!s.say });
         if (r.name === 'TextBox') Object.assign(r, { pi: s.pi, shown: s.shown, all: s.chars(0, s.scroll + 3), spk: s.spk(), noVoice: !!s.opts.noVoice });
         if (r.name === 'Notebook' || r.name === 'Deck' || r.name === 'PetMenu' || r.name === 'Album') r.close = s.closeXY();
         if (r.name === 'PetMenu' && s.want >= 0 && !s.won && s.t > 10) r.want = s.rect(s.want); // (the arrow the day's play shows over a card)
         if (r.name === 'PhraseAsk') Object.assign(r, { invite: s.invite != null, rects: s.rects(), answer: s.free ? 0 : s.answer, placed: Object.assign({}, s.placed), next: s.invite != null ? s.nextRect() : null, closing: !!s.result, sel: s.sel }); // (phrases.js)
         if (r.name === 'PhraseModel') Object.assign(r, { last: s.row >= s.n - 1, rt: s.rt });
         if (r.name === 'ListenDo') Object.assign(r, { phase: s.phase, kind: s.req.kind, answer: s.req.answer, n: s.req.n, cellsR: s.cells.map((c, i) => s.cellRect(i)), basket: s.basket.length, basketR: s.basketRect(), cardsR: s.req.kind === 'howmany' ? [0, 1, 2].map(k => s.cardRect(k)) : null, card: s.req.kind === 'howmany' ? s.req.cards.findIndex(id => G.requests.numOf(id) === s.req.answer) : -1, next: s.nextRect(), counting: !!s.counting, closing: s.phase === 'right' }); // (listen.js)
-        if (r.name === 'PagePuzzle') { // the next picture to match and its word (intro.js)
+        if (r.name === 'PagePuzzle') { // the next picture to match and its word (intro.js); auto: the last pair joining by itself
           const k = s.pics.findIndex((p, k) => !s.match[k]);
-          Object.assign(r, { done: s.done, pic: k >= 0 ? s.picRect(k) : null, word: k >= 0 ? s.wordRect(s.words.indexOf(s.pics[k])) : null, sel: s.sel });
+          Object.assign(r, { done: s.done, pic: k >= 0 ? s.picRect(k) : null, word: k >= 0 ? s.wordRect(s.words.indexOf(s.pics[k])) : null, sel: s.sel, auto: !!s.auto });
         }
         return r;
       });
@@ -107,6 +110,11 @@ class Game {
           break;
         case 'Choice': {
           if (s.t <= 8) { await this.frames(4); break; }
+          if (s.say) { // "say it first" (learn.js G.sayFirst): skip it, like a child who doesn't talk: a tap off the mic (or A) shows the cards
+            if (this.touch) await this.tap(160, 118); else await this.press('Enter');
+            await this.until(() => G.top().constructor.name !== 'Choice' || !G.top().say, null, 'the cards after "say it first"', 6000);
+            break;
+          }
           if (first) { await this.frames(6); await this.shot('choice_' + (s.cards ? 'cards' : 'list')); this.seen.add('Choice' + (s.cards ? 'c' : '')); }
           if (this.touch) {
             const k = wrong ? s.off.findIndex((off, k) => !off && k !== s.answer) : s.answer;
@@ -142,6 +150,7 @@ class Game {
           if (s.t <= 10) { await this.frames(12 - s.t); break; }
           if (first) { await this.shot('page_puzzle'); this.seen.add('PagePuzzle'); }
           if (s.done) { if (s.done > 72) await this.tap(160, 120); else await this.frames(8); break; }
+          if (s.auto) { await this.frames(6); break; } // (the last pair joins by itself)
           if (this.touch) { await this.tapRect(s.pic); await this.tapRect(await this.ev(() => { const s = G.top(), k = s.pics.findIndex((p, k) => !s.match[k]); return s.wordRect(s.words.indexOf(s.pics[k])); })); }
           else { await this.press('Enter'); const j = await this.ev(() => { const s = G.top(); return s.words.indexOf(s.pics[s.sel.k]); }); for (let n = 0; n < 4 && await this.ev(() => G.top().ki) !== j; n++) await this.press('ArrowRight'); await this.press('Enter'); }
           break;

@@ -9,7 +9,8 @@
 //   G.mic.award(id, x, y)       said it: words[id].said++ (still counted as a speaking star, for the grown-ups and the
 //                               diploma), its card pops up at x, y and grows the most (cards.js)
 //   new G.MicBtn(scene, o)      the button. o: {rect() (its tap area, game px), ready() (may listen now),
-//                               heard(alternatives) (the scene decides: right, wrong or G.MicBtn#miss())}.
+//                               heard(alternatives) (the scene decides: right, wrong or G.MicBtn#miss()), nohear(res)
+//                               (optional: nothing heard or an error; return true to take it quietly, no "¡Otra vez!")}.
 //                               Scene calls: onEnter -> arm(), onExit -> off(), update -> if (mic.update()) return,
 //                               draw -> mic.draw(ctx). The V key (and a tap on it) listens; a tap on it again stops.
 // Listening starts INSIDE the tap or key press (G.speech.gestureTap: iOS Safari only lets a gesture start the mic),
@@ -115,7 +116,7 @@
         if (l.done()) {
           this.l = null; const res = l.result;
           if (res.ok && res.alternatives.length) this.o.heard(res.alternatives);
-          else if (res.error !== 'aborted') { if (res.error && res.error !== 'no-speech' && res.error !== 'no-match') M.logError(res); this.miss(); }
+          else if (res.error !== 'aborted') { if (res.error && res.error !== 'no-speech' && res.error !== 'no-match') M.logError(res); if (!(this.o.nohear && this.o.nohear(res))) this.miss(); } // (o.nohear: the scene takes it quietly, e.g. "say it first": the cards just appear)
           return true;
         }
         // push-to-talk: letting go of Space finishes with what was heard (a quick press just starts it, like a tap)

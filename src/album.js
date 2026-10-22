@@ -9,7 +9,10 @@
 // in its corner. Seen (tapped) but its word not met yet: its picture and "?". Met: its picture, its name ("el gato") and
 // its sound ("¡Miau!"); a little mic once its name was said out loud, a gold star once counted (Luna's count). Entries a
 // zone hasn't built yet (G.zones def.planned) are numbered "?" cards. Tap a met card (or A on it): it hops and you
-// hear its name and its sound. A zone page complete: confetti and "¡Completo!" the first time you open it; the whole
+// hear its name and its sound; the first such tap each time the album opens (an animal not asked today, its name met,
+// the mic on, not "quiet") asks "¿Quién es?" first: its silhouette and the big mic, then the reveal (never a fail:
+// Album#qAsk below). A zone page complete:
+// confetti and "¡Completo!" the first time you open it; the whole
 // album complete: the party and "¡Amig{o/a} de los animales!" as before.
 // The first time an animal is met anywhere (G.animals.meet), "¡Nuevo animal!" pops in over the game (never blocking
 // it): its number, its picture big, its cry, its name (or "?" while its word isn't met), then the card flips and flies
@@ -44,8 +47,74 @@
       this.page = start === 'amigos' ? 'amigos' : 'animales';
       this.zone = start && start !== 'amigos' && G.zones && G.zones.def(start) ? start : here && ZS().some(z => z.id === here) ? here : 'villa';
       this.ftab = this.zone; // (the Amigos page opens on the friends of the place you're in)
+      this.quien = null; // "¿Quién es?": {k, id, t, w, ph: 'ask' | 'show', said}
+      this.mic = G.mic && G.mic.on() ? new G.MicBtn(this, { rect: () => this.qMicRect(), ready: () => !!this.quien && this.quien.ph === 'ask' && this.quien.t > 10, heard: a => this.qHeard(a), nohear: () => { this.qReveal(false); return true; } }) : null;
+    }
+    onExit() { if (this.mic) this.mic.off(); }
+    // ---------- "¿Quién es?" (docs/AUDIT_2026-10.md 2.6): the first tap on a found animal (one a day each, one each time
+    // the album opens), its name met, the mic on and not "quiet" (G.sayFirst, learn.js): its silhouette big and the big
+    // mic, "¿Quién es?" said. Said: a party, its
+    // name, a little mic on its card; nothing said, another word, an error, a tap, or about 4 s: the reveal all the same
+    // (its colours, its name and its cry). Never "wrong". (Its name was on the page a moment ago: a cued say, mic.js award.)
+    quienOK(id) { return !!this.mic && !this.asked && !!G.sayFirst && G.sayFirst.on() && !G.sayFirst.doneToday('album:' + id); } // (one per opening of the album: a moment, not a toll on every tap)
+    qCard() { return { x: 70, y: 40, w: 132, h: 112 }; }
+    qMicRect() { const c = this.qCard(); return { x: c.x + c.w + 10, y: c.y + 36, w: 46, h: 46 }; }
+    qAsk(k, id) {
+      this.quien = { k, id, t: 0, w: 0, ph: 'ask', said: false }; this.asked = true; G.sayFirst.mark('album:' + id);
+      this.mic.reset(); G.audio.sfx('cursor'); G.speak('¿Quién es?');
+    }
+    qHeard(alts) { const q = this.quien; if (!q || q.ph !== 'ask') return; this.qReveal(G.speech.match(G.mic.target({ word: AN().KINDS[q.id].word }), alts).pass); }
+    qReveal(said) {
+      const q = this.quien; if (!q || q.ph !== 'ask') return;
+      const id = q.id, wid = AN().KINDS[id].word, w = G.data.words[wid], c = this.qCard();
+      q.ph = 'show'; q.t = 0; q.said = !!said;
+      AN().cry(id); G.speak(w.es.split(' / ')[0] + (cry(id) ? '. ' + cry(id) : ''));
+      for (let i = 0; i < 4; i++) G.fx.twinkle(c.x + 30 + Math.random() * 72, c.y + 20 + Math.random() * 48);
+      if (!said) return;
+      const m = this.qMicRect(), R = rec(id);
+      this.mic.win(); G.audio.sfx('chime');
+      G.mic.award(wid, m.x + m.w / 2, m.y + m.h / 2, { cued: true }); // (said: its word card grows the most)
+      if (R) R.said = true;
+      G.fx.confetti(c.x + 10, c.y + c.h, -1, 16); G.fx.confetti(c.x + c.w - 10, c.y + c.h, 1, 16);
+      G.fx.say('¡Bien dicho!', c.x + c.w / 2, c.y - 6, '#a8f0ff', true);
+      G.st.autosave();
+    }
+    quienStep() {
+      const q = this.quien; q.t++;
+      if (q.ph === 'ask') {
+        if (this.mic && this.mic.update()) return;
+        if (!(this.mic && (this.mic.listening() || this.mic.started))) q.w++; // (the time waits while she talks)
+        if ((G.input.tap() && q.t > 8) || G.input.p('A') || G.input.p('B') || G.input.p('C') || q.w >= G.sayFirst.WAIT) { G.input.eat(); this.qReveal(false); }
+        return;
+      }
+      if ((q.t > 24 && (G.input.tap() || G.input.p('A') || G.input.p('B'))) || q.t > 200) { G.input.eat(); this.quien = null; }
+    }
+    drawQuien(ctx) {
+      const q = this.quien, K = AN().KINDS[q.id], w = G.data.words[K.word], c = this.qCard(), ask = q.ph === 'ask';
+      ctx.globalAlpha = 0.55; ctx.fillStyle = '#080c28'; ctx.fillRect(0, 0, G.W, G.H); ctx.globalAlpha = 1;
+      ctx.fillStyle = '#10102a'; ctx.fillRect(c.x - 2, c.y - 2, c.w + 4, c.h + 4);
+      ctx.fillStyle = '#fffaf0'; ctx.fillRect(c.x, c.y, c.w, c.h);
+      ctx.fillStyle = '#e8a020'; ctx.fillRect(c.x, c.y, c.w, 13); ctx.fillStyle = '#f8d870'; ctx.fillRect(c.x, c.y, c.w, 2);
+      G.textC(ctx, '¿Quién es?', c.x + c.w / 2, c.y + 3, '#ffffff', '#7a3a08');
+      { const ns = String(number(q.id) || '?'), nw = G.textWidth(ns) + 8; ctx.fillStyle = '#a07040'; ctx.fillRect(c.x + 4, c.y + 17, nw, 11); G.text(ctx, ns, c.x + 8, c.y + 19, '#ffffff', null); }
+      const s = ask ? 1 : q.t < 6 ? 1 + 0.2 * q.t / 6 : 1.2 - 0.2 * Math.min(1, (q.t - 6) / 8), px = c.x + c.w / 2, py = c.y + 44; // (the reveal pops)
+      ctx.save(); ctx.translate(px, py); ctx.scale(s, s); ctx.translate(-px, -py); ctx.imageSmoothingEnabled = false;
+      if (ask) ctx.drawImage(G.tinted(G.icon(w), '#3a3048', 'albsil' + q.id), px - 24, py - 24, 48, 48); else G.drawIcon16(ctx, w, px - 24, py - 24, 3);
+      ctx.restore();
+      if (!ask) {
+        const nm = w.es.split(' / ')[0];
+        if (G.textWidth(nm) * 2 <= c.w - 8) G.bigText(ctx, nm, px, c.y + 76, 2, q.said ? '#2890c0' : '#2860a8', '#e8dcc0'); else G.textC(ctx, nm, px, c.y + 80, '#2860a8', null); // (a long name: one size smaller, on the card)
+        if (cry(q.id)) G.textC(ctx, cry(q.id), px, c.y + 97, '#e06010', null);
+      }
+      if (this.mic) {
+        const r = this.qMicRect(), cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+        if (ask && !this.mic.listening()) for (let i = 0; i < 2; i++) { const p = ((this.t + i * 22) % 44) / 44; ctx.globalAlpha = (1 - p) * 0.7; ctx.strokeStyle = '#ffb0c8'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, r.w / 2 + 2 + p * 14, 0, Math.PI * 2); ctx.stroke(); }
+        ctx.globalAlpha = 1;
+        if (ask || q.said) this.mic.draw(ctx);
+      }
     }
     onEnter() {
+      if (this.mic) this.mic.arm();
       if (G.album.full() && !G.state.flags.albumFull) { // the last animal: a party, once
         G.state.flags.albumFull = true; G.st.autosave(); this.party = 1;
         G.audio.jingle('promote');
@@ -78,6 +147,7 @@
       if (k === 11) { G.audio.sfx('ok'); this.page = 'amigos'; this.fi = 0; this.ftab = this.zone; return; }
       const id = this.ids()[k]; if (id === undefined) return;
       if (!id || !rec(id)) { G.audio.sfx('boop'); this.hop[k] = { t: 0, no: true }; return; }
+      if (G.st.seen(AN().KINDS[id].word) && this.quienOK(id)) { this.qAsk(k, id); return; } // "¿Quién es?" first (once a day each)
       const w = G.data.words[AN().KINDS[id].word];
       this.hop[k] = { t: 0 }; AN().cry(id);
       if (G.st.seen(AN().KINDS[id].word)) G.speak(w.es.split(' / ')[0] + (cry(id) ? '. ' + cry(id) : '')); // (unnamed yet: only its cry)
@@ -93,6 +163,7 @@
         if (this.party === 2) G.speak(G.fill('¡Amig{o/a} de los animales!'));
       }
       if (this.done && this.done < 120) { this.done++; if (this.done % 40 === 2) { G.fx.confetti(40, 200, -1, 14); G.fx.confetti(G.W - 40, 200, 1, 14); } if (this.done === 2) G.speak('¡Completo!'); }
+      if (this.quien) { this.quienStep(); return; }
       const tap = G.input.tap(), d = G.input.repDir(14, 6);
       if (this.page === 'amigos') {
         if (!this.ftab) this.ftab = 'villa';
@@ -181,6 +252,7 @@
           if (hint) { ctx.globalAlpha = 0.9; G.drawIcon16(ctx, hint, x + r.w - 18, y + r.h - 18); ctx.globalAlpha = 1; }
         }
       }
+      if (this.quien) this.drawQuien(ctx);
     }
     drawFriends(ctx) {
       const H = G.hearts, Z = G.zones;

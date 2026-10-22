@@ -107,13 +107,14 @@
         start('warmup', [{ x: r.x + r.w / 2, y: r.y + r.h / 2 + 2, move: 22, act: 'tap', hold: 4 }, { x: r.x + r.w / 2, y: r.y + r.h / 2 + 2, move: 1, act: 'talk', hold: 70 }], { mic: r });
         return true;
       }
+      if (s.say) return false; // (say it first: no cards yet)
       const R = s.rects(), ks = R.map((r, k) => k).filter(k => k !== s.o.answer), k = ks.length ? ks[Math.floor(Math.random() * ks.length)] : 0;
       const steps = R.map(r => ({ x: r.x + r.w / 2, y: r.y + r.h * 0.55, move: 14, hold: 4 }));
       steps.push({ x: R[k].x + R[k].w / 2, y: R[k].y + R[k].h * 0.55, move: 12, act: 'tap', hold: 16 });
       book().answer = book().answer || G.frame || 1;
       start('warmup', steps); return true;
     }
-    if (n === 'Choice' && s.cards && s.o.answer != null && !s.won && s.t >= 14 && !DM.shown('answer')) {
+    if (n === 'Choice' && s.cards && s.o.answer != null && !s.won && !s.say && s.t >= 14 && !DM.shown('answer')) {
       const R = s.rects(), k = Math.floor(Math.random() * R.length), steps = R.map(r => ({ x: r.x + r.w / 2, y: r.y + r.h * 0.55, move: 14, hold: 4 }));
       steps.push({ x: R[k].x + R[k].w / 2, y: R[k].y + R[k].h * 0.55, move: 12, act: 'tap', hold: 16 });
       start('answer', steps); return true;
