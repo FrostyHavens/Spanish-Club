@@ -239,9 +239,9 @@ async function walkRun(browser) {
     const mid = await g.ev(() => {
       const f = G.field, n = f.npcs.find(n => n.wander && n.talk && n.spec && !n.hidden && !n.moving && !f.blocked(n.x + 1, n.y, n) && !f.exitAt(n.x + 1, n.y));
       if (!n) return 'no wandering person with room to step';
-      n.wander = 0; f.tasks.add(f.step(n, 'right', 1.5)); return n.id;
+      n.wander = 0; f.tasks.add(f.step(n, 'right', 0.5)); return n.id; // (a slow step: the test has time to catch it past the middle)
     });
-    await g.frames(5);
+    await g.until(id => { const n = G.field.npc(id); return !n || n.ox < -G.TILE / 2; }, mid, 'the person past the middle of their step', 5000);
     check('walk: tapping a person mid-step talks to them', await g.ev(id => {
       const f = G.field, n = f.npc(id), T = G.TILE;
       return n.ox < -T / 2 && f.tapTarget({ x: n.x * T + n.ox + T / 2 - Math.round(f.cam.x), y: n.y * T + T / 2 - Math.round(f.cam.y) }).npc === n;
