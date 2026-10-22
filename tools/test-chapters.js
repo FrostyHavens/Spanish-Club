@@ -36,8 +36,10 @@ function FAKE() { // each recognizer start() takes the next reply from window.__
   }
   window.SpeechRecognition = undefined; window.webkitSpeechRecognition = FakeRecognition;
 }
+// (the chapters' own content, played back to back over the days by a bot that doesn't do the day's reviews: story pacing,
+// src/chapters.js CH.PACED, would hold a new chapter while reviews wait, so it's off here; it's tested in test-memory.js)
 async function openFake(browser, name, touch = true) {
-  const { ctx, g } = await open(browser, name, touch);
+  const { ctx, g } = await open(browser, name, touch, { openPacing: true });
   await ctx.addInitScript(FAKE);
   await g.page.reload();
   await g.until(() => window.G && G.top() && G.top().constructor.name === 'Title' && G.top().t > 32, null, 'the title after reload');
