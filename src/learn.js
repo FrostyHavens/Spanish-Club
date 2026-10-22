@@ -492,7 +492,11 @@
       const v = scene.view(q.answer), mode = spoken && !v.label ? 'say' : v.icon && v.label ? 'both' : v.label ? 'text' : 'pic';
       // (q.reintro: a slipping word met again, intro.js G.intro.again: a cued use, it doesn't move the word on; a reveal,
       // its own picture held up over picture cards: a cued use too)
-      res = G.words.answerRight(aid, { cued: !!q.reintro || !!ad.reveal || !!scene.cue(q.answer).cued, said: spoken, echo: spoken && heard, firstTry: first, mode, review: kind === 'review', how: q.intro ? q.how || 'show' : 'answer' });
+      // nothing written to read (picture-only cards, the answer not written in the prompt): a recall from memory when
+      // it's a later day (words.js answerRight {mode: 'pic', recall: true}: the engine decides the day)
+      const written = G.richIds(G.fill(q.prompt || '')).indexOf(aid) >= 0 && !heard;
+      const recall = mode === 'pic' && !written && ch.every((c, k) => !c.word || !scene.view(k).label);
+      res = G.words.answerRight(aid, { cued: !!q.reintro || !!ad.reveal || !!scene.cue(q.answer).cued, said: spoken, echo: spoken && heard, firstTry: first, mode, recall, review: kind === 'review', how: q.intro ? q.how || 'show' : 'answer' });
     }
     yield 10;
     // a word met just now: its small celebration (it goes in the notebook); co-listed words are only met
