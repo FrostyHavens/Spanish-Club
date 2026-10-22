@@ -88,6 +88,8 @@
 //   W.lastDay(id) the day number it was last met or used (or null)   W.gapDays(id) days since then (or null)
 //   W.slipping(id)  W.needsReintro(id) (slipping, not re-introduced yet)  W.reintroduced(id) (G.intro.again calls it)
 //   W.encounter(id, how) a passive meeting of a met word (heard, named, in the bag...): only `last` and `n`
+//   W.backlogged(id) due by calendar day or left from an earlier sitting (G.budget.backlog counts these; answering one
+//                      so that it leaves is a due review done: history.js H.reviewed)
 //   W.due(id)  W.overdue(id) (how late, for sorting)  W.lateness(id) (days late / its gap)  W.gap(id) its gap in days
 //   W.strength(id) 0..1  W.stars(id) 0..3 (the notebook's)  W.recallDays(id) the calendar days it was recalled from memory
 //   W.isOld(id) met in an earlier session or 5+ minutes ago (a prompt for it is a review)
@@ -316,7 +318,7 @@
   W.answerRight = function (id, o = {}) {
     const none = { stage: 0, up: false, star: false, gold: false };
     const r = W.rec(id, true); if (!r) return none;
-    const st0 = r.st;
+    const st0 = r.st, bl0 = backlogged(id, r);
     // (pacing: a question whose answer isn't met yet meets it by the right pick; in the open world on a day with no room
     // for a new word it doesn't: no card, and the word waits in the queue, G.budget.defer)
     if (st0 < 1 && o.how === 'answer' && G.budget && !G.budget.canIntro(1, { id })) { G.budget.defer(id, 'answer'); return Object.assign(none, { deferred: true }); }
@@ -363,6 +365,7 @@
       else { r.box = Math.min(lapsed ? 2 : W.MAXBOX, Math.max(1, r.box) + 1); schedule(r, null, W.BOX_DAYS[r.box]); }
     }
     log('retrieval', id, { said: !!o.said || null, cued: cued || null, mode, first: first || null, st0, st: r.st, review: o.review || null, star: star || null, mem: mem || null });
+    if (bl0 && !backlogged(id, r) && G.hist) G.hist.reviewed(id); // (a due review done: the grown-ups' page, history.js)
     // its card grows (cards.js): a pick, a page match (saying it grows it through G.st.said, mic.js)
     if (G.cards && !o.said && !o.noGrow && st0 >= 1) G.cards.grow(id, mode === 'match' ? 'match' : mode === 'listen' ? 'listen' : 'pick', first ? { from: pts0 } : { add: 1, from: pts0 });
     save();
@@ -371,12 +374,14 @@
   W.answerWrong = function (id, o = {}) {
     const r = W.rec(id, true); if (!r) return;
     if (r.st < 1) return; // an unmet word can't be missed (it's still a puzzle)
-    if (G.hist) G.hist.event(id, o.parent ? 'c' : 'm', { miss: true, n: o.n }); // (the history, src/history.js: before the last day moves)
+    const bl0 = backlogged(id, r);
+    if (G.hist) G.hist.event(id, o.parent ? 'c' : 'm', { n: o.n }); // (the history, src/history.js: before the last day moves)
     if (r.st >= 3 && r.fg == null) r.fg = dayNum(); // (a gold word missed: forgotten, until it's relearned)
     r.wrong++; r.last = W.now(); r.ld = dayNum(); r.lapse = dayNum();
     r.box = (r.box | 0) >= 4 ? 2 : 1; if (r.fu === 2) r.fu = 1; // (forgotten: back to the bottom of the ladder, not one box down)
     schedule(r, W.MISS);
     missed(r);
+    if (bl0 && G.hist) G.hist.reviewed(id); // (it was due and it's been reviewed: missed, back in minutes)
     save();
   };
 
@@ -402,6 +407,9 @@
     return Math.max(0, dayNum() - r.dc) / Math.max(1, W.gap(id));
   };
   W.strength = id => { const r = W.rec(id); return !r || r.st < 1 ? 0 : Math.min(1, (r.st - 1) / 3 * 0.7 + (Math.max(1, r.box) - 1) / (W.MAXBOX - 1) * 0.3); };
+  // in the backlog: due by calendar day, or a follow-up / miss left from an earlier sitting (not this session's minutes)
+  const backlogged = (id, r) => !!r && r.st >= 1 && !W.isPhrase(id) && W.due(id) && !(r.due != null && r.ds === W.msess());
+  W.backlogged = id => backlogged(id, W.rec(id));
   W.isOld = id => { const r = W.rec(id); return !!r && r.st >= 1 && (r.ms < wm().sess || W.now() - (r.met || 0) >= 300); };
   W.starToday = id => { const r = W.rec(id); return !!r && r.star === G.today(); };
 
@@ -453,8 +461,8 @@
   B.backlog = function () {
     if (!G.state) return 0;
     const m = fresh(); if (m.bl != null) return m.bl;
-    const ms = W.msess(); let n = 0;
-    for (const id in G.state.words) { const r = W.rec(id); if (r && r.st >= 1 && W.due(id) && !(r.due != null && r.ds === ms)) n++; }
+    let n = 0;
+    for (const id in G.state.words) if (backlogged(id, W.rec(id))) n++;
     return (m.bl = n);
   };
   // new items (words and phrases) met today, by calendar date: the story's too

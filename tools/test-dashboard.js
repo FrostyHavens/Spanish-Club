@@ -137,6 +137,7 @@ async function numbers(browser) {
       W.answerWrong('rana'); W.answerRight('rana', { mode: 'pic', firstTry: false }); // done once: the miss (the right after it isn't a second review)
       W.answerRight('pato', { mode: 'pic', cued: true });       // a cued pick: still due
       G.st.said('pajaro');                                      // said at the mic with no question: still due
+      W.answerRight('pez', { said: true, mode: 'say', echo: true }); // said back after hearing it (E): it still moves on, so it's done
       W.answerRight('mariposa', { mode: 'pic' });                // not due: not a review
       B.flush(); o.rv = d.rv; o.left = B.backlog();
       // an older day, before the counts began: done estimated (back after a day and answered), due unknown
@@ -145,8 +146,8 @@ async function numbers(browser) {
       return o;
     });
     check('reviews: the day\'s due reviews are counted when it begins (the pacing\'s backlog: 5)', rv.bd === 5 && rv.backlog0 === 5, JSON.stringify(rv));
-    check('reviews: done = due words answered (a right first try, a miss); a cued pick, a mic word with no question, a word not due: not done; 3 left', rv.rv === 2 && rv.left === 3, JSON.stringify(rv));
-    check('reviews: a bar per day: today 5 due, 2 done, 3 left; a day before the counts: done estimated (2), due unknown', rv.days[2] === '5:2:3:false' && rv.days[1] === ':2::true', JSON.stringify(rv.days));
+    check('reviews: done = due words answered so they leave the due list (a right first try, a miss, an echo that moves it); a cued pick, a mic word with no question, a word not due: not done; 2 left', rv.rv === 3 && rv.left === 2, JSON.stringify(rv));
+    check('reviews: a bar per day: today 5 due, 3 done, 2 left; a day before the counts: done estimated (2), due unknown', rv.days[2] === '5:3:2:false' && rv.days[1] === ':2::true', JSON.stringify(rv.days));
 
     // ---- not seen in 30 / 60 days; forgotten and relearned ----
     const fr = await g.ev(() => {

@@ -9,8 +9,8 @@
 //      k: how many choices the word's first pick of the day had (G.ask; absent when not known: a page match, an
 //        older day), for the guess-adjusted recognition below
 //      bd: reviews due when the day began (the pacing's backlog, words.js G.budget.backlog: words due by calendar day,
-//        and follow-ups left from an earlier sitting); rv: due reviews done (an answer to a due word, right or a miss:
-//        either way it leaves the due list); bl: the backlog left, the last time it was looked at (every 2 s of play).
+//        and follow-ups left from an earlier sitting); rv: due reviews done (H.reviewed: a due word answered so that it
+//        leaves the due list: right, or a miss); bl: the backlog left, the last time it was looked at (every 2 s of play).
 //        (AUDIT 2.8: done against due a day, so a growing backlog shows. Days from before 2026-10-22 have none)
 //      gap: whole days between the word's previous encounter (words.js r.ld: met, picked, recalled, said, missed,
 //        checked; passive appearances in a line don't count) and its first event that day (-1: unknown); every later event
@@ -36,7 +36,8 @@
 //   ld: { n: listen-and-do requests done, ft: right on the first try, td: {d, n, ft} (today's), lvl: 1 | 2 (one detail,
 //        or two details too: the request maker's ramp, src/requests.js), ok1: first-try rights at level 1, miss2: two-
 //        detail requests missed in a row, last: {d, say, ok} }   (src/listen.js)
-// Recording (words.js and state.js call these; content never needs to): H.event(id, kind, o), H.met(id), H.step().
+// Recording (words.js and state.js call these; content never needs to): H.event(id, kind, o), H.met(id), H.step(),
+// H.reviewed() (a due review done).
 //
 // API (G.hist, short H): (o.days: the last n calendar days including today; o.all: everything, the folded days too)
 //   H.state()                 the saved object          H.day(key?) a day's record (today's by default, made on demand)
@@ -44,7 +45,8 @@
 //   H.events(o)               [{day, n, word, kind: 'pick'|'recall'|'say'|'listen'|'miss'|'parent', first, ok, cued, echo,
 //                             mem (recalled from memory: F, V, C), gap}]   H.isMem(letter)
 //   H.stats(o)                {rn, rr (retention: first events after a day or more, right first try), pr (practice
-//                             events, the grown-ups' checks apart), sp (said aloud), cy, cn (checks right / wrong), s}
+//                             events, the grown-ups' checks and the phrase builder's taps apart), sp (said aloud), cy,
+//                             cn (checks right / wrong), sw / pw (word-days said aloud / practised), s}
 //   H.retention(o)            {n, right, pct}  (pct null with no data)      H.retentionByDay(n) [{key, n, right, pct}]
 //   H.spoken(o)               {said, all, pct}                              H.minutes(key?)  H.totalMinutes()
 //   H.daysPlayed()            calendar days with play (from older word records too)
@@ -130,17 +132,12 @@
   // a retrieval (words.js answerRight / answerWrong, state.js said). o.said: said aloud (the mic); o.answer: a question's
   // answer (answerRight). The mic's say (G.st.said) comes a moment before the answer it belongs to: the answer then
   // replaces it (first try or not, an echo) instead of counting twice.
-  // A due review done (d.rv): an answer (o.answer: answerRight; o.miss: answerWrong) that moves a word due by calendar
-  // day (or left from an earlier sitting: the pacing's backlog) on: a right first try (up a box) or a miss (back to the
-  // bottom). A cued pick (K), an echo (E) or a right answer after a miss (lower case) leaves it where it was.
   // o.n: the question's choices, kept with the word's first pick of the day (recognition's guessing floor).
   let pend = null;
-  const MOVES = 'PRSLFVCmc', PICKS = 'PRVLm';
-  const backlogDue = (id, r) => !!r && r.st >= 1 && !W().isPhrase(id) && W().due(id) && !(r.due != null && r.ds === W().msess()); // (as G.budget.backlog)
+  const PICKS = 'PRVLm';
   H.event = function (id, k, o = {}) {
     if (!G.state || !W().item(id) || !H.KIND[k]) return null; // (a word or a phrase: phrases.js)
     const d = H.day(), r = W().rec(id);
-    if ((o.answer || o.miss) && MOVES.indexOf(k) >= 0 && backlogDue(id, r)) d.rv = (d.rv | 0) + 1;
     let e = d.w[id];
     if (o.answer && o.said && pend && pend.id === id && pend.key === today() && G.frame - pend.f <= 150 && Array.isArray(e) && typeof e[1] === 'string' && e[1].length > pend.i) {
       e[1] = e[1].slice(0, pend.i) + k + e[1].slice(pend.i + 1); pend = null;
@@ -157,6 +154,9 @@
     save();
     return k;
   };
+  // a due review done (words.js answerRight / answerWrong: a word in the pacing's backlog answered so that it leaves it:
+  // a right first try moves it up a box, a miss brings it back in minutes; a cued pick leaves it due)
+  H.reviewed = function () { if (G.state) { const d = H.day(); d.rv = (d.rv | 0) + 1; } };
   // a word met (words.js meet)
   H.met = function (id) { if (!G.state || W().isPhrase(id)) return; const d = H.day(); if (d.met.indexOf(id) < 0) d.met.push(id); }; // (words: a phrase's introduction is G.state.phrases.intro)
   // every frame a game is on (words.js step): today's seconds of play (not while idle, not on the grown-ups' screens)
@@ -183,7 +183,7 @@
     for (const id in d.w) {
       const e = d.w[id]; if (!Array.isArray(e) || typeof e[1] !== 'string') continue;
       const ev = e[1], gap = e[0], ph = W().isPhrase(id);
-      for (const c of ev) { if (c === 'C') o.cy++; else if (c === 'c') o.cn++; else { o.pr++; if (c === 'S' || c === 's' || c === 'E' || c === 'F') o.sp++; } }
+      for (const c of ev) { if (c === 'C') o.cy++; else if (c === 'c') o.cn++; else if (!(ph && (c === 'P' || c === 'p'))) { o.pr++; if (c === 'S' || c === 's' || c === 'E' || c === 'F') o.sp++; } } // (a phrase built from its cards: taps, not practice)
       if (!ph && /[^Cc]/.test(ev)) { o.pw++; if (saidIn(id, ev)) o.sw++; }
       const c0 = ev[0];
       if (c0 && gap >= minGap && c0 !== 'C' && c0 !== 'c' && c0 !== 'K' && c0 !== 'E' && !(ph && (c0 === 'P' || c0 === 'p'))) { o.rn++; if (CAP(c0)) o.rr++; }
