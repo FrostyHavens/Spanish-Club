@@ -377,6 +377,8 @@ async function story(browser) {
       W.meet('naranja', 't'); Object.assign(W.rec('naranja'), { fu: 0, box: 2, due: null, ds: null, dc: W.dayNum() - 1 }); // (a 9th word due)
       out.busy = look();
       CH.EXEMPT.push('zt2'); out.exempt = CH.gate('zt2'); CH.EXEMPT.pop();
+      CH.add({ id: 'zu1', line: 'zu', title: 'Prueba U', en: 'Test U', giver: 'rosa', words: ['huevo'], icon: 'huevo' }); CH.script('zu1', [{ who: 'rosa', run: function* () { yield 1; } }]);
+      const d0 = W.wm().d0; out.zu1 = CH.gate('zu1'); W.wm().d0 = W.dayNum(); out.first = { zu1: CH.gate('zu1'), zt2: CH.gate('zt2') }; W.wm().d0 = d0; // (the save's first play day: a zone's first chapter never waits, its second does)
       CH.PACED = false; out.off = CH.gate('zt2'); CH.PACED = true;
       W.answerRight('naranja', { mode: 'pic' }); for (const id of ['queso', 'leche', 'huevo', 'uno', 'dos']) if (!W.met(id)) W.meet(id, 't'); // (the backlog down again, but five new things today)
       out.today5 = look();
@@ -386,6 +388,7 @@ async function story(browser) {
     check('story pacing: with room (' + p.room.bl + ' due, ' + p.room.today + ' new today) the next chapter is live, its giver has its bubble', p.room.gate === null && p.room.live && p.room.alert, JSON.stringify(p.room));
     check('story pacing: a 9th word due: it waits ("room"): no bubble over its giver, not live, the guide passes it by (' + p.busy.guide + ')', p.busy.bl === 9 && p.busy.gate === 'room' && !p.busy.alert && !p.busy.live && !/zt2/.test(p.busy.guide || ''), JSON.stringify(p.busy));
     check('story pacing: ...an exempt chapter (the first ones: c1-c3) never waits; the switch off (G.chapters.PACED, openPacing): never', p.exempt === null && p.off === null, JSON.stringify(p));
+    check('story pacing: ...on the save\'s first play day a zone\'s first chapter never waits (a new explorer finds it), its second does', p.zu1 === 'room' && p.first.zu1 === null && p.first.zt2 === 'room', JSON.stringify([p.zu1, p.first]));
     check('story pacing: 5 new things today: it waits too, whatever the backlog (' + p.today5.bl + ')', p.today5.today >= 5 && p.today5.gate === 'room' && !p.today5.alert, JSON.stringify(p.today5));
     check('story pacing: a chapter already started always goes on (its beat live, its bubble)', p.started.gate === null && p.started.live && p.started.alert, JSON.stringify(p.started));
     // a beat whose map goes away under it (back to the title, a G.goto mid-beat) isn't "running" for ever after: that held
