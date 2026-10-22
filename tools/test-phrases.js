@@ -395,11 +395,11 @@ async function cards(browser) {
     await g.frames(10); await still(g, 'dash_frases');
     const dv = await g.ev(() => { const v = G.top().view(); return { zone: v.zone, rows: v.rows.map(r => [r.id, r.met, r.st, r.said].join(':')) }; });
     check('cards: the Words tab has a speech-bubble tab: every phrase, met first (stage, said aloud)', dv.zone === 'frases' && dv.rows.length === 6 && dv.rows[0] === 'f_llamo:true:2:2' && dv.rows.includes('f_quiero:true:2:1') && dv.rows.includes('f_gusta:true:2:0') && dv.rows.slice(3).every(r => r.includes(':false:')), JSON.stringify(dv));
-    await g.tapRect(await g.ev(() => G.top().tabRect(0)));
-    await g.frames(10); await still(g, 'dash_overview');
+    await g.tapRect(await g.ev(() => G.top().tabRect(G.dashboard.TABS.indexOf('Talk')))); // (the phrases' row: the Talk tab, AUDIT 2.8)
+    await g.frames(10); await still(g, 'dash_talk');
     const ov = await g.ev(() => { const line = G.top().phraseLine(G.hist.overview().phrases); return { p: G.hist.overview().phrases, line, fits: G.textWidth(line) <= G.W - 92, share: G.dashboard.shareText() }; });
-    check('cards: the Overview counts the phrases: 3 of 6 met, said aloud 2 times today (S events), built 1 (in one line)', ov.p.met === 3 && ov.p.of === 6 && ov.p.said === 2 && ov.p.today === 2 && ov.p.built === 1 && /^3 of 6 met; said 2 times \(2 today\), built 1$/.test(ov.line) && ov.fits, JSON.stringify(ov));
-    check('cards: the shared text has the phrases', /Phrases: 3 of 6 met \(Me llamo, Quiero, Me gusta\); said aloud 2 times, 2 today\./.test(ov.share), ov.share);
+    check('cards: the Learning page counts the phrases: 3 of 6 met, said aloud 2 (once a day each, no echoes), the builder\'s 1 apart (in one line)', ov.p.met === 3 && ov.p.of === 6 && ov.p.said === 2 && ov.p.today === 2 && ov.p.built === 1 && /^3 of 6 met; said 2 \(2 today\); 1 built$/.test(ov.line) && ov.fits, JSON.stringify(ov));
+    check('cards: the shared text has the phrases', /Phrases: 3 of 6 met \(Me llamo, Quiero, Me gusta\); said aloud 2 \(once a day each\), 2 today; built from cards 1 \(not counted\)\./.test(ov.share), ov.share);
     await g.tapBtn(await g.ev(() => G.top().closeXY()));
     await g.fieldIdle('villa');
 

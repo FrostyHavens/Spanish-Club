@@ -21,6 +21,13 @@
 // with the voice, a start it didn't count as the tap) while the mic test works fine, and hiding the buttons made the
 // mic vanish from the game for good. The child just gets "¡Otra vez!"; the last errors are kept on the device
 // (M.errors, shown in the grown-ups menu and in the mic test's shared log) so a grown-up can see what went wrong.
+// Every try's outcome is kept on the device too (M.tries: heard something, or the error; the last 12; the mic test's
+// tries as well), so the grown-ups' Learning page can say when speaking has stopped working (AUDIT 2.8, M18):
+//   G.mic.note(res)   a finished try (a G.speech.listen result; 'aborted' isn't a try)
+//   G.mic.status()    {st: 'ok' (heard her at least once lately), 'unknown' (no try that heard anything yet), 'unavailable'
+//                     (the last 3-5 tries all failed: an error from the recognizer itself, not just nothing said),
+//                     'off' (the grown-ups' switch), 'unsupported' (no speech recognition here); n: the failed tries,
+//                     e: the last error, okAt: when it last heard her (ms)}
 'use strict';
 (function () {
   const M = G.mic = {};
@@ -32,6 +39,21 @@
     const d = new Date();
     M.errors.push({ error: res.error, during: res.during, at: d.toISOString().slice(0, 16).replace('T', ' ') });
     M.errors = M.errors.slice(-10); G.store.set(ERR_KEY, M.errors);
+  };
+  const TRY_KEY = 'spanishclub_mictries';
+  M.tries = G.store.get(TRY_KEY) || [];
+  M.SOFT = ['no-speech', 'no-match', 'aborted']; // (not the recognizer failing: nothing said, or nothing it knew)
+  M.note = function (res) {
+    if (!res || res.error === 'aborted') return;
+    M.tries.push(res.ok ? { ok: 1, at: G.now() } : { e: res.error || 'error', at: G.now() });
+    M.tries = M.tries.slice(-12); G.store.set(TRY_KEY, M.tries);
+  };
+  M.status = function () {
+    if (!G.speech || !G.speech.supported()) return { st: 'unsupported' };
+    if (G.prefs.mic === false) return { st: 'off' };
+    const T = Array.isArray(M.tries) ? M.tries : [], last = T.slice(-5), ok = T.filter(t => t && t.ok), okAt = ok.length ? ok[ok.length - 1].at : null;
+    if (last.length >= 3 && last.every(t => t && !t.ok && M.SOFT.indexOf(t.e) < 0)) return { st: 'unavailable', n: last.length, e: last[last.length - 1].e, okAt };
+    return { st: okAt ? 'ok' : 'unknown', okAt };
   };
   M.on = () => !!G.speech && G.speech.supported() && G.prefs.mic !== false && !M.blocked;
   M.target = c => { const w = c && c.word && G.data.words[c.word]; return [c && c.label, w && w.es, w && w.alt].filter(Boolean).join(' / ') || null; };
@@ -114,7 +136,7 @@
         this.lt++;
         const l = this.l;
         if (l.done()) {
-          this.l = null; const res = l.result;
+          this.l = null; const res = l.result; M.note(res);
           if (res.ok && res.alternatives.length) this.o.heard(res.alternatives);
           else if (res.error !== 'aborted') { if (res.error && res.error !== 'no-speech' && res.error !== 'no-match') M.logError(res); if (!(this.o.nohear && this.o.nohear(res))) this.miss(); } // (o.nohear: the scene takes it quietly, e.g. "say it first": the cards just appear)
           return true;

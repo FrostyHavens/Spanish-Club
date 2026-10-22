@@ -6,7 +6,7 @@
 // it is met, when it is first used, how often it comes back, the gaps, which errands and sessions it lives in, where too
 // many new words arrive at once, and checks the "Measured targets" of docs/LEARNING_DESIGN.md (PASS / FAIL).
 //   NODE_PATH=$(npm root -g) node tools/vocab-audit.js [--quick] [--strict] [--days 5] [--session 15] [--speak 0.35]
-//        [--wrong 0.12] [--pages 8] [--seed 7] [--out dump.json]
+//        [--wrong 0.12] [--pages 8] [--seed 7] [--out dump.json] [--write-docs]
 //   node tools/vocab-audit.js --from dump.json [--strict]   (analyse a saved run again, no browser)
 // --quick runs the game 3 times faster (G.speedMul: the same frames, less waiting) and skips the screenshots; --strict
 // exits with 1 when any target fails.
@@ -16,8 +16,10 @@
 // a share p of the questions that have a mic (and the word on a gold card at p * 0.6); with --wrong p a share of
 // picture-card questions get one wrong tap first; with --pages n (0: never) the child also goes for a page puzzle's
 // sparkle when it is on screen within n tiles (the hint hand never points at them, but sparkles draw children in).
-// Writes docs/VOCAB_AUDIT.md (only the part between the AUDIT markers: findings written above or below them stay),
-// docs/vocab-timeline.svg and the JSON dump (default: the scratchpad, else the OS temp dir).
+// Writes VOCAB_AUDIT.md, vocab-timeline.svg and the JSON dump to the scratch folder (the scratchpad, else the OS temp
+// dir): a run never changes the docs unless it is asked to. With --write-docs it updates docs/VOCAB_AUDIT.md (only the
+// part between the AUDIT markers: findings written above or below them stay) and docs/vocab-timeline.svg. (It measures
+// the story's playthrough; the open world as she plays it, every feature on: tools/learning-audit.js.)
 'use strict';
 const fs = require('fs'), path = require('path'), os = require('os');
 
@@ -27,7 +29,8 @@ const ROOT = path.resolve(__dirname, '..');
 const SCRATCH = '/tmp/claude-0/-home-user-Spanish-Club/56c6d0c5-5673-5d69-87f4-ad0ff9c7afaf/scratchpad';
 const OUTDIR = fs.existsSync(SCRATCH) ? SCRATCH : os.tmpdir();
 const DUMP = path.resolve(arg('out', path.join(OUTDIR, 'vocab-audit.json')));
-const REPORT = path.join(ROOT, 'docs', 'VOCAB_AUDIT.md'), SVG = path.join(ROOT, 'docs', 'vocab-timeline.svg');
+const WRITE_DOCS = ARGS.includes('--write-docs'); // (else the report and the chart go to the scratch folder)
+const REPORT = WRITE_DOCS ? path.join(ROOT, 'docs', 'VOCAB_AUDIT.md') : path.join(OUTDIR, 'VOCAB_AUDIT.md'), SVG = WRITE_DOCS ? path.join(ROOT, 'docs', 'vocab-timeline.svg') : path.join(OUTDIR, 'vocab-timeline.svg');
 const SESSION = +arg('session', 15) * 60;   // a play session, in game seconds
 const DAYS = +arg('days', 5);                  // sessions to play, one a day
 const QUICK = ARGS.includes('--quick'), STRICT = ARGS.includes('--strict');
@@ -602,6 +605,7 @@ function report(A, D) {
 function median(a) { if (!a.length) return 0; const s = a.slice().sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
 
 function writeReport(text) {
+  if (!WRITE_DOCS && !fs.existsSync(REPORT) && fs.existsSync(path.join(ROOT, 'docs', 'VOCAB_AUDIT.md'))) fs.copyFileSync(path.join(ROOT, 'docs', 'VOCAB_AUDIT.md'), REPORT); // (the docs' findings around the markers, in the scratch copy)
   let doc = fs.existsSync(REPORT) ? fs.readFileSync(REPORT, 'utf8') : '# Vocabulary flow audit\n\nHow the words of Club de Español reach a child over one full playthrough, measured by `tools/vocab-audit.js`.\n\n';
   const a = doc.indexOf('<!-- AUDIT:BEGIN'), b = doc.indexOf('<!-- AUDIT:END -->');
   doc = a >= 0 && b > a ? doc.slice(0, a) + text + doc.slice(b + '<!-- AUDIT:END -->'.length + 1) : doc + text;
