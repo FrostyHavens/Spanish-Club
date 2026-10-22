@@ -128,3 +128,72 @@ When a review holds up a word's picture, it now asks the question a Mexican adul
 8. **"rosada / rosado"** for pink: the game says "conchas rosadas". In Mexico, is "rosa" (invariable: "conchas rosa")
    more natural for a child?
 9. **"Gira una vez"** (turn around once): natural, or "Da una vuelta"?
+
+---
+
+## Batch 3 (2026-10-23): polish Sprint 3, shorter story chains and Mexican names
+The story's long question chains were split up with things to do on the map. Some names and words were changed to
+Mexican usage.
+
+### Names and words (Mexican usage)
+- Character name: Profesora Luna -> Maestra Luna (src/data.js; shown in every talk's name box and in "Maestra Luna: ¡...!" greetings)
+- Character name: Abuela Rosa -> Doña Rosa (src/data.js)
+- C8 find-it: "¡La [escuela]! ¡Profesora Luna!" -> "¡La [escuela]! ¡Maestra Luna!"
+- Present question (errands.js): "¿Para Profesora Luna?" / "¿Para Señor Gómez?" / "¿Para Abuela Rosa?" -> "¿Para la maestra Luna?" / "¿Para el señor Gómez?" / "¿Para Doña Rosa?" (G.requests.person)
+- The colour pink: rosado / rosada -> rosa (the same for every noun; the mic still accepts rosado, rosada, rosas)
+  - C15 Lucía: "Una [flor] [rosada]... ¿[por favor]?" -> "Una [flor] [rosa]... ¿[por favor]?"
+  - C15 flower bed: "¿[Rosada]?" -> "¿[Rosa]?"
+  - C15 Lucía: "¡[Sí]! ¡La [flor] [rosada]! ¡[Gracias]!" -> "¡[Sí]! ¡La [flor] [rosa]! ¡[Gracias]!"
+  - C15 Lucía: "¡[Rosada] y [amarilla]! ¡Y mis [flores]!" -> "¡[Rosa] y [amarilla]! ¡Y mis [flores]!"
+  - Listen-and-do requests: "Tráeme tres conchas rosadas." -> "Tráeme tres conchas rosa."; "Dame la bufanda rosada." -> "Dame la bufanda rosa."; "¿Cuántas conchas rosadas hay?" -> "¿Cuántas conchas rosa hay?"
+  - Dashboard: "¿De qué color es el cerdo? Es rosado." -> "Es rosa."
+- The ribbon: cinta -> listón
+  - C14 Luna: "¡Una cinta [azul]!" -> "¡Un listón [azul]!"
+  - C14 Luna: "¿Cuántas cintas?" -> "¿Cuántos listones?"
+  - C14 Mamá: "¡Una cinta! ¡Bravo, {dog}!" -> "¡Un listón! ¡Bravo, {dog}!"
+  - C20 Sofía: "¿Cuántas cintas?" -> "¿Cuántos listones?"
+- The dog show: show de perros -> concurso de perros
+  - C14 title: "El show de perros" -> "El concurso de perros" (also the older errand's name)
+  - C14 Sofía: "¡Un show de perros! ¿{dog}?" -> "¡Un concurso de perros! ¿{dog}?"
+  - C14 Sofía: "¿{dog}? ¿En el show?" -> "¿{dog}? ¿En el concurso?"
+  - C14 Sofía: "¡El show!" -> "¡El concurso!"
+  - C14 Luna: "¡El show de perros! ¡{dog}!" -> "¡El concurso de perros! ¡{dog}!"
+  - C21 Luna: "¡El show de {dog}!" -> "¡Los trucos de {dog}!" (the party isn't a contest)
+- La huerta: Abuelo "¡Mi huerto! ¿Me ayudas?" -> "¡Mi huerta! ¿Me ayudas?"
+- Dashboard "Tonight's question": the little visitors are asked where you find them, not where they live:
+  "¿Dónde vive la mariposa? En la flor." -> "¿Dónde hay mariposas? En las flores." (also catarinas, colibríes: en las
+  flores; conejos, palomas, hormigas, lagartijas, grillos: en el parque)
+
+### The greeting before a story beat
+- When a person's story beat comes next, they greet her ("¡[Buenos días], {name}!", "¡[Hola], {name}!", "¡[Buenas noches], {name}!") instead of asking her to say it back; the name / "¿Qué te gusta?" phrase waits for another talk.
+
+### New or changed story lines (shorter question chains)
+- C4 Don Pepe (the game moves to three crates on the plaza):
+  - new: "¡Un juego! ¿[Sí] o [no]?" now ends his first talk (was the start of the next scene; unchanged words)
+  - new: "¡[No]! ¡Un [perro]! ¡Otra!" (after the bone crate: "another crate!")
+  - siNo prompts kept: "¿Un [hueso]?", "¿Un [gato]?", "¿[Siéntate]?", "¿Y ahora? ¿[Siéntate]?"
+- C6 Nico: new "¡El [pan]! ¡Para el [pato]!" (she then taps the duck to feed it). One round of the "who says it" game dropped (the duck was tapped twice in a row): "¡[Sí]! ¡El [pato]!" removed.
+- C10: unchanged lines, new order (Canelo's tiredness is asked at the fountain).
+- C12 Don Pepe: new "Las [naranjas]... ¡allá!" (the oranges are at the other end of his stall)
+- C13: Rosa's "¡Al [parque]!" now ends her talk (the picnic is a place in the park).
+- C16, C17, C18: new order only (C17: "¿Qué dice el [gato]?" dropped; C18: "¿Cuántas [gallinas]?" and "¿Cuántos [peces]?" dropped from Luna's clipboard).
+- C19: "¿Cuántos [caballos]?" dropped.
+- C20:
+  - Luna asks only "¿Dónde está Marta?" and, at the end, "¿Y la fiesta? ¿Dónde?"
+  - Marta: new "¿Y Inés? ¿Dónde está?" (was Luna's "¿Y Inés?")
+  - Inés: new "¿Y Rosa? ¿Dónde está?" (was Luna's "¿Y Rosa?")
+  - Rosa: new "¡Y Don Pepe! ¡La fruta!"
+  - Don Pepe: new "¡Y Sofía! En el [parque]." (Luna's question "¿Y Sofía?" became this line)
+  - Sofía: new "¡Listones para la [granja]! ¿Me ayudas?" (the ribbons are on the lawn to pick up)
+  - Sofía: "¡Y {dog}! ¡Un ensayo!" kept
+- C21 (the party is five stations):
+  - new: "¿Qué come cada uno?" (at the food by the paddock gate)
+  - new: "¡{dog}! ¡[Ven]! ¡Los listones!" (Sofía calls her over)
+  - new: "¡Mira! ¡Más amigos!" (Lucía)
+  - kept: "¡La comida para los animales!", "¡La canción de los animales!"
+
+### Questions for the reviewer
+10. **Pink as "rosa" for every noun** ("conchas rosa", "la bufanda rosa"): is that what you'd say to a child, or
+    "conchas rosas"?
+11. **"¿Para la maestra Luna?" / "¿Para el señor Gómez?"** (asking who a present is for): natural?
+12. **"¡Los trucos de {dog}!"** (the dog's tricks at the party): natural?
