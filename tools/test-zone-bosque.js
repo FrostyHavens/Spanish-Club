@@ -259,10 +259,15 @@ async function side(browser) {
     await tapNpc(g, 'lola', 1, 0);
     await drv(g, () => free() && G.bosque.jar().on, 'Lola: la luciérnaga, the jar');
     for (let k = 0; k < 5; k++) {
-      await g.ev(() => { const a = G.animals.find('luciernaga'), p = G.field.player; a.x = (p.x + 2) * 24 + 12; a.y = p.y * 24 + 18; a.st = 'idle'; a.t = 999; a.ground = [[p.x + 2, p.y]]; });
-      await g.frames(2);
-      await g.tap(...await g.ev(() => G.animals.screen(G.animals.find('luciernaga'))));
       await g.ev(k => { window.__k = k; }, k);
+      // (a firefly drifts: under load it can be off the spot by the time the tap lands; put it back and tap again, 3 times at most)
+      for (let t = 0; t < 3 && await g.ev(() => G.bosque.jar().n <= window.__k); t++) {
+        await g.until(() => free(), null, 'free to catch one', 20000);
+        await g.ev(() => { const a = G.animals.find('luciernaga'), p = G.field.player; a.x = (p.x + 2) * 24 + 12; a.y = p.y * 24 + 18; a.st = 'idle'; a.t = 999; a.ground = [[p.x + 2, p.y]]; });
+        await g.frames(2);
+        await g.tap(...await g.ev(() => G.animals.screen(G.animals.find('luciernaga'))));
+        await g.until(() => G.bosque.jar().n > window.__k, null, 'firefly caught', 4000).catch(() => {});
+      }
       await g.until(() => G.bosque.jar().n > window.__k, null, 'firefly ' + k);
       await drv(g, () => free(), 'after firefly ' + k);
     }
