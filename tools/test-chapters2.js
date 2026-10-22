@@ -58,7 +58,9 @@ async function watch(g) {
 
 // ---------- chapters 11-21, by taps, to the diploma ----------
 async function story(browser) {
-  const { ctx, g } = await open(browser, 'ch2', true);
+  // (the chapters' own content back to back over the days, by a bot that doesn't do the day's reviews: story pacing,
+  // src/chapters.js CH.PACED, would hold a new chapter while reviews wait, so it's off here; it's tested in test-memory.js)
+  const { ctx, g } = await open(browser, 'ch2', true, { openPacing: true });
   try {
     await g.ev(afterN, FROM);
     await g.ev(() => G.toTitle());
