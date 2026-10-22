@@ -24,7 +24,13 @@
 //        question: it is held up and named like the first time, then a one-unknown puzzle (hear it, pick its picture
 //        among 2 known ones; a cued use: the next questions move it on). G.review.ask does it by itself for a
 //        slipping word not re-introduced yet (W.needsReintro), and so does the dog's warm-up (warmup.js).
-// Content checks G.budget.canIntro(n) before introducing (words.js) and defers when it's false ("¡Mañana!").
+// Pacing (words.js G.budget, AUDIT 2.9): show / watch / listen ask G.budget.canIntro themselves. A chapter's beat always
+// introduces (the story). In the open world, on a day with no room for a new word, the moment still happens, without a
+// card or a puzzle: the thing is held up and its name said (show), it happens (watch), it's heard (listen); then a word
+// she knows that is due is asked instead (G.review.ask: a review), and the new word waits in the queue (G.budget.defer)
+// to be introduced first when there's room: the dog's warm-up brings it after its cards (queued(o), src/warmup.js), or
+// the next time she meets the thing. They return false then (nothing met). note() never shows a card for a word not met.
+//   queued(o)  the first word waiting in the queue, introduced now if pacing allows (a show-and-name, o.who): true if met
 // G.review.ask(id, {who, prompt, en, pool, layout}) one question for a met word, fit for its stage: met -> hear it
 //   (a speaker in the prompt) and pick among picture + word cards; known -> its picture, pick its word; remembered+
 //   -> its picture, say it or pick its word (the mic is on), or hear it and pick its picture. Counted as review.
@@ -52,7 +58,7 @@
   // it flies into the deck in the corner. (It used to be a notebook page; the notebook comes later, docs/PLAYTEST_NOTES.md.)
   let noteUntil = 0;
   I.note = function (ids, o = {}) {
-    ids = (Array.isArray(ids) ? ids : [ids]).filter(id => (G.words.item ? G.words.item(id) : D().words[id])); // (a word or a phrase: phrases.js)
+    ids = (Array.isArray(ids) ? ids : [ids]).filter(id => (G.words.item ? G.words.item(id) : D().words[id]) && Wd().met(id)); // (a word or a phrase: phrases.js; never one not met: pacing)
     const w = new G.Wait();
     if (!ids.length) { w.resolve(); return w; }
     ids.forEach((id, k) => { if (G.cards) G.cards.show(id, Object.assign({ fresh: true, delay: k * 36 }, o)); });
@@ -78,9 +84,35 @@
     return Object.assign({ prompt: o.ask || '¿Qué es?', en: o.askEn || 'Which one is it?', choices: ch, answer: ch.findIndex(c => c.word === (o.answer || id)), layout: 'cards', who: o.who || null, intro: id, how: o.how }, extra || {});
   };
 
+  // ---------- pacing: no room for a new word today (words.js G.budget) ----------
+  const later = id => !Wd().met(id) && !!G.budget && !G.budget.canIntro(1, { id });
+  // a due word she knows to ask instead: the same topic first, then any (with a picture, and 2 other met words to choose from)
+  I.reviewFor = function (id) {
+    if (Wd().count(1) < 3) return null;
+    const ok = k => k !== id && G.iconDrawn(k) && G.baseForm(k) !== G.baseForm(id), top = D().words[id] && D().words[id].topic;
+    return G.review.next({ topic: top, filter: ok }) || G.review.next({ filter: ok });
+  };
+  // the moment without the new word: what she sees and hears (see()), then a review; the word waits in the queue
+  function* deferred(id, o, see) {
+    G.budget.defer(id, o.how || 'show');
+    if (G.vocabLog) G.vlog('shown', id, { via: 'deferred', who: o.who || null });
+    yield* see();
+    const k = I.reviewFor(id);
+    if (k) yield* G.review.ask(k, { who: o.who || null });
+    return false;
+  }
+  I.queued = function* (o = {}) {
+    if (!G.budget) return false;
+    const id = G.budget.queue().find(k => G.iconDrawn(k));
+    if (!id || !G.budget.canIntro(1, { id })) return false;
+    yield* I.show(id, { who: o.who || null, prompt: L.mira(id), en: o.en || 'Look! Something you saw before: here is its name.', how: 'queue' });
+    return Wd().met(id);
+  };
+
   // ---------- show and name ----------
   I.show = function* (id, o = {}) {
     if (!D().words[id]) return false;
+    if (later(id)) return yield* deferred(id, o, function* () { yield sayAs(o.who, [TT(o.prompt || L.mira(id), o.en || 'Look!')], { show: id }); });
     yield sayAs(o.who, [TT(o.prompt || L.mira(id), o.en || 'Look!')], { show: id });
     if (Wd().met(id)) return true;
     const known = o.known || I.known(id, 2);
@@ -93,6 +125,7 @@
   // ---------- watch and do ----------
   I.watch = function* (id, o = {}) {
     if (!D().words[id]) return false;
+    if (later(id)) return yield* deferred(id, Object.assign({ how: 'watch' }, o), function* () { yield sayAs(o.who, [TT(o.prompt || L.mira(id), o.en || 'Watch!')]); if (o.act) yield* o.act(); });
     yield sayAs(o.who, [TT(o.prompt || L.mira(id), o.en || 'Watch!')]);
     if (o.act) yield* o.act();
     const known = o.known || I.known(id, 2);
@@ -106,6 +139,7 @@
   // ---------- listen and point ----------
   I.listen = function* (id, o = {}) {
     if (!D().words[id]) return false;
+    if (later(id)) return yield* deferred(id, Object.assign({ how: 'listen' }, o), function* () { if (o.sound) o.sound(); yield sayAs(o.who, [TT(o.prompt || '¡[' + id + ']!', o.en || 'Listen!')]); });
     const right = o.answer || id;
     const known = o.known || I.known(right, 2, { exclude: [id] });
     if (o.sound) o.sound();
@@ -254,8 +288,8 @@
       if (pid === wid) {
         this.match[k] = true; this.sel = null;
         const r = this.picRect(k); G.audio.sfx('chime'); G.fx.burst(r.x + r.w / 2, r.y + r.h / 2); G.speak(G.baseForm(pid));
-        const first = !this.tried[pid];
-        Wd().answerRight(pid, { mode: 'match', firstTry: first, review: true, noStar: true });
+        const first = !this.tried[pid], forced = Object.keys(this.match).length === this.pics.length; // (the last pair: nothing left to choose)
+        Wd().answerRight(pid, { mode: 'match', firstTry: first, review: true, noStar: true, forced });
         if (Object.keys(this.match).length === this.pics.length) { this.done = 1; G.audio.jingle('item'); G.fx.confetti(40, 200, 1, 20); G.fx.confetti(G.W - 40, 200, -1, 20); }
         return;
       }

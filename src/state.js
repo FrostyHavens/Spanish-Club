@@ -16,7 +16,8 @@
       // words: id -> the word model's record (words.js: stage, Leitner box, due, counts). Older saves held
       // {learned, right, wrong, said} (present = seen); words.js migrates those when it first reads them.
       words: {},
-      wm: { clock: 0, sess: 0, day: 0, date: '' }, // words.js: play-time clock, session and day counters
+      wm: { clock: 0, sess: 0, day: 0, date: '' }, // words.js: play-time clock, session and day counters (and the memory's:
+                          // its session, the switch day v2, the first day d0, the pacing's queue and daily target)
       finds: {},          // intro.js: find-it puzzles going on: word id -> {who, map, at, wrong, found}
       pages: {},          // notebook page puzzles solved (intro.js): id -> {d: the day it was solved} (older saves: true)
       quests: {},         // id -> 'active' | 'done'
@@ -130,6 +131,7 @@
     G.state = devicePrefs(s); S.slot = n; bound = s; badSlot = null;
     Object.assign(status, { at: s.savedAt || 0, fails: 0, why: null });
     if (G.chapters) G.chapters.migrate(); // a game from before the chapters: its errands map onto them (chapters.js)
+    if (G.words) G.words.upgrade(); // its words onto the memory's newer ladder and stages (words.js: kept, never all due at once)
     if (G.words) G.words.newSession('load'); // a new session (and a new day on a new date)
     return true;
   };

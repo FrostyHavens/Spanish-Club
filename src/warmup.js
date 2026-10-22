@@ -4,8 +4,10 @@
 // quick questions, the most overdue first, words from earlier days and from other places first (G.review.due): she says
 // the word (a big mic right beside its picture) or taps it. Each card grows (cards.js); the dog wags after each one, and
 // at the end he jumps for joy and gets a treat (and gives a heart). About a minute. A skip button (two arrows: "not
-// now", top left) ends it at any moment, without a word of Spanish. Nothing new is taught: only met words; a slipping
-// word (words.js) is met again instead (G.intro.again). The first time, a ghost hand shows the mic (demo.js 'warmup').
+// now", top left) ends it at any moment, without a word of Spanish. The cards teach nothing new: only met words; a
+// slipping word (words.js) is met again instead (G.intro.again). After the cards, a word waiting in the pacing's queue (seen on a
+// day with no room for new words) is introduced if there's room now (G.intro.queued: the only new thing it ever brings).
+// The first time, a ghost hand shows the mic (demo.js 'warmup').
 // It waits for the story: never during a beat (CH.running), a find-it puzzle, the opener, the bus, a dog lost in a
 // chapter, the evening at home; with fewer than 2 words due it doesn't come (that day). The guide carries on after.
 //   The form, from the word's stage (the answer-card rules: learn.js Choice.view never lets pictures give it away):
@@ -147,6 +149,9 @@
       }
       c.card = null;
       if (c.skipped) { finish(c, false); return; }
+      // (pacing, words.js G.budget: a word she saw on a day with no room for new ones is introduced now, after the
+      // reviews, if there's room: intro.js G.intro.queued)
+      if (G.intro.queued) { c.phase = 'new'; yield* G.intro.queued({ who: 'canelo' }); }
       // 3. the dog jumps for joy and gets a treat
       c.phase = 'party';
       const [dx, dy] = dogXY(f, n);

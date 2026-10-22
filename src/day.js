@@ -152,7 +152,7 @@
     Object.assign(f.player, { x: BED[0], y: BED[1], dir: 'left', ox: 0, oy: 0 }); f.snapCam();
     if (G.pet) G.pet.night(f); // Canelo curls up on his cushion (pet.js)
     yield DY.night(); // the night sky, then the sunrise (it fades itself in and out)
-    newDay(true); if (G.words) G.words.newSession('night'); // a new day for the word model too: yesterday's words come back
+    newDay(true); if (G.words) G.words.newSession('night'); // a new game day and session (favours, chapters...); the memory keeps to calendar days, so no word falls due because of the night (words.js)
     G.audio.play(f.def.music || 'town', true);
     yield G.fadeTo(0, 0.04, '#fff2d0'); // out of the morning light (the night left the fade there)
     if (G.pet) G.pet.morning(f); // and Canelo hops up

@@ -8,7 +8,9 @@
 //   once per word per C.GAP seconds of play, so they can't be farmed)
 // The plant always agrees with the word model (words.js, docs/LEARNING_DESIGN.md): it can't flower before the word is
 // remembered (stage 3, the gold card), a known word is at least a sprout, a remembered one at least a flower and a solid
-// one two flowers; the third flower (gold petals) only grows on a solid word.
+// one two flowers; the third flower (gold petals) only grows on a solid word. A card never shrinks: stages never go down,
+// growth points only add up, and a card grown before the stricter stages (the switch, words.js) keeps at least the
+// points it showed then (its record's gk), whatever FLOOR / CAP say for its stage.
 // Each use pops the card up near the action (where the child tapped, the mic, the thing on the map: C.at / o.x, o.y), the
 // plant grows before their eyes with a rising sound (speaking: bigger, slower, with sound waves and a brighter sound),
 // then the card flies into the deck in the top-right corner. On the map the deck IS the menu button (a little stack of
@@ -48,9 +50,13 @@
 
   // ---------- points and levels ----------
   C.raw = id => { const r = rec(id); return r ? +r.gp || 0 : 0; };
+  // the points shown for a stage and growth points (words.js keeps a card's points as shown at the switch to the stricter
+  // stages, AUDIT 2.3, in its record's gk: a floor, so a card she has grown never shrinks)
+  C.shownAt = (st, gp) => (st < 1 ? 0 : Math.max(FLOOR[st] || 0, Math.min(CAP(st), +gp || 0)));
   C.shown = function (id, gp) {
     const st = G.words ? G.words.stage(id) : 0; if (st < 1) return 0;
-    return Math.max(FLOOR[st] || 0, Math.min(CAP(st), gp == null ? C.raw(id) : gp));
+    const r = rec(id), keep = r && +r.gk > 0 ? +r.gk : 0;
+    return Math.max(keep, C.shownAt(st, gp == null ? C.raw(id) : gp));
   };
   C.pts = id => C.shown(id);
   C.levelOf = p => { let k = 0; while (k + 1 < C.LV.length && p >= C.LV[k + 1]) k++; return k; };

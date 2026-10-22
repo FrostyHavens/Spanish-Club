@@ -344,9 +344,11 @@
     }
   }
   G.PhraseModel = PhraseModel;
-  // one pattern at a time: none introduced in the last P.GAP play seconds, and every word of the moment met a while ago
+  // one pattern at a time: none introduced in the last P.GAP play seconds, and every word of the moment met a while ago;
+  // and a phrase is a new item for the pacing (words.js G.budget: review first; a chapter's beat always may)
   P.canIntro = function (id, o = {}) {
     if (!P.on() || !P.def(id)) return false;
+    if (G.budget && !G.budget.canIntro(1, { id })) return false;
     const last = st().last; if (last != null && Wd().now() - last < P.GAP) return false;
     const fresh = (o.slots || []).some(s => { const w = typeof s === 'string' ? s : s && s.word; const r = w && Wd().rec(w); return !!r && r.st >= 1 && r.met != null && r.ms === Wd().sess() && Wd().now() - r.met < 60; });
     return !fresh;

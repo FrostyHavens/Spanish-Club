@@ -48,7 +48,8 @@
   WD.TILES = { T: 'arbol', f: 'arbol', o: 'flor', l: 'fuente', w: 'agua', J: 'banco', N: null, D: null, j: 'cama' }; // (windows and doors have no word)
   // A tap on an unmet thing never meets its word: unmet things stay mysterious (a "?" bubble with its picture and its
   // cry, no word and no voice) until the story introduces them (docs/CURRICULUM.md 7.3). A find-it puzzle's thing (intro.js)
-  // wins over this, and set this to true to let taps meet words again (budget permitting).
+  // wins over this, and set this to true to let taps meet words again (pacing permitting: otherwise the word is queued,
+  // words.js G.budget.defer).
   WD.introOnTap = false;
   const LIFE = 170, SAY_LIFE = 330, WALK_AGAIN = 20 * 60;
   WD.bubble = null; WD.sayBack = null;
@@ -78,8 +79,9 @@
     if (o.walkOn) walked[id] = G.frame;
     if (G.vocabLog) G.vlog('tapped-object', id, { via: o.animal ? 'animal' : o.walkOn ? 'walk-on' : 'tap' }); // (the dev-only log, vocablog.js)
     let fresh = false;
-    if (!G.st.seen(id) && WD.introOnTap && !o.walkOn && !o.noIntro && G.budget.canIntro(1)) fresh = G.words.meet(id, 'tap'); // asked "what's this?": met
-    else G.st.see(id);
+    const ask = !G.st.seen(id) && WD.introOnTap && !o.walkOn && !o.noIntro; // asked "what's this?"
+    if (ask && G.budget.canIntro(1, { id })) fresh = G.words.meet(id, 'tap'); // met
+    else { if (ask) G.budget.defer(id, 'tap'); G.st.see(id); } // (no room today, words.js pacing: it waits in the queue)
     const unk = !G.st.seen(id); // not met yet: its picture and "?", and no voice
     const b = WD.bubble = { id, x: wx, y: wy, t: 0, cry: o.cry || null, f, unk, pic: o.pic || null }; // (pic: its own look, e.g. the blue ball: carry.js)
     if (o.tile) f.wig = { x: o.tile[0], y: o.tile[1], t: 18 };
