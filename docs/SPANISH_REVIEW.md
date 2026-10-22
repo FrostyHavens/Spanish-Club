@@ -79,3 +79,51 @@ now takes the article from the word. These are the lines it changed, plus a few 
 4. **"Cartas" for the notebook's picture cards.** Is that natural (like lotería cards), or should it be "tarjetas"?
 5. **"¡A hacer el pay!"** for "let's make the pie": is *pay* right for a Mexican child, or *pastel*?
 6. **"¡Vamos con Rosa!"** for "let's go to Rosa's": natural, or "¡Vamos a ver a Rosa!"?
+
+---
+
+## Batch 2 (2026-10-22): polish Sprint 2, new questions and requests
+
+### The question for each kind of word
+When a review holds up a word's picture, it now asks the question a Mexican adult would ask for that kind of word.
+| Kind of word | Question |
+| --- | --- |
+| things | ¿Qué es? |
+| things that come in pairs or groups (los ojos, los zapatos, las burbujas) | ¿Qué son? |
+| animals and people | ¿Quién es? |
+| la familia | ¿Quiénes son? |
+| actions (corre, salta, baila...) | ¿Qué hace? |
+| colours | ¿De qué color es? |
+| feelings (bien, cansado, feliz, triste) | ¿Cómo está? |
+| numbers | ¿Cuántas hay? / ¿Cuántos hay? (from the thing counted) |
+| greetings, phrases, animal sounds | ¿Qué dice? |
+| commands to the dog (ven, siéntate, dame la pata) | ¿Qué le dices? |
+| nadar | ¿Qué le gusta hacer? |
+| rápido, despacio | ¿Cómo va? |
+| grande, pequeño, caliente | ¿Cómo es? |
+| frío | ¿Qué tiempo hace? |
+
+### Reviews in other places
+| Who | Line |
+| --- | --- |
+| A friend with a photo | ¡{name}! ¡Mira mi foto! / ¡Mira, {name}! ¡Una foto! / ¡{name}! ¿Y en esta foto? |
+| Lola, in a new place | ¡Mira mi foto! ¿Te acuerdas? / ¡{name}! ¡Una foto de mi viaje! / ¡Mira! ¿Te acuerdas de esto? |
+| A letter from Tomás | ¡Mira! ¡Un dibujo! |
+| Don Chuy, the bubbles | ¿Qué quieres? → (she says) Quiero burbujas, por favor. → ¡Burbujas! ¡Aquí tienes! |
+
+### New listen-and-do requests (she hears them and does them)
+- **The beach, Don Paco:** Dame la concha blanca. / Dame dos conchas. / Dame dos estrellas de mar. / ¿Cuántos cangrejos
+  hay? / Toca a la tortuga pequeña. / ¿Dónde está la gaviota pequeña? / Toca al pez grande. / Dame dos conchas blancas. /
+  ¿Cuántas conchas rosadas hay?
+- **The park, Ana** (her character does it): Salta dos veces. / Gira una vez. / Baila tres veces. / Tócate la nariz. /
+  Tócate los ojos. / Tócate la boca.
+- **The mountain, Don Lucho:** Toca a la llama grande. / Toca al águila pequeña. / ¿Dónde está el lobo pequeño? /
+  ¿Cuántas marmotas hay? / ¿Cuántos zorrillos pequeños hay?
+- **Before she knows a colour or number:** Dame la concha. / Toca al cangrejo. / ¿Dónde está la tortuga? / Baila.
+
+### Questions for the reviewer
+7. **"¿Quién es?" for animals** (to match the album, like a Pokédex): natural for a child, or should it be "¿Qué animal
+   es?"
+8. **"rosada / rosado"** for pink: the game says "conchas rosadas". In Mexico, is "rosa" (invariable: "conchas rosa")
+   more natural for a child?
+9. **"Gira una vez"** (turn around once): natural, or "Da una vuelta"?
