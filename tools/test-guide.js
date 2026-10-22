@@ -135,11 +135,16 @@ async function noDeadEnd(browser) {
     const goal = await g.ev(() => G.carry.plan(G.field));
     check('play: in town, a play goal with a place: ' + goal.why, !!a && /^play:/.test(a.why) && !!(goal.map || goal.who || goal.dog), JSON.stringify([a, goal]));
     await canvasShot(g, path.join(OUT, 'guide_09_play.png'));
-    // many new words today: no daily word limit any more (2026-10-17): the next chapter still opens (Sofía's ball)
+    // many new words today: story pacing (src/chapters.js): the next chapter waits for room (no bubble, the arrow passes
+    // it by, never a dead end); the next day, with room, it opens (Sofía's ball)
     const W4 = W12.concat(['buenosdias', 'hueso', 'sientate', 'si', 'no', 'manzana']);
     await g.ev(W4 => { G.st.newGame(); G.state.name = 'Luz'; Object.assign(G.state.flags, { intro: true, canelo: true, petStart: true, opener: true }); for (const id of ['c1', 'c2', 'c3', 'c4']) G.state.quests[id] = 'done'; for (const w of W4) { G.words.meet(w, 'test'); G.words.answerRight(w, { mode: 'text' }); } G.zones.ids().forEach(G.zones.visit); G.goto('villa', 17, 21, 'down'); }, W4);
     await g.fieldIdle('villa'); await g.frames(10);
-    check('play: 12 new words today and chapter 5 still opens (no word budget)', await g.ev(() => G.chapters.gate('c5') === null));
+    const busy = await g.ev(() => ({ gate: G.chapters.gate('c5'), alert: G.field.npc('sofia').alert(), at: G.guide.at && G.guide.at.why }));
+    check('play: 18 new words today: chapter 5 waits for room (no story bubble over Sofía, the arrow on something else: ' + busy.at + ')', busy.gate === 'room' && !busy.alert && !!busy.at && !/^c5:/.test(busy.at), JSON.stringify(busy));
+    await g.ev(() => { G.debug.dayShift = (G.debug.dayShift || 0) + 1; G.words.newSession('load'); for (const id of G.words.list(1)) Object.assign(G.words.rec(id), { due: null, ds: null, dc: G.words.dayNum() + 3 }); G.budget.flush(); G.goto('villa', 17, 21, 'down'); }); // (the next day, nothing due)
+    await g.fieldIdle('villa'); await g.frames(10);
+    check('play: the next day, with room, chapter 5 opens', await g.ev(() => G.chapters.gate('c5') === null));
     check('play: Sofía (its giver) has the chapter\'s picture, not a moon', await g.ev(() => { const a = G.field.npc('sofia').alert(); return !!a && !a.sleep; }));
     a = await at(g);
     check('play: and the guide suggests it', !!a && /^c5:/.test(a.why), JSON.stringify(a));
