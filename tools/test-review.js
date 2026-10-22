@@ -229,7 +229,7 @@ async function sideJobs(browser) {
     for (let i = 0; i < 3 && !await g.ev(() => G.errands.jobDone('caballo')); i++) { await tapAnimal(g, 'caballo'); await g.frames(10); await settle(g, 'the horse'); }
     check('horse: petted from close by: a star', await g.ev(() => G.errands.jobDone('caballo')));
     await settle(g, 'the horse');
-    // presents: an apple from Don Pepe for Profesora Luna
+    // presents: an apple from Don Pepe for Maestra Luna
     await talk(g, 'pepe', 'Don Pepe\'s shop');
     check('shop: Don Pepe: an apple (the first card)', await g.ev(() => G.errands.bag.has('manzana', { q: null })));
     await g.ev(() => { G.state.heartlog.d = '1999-1-1'; });

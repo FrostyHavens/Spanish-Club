@@ -85,12 +85,14 @@
   // Templates by the kind of word; a question only uses words the child has met (and an answer she can give with
   // them). The answer's English is for the grown-up.
   const SOUND = { perro: 'guau', gato: 'miau', pato: 'cuac', rana: 'croac' };
-  const HOME = { perro: 'casa', gato: 'casa', pajaro: 'arbol', mariposa: 'flor', pez: 'agua', conejo: 'parque', rana: 'agua', pato: 'agua', gallina: 'granja', caballo: 'granja', cabra: 'granja',
+  const HOME = { perro: 'casa', gato: 'casa', pajaro: 'arbol', pez: 'agua', rana: 'agua', pato: 'agua', gallina: 'granja', caballo: 'granja', cabra: 'granja',
     cangrejo: 'arena', estrellamar: 'mar', tortuga: 'mar', gaviota: 'mar', medusa: 'mar', delfin: 'mar', pulpo: 'mar',
     oso: 'cueva', ardilla: 'arbol', mapache: 'elbosque', venado: 'elbosque', zorro: 'elbosque', erizo: 'elbosque', buho: 'arbol', luciernaga: 'elbosque',
-    paloma: 'parque', catarina: 'flor', hormiga: 'parque', lagartija: 'parque', grillo: 'parque', colibri: 'arbol', // (no bee: bees live in a hive, not one of her words)
+    // (no bee: bees live in a hive, not one of her words; the little ones that visit flowers or the park: SEEN)
     vaca: 'granja', cerdo: 'granja', oveja: 'granja', burro: 'granja', pavo: 'granja', raton: 'casa', gallo: 'granja', tlacuache: 'arbol',
     llama: 'lamontana', marmota: 'lamontana', zorrillo: 'lamontana', carpintero: 'arbol', monarca: 'arbol', puma: 'lamontana', aguila: 'lamontana', lobo: 'lamontana' };
+  // where you see them (they don't live in a flower or in the park): "¿Dónde hay mariposas? En las flores." [place, plural]
+  const SEEN = { mariposa: ['flor', 1], catarina: ['flor', 1], colibri: ['flor', 1], conejo: ['parque'], paloma: ['parque'], hormiga: ['parque'], lagartija: ['parque'], grillo: ['parque'] };
   const COLOR = { manzana: 'rojo', platano: 'amarillo', leche: 'blanco', huevo: 'blanco', queso: 'amarillo', pelota: 'rojo', hoja: 'verde', rana: 'verde', arbol: 'verde',
     mar: 'azul', nieve: 'blanco', nube: 'blanco', elsol: 'amarillo', oveja: 'blanco', cerdo: 'rosa', catarina: 'rojo', abeja: 'amarillo' };
   const ACT = { corre: ['correr', 'run'], baila: ['bailar', 'dance'], salta: ['saltar', 'jump'], nadar: ['nadar', 'swim'], sube: ['subir', 'climb'], lanza: ['lanzar', 'throw'] };
@@ -106,6 +108,9 @@
   const TPL = [
     ['sound', id => SOUND[id] && met(SOUND[id]) ? { es: '¿Qué dice ' + es(id) + '?', en: 'What does ' + en(id) + ' say?', ans: { es: '¡' + cap(form(SOUND[id], 0)) + '!', en: cap(en(SOUND[id])) + '!' }, words: [id, SOUND[id]] } : null],
     ['home', id => HOME[id] && met(HOME[id]) ? { es: '¿Dónde vive ' + es(id) + '?', en: 'Where does ' + en(id) + ' live?', ans: { es: 'En ' + es(HOME[id]) + '.', en: 'In ' + en(HOME[id]) + '.' }, words: [id, HOME[id]] } : null],
+    ['seen', id => { const s = SEEN[id], n = s && G.requests.noun(id), p = s && G.requests.noun(s[0]); if (!n || !p || !met(s[0])) return null;
+      const enPl = w => enBare(w).replace(/y$/, 'ie') + 's', place = s[1] ? (p.g === 'f' ? 'las ' : 'los ') + p.pl : es(s[0]);
+      return { es: '¿Dónde hay ' + n.pl + '?', en: 'Where do you find ' + enPl(id) + '?', ans: { es: 'En ' + place + '.', en: (s[1] ? 'On the ' + enPl(s[0]) : 'In ' + en(s[0])) + '.' }, words: [id, s[0]] }; }],
     ['color', id => COLOR[id] && met(COLOR[id]) ? { es: '¿De qué color es ' + es(id) + '?', en: 'What color is ' + en(id) + '?', ans: { es: 'Es ' + form(COLOR[id], fem(id) ? 1 : 0) + '.', en: 'It\'s ' + en(COLOR[id]) + '.' }, words: [id, COLOR[id]] } : null],
     ['dog', id => id === 'perro' ? { es: '¿Cómo se llama tu perro?', en: 'What is your dog\'s name?', ans: { es: G.fill('Se llama {dog}.'), en: G.fill('His name is {dog}.') }, words: [id] } : null],
     ['body', id => D().words[id].topic === 'cuerpo' ? (plural(id) ? { es: '¿Dónde están tus ' + bare(id) + '?', en: 'Where are your ' + enBare(id) + '?', ans: { es: '¡Aquí están!', en: 'Here they are! (pointing)' }, words: [id] } : { es: '¿Dónde está tu ' + bare(id) + '?', en: 'Where is your ' + enBare(id) + '?', ans: { es: '¡Aquí está!', en: 'Here it is! (pointing)' }, words: [id] }) : null],
@@ -122,7 +127,7 @@
       const food = FOOD.includes(w.topic) || FOOD.includes(id), n = plural(id) ? 'n' : '';
       return { es: '¿Te gusta' + n + ' ' + es(id) + '?', en: 'Do you like ' + (food ? enBare(id) : en(id)) + '?', ans: { es: '¡Sí, me gusta' + n + '! / No, no me gusta' + n + '.', en: 'Yes, I like ' + (n ? 'them' : 'it') + '! / No, I don\'t.' }, words: [id] }; }],
   ];
-  const SPECIFIC = ['sound', 'home', 'color', 'dog', 'body', 'clothes', 'feel', 'weather', 'family'];
+  const SPECIFIC = ['sound', 'home', 'seen', 'color', 'dog', 'body', 'clothes', 'feel', 'weather', 'family'];
   // a little hash for the day's order (stable all day, a different order tomorrow)
   const hash = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; };
   DB.tonights = function () {

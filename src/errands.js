@@ -176,7 +176,7 @@
     yield* tell(TT('¡Coc, coc! ...¿Qué es?', 'Cluck, cluck! ...What\'s this?'));
     yield* q(null, '¿Qué es?', 'What is it?', 'huevo', ['huevo', 'pan', 'pelota']);
     B.add('huevo');
-    yield* tell(TT('¡Un [huevo]! ¿Para Rosa?', 'An egg! For Grandma Rosa?'));
+    yield* tell(TT('¡Un [huevo]! ¿Para Rosa?', 'An egg! For Doña Rosa?'));
   }
   function* waterJob() {
     yield* tell(TT('La [fuente]... ¿Para {dog}?', 'The fountain... for {dog}\'s bowl?'));
@@ -239,7 +239,7 @@
     }
     yield* say(who, TT('¡Oh! ¿Un regalo? ¿Para mí?', 'Oh! A present? For me?'));
     if (G.words.met('si') && G.words.met('no')) { // (before sí and no are met, tapping them with it in your hands is the yes)
-      const r = yield G.choose({ prompt: '¿Para ' + G.nameOf(who).replace(/ (el|la) .*/, '') + '?', en: 'Give it?', show: B.icon(it), choices: words('si', 'no'), layout: 'cards', mic: true });
+      const r = yield G.choose({ prompt: '¿Para ' + G.requests.person(who) + '?', en: 'Give it?', show: B.icon(it), choices: words('si', 'no'), layout: 'cards', mic: true });
       if (r.result !== 0) { yield* say(who, TT('¡Oh! Bueno...', 'Oh! All right...')); return true; }
     }
     yield* take();

@@ -166,6 +166,15 @@ opens tomorrow. Inside a run, write with the helpers in `G.chapters.K` (`say`, `
 `walk`, `place`, `bark`, `heart`, `confetti`...) and introduce every new word with `G.intro.*` (below). The header of
 `src/chapters.js` lists every trigger and option; `content/es/story-c01-c10.js` has ten worked examples.
 
+**At most 3 questions before something happens on the map** (AUDIT H8: long question chains are where a child taps
+through without listening). Between every 3 questions (`ask`, `siNo`, `G.intro.*`, a review, a phrase, a listen tray)
+something happens: she walks, finds, carries or gives something (end the beat: the next one is a `spot`, `spots`, `tap`
+or `who` she goes to: Don Pepe's crates in chapter 4, Sofía's ribbons on the lawn in chapter 20, the party's stations
+in chapter 21), the dog does something (`G.pet.play` / `.trick`, a run with `K.walk`), someone walks over or fetches
+something (`K.walk` of 2+ tiles: `fetch(f, who, x, y)` in story-c11-c21.js), or an animal of the story moves (`a.go`,
+`a.follow`). A greeting is said, not asked, when the story is next in the talk (hearts.js). `tools/test-chains.js`
+plays every chapter of every line and fails on a run of 4.
+
 **Gating** (`G.chapters.gate(id)`): the chapter before (in its line) must be done; there is no word budget any more
 (with 10 or more words still only met, Luna, or Mamá before chapter 8, offers a review with a notebook bubble,
 `G.chapters.review`, but nothing waits for it); `when: 'morning'` chapters
@@ -206,7 +215,7 @@ words only ("¡Al parque!"): the next beat's trigger is what the arrow points at
   and the shopkeepers one of their things (*¿Qué es?*, sometimes it goes in your bag as a present). A new kind is an
   entry in `OFFERS` (who, kind, the pool of words) and a generator in `KIND`. Listen-and-do favours (an ear in the
   bubble: a tray of pictures, or things to bring) are below, in *Listen and do*.
-- **Palabra del día**: from chapter 8, once a day, Profesora Luna holds up a picture of a due word: say it or pick
+- **Palabra del día**: from chapter 8, once a day, Maestra Luna holds up a picture of a due word: say it or pick
   its word from four.
 - **Inés's library**: from chapter 16 she offers one notebook page puzzle that is ready, once a day.
 - The morning greeting and its due word are in `src/hearts.js` (`H.POOLS`). The order of a townsperson's talk is

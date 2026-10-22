@@ -240,13 +240,22 @@
       noches: ['¡...!', 'The moon is out: ' + nm + ' says good night. Say it back!'],
       hola: ['¡...!', nm + ' waves at you. Say hi back!'],
     }[kind];
+    // the story comes next in this talk (their chapter's beat, or a beat playing now): they say hello and she isn't asked;
+    // the beat's questions are the talk's (AUDIT H8: at most 3 questions before something happens on the map)
+    if (G.chapters && ((G.chapters.running && G.chapters.running()) || (G.chapters.beatFor && G.chapters.beatFor(npc)))) {
+      yield say(npc, T_(kind === 'best' ? Q[0] : '¡[' + ans + '], {name}!', kind === 'best' ? Q[1] : nm + ' says ' + (ans === 'buenosdias' ? 'good morning' : ans === 'buenasnoches' ? 'good night' : 'hello') + '.'));
+      H.add(npc, 1, 'greet'); yield* H.milestones(npc);
+      return true;
+    }
     if (G.vocabLog) G.vlog.greet = npc; // (the dev-only log, vocablog.js: tags the greeting's words)
     try { yield* G.chapters.ask(npc, nm + ': ' + Q[0], Q[1], ans, others, { show: kind === 'best' ? null : show }); } finally { if (G.vlog) G.vlog.greet = null; }
     H.add(npc, 1, 'greet'); // (marks today's greeting even when no heart is left to give)
     yield 20;
     // a friend you haven't swapped names with says theirs ("Me llamo Pepe. ¿Y tú?"), or some days asks what you like
-    // ("¿Qué te gusta?"): that's the day's question with them (src/phrases.js, docs/LEARNING_PLAN_2.md Phase 2)
-    if (G.phrase && ((yield* G.phrase.meetName(npc)) || (yield* G.phrase.likeAsk(npc)))) { H.talkGreeted = npc; G.review.mark(npc); yield* H.milestones(npc); return true; } // (the day's question with them: no drawing or photo after it in this talk)
+    // ("¿Qué te gusta?"): that's the day's question with them (src/phrases.js, docs/LEARNING_PLAN_2.md Phase 2); not
+    // when their favour comes next in this talk (it waits for another talk: a moment, not a quiz chain)
+    const own = !!(G.favores && G.favores.alert && G.favores.alert(npc)); // (their favour: its questions are this talk's)
+    if (!own && G.phrase && ((yield* G.phrase.meetName(npc)) || (yield* G.phrase.likeAsk(npc)))) { H.talkGreeted = npc; G.review.mark(npc); yield* H.milestones(npc); return true; } // (the day's question with them: no drawing or photo after it in this talk)
     // one word that's due, wherever she met it (AUDIT C6: a beach word is reviewed in the forest too), asked as picture
     // cards (G.review.ask: a form that fits any place); when nothing is due, one of their own words she hasn't used
     // today (G.favores.dueWord: the place's words are the fallback). A moment, not a quiz chain (S2 review #12): not when

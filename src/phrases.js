@@ -85,7 +85,7 @@
       return { id: s, word: s, es: w.es.split(' / ')[0], icon: w, say: [w.es, w.alt].filter(Boolean).join(' / ') };
     }
     if (s && s.name) { const n = G.st.playerName(); return { id: '_name', name: true, face: 'player', es: n, say: n }; }
-    if (s && s.face) { const n = s.es || (G.nameOf(s.face) || '').replace(/^(Profesora|Señor|Señora|Don|Doña) /, '').replace(/ (el|la) .*/, ''); return { id: '_' + s.face, face: s.face, es: n, say: n }; }
+    if (s && s.face) { const n = s.es || (G.nameOf(s.face) || '').replace(/^(Maestra|Profesora|Señor|Señora|Don|Doña) /, '').replace(/ (el|la) .*/, ''); return { id: '_' + s.face, face: s.face, es: n, say: n }; }
     const o = Object.assign({}, s); o.es = o.es || o.id; o.icon = o.icon || o.id; o.say = [o.es, o.alt].filter(Boolean).join(' / ');
     if (o.word && D().words[o.word]) { const w = D().words[o.word]; o.say = [o.say, w.es, w.alt].filter(Boolean).join(' / '); }
     return o;
@@ -237,7 +237,7 @@
   // =====================================================================
   //  Introducing a pattern: two friends model it, then "¡Ahora tú!" (PhraseModel)
   // =====================================================================
-  const FIRST = id => (G.nameOf(id) || '').replace(/^(Profesora|Señor|Señora|Don|Doña|Abuela) /, '').replace(/ (el|la) .*/, '');
+  const FIRST = id => (G.nameOf(id) || '').replace(/^(Maestra|Profesora|Señor|Señora|Don|Doña|Abuela) /, '').replace(/ (el|la) .*/, '');
   P.shortName = FIRST;
   // the words a pattern is usually said with (the models' slots when the moment has too few of its own)
   P.SLOTS = {

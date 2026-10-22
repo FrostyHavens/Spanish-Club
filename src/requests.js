@@ -9,7 +9,7 @@
 //                          pez -> peces (z -> ces: lápiz -> lápices), ratón -> ratones (the accent goes), joven ->
 //                          jóvenes (one comes), árbol -> árboles (it stays), colibrí -> colibríes, el lunes -> los lunes,
 //                          estrella de mar -> estrellas de mar
-//   colour and size        rojo / roja / rojos / rojas, amarillo, blanco, rosado, pequeño; azul -> azules, verde ->
+//   colour and size        rojo / roja / rojos / rojas, amarillo, blanco, rosa (never changes), pequeño; azul -> azules, verde ->
 //                          verdes, grande -> grandes (no gender)
 //   numbers                uno -> un / una before the noun (Dame una concha. Dame un plátano.)
 //   the personal a         an animal or a person touched: "Toca al perro grande." "Toca a la vaca pequeña." (RQ.animate)
@@ -33,7 +33,7 @@
 // apple test "roja"; a red apple and a red flower test "manzana"; a pile bigger than the number tests the number).
 // Only tested words get credit (src/listen.js: one 'listen' retrieval per word per request); the others are heard.
 // World requests (carry: true) are smaller (at most three: the hands hold three, src/carry.js) and their things are
-// scattered on the map to pick up ("Tráeme dos conchas rosadas.").
+// scattered on the map to pick up ("Tráeme dos conchas rosa.").
 //
 // API (G.requests, short RQ):
 //   RQ.noun(id) {id, g: 'm'|'f', sg, pl, plOnly}   RQ.plural(s)   RQ.pluralAdj(s)   RQ.adj(id, g, plural)
@@ -147,6 +147,9 @@
   // the pronoun and the ending that agree with the word: ¡Búsca-lo! ¡Búsca-la! ¿Cuánt-os? ¿Cuánt-as?
   const gn = (id, pl) => { const n = RQ.noun(id); return [n && n.g === 'f' ? 'f' : 'm', !!n && (n.plOnly || !!pl)]; };
   RQ.lo = (id, pl) => { const [g, p] = gn(id, pl); return (g === 'f' ? 'la' : 'lo') + (p ? 's' : ''); };
+  // a townsperson named in a line: a title takes its article ("¿Para la maestra Luna?", "el señor Gómez"); Don / Doña
+  // and plain names as they are ("Doña Rosa", "Marta", not "Marta la panadera")
+  RQ.person = id => (G.nameOf(id) || '').replace(/ (el|la) .*$/, '').replace(/^(Maestra|Señor|Señora) /, (m, t) => ({ Maestra: 'la maestra ', Señor: 'el señor ', Señora: 'la señora ' })[t]);
   RQ.o = (id, pl) => { const [g, p] = gn(id, pl); return (g === 'f' ? 'a' : 'o') + (p ? 's' : ''); };
   // every line built by code from a word, by name: fn(id) -> rich text. tools/test-spanish.js runs every word through
   // each one (a module adds its own: G.requests.LINES['fav.find'] = id => '¿Y ' + RQ.the(id) + '?'...)
@@ -155,7 +158,7 @@
   RQ.adj = function (id, g, plural) {
     const w = WD(id); if (!w) return id;
     const f = w.es.split(' / ').map(x => x.trim()), sg = g === 'f' && f[1] ? f[1] : f[0];
-    return plural ? RQ.pluralAdj(sg) : sg;
+    return plural && !w.inv ? RQ.pluralAdj(sg) : sg; // (w.inv: rosa stays rosa, las conchas rosa)
   };
   // a number word before its noun: uno -> un / una, the rest as they are
   RQ.numWord = (id, g) => (id === 'uno' ? (g === 'f' ? 'una' : 'un') : WD(id) ? WD(id).es.split(' / ')[0] : id);

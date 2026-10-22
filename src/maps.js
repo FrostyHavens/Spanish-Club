@@ -59,7 +59,7 @@
     // the animals (animals.js) and where they live (G.MAPDATA.villa.pos areas, made by tools/mapgen.py)
     animals: [
       { kind: 'pato', n: 3, area: 'estanque' },   // a duck and two ducklings on the farm pond
-      { kind: 'gallina', n: 2, area: 'gallinero' }, // Abuela Rosa's hens, beside her house
+      { kind: 'gallina', n: 2, area: 'gallinero' }, // Doña Rosa's hens, beside her house
       { kind: 'pez', at: 'fuentePez' },             // the goldfish in the plaza fountain
       { kind: 'rana', area: 'rana' },               // the frog on the park pond's lily pads
       { kind: 'conejo', area: 'conejo' },           // the rabbit on the park lawn
@@ -127,7 +127,7 @@
     G.audio.sfx('select'); yield 20;
   }
 
-  // ---------- Don Pepe's fruit stall; Abuela Rosa ----------
+  // ---------- Don Pepe's fruit stall; Doña Rosa ----------
   function* pepeTalk() {
     if (met('manzana')) yield* say('pepe', T('¡Fruta! ¡[manzana:Manzanas]!', 'Fruit! Apples!'));
     else yield* say('pepe', T('¡Hola! ¡Fruta!', 'Hello! Fruit!'));
@@ -209,7 +209,7 @@
     ],
   };
 
-  // ---------- La escuela (Profesora Luna) ----------
+  // ---------- La escuela (Maestra Luna) ----------
   G.maps.escuela = {
     name: 'La escuela', icon: 'escuela', rows: MD.escuela.rows, music: 'church',
     things: {}, pages: PAGES('escuela'),
@@ -225,7 +225,7 @@
   };
   // Luna: once the story has brought you to her school, a replayable review (the words that are due first)
   function* lunaTalk(f) {
-    if (!met('escuela')) { yield* say('luna', T('¡[hola]! Soy Luna.', 'Hello! I\'m Profesora Luna.')); return; }
+    if (!met('escuela')) { yield* say('luna', T('¡[hola]! Soy Luna.', 'Hello! I\'m Maestra Luna.')); return; }
     if (!G.words.count(2)) { yield* say('luna', T('¡[hola], {name}!', 'Hi, {name}!')); return; }
     yield* say('luna', T('¡[hola], {name}!', 'Hi, {name}!'));
     const r = yield G.choose({ prompt: '¿Repaso?', en: 'Review some words?', show: 'pagina', layout: 'cards', choices: [{ word: 'si' }, { word: 'no' }].filter(c => met(c.word)), cancel: true });
@@ -234,7 +234,7 @@
     yield* say('luna', T('¡Muy bien!', 'Very good!'));
   }
 
-  // ---------- Casa de la abuela Rosa ----------
+  // ---------- Casa de Doña Rosa ----------
   G.maps.rosa = {
     name: 'La casa de Rosa', icon: 'casa', rows: MD.rosa.rows, music: 'headquarters',
     exits: [exitAt('rosa', 'rosaDoor')],

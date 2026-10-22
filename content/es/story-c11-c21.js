@@ -1,4 +1,4 @@
-// ===== The story, chapters 11-21 (docs/CURRICULUM.md section 4): Rosa's hens, Mamá's market, the picnic, the dog show,
+// ===== The story, chapters 11-21 (docs/CURRICULUM.md section 4): Rosa's hens, Mamá's market, the picnic, the dog contest,
 // Lucía's flowers, the lost pages, Nico's sound game, counting the town, everyone to the farm, the party =====
 // The same kind of script as content/es/story-c01-c10.js (beats for G.chapters, src/chapters.js). Every new word arrives
 // in a one-unknown puzzle and is used again within a minute or two; most of every chapter is older words coming back
@@ -66,6 +66,12 @@
     const n = f.npc(id), d = (G.maps[f.mapId].npcs || []).find(o => o.id === id); if (!n || !d) return;
     Object.assign(n, { home: [d.x, d.y], wander: d.wander || 0, route: d.route || null });
   }
+  // someone goes to get it (from the shelf, the oven, the other crate) and comes back: a moment on the map between questions
+  function* fetch(f, id, x, y) {
+    const n = f.npc(id); if (!n) return;
+    const x0 = n.x, y0 = n.y, d0 = n.dir;
+    yield* K.walk(f, n, x, y, 3); yield 14; yield* K.walk(f, n, x0, y0, 3); n.dir = d0;
+  }
   function guest(f, id, x, y, dir) { let n = f.npc(id + '_g'); if (!n) n = f.addNpc({ id: id + '_g', npc: id, x, y, dir: dir || 'down', fixed: true, guest: true }); return n; }
   const unguest = (f, id) => f.removeNpc(id + '_g');
   const clap = (f, ids) => { G.audio.sfx('coin'); for (const id of ids) { const n = f.npc(id) || f.npc(id + '_g'); if (n && G.ambient) G.ambient.happy(n); } };
@@ -113,7 +119,7 @@
   }
 
   // =====================================================================
-  //  C11 · Los huevos de Rosa  (Abuela Rosa, her house and the henhouse)  gallina, huevo, uno, dos, blanco
+  //  C11 · Los huevos de Rosa  (Doña Rosa, her house and the henhouse)  gallina, huevo, uno, dos, blanco
   // =====================================================================
   const ROSA_HENS = [4, 8], NEST1 = [1, 10], NEST2 = [3, 10], WHITE_AT = [2, 9], BROWN_AT = [4, 10], HAY = [1, 7], PLAZA_HEN = [10, 9];
   const pinHens = f => { const h = hens(f); if (h.white) { h.white.pin = at(...WHITE_AT); h.white.flip = false; } if (h.brown) { h.brown.pin = at(...BROWN_AT); h.brown.flip = true; } };
@@ -134,12 +140,12 @@
       yield* G.intro.show('huevo', { who: 'rosa', prompt: '¡Mira! Un [huevo].', en: 'Look! An egg.', known: ['pan', 'manzana'] });
       yield* ask('rosa', '¿Quién pone [huevo:huevos]?', 'Who lays eggs?', 'gallina', ['pato', 'cabra'], { point: over(h.white) });
       c.data.nests = 1; S.autosave();
-      yield* ask('rosa', '¿Qué es?', 'Rosa puts it in a nest. What is it?', 'huevo', ['pan', 'manzana'], { point: tile(...NEST1) });
       yield* sayShow('rosa', many('huevo', 1), T('¡[uno]! Un [huevo].', 'One! One egg. (she holds up one finger)'));
       yield* G.intro.find('uno', { who: 'rosa', map: 'villa', at: NEST1, wrong: [NEST2], prompt: '¿Y el nido con [uno]?', en: 'Which nest has ONE egg? (tap it)' });
     } },
-    { auto: 'villa', when: found('uno'), run: function* () { // dos
+    { auto: 'villa', when: found('uno'), run: function* () { // the egg again; dos
       yield* say('rosa', T('¡[si]! ¡[uno]!', 'Yes! One!'));
+      yield* ask('rosa', '¿Qué es?', 'And what is in the nest?', 'huevo', ['pan', 'manzana'], { point: tile(...NEST1) });
       yield* sayShow('rosa', many('huevo', 2), T('[uno]... ¡[dos]! [dos] [huevo:huevos].', 'One... two! Two eggs. (two fingers)'));
       yield* G.intro.find('dos', { who: 'rosa', map: 'villa', at: NEST2, wrong: [NEST1], prompt: '¿Y el nido con [dos]?', en: 'And the nest with TWO eggs? (tap it)' });
     } },
@@ -205,7 +211,7 @@
   // =====================================================================
   //  C12 · El mercado de Mamá  (Mamá, then Don Pepe)  plátano, naranja, por favor, tres, cuatro
   // =====================================================================
-  const LIST = heap([many('platano', 3), many('naranja', 4)]);
+  const LIST = heap([many('platano', 3), many('naranja', 4)]), ORANGES = [21, 9]; // (Mamá's list; the oranges at the other end of Pepe's stall)
   CH.script('c12', [
     { who: 'mama', run: function* (f) { // Mamá's list; Canelo's bowl; a letter on the table
       const n = dog(f);
@@ -217,11 +223,12 @@
       yield G.questCard('c12');
       yield* sayShow('mama', LIST, T('¡Don Pepe! ¡[adios]!', 'To Don Pepe\'s fruit stall! Bye!'));
     } },
-    { who: 'pepe', bubble: 'platano', part: 'platano', run: function* (f) { // un plátano, una naranja; Marta: ¡por favor!
+    { who: 'pepe', bubble: 'platano', part: 'platano', run: function* (f) { // un plátano, una naranja; Marta walks up: ¡por favor!
       yield* G.intro.show('platano', { who: 'pepe', prompt: '¿Qué quieres? ¡Mira! ¡Un [platano]!', en: 'What would you like? Look! A banana!', known: ['manzana', 'pan'] });
       yield* G.intro.show('naranja', { who: 'pepe', prompt: '¡Y una [naranja]!', en: 'And an orange!', known: ['manzana', 'platano'] });
       yield* ask('pepe', '¿Y esto?', 'He holds up the banana again. What is it?', 'platano', ['naranja', 'manzana'], { show: 'platano' });
-      const m = guest(f, 'marta', 15, 10, 'up');
+      const m = guest(f, 'marta', 18, 10, 'left'); // (Marta comes across the plaza to the stall)
+      yield* K.walk(f, m, 15, 10, 3); m.dir = 'up';
       yield* say('marta', T('¡Una [manzana], [porfavor]!', 'An apple, please!'));
       yield* say('pepe', T('¡Claro! ¡Aquí tienes!', 'Of course! Here you are!'));
       yield* say('marta', T('¡[gracias]! ¡[adios]!', 'Thank you! Bye!'));
@@ -230,42 +237,47 @@
       yield* sayShow('pepe', many('platano', 3), T('¡Claro! [uno], [dos]... ¡[tres]!', 'Of course! One, two... three!'));
       yield* ask('pepe', '¿Cuántos [platano:plátanos]?', 'How many bananas?', 'tres', ['dos', 'uno'], { intro: true, how: 'show', look: { tres: 'text', dos: 'both', uno: 'both' }, show: many('platano', 3) });
       bag().add('platano', { q: 'c12' });
+      yield* sayShow('pepe', 'naranja', T('Las [naranja:naranjas]... ¡allá!', 'The oranges are at the other end of the stall: come over there!'));
+      const p = f.npc('pepe'); if (p) { yield* K.walk(f, p, ...ORANGES, 3); p.dir = 'down'; }
     } },
-    { auto: 'villa', part: 'naranja', run: function* () { // the oranges: cuatro
+    { who: 'pepe', bubble: 'naranja', part: 'naranja', run: function* (f) { // the oranges: cuatro; back at the stall, a present
       yield* ask('pepe', '¿Qué más?', 'What else is on the list?', 'naranja', ['platano', 'manzana'], { show: LIST });
       yield* ask('pepe', 'Tú: ¡[naranja:Naranjas]...!', 'Ask nicely!', 'porfavor', ['gracias', 'adios']);
       yield* sayShow('pepe', many('naranja', 4), T('[uno], [dos], [tres]... ¡[cuatro]!', 'One, two, three... four!'));
       yield* ask('pepe', '¿Cuántas [naranja:naranjas]?', 'How many oranges?', 'cuatro', ['tres', 'dos'], { intro: true, how: 'show', look: { cuatro: 'text', tres: 'both', dos: 'both' }, show: many('naranja', 4) });
       bag().add('naranja', { q: 'c12' });
+      const p = f.npc('pepe'); if (p) { yield* K.walk(f, p, ...V('pepe'), 3); p.dir = 'down'; } // (back behind his stall)
       yield* ask('pepe', '¿Y los [platano:plátanos]? ¿Cuántos?', 'And the bananas? How many?', 'tres', ['cuatro', 'dos'], { show: many('platano', 3) });
       yield* ask('pepe', '¿Y las [naranja:naranjas]?', 'And the oranges?', 'cuatro', ['tres', 'dos'], { show: many('naranja', 4) });
       yield* say('pepe', T('¡Y un regalo! Para ti...', 'And a present! For you...'));
       yield* ask('pepe', '¿Cuántas [manzana:manzanas]?', 'Three apples! How many?', 'tres', ['dos', 'cuatro'], { show: many('manzana', 3) });
-      yield* ask('pepe', '¿De qué color?', 'What colour are the apples?', 'rojo', ['blanco', 'platano'], { show: 'manzana' });
+      const n = dog(f); yield* G.pet.play('jump'); // ({dog} jumps up to sniff the apples)
+      yield* ask('pepe', '¿De qué color?', '{dog} jumps up to sniff the apples. What colour are they?', 'rojo', ['blanco', 'platano'], { show: 'manzana' });
       yield* ask(null, 'Pepe: ¡Aquí tienes!', 'He hands you the bag. What do you say?', 'gracias', ['porfavor', 'hola'], { show: { icon: 'bolsa' } });
       yield* sayShow('pepe', 'adios', T('¡De nada! ¡[adios]!', 'You\'re welcome! Bye! (he waves)'));
       yield* ask(null, 'Pepe: ¡...!', 'Wave back!', 'adios', ['hola', 'porfavor']);
       yield* tell(T('¡A la [casa]!', 'Home to Mom!'));
+      void n;
     } },
     { who: 'mama', bubble: 'casa', part: 'casa', run: function* (f) { // Mamá unpacks; Canelo begs
       bag().take('platano', { q: 'c12' }); bag().take('naranja', { q: 'c12' });
       yield* say('mama', T('¡La fruta! ¡[gracias]!', 'The fruit! Thank you!'));
       yield* ask('mama', '¿Qué es?', 'Mom unpacks. What is this?', 'platano', ['naranja', 'manzana'], { show: 'platano' });
       yield* ask('mama', '¿Y esto?', 'And this?', 'naranja', ['platano', 'pan'], { show: 'naranja' });
-      const n = dog(f); G.pet.anim(n, 'jump');
+      const n = dog(f); yield* G.pet.play('jump'); // (he begs)
       yield* siNo('mama', '¿Un [platano] para {dog}?', '{dog} begs. A banana for {dog}?', false, { point: n });
       yield* siNo('mama', '¿Un [hueso]?', 'A bone, then?', true, { point: n });
       yield* G.pet.play('eat', { item: 'hueso' }); K.heart(f, n);
     } },
   ], {
-    stage(f, c) { if (f.mapId === 'villa' && c.step === 2) hold(f, 'pepe', ...V('pepe'), 'down'); },
+    stage(f, c) { if (f.mapId === 'villa' && c.step === 2) hold(f, 'pepe', ...ORANGES, 'down'); }, // (at the oranges, the other end of his stall)
   });
 
   // =====================================================================
-  //  C13 · El día de campo  (Abuela Rosa: the bakery, the stall, the hens, the paddock, the fountain; a picnic)
+  //  C13 · El día de campo  (Doña Rosa: the bakery, the stall, the hens, the paddock, the fountain; a picnic)
   //        panadería, queso, leche, cinco, seis
   // =====================================================================
-  const FOODS = ['pan', 'queso', 'huevo', 'leche', 'agua'];
+  const FOODS = ['pan', 'queso', 'huevo', 'leche', 'agua'], PICNIC = [15, 20]; // (the picnic blanket, in the park)
   const ROSA_LIST = heap(['pan', 'queso', 'huevo', 'leche', 'agua']);
   const got = (c, k) => { (c.data.got || (c.data.got = {}))[k] = 1; bag().add(k, { q: 'c13' }); S.autosave(); };
   CH.script('c13', [
@@ -284,6 +296,7 @@
       yield* CH.banner('panaderia', ['casa', 'escuela']);
       yield* ask('marta', '¡[hola]! ¿Qué quieres?', 'Marta: hello! What would you like? (Rosa\'s list)', 'pan', ['manzana', 'huevo'], { show: ROSA_LIST });
       yield* ask(null, 'Tú: ¡[pan]...!', 'Ask nicely!', 'porfavor', ['gracias', 'adios']);
+      yield* fetch(f, 'marta', 2, 2); // (a loaf from the shelf)
       got(c, 'pan');
       yield* ask(null, 'Marta: ¡Aquí tienes!', 'Here you are! What do you say?', 'gracias', ['porfavor', 'hola'], { show: 'pan' });
     } },
@@ -312,8 +325,8 @@
       yield* G.intro.show('leche', { who: 'nico', prompt: 'La [cabra]... ¡[leche]!', en: 'The goat... milk! (Nico holds up the pail)', known: ['agua', 'queso'] });
       yield* ask('nico', '¿Quién da [leche]?', 'Who gives milk?', 'cabra', ['caballo', 'gallina'], { point: { x: 40 * TL + 12, y: 13 * TL - 2 } });
       got(c, 'leche');
-      const n = dog(f); G.pet.anim(n, 'huh');
-      yield* ask('nico', '¿Qué quiere {dog}?', '{dog} licks his lips at the pail. What does he want?', 'leche', ['agua', 'pan'], { point: n });
+      const n = dog(f); yield* G.pet.play('sniff'); G.pet.anim(n, 'huh');
+      yield* ask('nico', '¿Qué quiere {dog}?', '{dog} sniffs the pail and licks his lips. What does he want?', 'leche', ['agua', 'pan'], { point: n });
       if (horse) horse.pin = null; if (goat) goat.pin = null;
       yield* tell(T('Y el [agua]... ¡de la [fuente]!', 'And the water... from the fountain!'));
       release(f, 'nico');
@@ -324,34 +337,40 @@
       got(c, 'agua');
       yield* tell(T('¡Todo! ¡Vamos con Rosa!', 'Everything! Back to Rosa!'));
     } },
-    { who: 'rosa', bubble: true, part: 'canasta', run: function* (f, c) { // cinco; the picnic in the park; seis
+    { who: 'rosa', bubble: true, part: 'canasta', run: function* (f, c) { // cinco; {dog} noses out the cheese; to the park
       yield* say('rosa', T('¡Mi canasta! [uno], [dos], [tres], [cuatro]... ¡[cinco]!', 'My basket! One, two, three, four... five!'));
       yield* ask('rosa', '¿Cuántos?', 'How many things in the basket?', 'cinco', ['cuatro', 'tres'], { intro: true, how: 'show', look: { cinco: 'text', cuatro: 'both', tres: 'both' }, show: ROSA_LIST });
-      const n = dog(f); G.pet.anim(n, 'sniff'); yield 30; bark(f);
+      yield* G.pet.play('sniff'); bark(f);
       yield* ask('rosa', '¡{dog}! ¿Y ahora?', '{dog} noses the cheese out! How many now?', 'cuatro', ['cinco', 'tres'], { show: heap(['pan', 'huevo', 'leche', 'agua']) });
       yield* ask('rosa', '¡[no], {dog}! ¿Y ahora?', 'He puts it back. And now?', 'cinco', ['cuatro', 'tres'], { show: ROSA_LIST });
-      yield* say('rosa', T('¡Al [parque]!', 'To the park!'));
+      yield* say('rosa', T('¡Al [parque]!', 'To the park! (the picnic blanket is by the pond)'));
+    } },
+    { spot: { map: 'villa', at: PICNIC, icon: 'canasta' }, run: function* (f, c) { // the picnic in the park: the food; friends come: seis
       for (const k of FOODS) bag().take(k, { q: 'c13' }); bag().take('platano', { q: 'c13' });
       // the picnic: a red checked blanket in the park
       const back = yield* scene(f, { rosa: [15, 19, 'down'] }, [15, 21, 'up'], [16, 21, 'up']);
       f.picnic = { food: [] };
+      c.data.picnic = back;
       yield* say('rosa', T('¡Un día de campo! ¿La comida?', 'A picnic! Now the food: tap what I ask for.'));
-      for (const k of FOODS) {
+      const food = function* (k) {
         const others = FOODS.filter(o => o !== k).sort(() => G.rand() - 0.5).slice(0, 2);
         yield* ask('rosa', '¡[' + k + ']!', 'Rosa asks for it: tap its picture!', k, others, { pic: true, mask: [k] });
         f.picnic.food.push(k); G.audio.sfx('pop');
-      }
-      c.data.picnic = back;
-      // friends come and sit: six plates
-      const back2 = G.errands.stage(f, { mama_p: [13, 20, 'right'], sofia: [17, 20, 'left'], nico: [14, 22, 'up'] });
+      };
+      for (const k of FOODS.slice(0, 3)) yield* food(k);
+      yield* G.pet.play('sniff'); // ({dog} sniffs all round the blanket)
+      for (const k of FOODS.slice(3)) yield* food(k);
+      // friends come and sit: six plates (Nico runs over from the pond)
+      const back2 = G.errands.stage(f, { mama_p: [13, 20, 'right'], sofia: [17, 20, 'left'], nico: [14, 24, 'up'] });
+      const nk = f.npc('nico'); if (nk) yield* K.walk(f, nk, 14, 22, 3);
       clap(f, ['mama_p', 'sofia', 'nico']);
       yield* sayShow('rosa', many('plato', 6), T('¡Amigos! [uno], [dos], [tres], [cuatro], [cinco]... ¡[seis]!', 'Friends! One, two, three, four, five... six plates!'));
       yield* ask('rosa', '¿Cuántos?', 'How many plates?', 'seis', ['cinco', 'cuatro'], { intro: true, how: 'show', look: { seis: 'text', cinco: 'both', cuatro: 'both' }, show: many('plato', 6) });
       yield* ask('rosa', '¿Cuántos amigos?', 'Count everyone on the blanket: you, {dog}, Rosa, Mom, Sofía and Nico!', 'seis', ['cinco', 'cuatro']);
-      yield* ask('rosa', '¿Cuántas?', 'Five apple slices! How many?', 'cinco', ['seis', 'cuatro'], { show: many('manzana', 5) });
-      G.pet.anim(dog(f), 'huh');
-      yield* ask('rosa', '¿Qué quiere {dog}?', '{dog} begs. What does he want? (not the cheese!)', 'hueso', ['queso', 'leche'], { point: dog(f) });
+      yield* G.pet.play('sit'); // (he sits up and begs)
+      yield* ask('rosa', '¿Qué quiere {dog}?', '{dog} sits up and begs. What does he want? (not the cheese!)', 'hueso', ['queso', 'leche'], { point: dog(f) });
       yield* G.pet.play('eat', { item: 'hueso' });
+      yield* ask('rosa', '¿Cuántas?', 'Five apple slices! How many?', 'cinco', ['seis', 'cuatro'], { show: many('manzana', 5) });
       yield* ask('rosa', '¿Cómo está {dog}?', 'He ran around all afternoon. How is {dog}?', 'cansado', ['bien', 'no'], { point: dog(f) });
       yield* say('rosa', T('¡[gracias], {name}! ¡[adios], amigos!', 'Thank you, {name}! Bye, friends!'));
       yield* ask(null, 'Todos: ¡...!', 'Everyone waves goodbye. Wave back!', 'adios', ['hola', 'gracias']);
@@ -362,7 +381,7 @@
   });
 
   // =====================================================================
-  //  C14 · El show de perros  (Sofía; Luna judges)  dame la pata, salta, galleta, azul, feliz
+  //  C14 · El concurso de perros  (Sofía; Luna judges)  dame la pata, salta, galleta, azul, feliz
   // =====================================================================
   const BAR = [20, 21];
   CH.script('c14', [
@@ -370,10 +389,11 @@
       yield* ask(null, 'Tú: ¿...?', 'Ask Sofía how she is!', 'comoestas', ['hola', 'gracias']);
       yield* sayShow('sofia', 'bien', T('¡[bien]!', 'Fine! (thumbs up)'));
       yield* ask(null, '¿Cómo está Sofía?', 'How is Sofía?', 'bien', ['cansado', 'no']);
-      yield* sayShow('sofia', cinta(RED), T('¡Un show de perros! ¿{dog}?', 'A dog show! Will {dog} be in it?'));
-      yield* siNo('sofia', '¿{dog}? ¿En el show?', '{dog}, in the show?', true);
+      yield* sayShow('sofia', cinta(RED), T('¡Un concurso de perros! ¿{dog}?', 'A dog contest! Will {dog} be in it?'));
+      yield* siNo('sofia', '¿{dog}? ¿En el concurso?', '{dog}, in the contest?', true);
       yield G.questCard('c14');
       const n = dog(f); G.pet.place(f, n); yield 10;
+      yield* G.pet.play('dance'); K.heart(f, n); // (he can't wait)
       yield* say('sofia', T('¡Mira! Un cartel...', 'Look! A picture sign: tell {dog} what it shows!'));
       yield* ask('sofia', 'Sofía: ¡...!', 'Sofía holds up a picture sign. Tell {dog}!', 'sientate', ['ven', 'pelota'], Object.assign({ point: n, wrong: dogWrong(f) }, fromSign('sientate')));
       yield* G.pet.play('sit');
@@ -408,16 +428,17 @@
       yield* G.intro.show('galleta', { who: 'marta', prompt: '¿Para {dog}? ¡Una [galleta]!', en: 'For {dog}? A cookie!', known: ['pan', 'queso'] });
       yield* ask('marta', '¿Cuántas?', 'How many cookies? (count them)', 'tres', ['dos', 'cuatro'], { show: many('galleta', 3) });
       yield* ask(null, 'Tú: ¡...!', 'Ask nicely!', 'porfavor', ['gracias', 'adios']);
+      yield* fetch(f, 'marta', 8, 2); // (a bag of cookies from the oven)
       bag().add('galleta', { q: 'c14' });
       yield* ask(null, 'Marta: ¡Aquí tienes!', 'Here you are! What do you say?', 'gracias', ['hola', 'adios'], { show: many('galleta', 3) });
     } },
     { who: 'sofia', bubble: () => cinta(BLUE), part: 'cinta', run: function* (f, c) { // the show: Luna's picture signs, four ribbons
       yield* ask('sofia', '¿Qué tienes?', 'Sofía: what have you got for {dog}?', 'galleta', ['pan', 'hueso']);
-      yield* say('sofia', T('¡El show!', 'Show time!'));
+      yield* say('sofia', T('¡El concurso!', 'Contest time!'));
       const crowd = { luna_s: [19, 19, 'down'], nico: [15, 21, 'right'], rosa: [15, 22, 'right'], gomez: [22, 21, 'left'], lucia: [22, 22, 'left'] };
       const back = yield* scene(f, crowd, [18, 23, 'up'], [18, 21, 'up']);
       c.data.show = 1;
-      yield* say('luna', T('¡El show de perros! ¡{dog}!', 'The dog show! {dog}, with {name}!'));
+      yield* say('luna', T('¡El concurso de perros! ¡{dog}!', 'The dog contest! {dog}, with {name}!'));
       const n = dog(f), wins = [RED, BLUE, WHITE, BLUE];
       const rounds = [['sientate', ['salta', 'pata']], ['pata', ['ven', 'salta']], ['salta', ['sientate', 'pata']], ['ven', ['pata', 'sientate']]];
       for (let i = 0; i < rounds.length; i++) {
@@ -429,7 +450,7 @@
         if (i === 1) { bag().take('galleta', { q: 'c14' }); yield* ask('luna', '¿Y para {dog}?', 'A treat for the champion! What do you give him?', 'galleta', ['hueso', 'pelota'], { point: n }); yield* G.pet.play('eat', { item: 'galleta' }); }
         // a ribbon for each trick
         if (i === 1) {
-          yield* sayShow('luna', cinta(BLUE), T('¡Una cinta [azul]!', 'A blue ribbon!'));
+          yield* sayShow('luna', cinta(BLUE), T('¡Un listón [azul]!', 'A blue ribbon!'));
           yield* ask('luna', '¿De qué color?', 'What colour is this ribbon?', 'azul', ['rojo', 'blanco'], { intro: true, how: 'show', look: { azul: 'text', rojo: 'both', blanco: 'both' }, show: cinta(BLUE) });
         } else yield* ask('luna', '¿De qué color?', 'A ribbon! What colour is it?', i === 0 ? 'rojo' : i === 2 ? 'blanco' : 'azul', i === 0 ? ['blanco', 'galleta'] : ['blanco', 'rojo'].concat(i === 2 ? ['azul'] : []).filter(k => k !== (i === 2 ? 'blanco' : 'azul')).slice(0, 2), { show: cinta(wins[i]) });
         (c.data.ribbons || (c.data.ribbons = [])).push(wins[i]);
@@ -441,14 +462,14 @@
       yield* ask(null, '¿Cómo está Sofía?', 'How is Sofía?', 'feliz', ['cansado', 'bien'], { intro: true, how: 'show', look: { feliz: 'text', cansado: 'both', bien: 'both' }, point: s || undefined });
       yield* G.pet.play('dance');
       yield* ask('luna', '¿Y {dog}?', '{dog} dances. And how is he?', 'feliz', ['cansado', 'bien'], { point: n });
-      yield* ask('luna', '¿Cuántas cintas?', 'How many ribbons did {dog} win?', 'cuatro', ['tres', 'cinco'], { show: heap(wins.map(cinta)) });
+      yield* ask('luna', '¿Cuántos listones?', 'How many ribbons did {dog} win?', 'cuatro', ['tres', 'cinco'], { show: heap(wins.map(cinta)) });
       c.data.show = 0;
       yield* unscene(f, back);
       yield* tell(T('¡A la [casa]! {dog}...', 'Home! {dog} is worn out.'));
     } },
     { who: 'mama', bubble: 'cansado', run: function* (f) { // home: tired Canelo
       const n = dog(f); G.pet.anim(n, 'huh');
-      yield* say('mama', T('¡Una cinta! ¡Bravo, {dog}!', 'A ribbon! Bravo, {dog}!'));
+      yield* say('mama', T('¡Un listón! ¡Bravo, {dog}!', 'A ribbon! Bravo, {dog}!'));
       yield* ask('mama', '¿Cómo está {dog}?', 'He yawns. How is {dog}?', 'cansado', ['feliz', 'bien'], { point: n });
       yield* ask('mama', '{dog}, ¡a la...!', 'Where does he go to rest?', 'cama', ['ven', 'pelota'], { point: tile(7, 5) });
       yield* K.walk(f, n, 7, 5, 3); n.dir = 'left'; G.pet.sound('snore');
@@ -459,7 +480,7 @@
   });
 
   // =====================================================================
-  //  C15 · Las flores de Lucía  (Lucía, the plaza and flowers around town)  triste, flor, rosado, amarillo, mariposa
+  //  C15 · Las flores de Lucía  (Lucía, the plaza and flowers around town)  triste, flor, rosa, amarillo, mariposa
   // =====================================================================
   const LUCIA = [26, 12];
   const BEDS = [[8, 12, 'rojo'], [31, 9, 'blanco'], [23, 15, 'azul'], [12, 15, 'rosa']], YELLOW_AT = [39, 7];
@@ -468,11 +489,11 @@
       yield* ask(null, 'Tú: ¿...?', 'Lucía looks sad. Ask her how she is!', 'comoestas', ['hola', 'porfavor']);
       yield* sayShow('lucia', 'triste', T('[triste:Triste]...', 'Sad... (she wipes a tear)'));
       yield* ask(null, '¿Cómo está Lucía?', 'How is Lucía?', 'triste', ['feliz', 'cansado'], { intro: true, how: 'show', look: { triste: 'text', feliz: 'both', cansado: 'both' }, point: f.npc('lucia') || undefined });
-      const n = dog(f); G.pet.place(f, n); yield 10; G.pet.anim(n, 'paw');
+      const n = dog(f); G.pet.place(f, n); yield 10; yield* G.pet.play('paw'); // (he nuzzles her hand)
       yield* ask(null, '¿Y ahora?', '{dog} nuzzles her hand. She sniffs. How is she still?', 'triste', ['feliz', 'cansado'], { point: f.npc('lucia') || undefined });
       yield* say('lucia', T('Mi mamá... ¡su cumpleaños!', 'It\'s my mom\'s birthday... and I have no present.'));
       yield* G.intro.show('flor', { who: 'lucia', prompt: '¡Mira! Una [flor]...', en: 'Look! A flower... (she points at the flower bed)', known: ['pelota', 'hueso'] });
-      yield* sayShow('lucia', flower(PINK), T('Una [flor] [rosa:rosada]... ¿[porfavor]?', 'A PINK flower... please? (flowers grow around town)'));
+      yield* sayShow('lucia', flower(PINK), T('Una [flor] [rosa]... ¿[porfavor]?', 'A PINK flower... please? (flowers grow around town)'));
       yield G.questCard('c15');
     } },
     { spots: BEDS.map(([x, y], i) => ({ map: 'villa', at: [x, y], quiet: true, off: c => !!(c.data.tried || {})[i] })), part: () => flower(PINK),
@@ -487,14 +508,14 @@
           (c.data.tried || (c.data.tried = {}))[i] = 1; S.autosave();
           return false;
         }
-        yield* siNo(null, '¿[rosa:Rosada]?', 'Is it the pink one?', true, { show: flower(PINK) });
+        yield* siNo(null, '¿[rosa]?', 'Is it the pink one?', true, { show: flower(PINK) });
         G.audio.jingle('item'); G.intro.meet('rosa', 'find', { who: 'lucia' }); yield 40;
         c.data.picked = 1; bag().add('flor', { col: 'rosa', q: 'c15' });
         yield* ask(null, '¿De qué color?', 'What colour is your flower?', 'rosa', ['azul', 'blanco'], { show: flower(PINK) }); // (never rojo beside rosa)
         void x; void y;
       } },
     { who: 'lucia', bubble: () => flower(PINK), run: function* (f) { // and a yellow one
-      yield* say('lucia', T('¡[si]! ¡La [flor] [rosa:rosada]! ¡[gracias]!', 'Yes! The pink flower! Thank you!'));
+      yield* say('lucia', T('¡[si]! ¡La [flor] [rosa]! ¡[gracias]!', 'Yes! The pink flower! Thank you!'));
       yield* sayShow('lucia', flower(YELLOW), T('Y una [flor] [amarillo:amarilla]... ¿[porfavor]?', 'And a YELLOW flower... please? (by the farm road)'));
     } },
     { spot: { map: 'villa', at: YELLOW_AT, icon: () => flower(YELLOW) }, part: () => flower(YELLOW), run: function* (f, c) { // the yellow one; a butterfly on it
@@ -511,12 +532,12 @@
     } },
     { who: 'lucia', bubble: () => flower(YELLOW), part: 'flor', run: function* (f) { // the bouquet; happy Lucía
       bag().take('flor', { col: 'rosa', q: 'c15' }); bag().take('flor', { col: 'amarillo', q: 'c15' });
-      yield* say('lucia', T('¡[rosa:Rosada] y [amarillo:amarilla]! ¡Y mis [flor:flores]!', 'Pink and yellow! And my own flowers!'));
+      yield* say('lucia', T('¡[rosa] y [amarillo:amarilla]! ¡Y mis [flor:flores]!', 'Pink and yellow! And my own flowers!'));
       const bunch = heap([flower(PINK), flower(YELLOW), flower(RED), flower(WHITE), flower(BLUE)]);
       yield* ask('lucia', '¿Cuántas [flor:flores]?', 'Her bouquet: how many flowers?', 'cinco', ['cuatro', 'seis'], { show: bunch });
       yield* siNo('lucia', '¿Para mi mamá?', 'For her mom?', true, { show: bunch });
       const l = f.npc('lucia');
-      if (l) { l.hidden = true; yield 50; l.hidden = false; if (G.ambient) G.ambient.happy(l); }
+      yield* fetch(f, 'lucia', 29, 12); if (l && G.ambient) G.ambient.happy(l); // (she runs off to her mom with them, and back)
       yield* say('lucia', T('¡Mi mamá está muy [feliz]! ¡[gracias], {name}!', 'My mom is so happy! Thank you, {name}!'));
       yield* ask(null, '¿Cómo está Lucía?', 'And how is Lucía now?', 'feliz', ['triste', 'cansado'], { point: l || undefined });
       const n = dog(f); G.pet.sound('whine'); G.pet.anim(n, 'huh');
@@ -566,6 +587,7 @@
       for (let i = 0; i < 10; i++) G.fx.twinkle(80 + Math.random() * 160, 60 + Math.random() * 80);
       yield* tell(T('¡Fuuu! ...¡Ay! ¡Mi cuaderno!', 'Whoosh! A gust of wind through the window... picture cards fly out of your notebook, off to the park!'));
       c.data.cards = 1; S.autosave();
+      yield* fetch(f, 'ines', 2, 2); // (she runs to the window to look, and back)
       yield* ask(null, 'Tú: ¿Me ayudas...?', 'Ask Inés for help, nicely!', 'porfavor', ['gracias', 'adios'], { show: { icon: 'pagina' } });
       yield* say('ines', T('¡[si]! El [parque]... ¡el señor Gómez!', 'Yes! In the park... Señor Gómez will help!'));
     } },
@@ -584,6 +606,7 @@
       tries(f, 2); yield* busca(f, ...CARDS[2].slice(0, 2)); c.data.got = 3; S.autosave();
       for (const id of CARDS[2][2]) yield* named(id, id === 'carta' ? ['pelota', 'flor'] : ['carta', 'hueso']);
       yield* ask(null, '¿De qué color?', 'This flower card: what colour?', 'rosa', ['azul', 'blanco'], { show: flower(PINK) });
+      yield* run(f, GOMEZ_BENCH[0], GOMEZ_BENCH[1] + 1, 3); dog(f).dir = 'up'; // ({dog} trots over to Gómez on his bench)
       yield* ask('gomez', 'Gómez: ¿Y para {dog}?', 'Gómez: a treat for {dog}! What do you give him?', 'galleta', ['hueso', 'pan'], { point: dog(f) });
       yield* G.pet.play('eat', { item: 'galleta' });
       yield* ask('gomez', '¡Mmm! ¿De la...?', 'Mmm! Where are cookies from?', 'panaderia', ['biblioteca', 'escuela']);
@@ -657,22 +680,26 @@
       yield* listen(f, '¡Croac, croac!', 'Croak, croak! Who says that? It comes from the park pond. Find it and tap it!');
       yield G.questCard('c17');
     } },
-    { tap: 'rana', hint: aniHint('rana'), part: 'rana', run: function* (f) { // la rana, croac, verde
+    { tap: 'rana', hint: aniHint('rana'), part: 'rana', run: function* (f, c) { // la rana, croac, verde
       yield* G.intro.show('rana', { who: 'nico', prompt: '¡Croac! ¡Una [rana]!', en: 'Croak! A frog!', known: ['pato', 'conejo'] });
       G.animals.cry('rana');
       yield* G.intro.show('croac', { who: 'nico', prompt: 'La [rana] dice ¡[croac]!', en: 'The frog says ribbit!', ask: '¿Qué dice la [rana]?', askEn: 'What does the frog say?', known: ['miau', 'guau'] });
       yield* say('nico', T('Y la [rana] es... ¡[verde]!', 'And the frog is... green!'));
       yield* ask('nico', '¿De qué color es la [rana]?', 'What colour is the frog?', 'verde', ['azul', 'rojo'], { intro: true, how: 'show', look: { verde: 'text', azul: 'both', rojo: 'both' }, point: ranaP(f) });
       const a = animal(f, 'rana'); if (a) G.animals.react(f, a); G.animals.cry('rana');
-      yield* ask('nico', '¿Qué es?', 'She hops to another lily pad. What is she?', 'rana', ['pato', 'conejo'], { point: ranaP(f) });
+      yield* run(f, 20, 20, 3); dog(f).dir = 'down'; yield* G.pet.play('sniff'); // ({dog} trots to the edge of the pond to see)
+      yield* ask('nico', '¿Qué es?', 'She hops to another lily pad, and {dog} sniffs at her. What is she?', 'rana', ['pato', 'conejo'], { point: ranaP(f) });
       yield* ask('nico', '¿Y qué dice?', 'She croaks again. What does she say?', 'croac', ['miau', 'guau'], { point: ranaP(f) });
+      c.data.bird = 1; G.animals.cry('pajaro'); yield 20; // (someone sings in the big tree: go and see)
+      yield* sayShow('nico', { icon: 'nota' }, T('¡Pío, pío! ¿Y eso?', 'Tweet, tweet! What\'s that? (in the big tree by the pond: go and see)'));
     } },
-    { auto: 'villa', part: 'pajaro', run: function* (f, c) { // ¡pío, pío!: el pájaro in the tree
+    { spot: { map: 'villa', at: BIRD_TREE, icon: 'nota' }, part: 'pajaro', run: function* (f, c) { // ¡pío, pío!: el pájaro in the tree (she walks over to see)
       c.data.bird = 1; G.animals.cry('pajaro'); yield 30; G.animals.cry('pajaro');
       yield* G.intro.show('pajaro', { who: 'nico', prompt: '¡Pío, pío! ¡Un [pajaro]!', en: 'Tweet, tweet! A bird! (up in the tree)', known: ['rana', 'conejo'] });
       yield* ask('nico', '¿Dónde está el [pajaro]?', 'Where is the bird?', 'arbol', ['banco', 'flor'], { point: tile(...BIRD_TREE) });
       yield* ask('nico', '¿De qué color es el [pajaro]?', 'What colour is the bird?', 'azul', ['verde', 'blanco'], { point: tile(...BIRD_TREE) });
-      yield* ask('nico', '¿Y el [arbol]?', 'And the tree: what colour?', 'verde', ['azul', 'blanco'], { point: tile(...BIRD_TREE) });
+      yield* run(f, BIRD_TREE[0], BIRD_TREE[1] + 1, 4); dog(f).dir = 'up'; bark(f); // ({dog} runs to the tree, barking up at it)
+      yield* ask('nico', '¿Y el [arbol]?', '{dog} barks up at the tree. And the tree: what colour?', 'verde', ['azul', 'blanco'], { point: tile(...BIRD_TREE) });
       c.data.bird = 0;
       yield* say('nico', T('¡Más! ¡Escucha!', 'More! Listen... (Nico comes with you)'));
       yield* listen(f, '¡Cuac, cuac!', 'Quack, quack! Who says that? Find it at the farm pond and tap it!');
@@ -696,13 +723,12 @@
       c.data.bird = 0; c.data.fly = 1;
       yield* ask('nico', '¿Y quién no dice nada?', 'Who never says anything? (fluttering by)', 'mariposa', ['pajaro', 'rana']);
       c.data.fly = 0;
-      // the other way round: Nico points, you say the sound
-      yield* ask('nico', '¿Qué dice el [pato]?', 'What does the duck say?', 'cuac', ['miau', 'guau'], { show: 'pato' });
-      yield* ask('nico', '¿Qué dice la [rana]?', 'What does the frog say?', 'croac', ['miau', 'guau'], { show: 'rana' });
-      yield* ask('nico', '¿Qué dice el [gato]?', 'What does the cat say?', 'miau', ['guau', 'croac'], { show: 'gato' });
       yield* say('nico', T('¡Y yo! ¡Guau, guau!', 'And me! Woof, woof!'));
       const n = dog(f); G.pet.place(f, n); yield 10; yield* G.pet.play('dance');
       yield* ask('nico', '¿Quién dice "guau"?', '{dog} answers with a dance! Who says woof?', 'perro', ['gato', 'rana'], { point: n });
+      // the other way round: Nico points, you say the sound
+      yield* ask('nico', '¿Qué dice el [pato]?', 'What does the duck say?', 'cuac', ['miau', 'guau'], { show: 'pato' });
+      yield* ask('nico', '¿Qué dice la [rana]?', 'What does the frog say?', 'croac', ['miau', 'guau'], { show: 'rana' });
     } },
     { auto: 'villa', part: 'gira', run: function* (f) { // Nico's prize: ¡gira!
       const n = dog(f), nk = f.npc('nico');
@@ -738,7 +764,7 @@
   });
 
   // =====================================================================
-  //  C18 · ¿Cuántos animales? (el pueblo)  (Profesora Luna, the fountain and around town)  pez, siete, ocho
+  //  C18 · ¿Cuántos animales? (el pueblo)  (Maestra Luna, the fountain and around town)  pez, siete, ocho
   // =====================================================================
   const LUNA_FOUNTAIN = [17, 12], FLOWER_AT = [12, 15];
   // Luna's clipboard: the animals counted so far (and how many)
@@ -771,8 +797,10 @@
       yield 20;
       yield* G.intro.show('pez', { who: 'luna', prompt: '¡Splash! ¡Un [pez]!', en: 'Splash! A fish!', known: ['pato', 'rana'] });
       yield* say('luna', T('¡A contar! [uno]...', 'Let\'s count! Number one...'));
+      yield* G.pet.play('sit'); // ({dog} sits up straight: number one)
       yield* tally(c, 'perro', ['gato', 'conejo'], ['uno', 'dos', 'tres'], { point: dog(f) });
       if (fish) G.animals.jump(fish, f);
+      yield* G.pet.play('sniff'); // ({dog} sniffs at the splash)
       yield* tally(c, 'pez', ['rana', 'pajaro'], ['dos', 'uno', 'tres'], { prompt: '¿Y este?', point: tile(...V('fuente')) });
       yield* say('luna', T('¡Más animales! ¡Escucha!', 'More animals! Find them and tap them. (Miau... by the park fence)'));
     } },
@@ -793,11 +821,12 @@
       yield* ask('luna', '¿Qué es?', 'Something on the pink flower! What is it?', 'mariposa', ['pajaro', 'pez'], { point: tile(...FLOWER_AT) });
       yield* ask('luna', '¿Dónde está?', 'Where is it sitting?', 'flor', ['arbol', 'banco'], { point: tile(...FLOWER_AT) });
       yield* ask('luna', '¿De qué color es la [flor]?', 'What colour is the flower?', 'rosa', ['azul', 'blanco'], { show: flower(PINK) });
+      yield* G.pet.play('jump'); // ({dog} jumps up at the butterfly: it flutters round and lands again)
       const L = c.data.list || (c.data.list = []); L.push('mariposa'); S.autosave();
       yield* sayShow('luna', heap(L), T('[uno], [dos], [tres], [cuatro], [cinco], [seis]... ¡[siete]!', 'One, two, three, four, five, six... seven!'));
       yield* ask('luna', '¿Cuántos?', 'How many animals so far?', 'siete', ['seis', 'cinco'], { intro: true, how: 'show', look: { siete: 'text', seis: 'both', cinco: 'both' }, show: heap(L) });
       yield* ask('luna', '¿Cuántos?', 'Luna counts again on her fingers. How many?', 'siete', ['seis', 'cinco'], { show: many('estrella', 7) });
-      yield* say('luna', T('¡Y las [gallina:gallinas] de Rosa!', 'And Grandma Rosa\'s hens!'));
+      yield* say('luna', T('¡Y las [gallina:gallinas] de Rosa!', 'And Doña Rosa\'s hens!'));
     } },
     { spot: { map: 'villa', at: [2, 8], icon: 'gallina' }, part: 'gallina', run: function* (f, c) { // Rosa's hens: ocho
       G.animals.cry('gallina');
@@ -809,11 +838,10 @@
     } },
     { who: 'luna', bubble: true, run: function* (f, c) { // the clipboard
       const L = c.data.list || [];
-      yield* ask('luna', '¿Cuántas [gallina:gallinas]?', 'How many hens does Rosa have?', 'dos', ['tres', 'uno'], { show: many('gallina', 2) });
-      yield* ask('luna', '¿Cuántos [pez:peces]?', 'And how many fish in the fountain?', 'uno', ['dos', 'tres'], { show: many('pez', 1) });
+      yield* ask('luna', '¿Cuántos animales?', 'How many animals in all?', 'ocho', ['siete', 'seis'], { show: heap(L) });
       yield* ask('luna', '¿Y este?', 'And this one on the list?', 'rana', ['pato', 'pez'], { show: 'rana' });
       yield* ask('luna', '¿De qué color es?', 'What colour is the frog?', 'verde', ['azul', 'blanco'], { show: 'rana' });
-      yield* ask('luna', '¿Cuántos animales?', 'How many animals in all?', 'ocho', ['siete', 'seis'], { show: heap(L) });
+      const n = dog(f); yield* G.pet.play('dance'); K.heart(f, n); // ({dog} dances: he was number one!)
       yield* say('luna', T('¡Muy bien! Para ti...', 'Very good! For you... stickers!'));
       yield* ask('luna', '¿Cuántas?', 'How many stickers?', 'siete', ['seis', 'ocho'], { show: many('estrella', 7) });
       yield* ask('luna', '¡Y otra! ¿Cuántas?', 'And one more! How many now?', 'ocho', ['siete', 'seis'], { show: many('estrella', 8) });
@@ -832,7 +860,7 @@
   });
 
   // =====================================================================
-  //  C19 · ¡Todos a la granja!  (Profesora Luna, the farm; a morning)  nueve, diez
+  //  C19 · ¡Todos a la granja!  (Maestra Luna, the farm; a morning)  nueve, diez
   // =====================================================================
   const LUNA_GATE = [40, 11], PEN = { perro: [39, 14], gato: [40, 14], conejo: [41, 14], gallina: [42, 14], gallina2: [43, 14], pato: [39, 16], caballo: [44, 15], cabra: [42, 16] };
   const followers = f => zoo(f).filter(a => a.follow);
@@ -877,7 +905,7 @@
       yield* tell(T('¡A la [granja]!', 'To the farm! Everyone follows you.'));
     } },
     { spot: { map: 'villa', at: [41, 12], icon: 'estrella' }, part: 'granja', run: function* (f, c) { // into the paddock, counted; nueve, diez
-      yield* ask('luna', 'Luna: ¡...!', 'Profesora Luna waits at the gate. The sun is up: say it!', 'buenosdias', ['buenasnoches', 'adios'], { show: { icon: 'sol' } });
+      yield* ask('luna', 'Luna: ¡...!', 'Maestra Luna waits at the gate. The sun is up: say it!', 'buenosdias', ['buenasnoches', 'adios'], { show: { icon: 'sol' } });
       yield* say('luna', T('¡Los animales! ¡A contar!', 'The animals! Let\'s count them in!'));
       const L = c.data.list = [];
       const count = function* (en) { const [a, o] = cnt(L.length); yield* ask('luna', '¿Cuántos?', en, a, o, { show: heap(L) }); };
@@ -918,7 +946,6 @@
       yield* busca(f, 44, 20); if (baby) { baby.go = [...at(...PEN.pato), 1.6]; } yield 30;
       yield* ask('luna', '¡Bravo! ¿Y ahora?', '{dog} brings it back! And now?', 'diez', ['nueve', 'ocho'], { show: heap(L) });
       yield* ask('luna', '¿Cuántos [pato:patos]?', 'How many ducks?', 'tres', ['dos', 'cuatro'], { show: many('pato', 3) });
-      yield* ask('luna', '¿Cuántos [caballo:caballos]?', 'And how many horses?', 'uno', ['dos', 'tres'], { show: many('caballo', 1) });
       yield* ask(null, '{dog}... ¡...!', '{dog} is so happy! The spin sign: tell him!', 'gira', ['salta', 'busca'], Object.assign({ point: dog(f), wrong: dogWrong(f) }, fromSign('gira')));
       yield* G.pet.play('spin');
       yield* ask('luna', '¿Qué come el [caballo]?', 'What does the horse eat?', 'manzana', ['pan', 'agua']);
@@ -948,7 +975,7 @@
   });
 
   // =====================================================================
-  //  C20 · Preparamos la fiesta  (Profesora Luna; everyone)  no new words: invitations, food, ribbons, the rehearsal
+  //  C20 · Preparamos la fiesta  (Maestra Luna; everyone)  no new words: invitations, food, ribbons, the rehearsal
   // =====================================================================
   function* invite(c, who) { // an invitation card for them
     bag().take('carta', { q: 'c20' });
@@ -958,104 +985,143 @@
     yield* say(who, T('¡Una fiesta! ¡[gracias]!', 'A party! Thank you!'));
   }
   const invBeat = (who, run) => ({ who, bubble: () => 'carta', part: who === 'pepe' ? 'manzana' : who === 'sofia' ? 'cinta' : 'carta', run: function* (f, c) { yield* invite(c, who); yield* run(f, c); } });
+  const RIBBONS = [[14, 20, 'rojo'], [16, 22, 'amarillo'], [22, 20, 'verde'], [17, 23, 'rosa']]; // (Sofía's listones for the barn, blown onto the park's lawn)
   CH.script('c20', [
-    { who: 'luna', bubble: { icon: 'carta' }, run: function* (f, c) { // the invitations, and where everyone lives
+    { who: 'luna', bubble: { icon: 'carta' }, run: function* (f, c) { // the invitations; the first one is for Marta
       yield* say('luna', T('¡La fiesta de los animales! ¡Mañana!', 'The animal party is tomorrow! Let\'s get everything ready.'));
       yield* ask('luna', '¿Qué es?', 'Luna has written invitations. What are they?', 'carta', ['flor', 'galleta'], { show: many('carta', 5) });
       yield* ask('luna', '¿Cuántas?', 'How many invitations?', 'cinco', ['seis', 'cuatro'], { show: many('carta', 5) });
       for (let i = 0; i < 5; i++) bag().add('carta', { q: 'c20' });
       yield G.questCard('c20');
-      yield* ask('luna', '¿Dónde está Marta?', 'One for Marta. Where is Marta?', 'panaderia', ['biblioteca', 'escuela']);
-      yield* ask('luna', '¿Y Inés?', 'And Inés?', 'biblioteca', ['casa', 'panaderia']);
-      yield* ask('luna', '¿Y Rosa?', 'And Grandma Rosa?', 'casa', ['escuela', 'parque']);
-      yield* ask('luna', '¿Y Sofía?', 'And Sofía?', 'parque', ['granja', 'casa']);
-      yield* ask('luna', '¿Y la fiesta? ¿Dónde?', 'And where is the party?', 'granja', ['parque', 'escuela']);
+      yield* ask('luna', '¿Dónde está Marta?', 'The first one is for Marta. Where is Marta?', 'panaderia', ['biblioteca', 'escuela']);
       yield* say('luna', T('¡Las [carta:cartas]! ¡[adios]!', 'Off you go with the invitations! (Marta, Inés, Rosa, Don Pepe and Sofía)'));
     } },
-    invBeat('marta', function* () {
+    invBeat('marta', function* (f) {
       yield* ask('marta', '¿Para la fiesta? ¿Qué es?', 'For the party she will bake this. What is it?', 'pan', ['galleta', 'queso'], { show: 'pan' });
       yield* ask('marta', '¿Y esto?', 'And these?', 'galleta', ['pan', 'leche'], { show: 'galleta' });
+      yield* fetch(f, 'marta', 8, 2); // (a tray of cookies from the oven)
       yield* ask('marta', '¿Cuántas [galleta:galletas]?', 'How many cookies?', 'nueve', ['ocho', 'diez'], { show: many('galleta', 9) });
+      yield* ask('marta', '¿Y Inés? ¿Dónde está?', 'The next invitation is for Inés. Where is she?', 'biblioteca', ['casa', 'panaderia']);
     }),
     invBeat('ines', function* (f) {
       yield* ask(null, '¿Cómo está Inés?', 'How is Inés now?', 'feliz', ['triste', 'cansado'], { point: f.npc('ines') || undefined });
+      yield* ask('ines', '¿Y Rosa? ¿Dónde está?', 'And Doña Rosa\'s invitation? Where is she?', 'casa', ['escuela', 'parque']);
     }),
     invBeat('rosa', function* () {
       yield* ask('rosa', '¿Y para la fiesta?', 'And for the party she brings...', 'huevo', ['pan', 'leche'], { show: 'huevo' });
       yield* ask('rosa', '¿Cuántos?', 'How many eggs?', 'seis', ['cinco', 'siete'], { show: many('huevo', 6) });
+      yield* say('rosa', T('¡Y Don Pepe! ¡La fruta!', 'And Don Pepe! The fruit! (his stall, on the plaza)'));
     }),
-    invBeat('pepe', function* () {
+    invBeat('pepe', function* (f) {
       yield* ask('pepe', '¡Fruta para la fiesta! ¿Qué es?', 'Fruit for the party! What is it?', 'manzana', ['platano', 'naranja'], { show: 'manzana' });
       yield* ask('pepe', '¿Cuántas?', 'How many apples?', 'ocho', ['siete', 'nueve'], { show: many('manzana', 8) });
+      yield* fetch(f, 'pepe', 16, 9); // (more from the crates beside his stall)
       yield* ask('pepe', '¿Y esto?', 'And these?', 'platano', ['naranja', 'queso'], { show: 'platano' });
       yield* ask('pepe', '¿Cuántos?', 'How many bananas?', 'siete', ['seis', 'ocho'], { show: many('platano', 7) });
       yield* ask('pepe', '¿Y esto?', 'And this, for the goat?', 'queso', ['pan', 'leche'], { show: 'queso' });
+      yield* say('pepe', T('¡Y Sofía! En el [parque].', 'And Sofía! In the park.'));
     }),
-    invBeat('sofia', function* (f) { // the ribbons; Canelo's rehearsal
-      for (const [col, others] of [['rojo', ['azul', 'verde']], ['amarillo', ['azul', 'verde']], ['verde', ['blanco', 'azul']], ['rosa', ['azul', 'verde']]]) {
-        yield* ask('sofia', '¿De qué color?', 'Ribbons for the barn! What colour is this one?', col, others, { show: cinta(COL(col)) });
-      }
-      yield* ask('sofia', '¿Cuántas cintas?', 'How many ribbons?', 'cuatro', ['cinco', 'tres'], { show: heap([cinta(RED), cinta(YELLOW), cinta(GREEN), cinta(PINK)]) });
-      yield* say('sofia', T('¡Y {dog}! ¡Un ensayo!', 'And {dog}! A rehearsal for the show!'));
+    invBeat('sofia', function* (f, c) { // listones for the barn: on the lawn, to pick up
+      c.data.ribbons = {}; S.autosave();
+      yield* sayShow('sofia', { list: RIBBONS.map(([, , col]) => cinta(COL(col))) }, T('¡Listones para la [granja]! ¿Me ayudas?', 'Ribbons for the barn! Will you help? (they blew onto the lawn: pick them up)'));
+    }),
+    { spots: RIBBONS.map(([x, y, col], i) => ({ map: 'villa', at: [x, y], icon: () => cinta(COL(col)), off: c => !!(c.data.ribbons || {})[i] })),
+      run: function* (f, c, i) { // a ribbon picked up: its colour
+        const [, , col] = RIBBONS[i], others = { rojo: ['azul', 'verde'], amarillo: ['azul', 'verde'], verde: ['blanco', 'azul'], rosa: ['azul', 'verde'] }[col];
+        G.audio.sfx('select');
+        yield* ask('sofia', '¿De qué color?', 'A ribbon for the barn! What colour is this one?', col, others, { show: cinta(COL(col)) });
+        (c.data.ribbons || (c.data.ribbons = {}))[i] = 1; S.autosave();
+        return RIBBONS.every((r, k) => c.data.ribbons[k]) ? undefined : false; // (the next one, until all four are picked up)
+      } },
+    { who: 'sofia', bubble: () => cinta(BLUE), run: function* (f) { // how many; Canelo's rehearsal
+      yield* ask('sofia', '¿Cuántos listones?', 'How many ribbons?', 'cuatro', ['cinco', 'tres'], { show: heap([cinta(RED), cinta(YELLOW), cinta(GREEN), cinta(PINK)]) });
+      yield* say('sofia', T('¡Y {dog}! ¡Un ensayo!', 'And {dog}! A rehearsal for the show at the party!'));
       const n = dog(f); G.pet.place(f, n); yield 10;
       for (const [t, others] of [['pata', ['gira', 'ven']], ['gira', ['salta', 'pata']], ['salta', ['busca', 'sientate']]]) {
         yield* ask('sofia', 'Sofía: ¡...!', 'Sofía holds up a picture sign. Tell {dog}!', t, others, Object.assign({ point: n, wrong: dogWrong(f) }, fromSign(t)));
         yield* G.pet.trick(t);
       }
-    }),
-    { who: 'nico', bubble: { icon: 'nota' }, part: 'nota', run: function* (f) { // the animals' song, rehearsed
+    } },
+    { who: 'nico', bubble: { icon: 'nota' }, part: 'nota', run: function* (f) { // the animals' song, rehearsed (Canelo sings along)
       yield* say('nico', T('¡La canción de los animales! ¡Escucha!', 'The animals\' song for the party! Listen: who sings this part?'));
-      for (const [k, others] of [['pato', ['rana', 'perro']], ['rana', ['pato', 'conejo']], ['caballo', ['cabra', 'pato']], ['cabra', ['caballo', 'gallina']]]) {
-        G.animals.cry(k); yield 30;
-        yield* ask('nico', '¿Quién es?', 'Who sings this part?', k, others, { pic: true });
-      }
+      const part = function* (k, others) { G.animals.cry(k); yield 30; yield* ask('nico', '¿Quién es?', 'Who sings this part?', k, others, { pic: true }); };
+      yield* part('pato', ['rana', 'perro']); yield* part('rana', ['pato', 'conejo']); yield* part('caballo', ['cabra', 'pato']);
+      bark(f); yield* G.pet.play('dance'); bark(f); // ({dog} sings along: ¡guau, guau!)
+      yield* part('cabra', ['caballo', 'gallina']);
       yield* ask('nico', '¿Y la [rana]? ¿Qué dice?', 'And the frog\'s part?', 'croac', ['miau', 'guau']);
       yield* ask('nico', '¿Y el [pato]?', 'And the duck\'s part?', 'cuac', ['miau', 'guau']);
     } },
-    { who: 'lucia', bubble: () => flower(PINK), part: 'flor', run: function* () { // flowers for the tables
+    { who: 'lucia', bubble: () => flower(PINK), part: 'flor', run: function* () { // flowers for the tables; a butterfly follows them
       yield* ask('lucia', '¿Para la fiesta? ¿Qué es?', 'For the party tables! What is it?', 'flor', ['arbol', 'banco'], { show: flower(PINK) });
       yield* ask('lucia', '¿De qué color?', 'What colour is this one?', 'rosa', ['amarillo', 'azul'], { show: flower(PINK) });
       yield* ask('lucia', '¿Y esta?', 'And this one?', 'amarillo', ['blanco', 'verde'], { show: flower(YELLOW) });
-      yield* ask('lucia', '¡Mira! ¿Qué es?', 'Something follows the flowers! What is it?', 'mariposa', ['pajaro', 'pez']);
+      yield* G.pet.play('jump'); // ({dog} jumps at something fluttering round the flowers)
+      yield* ask('lucia', '¡Mira! ¿Qué es?', 'Something follows the flowers, and {dog} jumps at it! What is it?', 'mariposa', ['pajaro', 'pez']);
     } },
     { who: 'luna', bubble: true, run: function* () {
       yield* say('luna', T('¡Todo listo! ¡Muy bien, {name}!', 'Everything is ready! Very good, {name}!'));
+      yield* ask('luna', '¿Y la fiesta? ¿Dónde?', 'And where is the party?', 'granja', ['parque', 'escuela']);
       yield* sayShow('luna', 'granja', T('¡Mañana, la fiesta en la [granja]!', 'Tomorrow: the party at the farm!'));
     } },
-  ]);
+  ], {
+    draw(f, ctx, c) { // the ribbons on the lawn, until they're picked up
+      if (f.mapId !== 'villa' || !c.data.ribbons || c.step !== 6) return;
+      RIBBONS.forEach(([x, y, col], i) => { if (!c.data.ribbons[i]) G.drawIcon16(ctx, cinta(COL(col)), x * TL + 4 - Math.round(f.cam.x), y * TL + 6 - Math.round(f.cam.y)); });
+    },
+  });
 
   // =====================================================================
-  //  C21 · La fiesta de los animales  (Profesora Luna; everyone, at the farm)  no new words: the show, the song, the photo
+  //  C21 · La fiesta de los animales  (Maestra Luna; everyone, at the farm)  no new words: the show, the song, the photo
   // =====================================================================
+  // The party is a place to walk about (AUDIT H8: it was one scene of 15 questions in a row): everyone stays at the
+  // farm (c.data.party: opts.stage puts them back), and she goes from one friend to the next: the food for the animals at
+  // the paddock gate, Sofía's ribbons and {dog}'s tricks, Nico's song, Lucía's late guests and the photo
   const PARTY = { luna_p: [41, 6, 'down'], mama_p: [38, 7, 'right'], marta_p: [44, 7, 'left'], ines_p: [37, 8, 'right'], rosa: [45, 8, 'left'], pepe: [38, 9, 'right'],
     sofia: [44, 9, 'left'], nico: [39, 10, 'up'], lucia: [43, 10, 'up'], gomez: [37, 10, 'right'], tomas: [45, 10, 'left'] };
+  const FOOD_GATE = [41, 12], HAY_BALE = [45, 4];
+  // the party is over: the guests go, the townsfolk back to their places (and their bubbles)
+  function* unparty(f, c) {
+    yield* K.fade(1);
+    for (const id in PARTY) {
+      const n = f.npc(id), d = (G.maps.villa.npcs || []).find(o => o.id === id); if (!n) continue;
+      if (!d) { f.removeNpc(id); continue; }
+      Object.assign(n, { x: d.x, y: d.y, ox: 0, oy: 0, dir: d.dir || 'down', home: [d.x, d.y], wander: d.wander || 0, route: d.route || null, ghost: !!d.ghost, alert: d.alert || null });
+    }
+    c.data.party = 0; c.data.cake = 0; S.autosave(); f.snapCam();
+    yield* K.fade(0);
+  }
   CH.script('c21', [
     { who: 'luna', bubble: { icon: 'estrella' }, run: function* () {
       yield* sayShow('luna', { icon: 'estrella' }, T('¡Hoy es la fiesta! ¡A la [granja]!', 'Today is the party! Everyone is at the farm, by the barn!'));
       yield G.questCard('c21');
     } },
-    { spot: { map: 'villa', at: [41, 7], icon: 'estrella' }, part: 'estrella', run: function* (f, c) {
-      const back = yield* scene(f, PARTY, [41, 8, 'up'], [42, 8, 'up']);
-      const who = Object.keys(PARTY), n = dog(f);
+    { spot: { map: 'villa', at: [41, 7], icon: 'estrella' }, part: 'estrella', run: function* (f, c) { // welcome: who brought what
+      yield* scene(f, PARTY, [41, 8, 'up'], [42, 8, 'up']);
+      c.data.party = 1; S.autosave();
       yield* say('luna', T('¡Bienvenidos a la fiesta de los animales!', 'Welcome to the animal party!'));
-      clap(f, who);
+      clap(f, Object.keys(PARTY));
       yield* ask('luna', '¿De dónde es el [pan]?', 'Marta brought bread. Where is it from?', 'panaderia', ['biblioteca', 'escuela'], { show: 'pan' });
       yield* ask('luna', '¿Y de dónde viene Inés?', 'And where does Inés come from?', 'biblioteca', ['casa', 'escuela'], { point: f.npc('ines_p') || undefined });
+      yield* sayShow('luna', 'manzana', T('¡La comida para los animales!', 'Food for the animals! It\'s by the paddock gate.'));
+    } },
+    { spot: { map: 'villa', at: FOOD_GATE, icon: 'manzana' }, run: function* (f) { // feeding the animals; {dog} sneaks the cheese
+      yield* say('luna', T('¿Qué come cada uno?', 'What does each one eat?'));
+      for (const [k, food, others] of [['caballo', 'manzana', ['pan', 'leche']], ['pato', 'pan', ['queso', 'agua']], ['cabra', 'platano', ['naranja', 'pan']]]) {
+        G.animals.cry(k);
+        yield* ask('luna', G.requests.LINES['finale.food'](k), 'And for this one?', food, others, { show: k });
+      }
+      const n = dog(f); yield* run(f, FOOD_GATE[0] + 1, FOOD_GATE[1] - 1, 4); yield* G.pet.play('jump'); // (off he goes with something off the table)
+      yield* ask('luna', '¡{dog}! ¿Qué tiene?', '{dog} sneaked something off the table! What has he got?', 'queso', ['pan', 'leche'], { point: n });
+      yield* say('sofia', T('¡{dog}! ¡[ven]! ¡Los listones!', '{dog}! Come! The ribbons! (Sofía is waiting for you)'));
+    } },
+    { who: 'sofia', bubble: () => cinta(RED), run: function* (f, c) { // the ribbons; {dog}'s show, from Luna's picture signs; the cake
+      const n = dog(f), who = Object.keys(PARTY);
       // Sofía calls the ribbons by their colour: tap that one
       for (const [col, others] of [['rojo', ['azul', 'verde']], ['amarillo', ['rosa', 'blanco']]]) {
         const pics = {}; [col].concat(others).forEach(k => { pics[k] = cinta(COL(k)); });
         yield* ask('sofia', '¡[' + col + ']!', 'Sofía calls a ribbon colour: tap that ribbon!', col, others, { pic: true, mask: [col], img: pics });
       }
-      // feeding the animals
-      yield* say('luna', T('¡La comida para los animales!', 'Food for the animals! What does each one eat?'));
-      for (const [k, food, others] of [['caballo', 'manzana', ['pan', 'leche']], ['pato', 'pan', ['queso', 'agua']], ['cabra', 'platano', ['naranja', 'pan']]]) {
-        G.animals.cry(k);
-        yield* ask('luna', G.requests.LINES['finale.food'](k), 'And for this one?', food, others, { show: k });
-      }
-      G.pet.anim(n, 'jump');
-      yield* ask('luna', '¡{dog}! ¿Qué tiene?', '{dog} sneaked something off the table! What has he got?', 'queso', ['pan', 'leche'], { point: n });
-      // Canelo's show, from Luna's picture signs
-      yield* say('luna', T('¡El show de {dog}!', '{dog}\'s show!'));
+      yield* say('luna', T('¡Los trucos de {dog}!', '{dog} shows his tricks!'));
       for (const [t, others] of [['sientate', ['salta', 'gira']], ['pata', ['ven', 'busca']], ['salta', ['gira', 'sientate']], ['gira', ['pata', 'salta']]]) {
         yield* ask('luna', 'Luna: ¡...!', 'Luna holds up a picture sign. Say it to {dog}!', t, others, Object.assign({ point: n, wrong: dogWrong(f) }, fromSign(t)));
         yield* G.pet.trick(t); clap(f, who);
@@ -1068,22 +1134,31 @@
       yield* come(f); c.data.cake = 2;
       yield* ask('luna', '¿Y para el campeón?', 'A treat for the champion!', 'galleta', ['hueso', 'pan'], { point: n });
       yield* G.pet.play('eat', { item: 'galleta' });
-      // the animals' song: who sings?
-      yield* say('nico', T('¡La canción de los animales!', 'The animals\' song!'));
-      for (const [k, others] of [['perro', ['gato', 'rana']], ['gato', ['conejo', 'perro']], ['gallina', ['pato', 'cabra']], ['pajaro', ['mariposa', 'pez']]]) {
+      yield* say('nico', T('¡La canción de los animales!', 'The animals\' song! (Nico is waiting for you)'));
+    } },
+    { who: 'nico', bubble: { icon: 'nota' }, part: 'nota', run: function* (f) { // the animals' song: who sings? ({dog} sings along)
+      const sing = function* (k, others) {
         if (k === 'perro') bark(f); else if (k === 'gato' && G.ambient && G.ambient.sfx) G.ambient.sfx.meow(); else G.animals.cry(k);
         yield 26;
         yield* ask('nico', '¿Quién canta?', 'Who is singing now?', k, others, { pic: true });
-      }
+      };
+      yield* sing('perro', ['gato', 'rana']); yield* sing('gato', ['conejo', 'perro']); yield* sing('gallina', ['pato', 'cabra']);
+      bark(f); yield* G.pet.play('dance'); bark(f); // ({dog} dances to the song)
+      yield* sing('pajaro', ['mariposa', 'pez']);
       yield* ask('nico', '¡Ahora tú! ¿Qué dice el [perro]?', 'Now you sing! What does the dog say?', 'guau', ['miau', 'croac']);
       yield* ask('nico', '¿Y la [rana]?', 'And the frog?', 'croac', ['miau', 'guau']);
-      const fish = G.animals.find('pez', f); void fish;
+      yield* say('lucia', T('¡Mira! ¡Más amigos!', 'Look! More friends are coming! (Lucía is waiting for you)'));
+    } },
+    { who: 'lucia', bubble: () => flower(PINK), run: function* (f, c) { // the late guests; ten animals; the photo; good night
+      const n = dog(f), who = Object.keys(PARTY);
       yield* ask('luna', '¿Y este? ¡Splash!', 'The fish jumps in the trough to see! What is it?', 'pez', ['pato', 'rana'], { show: 'pez' });
-      yield* ask('luna', '¿Y esta?', 'Who lands on the camera?', 'mariposa', ['pajaro', 'pez'], { show: 'mariposa' });
+      yield* ask('luna', '¿Y esta?', 'Who lands on Lucía\'s flowers?', 'mariposa', ['pajaro', 'pez'], { show: 'mariposa' });
+      const r = animal(f, 'conejo'); if (r) { r.pin = null; r.go = [...at(42, 9), 1.6]; } yield 30; // (the last one hops in late)
       yield* ask('luna', '¿Y este, el último?', 'And the last one hops in late!', 'conejo', ['rana', 'pato'], { show: 'conejo' });
       G.fx.confetti(40, 200, 1, 24); G.fx.confetti(G.W - 40, 200, -1, 24); G.audio.jingle('promote'); clap(f, who);
       yield* ask('luna', '¿Cuántos animales?', 'How many animals at the party?', 'diez', ['nueve', 'ocho'], { show: heap(['perro', 'gato', 'conejo', 'gallina', 'gallina', 'pato', 'pato', 'pato', 'caballo', 'cabra']) });
       yield* ask('luna', '¿Cómo estás, {name}?', 'How are you?', 'feliz', ['triste', 'cansado'], { show: { icon: 'estrella' } });
+      yield* G.pet.play('dance'); K.heart(f, n);
       yield* ask('luna', '¿Y {dog}?', 'And {dog}?', 'feliz', ['cansado', 'triste'], { point: n });
       yield* say('luna', T('¡Una foto! ¡Todos juntos!', 'A photo! Everyone together!'));
       G.audio.sfx('pop'); G.fade.a = 0.9; G.fadeTo(0, 0.05, '#ffffff');
@@ -1091,13 +1166,19 @@
       // the sun goes down on the party
       yield* say('luna', T('La luna... ¡[buenasnoches], animales!', 'The moon comes up... good night, animals!'));
       yield* ask(null, 'Tú: ¡...!', 'Say good night to the animals!', 'buenasnoches', ['buenosdias', 'adios'], { show: { icon: 'noche' } });
-      G.pet.anim(n, 'huh');
-      yield* ask(null, '¿Cómo está {dog}?', '{dog} yawns a big yawn. How is he?', 'cansado', ['feliz', 'triste'], { point: n });
+      yield* run(f, HAY_BALE[0], HAY_BALE[1] + 1, 3); n.dir = 'up'; G.pet.anim(n, 'huh'); // (he flops down by the hay bale)
+      yield* ask(null, '¿Cómo está {dog}?', '{dog} flops down by the hay and yawns a big yawn. How is he?', 'cansado', ['feliz', 'triste'], { point: n });
       yield* ask(null, '{dog}, ¡a la...!', 'Where does he go now?', 'cama', ['agua', 'ven']);
-      yield* unscene(f, back); c.data.cake = 0;
+      yield* unparty(f, c);
     } },
   ], {
     after: function* () { G.audio.play('victory'); yield G.story.diploma(); G.audio.play('town', true); },
+    stage(f, c) { // (everyone stays at the party while she walks about; the friend she goes to next has their bubble)
+      if (f.mapId !== 'villa' || !c.data.party) return;
+      G.errands.stage(f, PARTY);
+      const b = CH.beat('c21'), n = b && b.who && f.npc(b.who), d = n && (G.maps.villa.npcs || []).find(o => o.id === b.who);
+      if (n && d) n.alert = d.alert || null;
+    },
     drawTop(f, ctx, c) { if (f.mapId === 'villa' && c.data.cake === 1) G.drawIcon16(ctx, 'estrella', 46 * TL + 4 - Math.round(f.cam.x), 6 * TL - 4 - Math.round(f.cam.y)); },
   });
 })();

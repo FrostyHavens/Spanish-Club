@@ -446,7 +446,7 @@
     if (b && (g.n | 0) >= 4) { yield* gardenDone(f); return true; }
     if (b) { const v = gardenVeg(); yield* sayShow('abuelo', { icon: v, count: 4 }, T(met(v) ? '¡Más ' + vegPl(v) + '!' : '¡Más! ¡Cuatro!', 'More ' + VEG_EN[v][1] + '! Four, from the garden beds.')); return true; }
     if (gardenOpen() && !g.done) {
-      yield* sayShow('abuelo', { icon: 'canastaverduras' }, T('¡Mi huerto! ¿Me ayudas?', 'My vegetable garden! Will you help me pick?'));
+      yield* sayShow('abuelo', { icon: 'canastaverduras' }, T('¡Mi huerta! ¿Me ayudas?', 'My vegetable garden! Will you help me pick?'));
       const v = vegOfDay();
       bag().add('canastaverduras', { q: 'huerto' }); g.n = 0; g.got = {}; g.v = v; G.st.autosave();
       const at = BEDS.find(e => e[2] === v); CH.point(at[0] * TL + 12, at[1] * TL);
