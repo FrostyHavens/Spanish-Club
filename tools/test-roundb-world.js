@@ -93,6 +93,8 @@ async function ipad(browser) {
     // say it back: "el pato" -> a speaking star, learned (the card has no mic), album said
     const s0 = await g.ev(() => G.state.stars);
     await g.ev(() => window.__sr.queue.push({ results: ['el pato'] }));
+    // (the walk toward the duck over and the mic ready first: a tap during the walk is a new walk; this was a flake under load)
+    await g.until(() => !G.field.route && !G.field.player.moving && !!G.world.sayBack && G.world.sayBack.mic.o.ready(), null, 'the say-it-back mic ready', 8000);
     await g.tapRect(await g.ev(() => G.world.sayBack.mic.o.rect()));
     await g.until(() => window.__sr.starts.length > 0, null, 'the recognizer to start');
     check('saying: the mic starts inside the touch (touchend), es-MX', await g.ev(() => window.__sr.starts[0].during === 'touchend' && window.__sr.starts[0].lang === 'es-MX'));
