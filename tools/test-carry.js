@@ -133,8 +133,17 @@ async function giving(browser) {
     check('give: the bone: he eats it (gone from your hands), his gift heart', !(await held(g)) && await g.ev(() => G.hearts.did('canelo', 'gift')));
     // a flower: he sniffs (and sneezes), you keep it
     await g.ev(() => { G.state.bag.items = [{ id: 'flor', col: 'rosa' }]; });
-    await g.tapTile(...await npcAt(g, 'canelo'));
-    await g.until(() => { const n = G.pet.npc(G.field); return !!n.pa && n.pa.k === 'sniff'; }, null, 'Canelo to sniff', 8000);
+    // (he trots about, toward the guide's goal after a few idle seconds: by the time the tap lands he may have moved; he's
+    // brought beside her and tapped again, 3 times at most)
+    let sniffed = false;
+    for (let k = 0; k < 3 && !sniffed; k++) {
+      await g.until(() => G.top() === G.field && !G.field.locked && !G.field.player.moving, null, 'free to give it', 20000);
+      await g.ev(() => { const n = G.pet.npc(G.field), p = G.field.player; n.x = p.x + 1; n.y = p.y; n.ox = n.oy = 0; n.moving = false; n.home = [n.x, n.y]; });
+      await g.frames(4);
+      await g.tapTile(...await npcAt(g, 'canelo'));
+      sniffed = await g.until(() => { const n = G.pet.npc(G.field); return !!n.pa && n.pa.k === 'sniff'; }, null, 'Canelo to sniff', 8000).then(() => true, () => false);
+    }
+    if (!sniffed) throw new Error('timed out waiting for Canelo to sniff (3 taps)');
     await settle(g, 'the flower');
     check('give: a flower: he sniffs it and you keep it', (await held(g) || {}).id === 'flor');
     // a friend who likes it: Señor Gómez and an apple (a heart); no confirm while sí / no aren't met
