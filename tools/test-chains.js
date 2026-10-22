@@ -99,7 +99,9 @@ async function playLine(g, line, o = {}) {
     const gl = await g.ev(() => {
       const f = G.field, gl = G.guide.goal(f), cx = Math.round(f.cam.x), cy = Math.round(f.cam.y), T = G.TILE;
       if (!gl || !gl.pts || !gl.pts.length || (gl.map && gl.map !== f.mapId)) return null;
-      return { why: gl.why, choice: !!gl.choice, pts: gl.pts.map(p => ({ sx: Math.round(p.x - cx), sy: Math.round(p.y - cy), tile: [Math.floor(p.x / T), Math.floor(p.y / T)] })) };
+      const ts = G.chapters.targets(f); // (an animal to tap: where it is drawn now, it hops about)
+      const kind = p => { const t = ts.find(t => t.animal && Math.abs(t.x - p.x) < 3 && Math.abs(t.y - p.y) < 3); return t ? t.animal : null; };
+      return { why: gl.why, choice: !!gl.choice, pts: gl.pts.map(p => ({ sx: Math.round(p.x - cx), sy: Math.round(p.y - cy), tile: [Math.floor(p.x / T), Math.floor(p.y / T)], animal: kind(p) })) };
     });
     if (gl) {
       const tried = g.__tried[gl.why] || (g.__tried[gl.why] = new Set()), key = p => p.tile.join(',');
@@ -107,7 +109,7 @@ async function playLine(g, line, o = {}) {
       if (!p && gl.choice) { tried.clear(); p = gl.pts[0]; }
       if (!p) p = gl.pts[0];
       const on = p.sx >= 4 && p.sx <= 316 && p.sy >= 34 && p.sy <= 220;
-      if (on) { if (gl.choice) tried.add(key(p)); pt = { x: p.sx, y: p.sy, why: gl.why }; }
+      if (on) { if (gl.choice) tried.add(key(p)); pt = { x: p.sx, y: p.sy, why: gl.why, animal: p.animal }; }
       else { const t = await toward(g, p.tile[0], p.tile[1]); if (t) pt = { x: t.sx, y: t.sy, why: gl.why + ' (toward)' }; }
     }
     if (!pt && st.a) pt = { x: Math.round(st.a.edge ? st.a.x : st.a.tx), y: Math.round(st.a.edge ? st.a.y : st.a.ty), why: st.a.why };
@@ -118,11 +120,16 @@ async function playLine(g, line, o = {}) {
     if (pt.why === last && ++same > 25) {
       // the same goal over and over without the chapter moving: walk next to it the long way (playflow), then on
       const t = await nextTap(g); if (t) await g.tap(t.sx, t.sy); same = 0;
-      if (process.env.DBG) console.log('    (same goal: ' + pt.why + ')');
+      if (process.env.DBG) { console.log('    (same goal: ' + pt.why + ' ' + pt.animal + ' at ' + pt.x + ',' + pt.y + ': ' + JSON.stringify(await g.ev(() => ({ ts: G.chapters.targets(G.field), gl: G.guide.goal(G.field) && G.guide.goal(G.field).pts.map(p => [p.x, p.y]), lk: G.field.locked, top: G.top().constructor.name, p: [G.field.player.x, G.field.player.y], an: G.animals.here().filter(a => a.kind === 'rana' || a.kind === 'pato').map(a => [a.kind, Math.round(a.x), Math.round(a.y), a.st]), cam: [Math.round(G.field.cam.x), Math.round(G.field.cam.y)] }))) + ')'); await g.shot('same'); if (g.errors.length) console.log('    errors: ' + g.errors.slice(0, 3).join(' // ').slice(0, 1500)); }
     }
     if (pt.why !== last) same = 0;
     last = pt.why;
-    await g.tap(pt.x, pt.y);
+    // (a word bubble with its say-it-back mic from a tap that named a thing instead: let it go first, it can sit over
+    // the frog on the pond's edge)
+    await g.until(() => !G.world || (!G.world.sayBack && !G.world.bubble), null, 'the word bubble to go', 20000).catch(() => {});
+    // an animal of the story hops about (the frog from pad to pad, faster at CHAINS_SPEED): her tap lands on it where it
+    // is in that very frame, as field.js reads a tap on an animal (G.animals.tapped: its reaction, the story's beat)
+    if (!(pt.animal && await g.ev(k => { const f = G.field, a = G.animals.find(k, f); if (!a || f.locked || G.top() !== f) return false; window.__chains.reset('tap'); f.route = G.animals.tapped(f, a); f.plan(f.route); return true; }, pt.animal))) await g.tap(pt.x, pt.y);
     await g.until(() => G.top() !== G.field || G.field.locked || G.fade.a > 0 || (!G.field.route && !G.field.player.moving), null, 'the walk', 40000);
     await g.frames(2);
   }
@@ -142,11 +149,11 @@ async function judge(g, label, ids) {
     const r = by[id]; if (!r) { if (id !== 'free play') console.log('    ' + id + ': no questions'); continue; }
     console.log('    ' + id + ': longest ' + r.n + (r.n > MAX ? ' (TOO LONG)' : '') + ' at ' + [...new Set(r.qs.map(q => q.at))].join(',') + ' then ' + r.then + ' :: ' + r.qs.map(q => q.p).join(' | '));
   }
+  check(label + ': no console errors', !g.errors.length, g.errors.join('\n'));
   const bad = R.filter(r => r.n > MAX);
   check(label + ': every chapter played (' + ids.length + ')', true);
   check(label + ': never more than ' + MAX + ' questions in a row before something happens on the map (' + bad.length + ' runs over)', !bad.length,
     bad.map(r => r.n + ' at ' + [...new Set(r.qs.map(q => q.at))].join(',') + ': ' + r.qs.map(q => q.p).join(' | ')).join('\n      '));
-  check(label + ': no console errors', !g.errors.length, g.errors.join('\n'));
 }
 
 // ---------- Villa Sol: a new game, the opener (play with the puppy), chapters 1-21 ----------

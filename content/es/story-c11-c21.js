@@ -680,7 +680,7 @@
       yield* listen(f, '¡Croac, croac!', 'Croak, croak! Who says that? It comes from the park pond. Find it and tap it!');
       yield G.questCard('c17');
     } },
-    { tap: 'rana', hint: aniHint('rana'), part: 'rana', run: function* (f) { // la rana, croac, verde
+    { tap: 'rana', hint: aniHint('rana'), part: 'rana', run: function* (f, c) { // la rana, croac, verde
       yield* G.intro.show('rana', { who: 'nico', prompt: '¡Croac! ¡Una [rana]!', en: 'Croak! A frog!', known: ['pato', 'conejo'] });
       G.animals.cry('rana');
       yield* G.intro.show('croac', { who: 'nico', prompt: 'La [rana] dice ¡[croac]!', en: 'The frog says ribbit!', ask: '¿Qué dice la [rana]?', askEn: 'What does the frog say?', known: ['miau', 'guau'] });
@@ -690,8 +690,10 @@
       yield* run(f, 20, 20, 3); dog(f).dir = 'down'; yield* G.pet.play('sniff'); // ({dog} trots to the edge of the pond to see)
       yield* ask('nico', '¿Qué es?', 'She hops to another lily pad, and {dog} sniffs at her. What is she?', 'rana', ['pato', 'conejo'], { point: ranaP(f) });
       yield* ask('nico', '¿Y qué dice?', 'She croaks again. What does she say?', 'croac', ['miau', 'guau'], { point: ranaP(f) });
+      c.data.bird = 1; G.animals.cry('pajaro'); yield 20; // (someone sings in the big tree: go and see)
+      yield* sayShow('nico', { icon: 'nota' }, T('¡Pío, pío! ¿Y eso?', 'Tweet, tweet! What\'s that? (in the big tree by the pond: go and see)'));
     } },
-    { auto: 'villa', part: 'pajaro', run: function* (f, c) { // ¡pío, pío!: el pájaro in the tree
+    { spot: { map: 'villa', at: BIRD_TREE, icon: 'nota' }, part: 'pajaro', run: function* (f, c) { // ¡pío, pío!: el pájaro in the tree (she walks over to see)
       c.data.bird = 1; G.animals.cry('pajaro'); yield 30; G.animals.cry('pajaro');
       yield* G.intro.show('pajaro', { who: 'nico', prompt: '¡Pío, pío! ¡Un [pajaro]!', en: 'Tweet, tweet! A bird! (up in the tree)', known: ['rana', 'conejo'] });
       yield* ask('nico', '¿Dónde está el [pajaro]?', 'Where is the bird?', 'arbol', ['banco', 'flor'], { point: tile(...BIRD_TREE) });
