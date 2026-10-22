@@ -13,7 +13,7 @@
 //          anywhere (another place's word, polish plan 2.5): they show a photo of it, asked as picture cards (G.review.ask)
 //          (FV.dueWord below: the word a moment reviews, used by the greetings, Lola, the letters and the dog too)
 // Done: a star and a heart (one favour per person a day). Favours are never needed to go on: the story never waits.
-// Palabra del día (from chapter 8): once a day Profesora Luna holds up a picture of a word the child knows that is due:
+// Palabra del día (from chapter 8): once a day Maestra Luna holds up a picture of a word the child knows that is due:
 // say it (the mic) or pick its word from four. A star.
 // From chapter 16, Inés's library holds the notebook's page puzzles: she offers one that is ready, once a day.
 // Hooks: maps.js asks G.favores.alert(who) / talk(who, f) after the story and the older errands; field.js frames come

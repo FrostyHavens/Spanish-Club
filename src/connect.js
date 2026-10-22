@@ -37,7 +37,7 @@
   const met = id => !!(G.words && G.words.met(id));
   const bag = () => G.errands.bag;
   const nm = id => G.nameOf(id) || '';
-  const short = id => nm(id).replace(/^(Profesora|Señor|Señora|Don|Doña|Abuela) /, '').replace(/ (el|la) .*/, '');
+  const short = id => nm(id).replace(/^(Maestra|Profesora|Señor|Señora|Don|Doña|Abuela) /, '').replace(/ (el|la) .*/, '');
   const opened = () => !!(CH.openerDone && CH.openerDone());
 
   // =====================================================================

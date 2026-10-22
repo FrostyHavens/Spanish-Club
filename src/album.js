@@ -276,7 +276,7 @@
         const fw = lola ? 46 : 23;
         ctx.fillStyle = '#5a3810'; ctx.fillRect(r.x + 2, r.y + 2, fw + 2, fw + 2);
         if (been || lola) H.face(ctx, who, r.x + 3, r.y + 3, fw, this.t); else { ctx.fillStyle = '#3a3048'; ctx.fillRect(r.x + 3, r.y + 3, fw, fw); G.textC(ctx, '?', r.x + 3 + fw / 2, r.y + 10, '#f8e060'); }
-        const nm = !been && !lola ? '? ? ?' : who === 'canelo' ? G.dogName() : (G.nameOf(who) || who).replace('Profesora ', 'Prof. ').replace(' el cartero', '').replace(' la panadera', '').replace('Señor ', 'Sr. ').replace('Abuela ', '');
+        const nm = !been && !lola ? '? ? ?' : who === 'canelo' ? G.dogName() : (G.nameOf(who) || who).replace(' el cartero', '').replace(' la panadera', '').replace('Señor ', 'Sr. ').replace('Abuela ', '');
         G.text(ctx, nm, r.x + fw + 8, r.y + 5, '#604020', null);
         H.row(ctx, who, r.x + fw + 8, r.y + 16);
         if (H.sticker(who)) { ctx.fillStyle = '#f8c820'; ctx.beginPath(); ctx.arc(r.x + r.w - 10, r.y + 10, 6, 0, Math.PI * 2); ctx.fill(); G.text(ctx, '\u0005', r.x + r.w - 13, r.y + 7, '#ffffff', '#a06000'); }

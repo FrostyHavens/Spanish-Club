@@ -47,7 +47,7 @@ for x, y in [(1,2),(2,2),(1,3),(33,2),(34,2),(34,3),(1,25),(1,26),(34,25),(34,26
 # la escuela (the club meets here) - top centre
 t.church(14, 2, 'escuelaDoor')
 t.put(13, 4, 'P'); t.put(21, 4, 'P')
-# casa de la abuela Rosa - west
+# casa de Doña Rosa - west
 t.house(3, 4, 5, 'R', 'rosaDoor')
 t.put(2, 6, 'P'); t.put(8, 6, 'k')
 # la panadería - east
@@ -95,7 +95,7 @@ t.mark('casaFront', 5, 18); t.mark('start', 5, 18)
 for tag, (x, y) in {'banco1': (13, 9), 'banco2': (22, 12), 'banco3': (20, 18)}.items(): t.put(x, y, 'J'); t.mark(tag, x, y)
 # more flowers in town
 for x, y in [(1,9),(3,8),(34,8),(9,26),(14,26),(22,26),(26,26),(30,26),(12,15),(23,15)]: t.put(x, y, 'o')
-# Abuela Rosa's hens scratch about on the grass beside her house (an area: x, y, w, h)
+# Doña Rosa's hens scratch about on the grass beside her house (an area: x, y, w, h)
 t.pos['gallinero'] = [1, 7, 4, 4]
 t.put(1, 7, 'O')                     # a hay bale by the hens
 # the park: the frog's pond (the old pool, a little bigger) and the rabbit's lawn

@@ -245,7 +245,7 @@
       return true;
     }
     const lk = C.likerFor(h.it, who);
-    if (lk) yield say(who, { face: lk }, TT('¡Oh! ¿Para ' + G.nameOf(lk).replace(/^(Profesora|Señor|Señora|Don|Doña|Abuela) /, '') + '?', 'Oh, nice! Take it to ' + G.nameOf(lk) + ': they love it!'));
+    if (lk) yield say(who, { face: lk }, TT('¡Oh! ¿Para ' + G.nameOf(lk).replace(/^(Maestra|Profesora|Señor|Señora|Don|Doña|Abuela) /, '') + '?', 'Oh, nice! Take it to ' + G.nameOf(lk) + ': they love it!'));
     else if (C.DOG[h.id] === 'fetch' && G.pet && G.pet.mine()) yield say(who, { icon: 'perro' }, TT('¡Para {dog}!', 'For {dog}! (tap him: he fetches it)'));
     else yield say(who, C.pic(h), TT('¡Oh! ¡Mira!', 'Oh, look at that! (put it down: tap yourself)'));
     return true;

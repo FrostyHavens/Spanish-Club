@@ -225,7 +225,7 @@
 
   // ---------- who says what (maps.js) ----------
   // the bubble over someone: the beat waiting for them, the next chapter's giver (or "tomorrow")
-  // a review day (10+ words only met): the teacher (Profesora Luna once her school is met, else Mamá) has a notebook
+  // a review day (10+ words only met): the teacher (Maestra Luna once her school is met, else Mamá) has a notebook
   // bubble and asks the oldest of them, so the story can go on (nothing waits on a word that never comes back)
   CH.reviewer = () => (G.words.met('escuela') ? 'luna' : 'mama');
   CH.needsReview = () => !!G.state && !CH.current() && CH.stage1() >= CH.LIMITS.busy;
@@ -272,6 +272,8 @@
     if (n && G.hearts) G.hearts.add('canelo', 1, 'care');
     return true;
   };
+  // a chapter's beat waits for this person now (their talk is the story: hearts.js says hello without a question first)
+  CH.beatFor = who => !!G.state && !!find(L => L.b.who === who && when(L));
   CH.alert = function (who) {
     if (!G.state) return null;
     const L = find(L => L.b.who === who && when(L));

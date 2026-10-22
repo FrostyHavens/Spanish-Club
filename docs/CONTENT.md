@@ -206,7 +206,7 @@ words only ("¡Al parque!"): the next beat's trigger is what the arrow points at
   and the shopkeepers one of their things (*¿Qué es?*, sometimes it goes in your bag as a present). A new kind is an
   entry in `OFFERS` (who, kind, the pool of words) and a generator in `KIND`. Listen-and-do favours (an ear in the
   bubble: a tray of pictures, or things to bring) are below, in *Listen and do*.
-- **Palabra del día**: from chapter 8, once a day, Profesora Luna holds up a picture of a due word: say it or pick
+- **Palabra del día**: from chapter 8, once a day, Maestra Luna holds up a picture of a due word: say it or pick
   its word from four.
 - **Inés's library**: from chapter 16 she offers one notebook page puzzle that is ready, once a day.
 - The morning greeting and its due word are in `src/hearts.js` (`H.POOLS`). The order of a townsperson's talk is

@@ -38,7 +38,7 @@ const SENTENCES = [
   [{ verb: 'touch', thing: 'perro', size: 'grande' }, 'Toca al perro grande.'],
   [{ verb: 'where', thing: 'oso', size: 'pequeno' }, '¿Dónde está el oso pequeño?'],
   [{ verb: 'give', thing: 'flor', num: 'dos', col: 'amarillo' }, 'Dame dos flores amarillas.'],
-  [{ verb: 'bring', thing: 'concha', num: 'tres', col: 'rosa' }, 'Tráeme tres conchas rosadas.'],
+  [{ verb: 'bring', thing: 'concha', num: 'tres', col: 'rosa' }, 'Tráeme tres conchas rosa.'],
   [{ verb: 'give', thing: 'concha', num: 'uno' }, 'Dame una concha.'],
   [{ verb: 'give', thing: 'platano', num: 'uno' }, 'Dame un plátano.'],
   [{ verb: 'give', thing: 'pez', num: 'cuatro', col: 'azul' }, 'Dame cuatro peces azules.'],
@@ -47,7 +47,7 @@ const SENTENCES = [
   [{ verb: 'give', thing: 'manzana', num: 'cinco', col: 'verde' }, 'Dame cinco manzanas verdes.'],
   [{ verb: 'give', thing: 'hoja', num: 'dos', col: 'rojo' }, 'Dame dos hojas rojas.'],
   [{ verb: 'give', thing: 'gorro', col: 'amarillo' }, 'Dame el gorro amarillo.'],
-  [{ verb: 'give', thing: 'bufanda', col: 'rosa' }, 'Dame la bufanda rosada.'],
+  [{ verb: 'give', thing: 'bufanda', col: 'rosa' }, 'Dame la bufanda rosa.'],
   [{ verb: 'give', thing: 'guantes', col: 'rojo' }, 'Dame los guantes rojos.'],
   [{ verb: 'give', thing: 'calcetines', col: 'blanco' }, 'Dame los calcetines blancos.'],
   [{ verb: 'give', thing: 'zapatos', col: 'azul' }, 'Dame los zapatos azules.'],
@@ -84,7 +84,7 @@ const SENTENCES = [
   [{ verb: 'howmany', thing: 'zanahoria' }, '¿Cuántas zanahorias hay?'],
 ];
 const ADJ = [['rojo', 'f', true, 'rojas'], ['rojo', 'm', false, 'rojo'], ['azul', 'f', true, 'azules'], ['azul', 'f', false, 'azul'], ['verde', 'm', true, 'verdes'], ['amarillo', 'f', false, 'amarilla'],
-  ['blanco', 'm', true, 'blancos'], ['rosa', 'f', true, 'rosadas'], ['pequeno', 'f', true, 'pequeñas'], ['pequeno', 'm', false, 'pequeño'], ['grande', 'f', true, 'grandes'], ['grande', 'm', false, 'grande']];
+  ['blanco', 'm', true, 'blancos'], ['rosa', 'f', true, 'rosa'], ['pequeno', 'f', true, 'pequeñas'], ['pequeno', 'm', false, 'pequeño'], ['grande', 'f', true, 'grandes'], ['grande', 'm', false, 'grande']];
 function nodeMaker(known) {
   const ctx = { console, Math }; ctx.window = ctx; ctx.G = { content: {} }; ctx.window.G = ctx.G; vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'content', 'es', 'words.js'), 'utf8'), ctx, { filename: 'content/es/words.js' });
@@ -106,8 +106,8 @@ async function node() {
   check('agreement: articles by gender (el / la / los / las / un / una), el águila (a feminine noun with "el")', RQ.art(RQ.noun('concha'), false, true) === 'la' && RQ.art(RQ.noun('oso'), true, true) === 'los' && RQ.art(RQ.noun('flor'), true, true) === 'las' && RQ.art(RQ.noun('platano'), false, false) === 'un' && RQ.art(RQ.noun('aguila'), false, true) === 'el' && RQ.art(RQ.noun('aguila'), true, true) === 'las' && RQ.noun('aguila').g === 'f');
   check('agreement: a noun\'s own plural wins (content/es/words.js pl), plural-only words stay plural (los guantes)', RQ.noun('colibri').pl === 'colibríes' && RQ.noun('guantes').plOnly && RQ.noun('guantes').pl === 'guantes' && RQ.noun('muneco').pl === 'muñecos de nieve');
   const s3 = RQ.sentence({ verb: 'give', thing: 'concha', num: 'tres', col: 'rosa' });
-  check('sentence: the rich text marks each word ([tres:tres] [concha:conchas] [rosa:rosadas]) and reads as the plain sentence', s3.text === 'Dame [tres:tres] [concha:conchas] [rosa:rosadas].' && s3.text.replace(/\[[a-z0-9]+:([^\]]+)\]/g, '$1') === s3.say, s3.text);
-  check('sentence: the right one, as shown and said after a miss ("¡Tres conchas rosadas!")', s3.np === '¡Tres conchas rosadas!', s3.np);
+  check('sentence: the rich text marks each word ([tres:tres] [concha:conchas] [rosa:rosa]) and reads as the plain sentence', s3.text === 'Dame [tres:tres] [concha:conchas] [rosa:rosa].' && s3.text.replace(/\[[a-z0-9]+:([^\]]+)\]/g, '$1') === s3.say, s3.text);
+  check('sentence: the right one, as shown and said after a miss ("¡Tres conchas rosa!")', s3.np === '¡Tres conchas rosa!', s3.np);
   // every request on every board: only known words, the right answer right, each tested word needed
   let n = 0, bad = [], two = 0, one = 0;
   for (const who of Object.keys(RQ.SPECS)) for (let lvl = 1; lvl <= 2; lvl++) for (let i = 0; i < 40; i++) {

@@ -21,9 +21,9 @@
     carta: { name: 'La carta', en: 'The letter: take it to the bakery', giver: 'tomas', goal: [['carta', 1], '>', ['panaderia', 1]] },
     fiesta: { name: 'La fiesta', en: 'The party at the school (older games)', giver: 'luna', goal: [['escuela', 1]] },
     canelo: { name: '¿Dónde está Canelo?', en: 'Where is Canelo? Follow the clues and find him', giver: 'mama', goal: [['perro', 1], ['pregunta', 1]] },
-    picnic: { name: 'El día de campo', en: 'Grandma Rosa\'s picnic: five foods from around town', giver: 'rosa', goal: [['pan', 1], ['queso', 1], ['huevo', 1], ['leche', 1], ['agua', 1]] },
-    show: { name: 'El show de perros', en: 'Sofía\'s dog show: teach Canelo three tricks, then show them', giver: 'sofia', goal: [['sientate', 1], ['pata', 1], ['salta', 1]] },
-    cuenta: { name: '¿Cuántos animales?', en: 'Count the animals of Villa Sol for Profesora Luna', giver: 'luna', goal: [['pato', 1], ['gallina', 1], ['caballo', 1], ['cabra', 1], ['conejo', 1], ['rana', 1], ['pez', 1]] },
+    picnic: { name: 'El día de campo', en: 'Doña Rosa\'s picnic: five foods from around town', giver: 'rosa', goal: [['pan', 1], ['queso', 1], ['huevo', 1], ['leche', 1], ['agua', 1]] },
+    show: { name: 'El concurso de perros', en: 'Sofía\'s dog contest: teach Canelo three tricks, then show them', giver: 'sofia', goal: [['sientate', 1], ['pata', 1], ['salta', 1]] },
+    cuenta: { name: '¿Cuántos animales?', en: 'Count the animals of Villa Sol for Maestra Luna', giver: 'luna', goal: [['pato', 1], ['gallina', 1], ['caballo', 1], ['cabra', 1], ['conejo', 1], ['rana', 1], ['pez', 1]] },
     sonidos: { name: '¿Qué dicen?', en: 'Nico\'s sound game: find the animal that makes each sound', giver: 'nico', goal: [['cuac', 1], ['croac', 1], ['cabra', 1], ['miau', 1], ['guau', 1]] },
     flores: { name: 'Las flores de Lucía', en: 'Lucía\'s flowers: a pink, a white and a yellow one for her mom', giver: 'lucia', goal: [[{ icon: 'flor', col: '#f878b8' }, 1], [{ icon: 'flor', col: '#f8f8f4' }, 1], [{ icon: 'flor', col: '#f8d030' }, 1]] },
     cansado: { name: 'Tomás está cansado', en: 'Tomás is tired: deliver his three letters', giver: 'tomas', goal: [['carta', 1], '>', ['casa', 1], ['granja', 1], ['biblioteca', 1]] },
@@ -62,13 +62,13 @@
 
   // ---------- Townsfolk (map sprite + dialogue portrait) ----------
   D.npcs = {
-    luna: { name: 'Profesora Luna',
+    luna: { name: 'Maestra Luna',
       portrait: { body: 'human', skin: '#e8b890', hair: '#2a1a30', hairStyle: 'long', eyes: '#3a2a50', outfit: '#3a7ad0', trim: '#f8f0d0', age: 'adult', face: 'soft', lashes: true, bg: '#2c6a8a' },
       map: { body: 'human', skin: '#e8b890', hair: '#2a1a30', hairStyle: 'long', outfit: '#3a7ad0', trim: '#f8f0d0', robe: true, eyes: '#3a2a50' } },
     mama: { name: 'Mamá',
       portrait: { body: 'human', skin: '#f0c8a0', hair: '#5a3418', hairStyle: 'ponytail', eyes: '#3a2a20', outfit: '#50a070', trim: '#f0e8c0', age: 'adult', face: 'soft', lashes: true, bg: '#4a7a40' },
       map: { body: 'human', skin: '#f0c8a0', hair: '#5a3418', hairStyle: 'ponytail', outfit: '#50a070', trim: '#f0e8c0', robe: true, eyes: '#3a2a20' } },
-    rosa: { name: 'Abuela Rosa',
+    rosa: { name: 'Doña Rosa',
       portrait: { body: 'human', skin: '#e8c0a0', hair: '#d0d0d8', hairStyle: 'braid', eyes: '#504060', outfit: '#c04870', trim: '#f8d8e8', age: 'old', face: 'soft', bg: '#8a3a5a' },
       map: { body: 'human', skin: '#e8c0a0', hair: '#d0d0d8', hairStyle: 'braid', outfit: '#c04870', trim: '#f8d8e8', robe: true, eyes: '#504060' } },
     pepe: { name: 'Don Pepe',
@@ -134,8 +134,8 @@
     chuy: { name: 'Don Chuy',
       portrait: { body: 'human', skin: '#c89070', hair: '#302018', hairStyle: 'short', beard: '#302018', eyes: '#302010', head: 'hat', headColor: '#e8d088', outfit: '#58a8e8', trim: '#ffffff', age: 'adult', face: 'round', bg: '#58a0c8' },
       map: { body: 'human', skin: '#c89070', hair: '#302018', hairStyle: 'short', beard: '#302018', head: 'hat', headColor: '#e8d088', outfit: '#58a8e8', trim: '#ffffff', eyes: '#302010' } },
-    // La casa de los abuelos (content/es/zone-abuelos.js): the child's own grandparents (Abuela Rosa in town is a
-    // different grandma): Abuela (a grey bun, a pink shawl over a flowery dress, an apron: her kitchen, the cookies,
+    // La casa de los abuelos (content/es/zone-abuelos.js): the child's own grandparents (Doña Rosa in town is a
+    // neighbour, not family): Abuela (a grey bun, a pink shawl over a flowery dress, an apron: her kitchen, the cookies,
     // the photos), Abuelo (a straw hat, a white moustache, a checked blue shirt: his garden, his animals), and the baby
     // cousin (a little one in yellow who crawls about the living room)
     abuela: { name: 'Abuela',
