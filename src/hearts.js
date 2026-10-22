@@ -253,8 +253,8 @@
     yield 20;
     // a friend you haven't swapped names with says theirs ("Me llamo Pepe. ¿Y tú?"), or some days asks what you like
     // ("¿Qué te gusta?"): that's the day's question with them (src/phrases.js, docs/LEARNING_PLAN_2.md Phase 2); not
-    // when their favour or their own thing comes next in this talk (it waits for another talk: a moment, not a quiz chain)
-    const own = !!(G.favores && G.favores.alert && G.favores.alert(npc)) || ownNext(npc);
+    // when their favour comes next in this talk (it waits for another talk: a moment, not a quiz chain)
+    const own = !!(G.favores && G.favores.alert && G.favores.alert(npc)); // (their favour: its questions are this talk's)
     if (!own && G.phrase && ((yield* G.phrase.meetName(npc)) || (yield* G.phrase.likeAsk(npc)))) { H.talkGreeted = npc; G.review.mark(npc); yield* H.milestones(npc); return true; } // (the day's question with them: no drawing or photo after it in this talk)
     // one word that's due, wherever she met it (AUDIT C6: a beach word is reviewed in the forest too), asked as picture
     // cards (G.review.ask: a form that fits any place); when nothing is due, one of their own words she hasn't used

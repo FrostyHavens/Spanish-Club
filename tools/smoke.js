@@ -58,8 +58,8 @@ async function talkToLuna(g, byKeys) {
       await g.until(() => !G.field.player.moving, null, 'the step to end');
     }
   } else await g.tapTile(...luna);
-  await g.until(() => G.top().constructor.name === 'TextBox' && G.top().opts.name === G.nameOf('luna'), null, 'Profesora Luna to talk');
-  check(g.name + ': talking to Profesora Luna', true);
+  await g.until(() => G.top().constructor.name === 'TextBox' && G.top().opts.name === G.nameOf('luna'), null, 'Maestra Luna to talk');
+  check(g.name + ': talking to Maestra Luna', true);
   await g.frames(30); await g.shot('luna');
   await g.drive(() => G.top() === G.field && !G.field.locked, 'Luna\'s hello');
   check(g.name + ': Luna says hello (her school is chapter 8)', true);

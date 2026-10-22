@@ -496,7 +496,7 @@ async function world(browser) {
     await drv(free("G.errands.bag.has('manzana')"), 'asking nicely');
     check('world: "Una manzana, por favor": the apple comes, the "por favor" phrase said', await g.ev(() => G.errands.bag.has('manzana', { q: null }) && G.words.rec('f_porfavor').said === 1));
 
-    // ---- Tengo: a present for Abuela Rosa (who loves flowers) ----
+    // ---- Tengo: a present for Doña Rosa (who loves flowers) ----
     await g.ev(() => { G.phrase.state().last = -1e6; G.errands.bag.take('manzana', { q: null }); G.errands.bag.add('flor', { col: 'rosa' }); });
     await greeted(g, ['rosa']);
     const hr = await g.ev(() => G.hearts.get('rosa'));

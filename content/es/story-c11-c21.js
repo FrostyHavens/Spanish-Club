@@ -1110,7 +1110,7 @@
       }
       const n = dog(f); yield* run(f, FOOD_GATE[0] + 1, FOOD_GATE[1] - 1, 4); yield* G.pet.play('jump'); // (off he goes with something off the table)
       yield* ask('luna', '¡{dog}! ¿Qué tiene?', '{dog} sneaked something off the table! What has he got?', 'queso', ['pan', 'leche'], { point: n });
-      yield* say('sofia', T('¡{dog}! ¡Ven! ¡Los listones!', '{dog}! Come! The ribbons! (Sofía is waiting for you)'));
+      yield* say('sofia', T('¡{dog}! ¡[ven]! ¡Los listones!', '{dog}! Come! The ribbons! (Sofía is waiting for you)'));
     } },
     { who: 'sofia', bubble: () => cinta(RED), run: function* (f, c) { // the ribbons; {dog}'s show, from Luna's picture signs; the cake
       const n = dog(f), who = Object.keys(PARTY);
@@ -1171,7 +1171,12 @@
     } },
   ], {
     after: function* () { G.audio.play('victory'); yield G.story.diploma(); G.audio.play('town', true); },
-    stage(f, c) { if (f.mapId === 'villa' && c.data.party) G.errands.stage(f, PARTY); }, // (everyone stays at the party while she walks about)
+    stage(f, c) { // (everyone stays at the party while she walks about; the friend she goes to next has their bubble)
+      if (f.mapId !== 'villa' || !c.data.party) return;
+      G.errands.stage(f, PARTY);
+      const b = CH.beat('c21'), n = b && b.who && f.npc(b.who), d = n && (G.maps.villa.npcs || []).find(o => o.id === b.who);
+      if (n && d) n.alert = d.alert || null;
+    },
     drawTop(f, ctx, c) { if (f.mapId === 'villa' && c.data.cake === 1) G.drawIcon16(ctx, 'estrella', 46 * TL + 4 - Math.round(f.cam.x), 6 * TL - 4 - Math.round(f.cam.y)); },
   });
 })();
