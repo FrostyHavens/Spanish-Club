@@ -9,7 +9,9 @@ const { open, check, run } = require('./harness');
 const { newGame, playToEnd } = require('./playflow'); // the tap-by-tap play itself (shared with tools/vocab-audit.js)
 
 run('Full tap playthrough (iPad)', async browser => {
-  let { ctx, g } = await open(browser, 'play', true);
+  // (the whole story by a bot that doesn't do the day's reviews: story pacing, src/chapters.js CH.PACED, would hold each new
+  // chapter while reviews wait, so it's off here, as in test-chapters.js; it's tested in test-memory.js)
+  let { ctx, g } = await open(browser, 'play', true, { openPacing: true });
   try {
     await newGame(g);
     let reloaded = false, sunset = false;
