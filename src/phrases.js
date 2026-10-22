@@ -19,6 +19,8 @@
 //   nothing heard      "¡Otra vez!"
 //   taps (the builder) tap the frame card and a word card: they go into her bubble, the sentence is read aloud, it
 //                      counts as a built phrase (productive, below saying: it can't make a phrase gold)
+// A gold phrase (stage 3) shows its written pattern faint, and at stage 4 not at all (her bubble's frame, the frame
+// card's words: P.patternShown, polish plan 2.10), so saying it is recall, not reading; the picture of the slot stays.
 // Matching: G.speech.matchPhrase (speech.js): lenient (articles, accents, ¿¡, word order, small mishearings, frame
 // synonyms: quisiera, mi nombre es, dónde están...). No colour for el / la: grammar is by ear (people say it right).
 //
@@ -143,7 +145,8 @@
 
   // ---------- her speech bubble: the frame and the slot as a picture-sentence ----------
   // (x, y, w, h: the bubble; o: {tail: 'left' | 'down', frame: 'ghost' | 'on' | 'lit', slot: null (empty) | a slot,
-  //  pulse, t, glow (0..1), col (the frame's colour), small (scale-1 text)}) -> {frame: rect, slot: rect}
+  //  pulse, t, glow (0..1), col (the frame's colour), small (scale-1 text), frameAlpha (the frame's words: faint, or
+  //  0: not written at all, P.patternShown)}) -> {frame: rect, slot: rect}
   P.drawSentence = function (ctx, x, y, w, h, id, o = {}) {
     const R = (a, b, c, d, col) => { ctx.fillStyle = col; ctx.fillRect(Math.round(a), Math.round(b), Math.round(c), Math.round(d)); };
     const ink = '#10102a', paper = o.glow ? '#fff8c8' : '#ffffff';
@@ -164,8 +167,8 @@
     const fcol = o.frame === 'ghost' ? '#b8bcd0' : o.frame === 'lit' ? '#20a040' : (o.col || '#2860a8');
     const out = {};
     const word = str => {
-      const ww = tw(str), bob = o.frame === 'lit' || (o.pulseFrame && (o.t >> 3) & 1) ? -1 : 0;
-      if (k === 2) G.bigText(ctx, str, cx + ww / 2, mid - 7 + bob, 2, fcol, null); else G.text(ctx, str, cx, mid - 4 + bob, fcol, null);
+      const ww = tw(str), bob = o.frame === 'lit' || (o.pulseFrame && (o.t >> 3) & 1) ? -1 : 0, fa = o.frameAlpha == null ? 1 : o.frameAlpha;
+      if (fa > 0) { ctx.globalAlpha *= fa; if (k === 2) G.bigText(ctx, str, cx + ww / 2, mid - 7 + bob, 2, fcol, null); else G.text(ctx, str, cx, mid - 4 + bob, fcol, null); ctx.globalAlpha /= fa; } // (a gold phrase: faint, then not written: saying it is recall)
       const r = { x: cx, y: mid - 9, w: ww, h: 18 }; cx += ww + gap; return r;
     };
     if (p.before) out.frame = word(p.before);
@@ -345,6 +348,10 @@
   }
   G.PhraseModel = PhraseModel;
   // one pattern at a time: none introduced in the last P.GAP play seconds, and every word of the moment met a while ago
+  // a gold phrase's written pattern fades (polish plan 2.10, AUDIT L2): stage 3 (gold) faint, stage 4 not written at all,
+  // so saying it is recall, not reading. Its words come back the moment she builds or says it (her bubble lights up),
+  // and in the invitation after the key word (a model to echo). -> 1, 0.45 or 0
+  P.patternShown = id => { const st = Wd().stage(id); return st >= 4 ? 0 : st >= 3 ? 0.45 : 1; };
   P.canIntro = function (id, o = {}) {
     if (!P.on() || !P.def(id)) return false;
     const last = st().last; if (last != null && Wd().now() - last < P.GAP) return false;
@@ -526,7 +533,8 @@
       const glow = won ? Math.max(0, 1 - wt / 40) : this.invite != null ? 0.3 + 0.3 * Math.sin(this.t / 8) : 0;
       ctx.save();
       if (won && wt < 12) { const s = 1 + 0.08 * Math.sin(wt / 12 * Math.PI), cx = u.x + u.w / 2, cy = u.y + u.h / 2; ctx.translate(cx, cy); ctx.scale(s, s); ctx.translate(-cx, -cy); }
-      this._parts = P.drawSentence(ctx, u.x, u.y, u.w, u.h, this.id, { slot: sOn, frame: frameState, col: Wd().stage(this.id) >= 3 ? '#b07000' : '#2860a8', pulse: true, t: this.t, glow, slotHint: this.ask > 0 || (demo && (demo >> 4) % 3 === 1), pulseFrame: this.invite != null });
+      const fa = frameState === 'ghost' && this.invite == null ? P.patternShown(this.id) : 1; // (not said or built yet: a gold phrase's pattern faint, or not written)
+      this._parts = P.drawSentence(ctx, u.x, u.y, u.w, u.h, this.id, { slot: sOn, frame: frameState, col: Wd().stage(this.id) >= 3 ? '#b07000' : '#2860a8', pulse: true, t: this.t, glow, slotHint: this.ask > 0 || (demo && (demo >> 4) % 3 === 1), pulseFrame: this.invite != null, frameAlpha: fa });
       ctx.restore();
       if (this.politeT > 0 && H()) for (let i = 0; i < 3; i++) { const k = (70 - this.politeT + i * 12) % 40; H().heart(ctx, f.x + 8 + i * 12, f.y - 4 - k, true, 1); }
       // the word cards (and the frame card) that fly into the bubble
@@ -547,8 +555,8 @@
         if (frame) { // the frame card: a speech bubble and the frame's words
           G.win(ctx, x, y, r.w, r.h, sel ? { fill1: '#fff8d0', fill2: '#f8e8a0', alpha: 1 } : { fill1: '#ffffff', fill2: '#e8f0ff', alpha: 1 });
           G.cards.bubble(ctx, x + r.w / 2 - 13, y + 8, 2, '#ffffff');
-          const L = fit(P.label(this.id), r.w - 12), col = Wd().stage(this.id) >= 3 ? '#b07000' : '#2860a8'; // (a margin inside the card's rim: "por / favor")
-          L.forEach((l, i) => G.textC(ctx, l, x + r.w / 2, y + 44 + i * 10 - (L.length - 1) * 4, col, null));
+          const L = fit(P.label(this.id), r.w - 12), col = Wd().stage(this.id) >= 3 ? '#b07000' : '#2860a8', fa = P.patternShown(this.id); // (a margin inside the card's rim: "por / favor"; a gold phrase: faint, then only the bubble: a tap still says it)
+          if (fa > 0) { ctx.globalAlpha = fa; L.forEach((l, i) => G.textC(ctx, l, x + r.w / 2, y + 44 + i * 10 - (L.length - 1) * 4, col, null)); ctx.globalAlpha = 1; }
           return;
         }
         const v = this.slotView(j);

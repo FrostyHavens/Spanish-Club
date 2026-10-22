@@ -250,7 +250,7 @@
   const swingSeat = r => { const th = swingAng(r), px = SWING[0] * TL + 12, top = (SWING[1] - 2) * TL + 10, L = 34; return { x: px + Math.sin(th) * L, y: top + Math.cos(th) * L, th, px, top }; };
   // the people of this zone (you, Abuelo, Abuela, the baby) are drawn here while they do something (the baby: always, small)
   function drawAB(ctx, cx, cy) {
-    const e = this, f = G.field; if (!f || !inZone(f)) return false;
+    const e = this, f = G.field; if (!f || (!inZone(f) && !busyNow(e))) return false; // (a touch anywhere: "Tócate la nariz", src/listen.js)
     let o = null;
     if (busyNow(e)) o = Object.assign(pose(e, e.ab, G.frame - e.ab.f0), {});
     else if (e === f.player && e.swing) { const s = swingSeat(e.swing); o = { wx: s.x, wy: s.y + 10, z: 0, sx: 1, sy: 0.9, dir: 'down', fr: 0, arms: [[-4, -12, -6, -20], [3, -12, 5, -20]], noShadow: true }; }

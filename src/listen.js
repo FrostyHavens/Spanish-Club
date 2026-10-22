@@ -96,9 +96,10 @@
     // a thing's place in its cell: [x, y, size] (the k-th of a pile; a single one on its own)
     thingAt(i, k) {
       const c = this.cells[i], r = this.cellRect(i);
-      if (this.req.kind === 'count') {
+      const act = this.req.tpl === 'actnum'; // (an action done n times: n of its pictures, every cell the same size)
+      if (this.req.kind === 'count' || act) { // (a pile; an action done twice: two of its pictures)
         const n = Math.max(1, c.n), cols = n <= 1 ? 1 : n <= 4 ? 2 : 3, rows = Math.ceil(n / cols), fit = Math.min(Math.floor((r.w - 6) / cols), Math.floor((r.h - 8) / rows) + 1);
-        const s = Math.min(PILE[c.size] || 16, fit, c.size === 'pequeno' ? Math.round(fit * 0.6) : 99), H2 = heap(r, n, s)[k] || [r.x + r.w / 2 - s / 2, r.y + r.h / 2];
+        const s = Math.min(act ? 22 : PILE[c.size] || 16, fit, c.size === 'pequeno' ? Math.round(fit * 0.6) : 99), H2 = heap(r, n, s)[k] || [r.x + r.w / 2 - s / 2, r.y + r.h / 2];
         return [H2[0], H2[1], s];
       }
       const big = Math.min(ONE.grande, r.w - 6), s = c.size === 'grande' ? big : c.size === 'pequeno' ? Math.round(big / 2) : Math.min(32, r.w - 10);
@@ -274,7 +275,7 @@
         ctx.fillStyle = off ? '#7a8098' : '#bcd2ea'; ctx.fillRect(x + 1, r.y + r.h - 6, r.w - 2, 5); // (the ground they stand on)
         ctx.globalAlpha = off ? 0.45 : 1;
         if (req.kind === 'count') { for (let k = 0; k < c.left; k++) { const [px, py, s] = this.thingAt(i, k); G.drawIcon16(ctx, L.pic(c), px + wob, py, s / 16); } }
-        else if (!c.gone) { const [px, py, s] = this.thingAt(i, 0), hop = glow ? Math.round(Math.abs(Math.sin(t / 7)) * -3) : 0; G.drawIcon16(ctx, L.pic(c), px + wob, py + hop, s / 16); }
+        else if (!c.gone) { const hop = glow ? Math.round(Math.abs(Math.sin(t / 7)) * -3) : 0; for (let k = 0; k < Math.max(1, c.n | 0); k++) { const [px, py, s] = this.thingAt(i, k); G.drawIcon16(ctx, L.pic(c), px + wob, py + hop, s / 16); } } // (an action twice: its picture twice)
         ctx.globalAlpha = 1;
       });
     }
@@ -343,7 +344,9 @@
       sp.heard.forEach(w => W.encounter(w, 'heard'));
       return { gold };
     }
-    for (const w of sp.tested) { if (res.dims[dimOf(w)]) W.answerRight(w, { mode: 'listen', firstTry: true, review: W.isOld(w), noGrow: !!o.quiet }); else W.answerWrong(w); } // (a wrong answer's right half: counted, quietly: the right one is being shown)
+    // a word is credited only on a fully right answer (AUDIT M2: a random tap used to credit a word half the time); a
+    // wrong answer is a miss for the word whose detail was wrong, and the half she got right is only heard
+    for (const w of sp.tested) { if (res.ok) W.answerRight(w, { mode: 'listen', firstTry: true, review: W.isOld(w), noGrow: !!o.quiet }); else if (!res.dims[dimOf(w)]) W.answerWrong(w); else W.encounter(w, 'heard'); }
     sp.heard.forEach(w => W.encounter(w, 'heard'));
     return { gold };
   };
@@ -357,11 +360,23 @@
     G.push(sc);
     const r = yield w, res = r.result || {};
     if (res.cancel) return res;
+    if (req.verb === 'act' || req.verb === 'self') yield* L.doIt(req); // (listen, then DO: her character does it on the map)
     if (RQ()) RQ().result(req, !!res.first);
     if (G.hist && G.hist.listenDone) G.hist.listenDone(!!res.ok, !!res.first, req.say);
     if (G.vocabLog) G.vlog.ev({ ty: 'listen', say: req.say, tpl: req.tpl, ok: !!res.ok, first: !!res.first });
     if (sc.gold.length) yield G.learnWords(sc.gold);
     return res;
+  };
+  // an action or a part of her body, done on the map by her character once it's asked ("Salta dos veces": she jumps
+  // twice; "Tócate la nariz": she touches her nose), with the park's and the grandparents' moves (content/es/zone-
+  // juegos.js G.juegos.act, zone-abuelos.js G.abuelos.act), on any map (her own drawing is set aside meanwhile)
+  L.doIt = function* (req) {
+    const f = G.field, p = f && f.player; if (!p || G.scenes.indexOf(f) < 0) return;
+    const go = req.verb === 'act' ? G.juegos && G.juegos.act : G.abuelos && G.abuelos.act; if (!go) return;
+    const d0 = p.drawSelf;
+    try {
+      for (let i = 0; i < (req.verb === 'act' ? Math.max(1, req.n || 1) : 1); i++) { p.drawSelf = null; yield* go(f, p, req.thing); yield 8; }
+    } finally { p.drawSelf = d0 || p.drawSelf; }
   };
   // a due word this board can ask about (the review engine's order), or null
   L.focus = function (spec) {
@@ -499,17 +514,21 @@
     FV.OFFERS.push(
       ['pepe', 'listen', null], ['nico', 'listen', null], ['lucia', 'carry', null, () => !!G.chapters && G.chapters.done('c15')],
       ['lola', 'carry', null], ['lupe', 'listen', null, zv('bosque')], ['elena', 'listen', null, zv('bosque')],
-      ['abuelo', 'listen', null, zv('abuelos')], ['mateo', 'listen', null, zv('montana')]);
+      ['abuelo', 'listen', null, zv('abuelos')], ['mateo', 'listen', null, zv('montana')],
+      ['paco', 'listen', null, zv('playa')], ['ana', 'listen', null, zv('juegos')], ['lucho', 'listen', null, zv('montana')]); // (a board in every place: polish plan 2.10)
     FV.GROUP.listen = FV.GROUP.carry = 'listen'; FV.CAP.listen = 2; // (two a day at most, in all: not spammy)
     FV.OFF.listen = FV.OFF.carry = () => !L.on();
     FV.BUBBLE.listen = FV.BUBBLE.carry = { icon: 'escucha' };
     FV.ON.carry = v => (v.req && !v.req.done ? { icon: 'escucha' } : null);
-    // the day's word: a due known word one of their boards can ask about
+    // the day's word: a due known word one of their boards can ask about (a number, a colour, a size from anywhere fits
+    // any board: a spoken request about something present, AUDIT C6); when none is due, the board's own word used
+    // longest ago (falling back to the place's own words)
     const pickFor = (who, ok) => {
       const s = RQ().SPECS[who]; if (!s) return null;
       const boards = s.places ? Object.keys(s.places).map(z => RQ().spec(who, z)) : [RQ().spec(who)];
       const words = new Set(); boards.forEach(b => RQ().words(b).forEach(w => words.add(w)));
-      return G.review.next({ minStage: 2, filter: id => words.has(id) && ok(id) && boards.some(b => RQ().feasible(b, id)) }) || null;
+      const fits = id => words.has(id) && ok(id) && boards.some(b => RQ().feasible(b, id));
+      return G.review.next({ minStage: 2, filter: fits }) || (G.favores.dueWord ? G.favores.dueWord({ pool: [...words], minStage: 2, filter: fits, onlyPool: true }) : null);
     };
     FV.PICK.listen = FV.PICK.carry = (who, pool, ok) => pickFor(who, ok);
     FV.KIND.listen = function* (v, f) {

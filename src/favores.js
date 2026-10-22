@@ -9,7 +9,9 @@
 //   colour Lucía / Sofía: a flower or a ribbon: "¿De qué color?"
 //   sound  Nico: an animal: "¿Qué dice?" (its sound word)
 //   feel   Mamá / Lucía: a face: "¿Cómo está?"
-//   thing  Pepe / Marta / Rosa / Mamá: they hold up one of their things: "¿Qué es?"
+//   thing  Pepe / Marta / Rosa / Mamá: they hold up one of their things: "¿Qué es?"; or a word that's due from
+//          anywhere (another place's word, polish plan 2.5): they show a photo of it, asked as picture cards (G.review.ask)
+//          (FV.dueWord below: the word a moment reviews, used by the greetings, Lola, the letters and the dog too)
 // Done: a star and a heart (one favour per person a day). Favours are never needed to go on: the story never waits.
 // Palabra del día (from chapter 8): once a day Profesora Luna holds up a picture of a word the child knows that is due:
 // say it (the mic) or pick its word from four. A star.
@@ -72,6 +74,31 @@
   // most that many of a group a day: not spammy).
   Object.assign(FV, { OFFERS, PLACES, ANIMALS, THINGS, COUNT_OF });
   Object.assign(FV, { BUBBLE: {}, ON: {}, REMIND: {}, TARGETS: {}, PICK: {}, OFF: {}, GROUP: {}, CAP: {} });
+
+  // ---------- the word a moment reviews: any met word that's due, wherever she met it (AUDIT C6, polish plan 2.5) ----------
+  // Once she leaves a place its words used to be hardly reviewed (a design rule kept each place to its own words). Now
+  // the greetings, the favours, Lola, Tomás's letters and the dog's cards ask about any word she has met that is due
+  // (G.review.due's order: just-met follow-ups, then misses, then the most overdue), always in a form that fits where
+  // she is: its picture held up and picture cards (G.review.ask), never "bring me" a thing that isn't here. Only when
+  // nothing is due, the place's own words (o.pool): the one used longest ago, never one already used today.
+  //   FV.dueWord(o) -> a word id or null. o: {pool (the person's / the place's words: the fallback), filter(id),
+  //   minStage (1), exclude ([ids]), prefer(id) (first among the first few due: another place's words), onlyPool (the
+  //   pool only, due ones first), noFallback (nothing when nothing is due)}
+  FV.dueWord = function (o = {}) {
+    if (!G.state || !G.review || !G.words) return null;
+    const pool = o.pool || [], ex = o.exclude || [], min = o.minStage || 1;
+    const ok = id => !!W(id) && G.iconDrawn(id) && !ex.includes(id) && (!o.onlyPool || pool.includes(id)) && (!o.filter || o.filter(id));
+    const due = G.review.due(1e9, { minStage: min, filter: ok });
+    if (due.length) { const p = o.prefer ? due.slice(0, 6).find(o.prefer) : null; return p || due[0]; }
+    if (o.noFallback) return null;
+    const today = G.words.dayNum(), last = id => { const d = G.words.lastDay(id); return d == null ? -1e9 : d; };
+    const L = pool.filter(id => G.words.stage(id) >= min && ok(id) && last(id) < today).sort((a, b) => last(a) - last(b));
+    return L[0] || null;
+  };
+  // a word that isn't one of this person's things (a word from another place, a thing that isn't here): it's asked
+  // with its picture, never as the thing in their hands
+  const NOT_THINGS = ['saludos', 'numeros', 'colores', 'sentir', 'sonidos']; // (those have favours of their own: count, colour, feel, sound)
+  FV.PICK.thing = (who, pool, ok) => FV.dueWord({ pool, minStage: 2, filter: id => ok(id) && (pool.includes(id) || !NOT_THINGS.includes(W(id).topic)) });
   const st = () => { const s = G.state; if (!s.fav || typeof s.fav !== 'object') s.fav = { day: -1, list: [], pal: -1 }; if (!Array.isArray(s.fav.list)) s.fav.list = []; return s.fav; };
   // today's favours: made the first time they're asked for on a new day
   FV.today = function () {
@@ -129,6 +156,9 @@
     if (G.hearts) G.hearts.add(v.who, 1, 'care');
     G.st.autosave();
   }
+  // (a word from another place: they show a photo, and it's asked with its picture: lines that vary, never the same talk)
+  const PHOTO = ['¡{name}! ¡Mira mi foto!', '¡Mira, {name}! ¡Una foto!', '¡{name}! ¿Y en esta foto?'];
+  const PHOTO_EN = ['{name}! Look at my photo! (what is it?)', 'Look, {name}! A photo! (what is it?)', '{name}! And in this photo? (what is it?)'];
   const ask = (who, prompt, en, answer, others, o = {}) => G.chapters.ask(who, prompt, en, answer, others.filter(k => k !== answer && G.words.met(k)).slice(0, 2), Object.assign({ review: true }, o));
   const others = (id, pool) => pool.filter(k => k !== id && G.words.met(k) && G.baseForm(k) !== G.baseForm(id)).sort(() => G.rand() - 0.5);
   const KIND = FV.KIND = {
@@ -167,6 +197,13 @@
       reward(v); yield say(v.who, TT('¡Muy bien!', 'Very good!'));
     },
     *thing(v) {
+      if (!(THINGS[v.who] || []).includes(v.word)) { // a word from anywhere (not one of their things here): a photo of it
+        const k = G.r(PHOTO.length);
+        yield sayShow(v.who, { icon: 'foto' }, TT(PHOTO[k], PHOTO_EN[k]));
+        yield* G.review.ask(v.word, { who: v.who });
+        reward(v); yield say(v.who, TT(['¡[gracias], {name}!', '¡Muy bien!', '¡Eso es! ¡[gracias]!'][G.r(3)], 'Thank you, {name}!'));
+        return;
+      }
       yield say(v.who, TT('¡{name}! ¿Y esto?', '{name}! And this?'));
       yield* ask(v.who, '¿Qué es?', 'What is it?', v.word, others(v.word, THINGS[v.who] || []).concat(others(v.word, G.words.list(2).filter(k => W(k).topic === W(v.word).topic))), { show: v.word, display: 'text' });
       reward(v);
