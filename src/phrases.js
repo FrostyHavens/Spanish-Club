@@ -14,13 +14,15 @@
 //                                             speech bubble: "Quiero [helado]") and she's invited to say the whole
 //                                             thing: one more try, a bonus if she does, never in the way
 //   "por favor"        anywhere: the polite bonus (the "___, por favor" card grows, "¡Qué amable!", a heart)
-//   a wrong word       (a request with one right answer: Tengo ___ with what she holds) the card wobbles, greys out
+//   a wrong word       (a request with one right answer: Tengo ___ with what she holds) said: "¡Otra vez!" (the
+//                      recognizer never marks her wrong); tapped: the card wobbles, greys out
 //   the frame alone    ("Quiero") the frame lights up, "¿...?" over the empty slot: say what
 //   nothing heard      "¡Otra vez!"
 //   taps (the builder) tap the frame card and a word card: they go into her bubble, the sentence is read aloud, it
 //                      counts as a built phrase (productive, below saying: it can't make a phrase gold)
-// A gold phrase (stage 3) shows its written pattern faint, and at stage 4 not at all (her bubble's frame, the frame
-// card's words: P.patternShown, polish plan 2.10), so saying it is recall, not reading; the picture of the slot stays.
+// A gold phrase (stage 3) shows its written pattern faint the day it turns gold, and from the next day not at all (her
+// bubble's frame, the frame card's words: P.patternShown, polish plan 2.10), so saying it is recall, not reading (said
+// whole then: recalled from memory, the way to solid); the picture of the slot stays.
 // Matching: G.speech.matchPhrase (speech.js): lenient (articles, accents, ¿¡, word order, small mishearings, frame
 // synonyms: quisiera, mi nombre es, dónde están...). No colour for el / la: grammar is by ear (people say it right).
 //
@@ -198,7 +200,9 @@
     const id = sc.id, s = sc.slots[k], r = Wd().rec(id, true), [bx, by] = at.frame, [sx, sy] = at.slot;
     const rec = () => { r.slot = s.word || s.id; if (!s.word && !s.face && !s.name) { r.slotPic = typeof s.icon === 'string' ? s.icon : null; r.slotEs = s.es; } };
     if (how === 'full' || how === 'again') {
-      Wd().answerRight(id, { said: true, mode: 'say', firstTry: how === 'full', echo: how === 'again', noGrow: true, review: Wd().isOld(id) });
+      // (said whole with no written pattern on the screen, a gold phrase's from the day after it went gold: recalled from
+      // memory, the history's F; so a phrase can become solid too, S2 review #2/#17)
+      Wd().answerRight(id, { said: true, mode: 'say', firstTry: how === 'full', echo: how === 'again', recall: how === 'full' && P.patternShown(id) === 0, noGrow: true, review: Wd().isOld(id) });
       r.said = (r.said | 0) + 1; rec();
       if (G.cards) G.cards.grow(id, 'phrase', { x: bx, y: by });
     } else if (how === 'built') {
@@ -224,7 +228,7 @@
     const id = 'f_porfavor'; if (!P.def(id) || sc.id === id) return;
     if (!P.met(id)) { Wd().meet(id, 'said', { who: sc.o.who }); st().intro[id] = { d: day(), at: 'said' }; }
     const r = Wd().rec(id), s = sc.slots[k];
-    Wd().answerRight(id, { said: true, mode: 'say', noGrow: true }); r.said = (r.said | 0) + 1; if (s) r.slot = s.word || s.id;
+    Wd().answerRight(id, { said: true, mode: 'say', recall: P.patternShown(id) === 0, noGrow: true }); r.said = (r.said | 0) + 1; if (s) r.slot = s.word || s.id; // (its pattern not written there: a recall, when hidden)
     if (G.cards) G.cards.grow(id, 'phrase', { x: at.frame[0] + 60, y: at.frame[1] });
     const who = sc.o.who; if (who && H() && H().WHO.includes(who)) H().add(who, 1, 'care');
     G.st.autosave();
@@ -347,10 +351,12 @@
     }
   }
   G.PhraseModel = PhraseModel;
-  // a gold phrase's written pattern fades (polish plan 2.10, AUDIT L2): stage 3 (gold) faint, stage 4 not written at all,
-  // so saying it is recall, not reading. Its words come back the moment she builds or says it (her bubble lights up),
-  // and in the invitation after the key word (a model to echo). -> 1, 0.45 or 0
-  P.patternShown = id => { const st = Wd().stage(id); return st >= 4 ? 0 : st >= 3 ? 0.45 : 1; };
+  // a gold phrase's written pattern fades (polish plan 2.10, AUDIT L2): faint on the day it turned gold (stage 3), not
+  // written at all from the next calendar day (and at stage 4), so saying it is recall, not reading (P.credit: the
+  // history's F, the way to solid, S2 review #2/#17). Its words come back the moment she builds or says it (her bubble
+  // lights up), and in the invitation after the key word (a model to echo). -> 1, 0.45 or 0
+  const goldToday = r => (r.s3n != null ? Wd().dayNum() <= r.s3n : r.s3 != null && Wd().day() <= r.s3); // (an older record: its game day)
+  P.patternShown = id => { const st = Wd().stage(id), r = st >= 3 ? Wd().rec(id) : null; return st >= 4 ? 0 : st >= 3 ? (r && goldToday(r) ? 0.45 : 0) : 1; };
   // one pattern at a time: none introduced in the last P.GAP play seconds, and every word of the moment met a while ago;
   // and a phrase is a new item for the pacing (words.js G.budget: review first; a chapter's beat always may)
   P.canIntro = function (id, o = {}) {
@@ -385,6 +391,7 @@
   class PhraseAsk {
     constructor(id, o, w) {
       G.toastT = 0; this.transparent = true; this.id = id; this.def = P.def(id); this.o = o; this.w = w; this.t = 0;
+      if (o.invite == null && G.review && G.review.asked) G.review.asked(); // (a question in this talk: words.js, a moment not a quiz chain)
       this.slots = (o.slots || []).map(P.slot);
       this.cardsN = this.slots.length; // (the word cards; o.more are heard but have no card)
       this.slots = this.slots.concat((o.more || []).map(P.slot).filter(s => !this.slots.some(x => x.id === s.id)));
@@ -444,7 +451,7 @@
       if (m.full && (ok(m.slot) || (m.slot < 0 && this.def.anySlot))) { this.win('full', m.slot < 0 ? 0 : m.slot, m.polite); return; }
       if (ok(m.slot) && m.polite && this.id !== 'f_porfavor') { this.win('polite', m.slot, true); return; }
       if (ok(m.slot)) { this.win('key', m.slot, m.polite); return; }
-      if (m.slot >= 0 && m.slot < this.cardsN && !this.off[m.slot]) { if (m.frame) this.lit = 50; this.wrong(m.slot); return; }
+      if (m.slot >= 0 && m.slot < this.cardsN && !this.off[m.slot]) { if (m.frame) this.lit = 50; this.mic.miss(); return; } // (another word heard: "¡Otra vez!", never a miss: only a tap can be wrong, S2 review #7)
       if (m.frame) { this.lit = 70; this.ask = 70; G.audio.sfx('huh'); G.fx.say('¿...?', ...this.slotAt(), '#ffd8a8', true); return; }
       this.mic.miss();
     }

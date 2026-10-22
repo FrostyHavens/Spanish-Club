@@ -313,12 +313,15 @@
   //  The people: Abuela, Abuelo, the baby; Lola and Nico as everywhere
   // =====================================================================
   const sideAlert = {};
+  // a favour waiting while their own bubble is down (nothing of theirs on offer, only a game to play again): the favour
+  // runs (G.errands.talk), never a game in its way that leaves the bubble up and the guide sending her back
+  const favFirst = id => !(sideAlert[id] && sideAlert[id]()) && !!(G.favores && G.favores.alert(id));
   function person(id, x, y, dir, side, line, o = {}) {
     return Object.assign({ id, npc: id, x, y, dir, fixed: !!o.fixed, wander: o.wander || 0,
       alert: () => CH.alert(id) || (G.state && sideAlert[id] ? sideAlert[id]() : null) || (G.favores && G.favores.alert(id)) || null,
       talk: function* (f) {
         if (yield* CH.talk(id, f)) return;
-        if (side && (yield* side(f))) return;
+        if (side && !favFirst(id) && (yield* side(f))) return; // (the talk follows the bubble: a favour waiting goes before a game replayed, S2 review #9)
         if (G.errands && (yield* G.errands.talk(id, f))) return;
         yield* line(f);
       } }, o.extra || {});
@@ -426,7 +429,9 @@
   const basket = () => bag().list().find(it => it.id === 'canastaverduras' && it.q === 'huerto') || null;
   const gardenOpen = () => CH.done('abuelos2');
   const simonOpen = () => CH.done('abuelos2');
-  const jacketAsk = () => night() && !AB.has('chamarra');
+  // (a later night too while its word isn't met: on a busy day the word waits in the pacing's queue, which can drop it,
+  // and this moment is the only way to meet it; once a play day at most, S2 review #4)
+  const jacketAsk = () => night() && (!AB.has('chamarra') || (!met('chamarra') && st().jacketD !== day()));
   sideAlert.abuelo = () => {
     if (jacketAsk()) return { icon: 'chamarra', col: AB.FIRST.chamarra };
     const g = garden(), b = basket();
@@ -446,7 +451,7 @@
       bag().add('canastaverduras', { q: 'huerto' }); g.n = 0; g.got = {}; g.v = v; G.st.autosave();
       const at = BEDS.find(e => e[2] === v); CH.point(at[0] * TL + 12, at[1] * TL);
       try {
-        if (!met(v)) yield* meetVeg(f, v); // (the day's new one: met here, then asked for four)
+        if (!met(v)) { g.shown = true; yield* meetVeg(f, v); } // (the day's new one: met here, then asked for four; on a busy day only held up and named, once: S2 review #5)
         yield* sayShow('abuelo', { icon: v, count: 4 }, T((met('cuatro') ? '¡[cuatro:Cuatro] ' + vegPl(v) : '¡' + vegPl(v, true)) + ', {name}!', 'Four ' + VEG_EN[v][1] + ', please! Tap the garden beds where they grow.'));
       } finally { CH.point(null); }
       return true;
@@ -457,7 +462,7 @@
   function* pickVeg(f, i) {
     const g = garden(); if (!basket() || (g.got || (g.got = {}))[i] || (g.n | 0) >= 4 || BEDS[i][2] !== gardenVeg()) return;
     const [x, y, v] = BEDS[i];
-    if (!met(v)) yield* meetVeg(f, v); // (a basket from an earlier day: today's vegetable met at its bed)
+    if (!met(v) && !g.shown) { g.shown = true; yield* meetVeg(f, v); } // (a basket from an earlier day: today's vegetable met at its bed, once)
     g.got[i] = G.frame; g.n = (g.n | 0) + 1; G.st.autosave();
     G.audio.sfx('pop'); for (let k = 0; k < 6; k++) puff('crumb', x * TL + 12 + (Math.random() - 0.5) * 14, y * TL + 8, { vy: -1.2 - Math.random(), vx: (Math.random() - 0.5) * 2, g: 0.15, life: 26 });
     CK.sparkle(f, x, y, 3);
@@ -514,8 +519,8 @@
   AB.chooseBody = chooseBody;
   // at night: "¡Hace frío!" Abuelo gives you his old green jacket (la chamarra)
   function* jacket(f) {
-    const p = f.player;
-    yield* AB.act(f, p, 'tiembla');
+    const p = f.player; st().jacketD = day(); G.st.autosave();
+    if (!AB.wear().chamarra) yield* AB.act(f, p, 'tiembla'); // (no shiver in the jacket she already has on)
     yield* sayShow('abuelo', { icon: 'chamarra', col: AB.FIRST.chamarra }, T('¡Brrr! ¡Hace frío!', 'Brrr! It\'s cold tonight!'));
     yield* meetW('chamarra', { who: 'abuelo', prompt: '¡Mi [chamarra]! ¡Para ti!', en: 'My jacket! For you!', show: { icon: 'chamarra', col: AB.FIRST.chamarra }, known: othersFor('chamarra', AB.CLOTHES) });
     AB.putOn(f, 'chamarra', AB.FIRST.chamarra);

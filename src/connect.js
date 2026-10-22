@@ -121,8 +121,8 @@
     // inside, a drawing of something she knows that is due: from the sender's place first (letters span every place,
     // polish plan 2.5), asked with its picture
     const fz = it.from ? (H.zoneOf(it.from) === '*' ? null : H.zoneOf(it.from)) : null, FV = G.favores;
-    const pic = FV && FV.dueWord && H.talkGreeted !== who ? (fz && FV.dueWord({ filter: id => Z.ofWord(id) === fz, noFallback: true })) || FV.dueWord({ noFallback: true }) : null; // (not after their greeting's word: a moment, not a quiz)
-    if (pic) { yield* CK.sayShow(who, { icon: 'carta' }, TT('¡Mira! ¡Un dibujo!', 'Look! There\'s a drawing in the letter. What is it?')); yield* G.review.ask(pic, { who }); }
+    const pic = FV && FV.dueWord && H.talkGreeted !== who && G.review.room(who) ? (fz && FV.dueWord({ filter: id => Z.ofWord(id) === fz, noFallback: true })) || FV.dueWord({ noFallback: true }) : null; // (not after their greeting's word or phrase, nor a 4th question in this talk: a moment, not a quiz, words.js G.review.room)
+    if (pic) { yield* CK.sayShow(who, { icon: 'carta' }, TT('¡Mira! ¡Un dibujo!', 'Look! There\'s a drawing in the letter. What is it?')); yield* G.review.ask(pic, { who }); G.review.mark(who); }
     const s = st(); s.n++; s.log[who] = (s.log[who] | 0) + 1;
     G.state.stars++; G.fx.flyStar(G.W / 2, 90, 0); G.audio.sfx('star'); CK.confetti();
     yield* CK.say(who, TT(met('gracias') ? '¡[gracias:Gracias], {name}!' : '¡Gracias, {name}!', 'Thank you, {name}!'));

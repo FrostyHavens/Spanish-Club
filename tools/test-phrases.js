@@ -330,6 +330,17 @@ async function ask(browser) {
     await say(g, 'me gusta el perro');
     await past(g, () => window.__r !== undefined, 'said');
     check('ask: said whole: remembered (stage 3, gold), like a word recalled', await g.ev(() => G.words.stage('f_gusta') === 3));
+    // gold since an earlier day: its pattern isn't written any more, so saying it whole is recalled from memory (the
+    // history's F), and two such days at least 2 apart make it solid (S2 review #2/#17: before, phrases stayed gold)
+    await g.fieldIdle('villa');
+    await g.ev(() => { const W = G.words, r = W.rec('f_gusta'); Object.assign(r, { s3n: W.dayNum() - 1, rd: [W.dayNum() - 2], due: null, dd: 0, dc: 0 }); });
+    await request(g, 'f_gusta', { who: 'lola', slots: ['oso', 'gato', 'perro'], free: true });
+    await askUp(g);
+    check('ask: a phrase gold since an earlier day: its pattern not written', await g.ev(() => G.phrase.patternShown('f_gusta') === 0));
+    await say(g, 'me gusta el gato');
+    await past(g, () => window.__r !== undefined, 'said');
+    const sol = await g.ev(() => ({ e: G.hist.day().w.f_gusta[1], st: G.words.stage('f_gusta'), rd: G.words.recallDays('f_gusta') }));
+    check('ask: ...said whole: recalled from memory (F), and with an earlier such day: solid (stage 4)', /F$/.test(sol.e) && sol.st === 4, JSON.stringify(sol));
     check('ask: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
 }

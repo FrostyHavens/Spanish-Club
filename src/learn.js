@@ -103,14 +103,19 @@
   // and the question stays up; opts.onRight(rect, x, y, spoken) hears about the right pick (x, y: just above it).
   // Speaking (mic.js): in a G.ask question whose answer is a word, a mic button sits at the bottom right (unless
   // opts.noMic). What the child says is matched against EVERY choice's spoken form: the right one counts as picking it
-  // plus a speaking star; a wrong one is just like tapping it; nothing heard or no match: "¡Otra vez!", no penalty.
+  // plus a speaking star; another choice, nothing heard or no match: "¡Otra vez!", no penalty (the recognizer rewards,
+  // never judges: only a tap can be wrong; a free choice, no right answer, still picks by voice).
   // opts.micBig (with opts.show): a big mic right beside the picture held up, the first thing to try (the dog's warm-up,
   // warmup.js). opts.cancel: a way out (a back button; opts.cancelIcon 'skip': the big skip button, G.skipBtn), and
   // opts.onCancel() hears about it. opts.drawExtra(ctx, scene): more to draw over the question (the warm-up's cards).
   // opts.sayFirst (with opts.show and a word answer; G.sayFirst below): first only the picture and the big mic, pulsing,
   // for about 4 s (opts.sayEn: the English help meanwhile); said right: answered (scene.said1), else the cards appear.
-  // opts.reveal: the cards keep their pictures under the answer's own picture (a word not known well enough for word-only
-  // cards: picture + word, a matching reveal, so G.ask counts the tap as a cued use, never as a recall).
+  // opts.sayAlt {prompt, en}: what the question becomes when the say step ends without the word (a word not known well
+  // enough for word-only cards): the picture held up is put away and the word is heard instead ("¿[id]?", a speaker),
+  // picked among picture-only cards: an uncued pick, so the box still moves (S2 review #1/#16: a quiet day or a broken
+  // mic never stalls a word).
+  // opts.reveal: the cards keep their pictures under the answer's own picture (a content question about a word not known
+  // well enough for word-only cards: picture + word, a matching reveal, so G.ask counts the tap as a cued use).
   // No give-aways (docs/AUDIT_2026-10.md 2.7): every card of a question writes its word at the same size and, until it
   // is answered, in the same colour (a short word drawn twice as big, or the one gold word among blue ones, would point
   // at the answer).
@@ -125,7 +130,8 @@
   // never judge (speech recognition is unreliable for a child's voice).
   //   SF.on()          the mic can listen (G.mic.on: supported, "Speaking (mic)" on) and the grown-ups' "Speaking prompts"
   //                    isn't "quiet" (G.prefs.sayFirst === false, per device; the other mic buttons stay)
-  //   SF.can(id)       a word it can be asked for: known (stage 2+), with its picture, not waiting to be met again
+  //   SF.can(id)       a word it can be asked for: known (stage 2+), with its picture, not waiting to be met again, and
+  //                    not said or shown a moment ago (G.words.justShown: saying it back would be an echo, S2 review #6)
   //   SF.want(id, o)   should this review question start with it? One in SF.EVERY eligible review questions (the third,
   //                    the sixth...: a chain of questions isn't slowed at every step), never a word already asked this way
   //                    today; o.always (the dog's warm-up, its say step): every time it can
@@ -136,7 +142,7 @@
   const sfBook = () => { const k = G.today() + '|' + (G.st && G.st.slot); if (sfDay.key !== k) sfDay = { key: k, ids: {} }; return sfDay.ids; };
   SF.quiet = () => !!(G.prefs && G.prefs.sayFirst === false);
   SF.on = () => !SF.quiet() && !!(G.mic && G.mic.on());
-  SF.can = id => SF.on() && !!D().words[id] && S().stage(id) >= 2 && G.iconDrawn(id) && !(G.words.needsReintro && G.words.needsReintro(id));
+  SF.can = id => SF.on() && !!D().words[id] && S().stage(id) >= 2 && G.iconDrawn(id) && !(G.words.needsReintro && G.words.needsReintro(id)) && !(G.words.justShown && G.words.justShown(id));
   SF.mark = key => { sfBook()[key] = 1; };
   SF.doneToday = key => !!sfBook()[key];
   SF.reset = () => { SF.n = 0; sfDay = { key: '', ids: {} }; };
@@ -195,6 +201,7 @@
       const aw = opts.answer != null && this.ch[opts.answer] && this.ch[opts.answer].word;
       this.say = opts.sayFirst && aw && opts.show && this.mic && SF.on() ? { t: 0 } : null;
       if (this.say) SF.mark(aw);
+      else if (opts.sayAlt) this.alt(); // (no say step after all: straight to its other form)
       while (this.ch[this.i] && this.ch[this.i].off) this.i++;
       if (G.vocabLog) this.vlog(); // (the dev-only log, vocablog.js)
       G.richIds(opts.prompt || '').forEach(id => S().see(id)); // (met words met again; unmet ones stay unmet)
@@ -253,10 +260,20 @@
     heard(alts) { // what the mic heard, against every choice
       const k = G.mic.best(this.ch.map(G.mic.target), alts, this.o.answer);
       if (this.say) { if (k === this.o.answer) this.sayWin(); else this.reveal('heard'); return; } // (say it first: anything but the word just shows the cards)
-      if (k < 0 || this.ch[k].off) this.mic.miss(); else this.pick(k, true);
+      // another card heard in a question with a right answer: not caught, "¡Otra vez!" (the recognizer never marks her
+      // wrong: no grey card, no boop, no miss; only a tap can be wrong). A free choice picks by voice.
+      if (k < 0 || this.ch[k].off || (this.o.answer != null && this.o.onWrong && k !== this.o.answer)) this.mic.miss(); else this.pick(k, true);
     }
     // say it first: the cards appear (why: 'time' 'tap' 'key' 'heard' 'nohear'); never a miss, never a sad sound
-    reveal(why) { if (!this.say) return; this.say = null; this.revealed = why; this.rv = 0; if (this.mic) this.mic.sad = 0; }
+    reveal(why) { if (!this.say) return; this.say = null; this.revealed = why; this.rv = 0; if (this.mic) this.mic.sad = 0; if (this.o.sayAlt) this.alt(true); }
+    // the say step's other form (opts.sayAlt): the picture held up put away, the word heard, picture-only cards
+    alt(speak) {
+      const a = this.o.sayAlt, c = this.ch[this.o.answer]; this.o.sayAlt = null; if (!a || !c || !c.word) return;
+      Object.assign(this.o, { show: null, micBig: false, prompt: G.fill(a.prompt), en: G.fill(a.en || ''), mask: (this.o.mask || []).concat([c.word]) });
+      this.disp = 'pic'; this.textOnly = null; this.bigAll = null;
+      if (this.lines) this.lines = G.richLayout(this.o.prompt, G.W - 96, { mask: this.o.mask });
+      if (speak) G.speak(this.o.prompt);
+    }
     // said before any card was shown: the question is answered, with a party (G.ask records a recall said aloud)
     sayWin() {
       const o = this.o, k = o.answer, c = this.ch[k], m = this.micRect(), cx = G.W / 2;
@@ -435,7 +452,7 @@
 
   // ---------- Ask until right ----------
   // q: {prompt, en, show, choices, answer: index, layout, learn, who, display, mask, intro, review, credit, reintro,
-  //     sayFirst, sayEn}
+  //     sayFirst, sayEn, sayAlt}
   // Wrong picks wobble and grey out with a soft boop (no lecture) while the question stays up, so every
   // question can be finished. The right pick pops with praise; a first-try answer earns a star (one per word a day).
   // Saying the right answer out loud (the mic, mic.js) answers too, and earns a speaking star on top.
@@ -451,7 +468,9 @@
   //   remembered+    'text' when the prompt's picture is the answer (say it / pick its word), else 'pic' with the
   //                  answer heard, not shown (listen -> pick the picture)
   // q.sayFirst (G.review.ask, the warm-up: G.sayFirst): only the picture and the big mic first; said right, it's a recall
-  // said aloud before any written cue: answerRight {mode: 'say', recall: true, said: true}; else the cards (as above).
+  // said aloud before any written cue: answerRight {mode: 'say', recall: true, said: true}; else the cards (as above), or
+  // with q.sayAlt (below stage 3: intro.js I.form) the word heard and picture-only cards (a plain pick: the box moves).
+  // A word said or shown a moment before the question (G.words.justShown) is never a recall from memory: o.fresh.
   // q.noMic: no mic on this question (say, when saying the answer would only be reading it out).
   // q.wrongAct(k, word): called on a wrong pick (the story reacting to it: Canelo barks instead of coming).
   // Returns true if right on the first try.
@@ -470,6 +489,10 @@
     const ad = G.askDisplay(q), aid = q.credit === false ? null : ad.aid;
     const st0 = aid ? S().stage(aid) : 0, kind = q.intro ? 'intro' : !aid ? null : st0 < 1 ? 'new' : q.review || G.words.isOld(aid) ? 'review' : 'new';
     const ids = (q.learn ? (Array.isArray(q.learn) ? q.learn : [q.learn]) : []).filter(id => id !== aid && D().words[id]);
+    // (said or shown a moment ago, before this question: no recall from memory now, only a plain pick or an echo,
+    // words.js W.justShown; checked before the question says its own prompt)
+    const fresh = !!aid && st0 >= 1 && !!(G.words.justShown && G.words.justShown(aid));
+    if (G.review.asked) G.review.asked(); // (one more question in this talk: a moment, not a quiz chain)
     let tries = 0, spoken = false, scene = null;
     const wq = G.choose(Object.assign({}, q, {
       choices: ch, display: ad.display, mask: ad.mask, reveal: !!ad.reveal,
@@ -481,22 +504,23 @@
     }));
     scene = wq.scene;
     if (G.vocabLog && aid) { const v = scene.view(q.answer); G.vlog('prompt', aid, { kind, st: st0, mode: scene.say ? 'sayfirst' : v.icon && v.label ? 'both' : v.label ? 'text' : 'pic', cued: scene.cue(q.answer).cued || null, who: q.who || null }); }
-    const heard = !!aid && (scene.o.mask || []).indexOf(aid) >= 0; // (the prompt says the answer: saying it back is an echo, for the history)
     const r = yield wq;
     if (r.result !== q.answer) return false; // closed without answering (a question with a way out)
+    const heard = !!aid && (scene.o.mask || []).indexOf(aid) >= 0; // (the prompt says the answer: saying it back is an echo, for the history; after "say it first" its other form may hear it)
     const first = tries === 0;
     let res = null;
     if (aid && scene.said1) { // said first, before any card: a recall, said aloud (docs/AUDIT_2026-10.md 2.6)
-      res = G.words.answerRight(aid, { mode: 'say', recall: true, said: true, firstTry: true, review: kind === 'review', how: 'answer' });
+      res = G.words.answerRight(aid, { mode: 'say', recall: !fresh, said: true, echo: fresh, fresh, firstTry: true, review: kind === 'review', how: 'answer' });
     } else if (aid) {
       const v = scene.view(q.answer), mode = spoken && !v.label ? 'say' : v.icon && v.label ? 'both' : v.label ? 'text' : 'pic';
       // (q.reintro: a slipping word met again, intro.js G.intro.again: a cued use, it doesn't move the word on; a reveal,
       // its own picture held up over picture cards: a cued use too)
       // nothing written to read (picture-only cards, the answer not written in the prompt): a recall from memory when
-      // it's a later day (words.js answerRight {mode: 'pic', recall: true}: the engine decides the day)
-      const written = G.richIds(G.fill(q.prompt || '')).indexOf(aid) >= 0 && !heard;
-      const recall = mode === 'pic' && !written && ch.every((c, k) => !c.word || !scene.view(k).label);
-      res = G.words.answerRight(aid, { cued: !!q.reintro || !!ad.reveal || !!scene.cue(q.answer).cued, said: spoken, echo: spoken && heard, firstTry: first, mode, recall, review: kind === 'review', how: q.intro ? q.how || 'show' : 'answer' });
+      // it's a later day (words.js answerRight {mode: 'pic', recall: true}: the engine decides the day); not when the word
+      // was said or shown a moment ago (fresh), nor after a say step that held its picture up (scene.revealed: a plain pick)
+      const written = G.richIds(scene.o.prompt || '').indexOf(aid) >= 0 && !heard;
+      const recall = mode === 'pic' && !written && !fresh && !scene.revealed && ch.every((c, k) => !c.word || !scene.view(k).label);
+      res = G.words.answerRight(aid, { cued: !!q.reintro || !!ad.reveal || !!scene.cue(q.answer).cued, said: spoken, echo: spoken && heard, fresh, firstTry: first, mode, recall, review: kind === 'review', how: q.intro ? q.how || 'show' : 'answer' });
     }
     yield 10;
     // a word met just now: its small celebration (it goes in the notebook); co-listed words are only met

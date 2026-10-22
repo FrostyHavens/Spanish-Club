@@ -95,11 +95,12 @@
   // a due word she knows to ask instead: the same topic first, then any (with a picture, and 2 other met words to choose from)
   I.reviewFor = function (id) {
     if (Wd().count(1) < 3) return null;
-    const ok = k => k !== id && G.iconDrawn(k) && G.baseForm(k) !== G.baseForm(id), top = D().words[id] && D().words[id].topic;
+    const ok = k => k !== id && G.iconDrawn(k) && G.baseForm(k) !== G.baseForm(id) && G.review.fresh(k), top = D().words[id] && D().words[id].topic; // (never one asked a moment ago)
     return G.review.next({ topic: top, filter: ok }) || G.review.next({ filter: ok });
   };
   // the moment without the new word: what she sees and hears (see()), then a review (once per word in I.DEFER_GAP play
-  // seconds: the same swing ridden again and again isn't a question every time); the word waits in the queue
+  // seconds: the same swing ridden again and again isn't a question every time; and only while the talk has room and
+  // that person hasn't asked a review in this place today: G.review.room, words.js); the word waits in the queue
   I.DEFER_GAP = 120;
   const deferAt = {};
   function* deferred(id, o, see) {
@@ -108,8 +109,8 @@
     yield* see();
     const now = Wd().now(), again = deferAt[id] != null && now >= deferAt[id] && now - deferAt[id] < I.DEFER_GAP;
     deferAt[id] = now;
-    const k = !again && I.reviewFor(id);
-    if (k) yield* G.review.ask(k, { who: o.who || null });
+    const k = !again && G.review.room(o.who || null) && I.reviewFor(id);
+    if (k) { yield* G.review.ask(k, { who: o.who || null }); G.review.mark(o.who || null); if (G.hearts) G.hearts.talkGreeted = o.who || 'intro'; }
     return false;
   }
   I.queued = function* (o = {}) {
@@ -239,8 +240,11 @@
   //   action    ¿Qué hace?          actions shown being done (corre, salta, busca: the command is also "he runs")
   //   command   ¿Qué le dices?      the dog's commands that aren't "he does" (ven, siéntate, dame la pata)
   //   like      ¿Qué le gusta hacer?  nadar (a verb as it is: "Le gusta nadar")
-  //   how       ¿Cómo va?           rápido, despacio;  quality: ¿Cómo es? (grande, pequeño, caliente: never "está caliente"
-  //                                 about a person);  weather: ¿Qué tiempo hace? (frío)
+  //   how       ¿Cómo va?           rápido, despacio;  quality: ¿Cómo es? (grande, pequeño);  weather: ¿Qué tiempo hace? (frío)
+  //   hot       ¿Cómo está el chocolate?  caliente, asked about a hot THING held up (Q.PIC: the mug of hot chocolate;
+  //                                 "¿Cómo está?" while el chocolate isn't met), never about a person (its own picture is a
+  //                                 hot face: "es / está caliente" about a person is slang, S2 review #8/#20); in review
+  //                                 questions its card shows that thing too (Q.PIC), and the thing is never another card
   //   color     ¿De qué color es?   feel: ¿Cómo está? (bien, cansado, feliz, triste);  say: ¿Qué dice? (greetings,
   //                                 phrases, animal sounds)
   //   number    ¿Cuántos hay? / ¿Cuántas hay?  with a heap of a met thing to count (its gender: G.requests.o)
@@ -253,9 +257,14 @@
     command: ['¿Qué le dices?', 'What do you tell him?'], like: ['¿Qué le gusta hacer?', 'What do they like to do?'],
     how: ['¿Cómo va?', 'How does it go?'], quality: ['¿Cómo es?', 'What is it like?'], weather: ['¿Qué tiempo hace?', 'What is the weather like?'],
     color: ['¿De qué color es?', 'What colour is it?'], feel: ['¿Cómo está?', 'How do they feel?'], say: ['¿Qué dice?', 'What do they say?'],
-    number: [null, 'How many are there?'],
+    number: [null, 'How many are there?'], hot: ['¿Cómo está?', 'How is it? (hot or cold?)'],
   };
-  Q.OWN = { ven: 'command', sientate: 'command', pata: 'command', nadar: 'like', rapido: 'how', despacio: 'how', grande: 'quality', pequeno: 'quality', caliente: 'quality', frio: 'weather', familia: 'people' };
+  Q.OWN = { ven: 'command', sientate: 'command', pata: 'command', nadar: 'like', rapido: 'how', despacio: 'how', grande: 'quality', pequeno: 'quality', caliente: 'hot', frio: 'weather', familia: 'people' };
+  // a word whose own picture would ask the wrong thing: the thing a review question shows for it instead (held up, and on
+  // its card), and that thing's word is never one of its cards (G.review.ask, the dog's warm-up: Q.clash)
+  Q.PIC = { caliente: 'chocolate' };
+  Q.clash = (a, b) => Q.PIC[a] === b || Q.PIC[b] === a;
+  Q.card = c => (c && Q.PIC[c.word] && D().words[Q.PIC[c.word]] ? Object.assign(c, { img: D().words[Q.PIC[c.word]] }) : c);
   Q.kind = function (id) {
     const w = D().words[id]; if (!w) return 'thing';
     if (Q.OWN[id]) return Q.OWN[id];
@@ -282,6 +291,7 @@
       const thing = o.thing || Q.thing(id), w = D().words[thing], n = G.requests.numOf(id);
       return { kind, t: L['q.howmany'](thing), en: K[1], show: { icon: w ? w.icon : thing, col: w && w.col, count: n }, thing };
     }
+    if (kind === 'hot') { const th = Q.PIC[id] || 'chocolate'; return { kind, t: Wd().met(th) ? '¿Cómo está ' + G.requests.the(th) + '?' : K[0], en: K[1], show: th, thing: th }; } // (¿Cómo está el [chocolate]?)
     return { kind, t: K[0], en: K[1], show: id };
   };
   L['q.howmany'] = id => '¿Cuánt' + G.requests.o(id, true) + ' hay?'; // ¿Cuántas hay? (manzanas) / ¿Cuántos hay? (huevos)
@@ -289,30 +299,35 @@
 
   // ---------- a review question's form, fit for the word's stage (G.review.ask, the dog's warm-up) ----------
   // c: its choices (G.wordChoices); o.say: say it first (G.sayFirst.want); o.recall: a known-well word (stage 3+) asked
-  // from its picture (word-only cards) rather than heard (the warm-up without a mic). -> {prompt, en, show, display,
-  // sayFirst, sayEn, reveal}. No give-aways (docs/AUDIT_2026-10.md 2.7):
+  // from its picture (word-only cards) rather than heard; o.pic: true / false, from its picture or heard (the warm-up
+  // alternates by the times it was asked). -> {prompt, en, show, display, sayFirst, sayEn, sayAlt}. No
+  // give-aways (docs/AUDIT_2026-10.md 2.7); every form a tap answers moves the box (uncued: a quiet day or a broken mic
+  // never stalls a word, S2 review #1/#16):
   //   met, known (1-2)   heard (a speaker), picked among picture-only cards: the first review is picture-only
-  //   remembered+ (3+)   heard -> its picture, or (every other time) its picture held up with its question
+  //   remembered+ (3+)   heard -> its picture, or (every other time: r.n even) its picture held up with its question
   //                      (¿Quién es?, ¿Qué hace?...) -> its word among word-only cards, none alike (else heard)
   //   say it first       its picture held up with its question and the big mic alone; if it isn't said, the cards:
-  //                      word-only at 3+ (none alike), else picture + word (a reveal: a cued use)
+  //                      word-only at 3+ (none alike), else (sayAlt) the picture put away, the word heard, picture-only
+  //                      cards (a plain pick: the picture was just held up, so no recall from memory, learn.js)
   I.form = function (id, c, o = {}) {
     const st = Wd().stage(id), r = Wd().rec(id), K = Q.of(id), apart = G.wordsApart(c.choices.map(x => x.word));
-    const recall = st >= 3 && apart;
-    if (o.say) return { prompt: K.t, en: K.en, show: K.show, sayFirst: true, sayEn: K.en + ' Say it! (the mic)', display: recall ? 'text' : 'both', reveal: !recall };
-    if (recall && (o.recall || r.n % 2 === 0)) return { prompt: K.t, en: K.en, show: K.show, display: 'text' };
-    return { prompt: '¿[' + id + ']?', en: 'Which one? (listen)', display: 'pic' };
+    const recall = st >= 3 && apart, heard = { prompt: '¿[' + id + ']?', en: 'Which one? (listen)', display: 'pic' };
+    if (o.say) return Object.assign({ prompt: K.t, en: K.en, show: K.show, sayFirst: true, sayEn: K.en + ' Say it! (the mic)' }, recall ? { display: 'text' } : { display: 'pic', sayAlt: { prompt: heard.prompt, en: heard.en } });
+    if (recall && (o.pic != null ? o.pic : o.recall || r.n % 2 === 0)) return { prompt: K.t, en: K.en, show: K.show, display: 'text' }; // (o.pic: the caller alternates itself)
+    return heard;
   };
+  // the choices of a review question: its picture's thing (Q.PIC) never a card beside it; a caliente card shows that thing
+  I.cards = c => { c.choices.forEach(Q.card); return c; };
 
   // ---------- a review question for a word, fit for its stage ----------
   // (its distractors: words of its topic first, then any met word; none looking or sounding like another card)
   G.review.ask = function* (id, o = {}) {
     const st = Wd().stage(id); if (st < 1) return false;
     if (Wd().needsReintro(id)) return yield* I.again(id, { who: o.who || null }); // (slipping: met again, not the same question)
-    const top = D().words[id].topic, met = Wd().list(1).filter(k => k !== id && G.baseForm(k) !== G.baseForm(id));
+    const top = D().words[id].topic, met = Wd().list(1).filter(k => k !== id && G.baseForm(k) !== G.baseForm(id) && !Q.clash(id, k));
     const pool = o.pool || shuffle(met.filter(k => D().words[k].topic === top)).concat(shuffle(met.filter(k => D().words[k].topic !== top)));
-    const c = G.wordChoices(id, [id].concat(pool), Math.min(3, pool.length + 1), o.pool ? {} : { ordered: true });
-    const f = I.form(id, c, { say: G.sayFirst.want(id) });
+    const c = I.cards(G.wordChoices(id, [id].concat(pool), Math.min(3, pool.length + 1), o.pool ? {} : { ordered: true }));
+    const f = I.form(id, c, { say: G.sayFirst.want(id) }); // (never right after the word was said or shown: SF.can)
     if (o.prompt) Object.assign(f, { prompt: o.prompt, en: o.en || f.en });
     return yield* G.ask(Object.assign(f, { choices: c.choices, answer: c.answer, layout: o.layout || 'cards', who: o.who || null, review: Wd().isOld(id) }));  // (a word met a minute ago, Canelo's "?": its first use, not a review)
   };

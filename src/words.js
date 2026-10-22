@@ -71,6 +71,9 @@
 //                            met or used; the same day it is a plain pick, P)
 //                        parent: a grown-up's check (mode 'parent': the history's C, recall from memory)
 //                        forced: the only answer left (the last pair of a page puzzle): a cued pick, nothing moves
+//                        fresh: the word was said or shown a moment ago (W.justShown when the question began): never a
+//                          recall from memory nor a recall-type answer, only a plain pick (P) or an echo (E); the box
+//                          still moves
 //                      Who passes what (the engine can't see the screen): G.ask (learn.js) passes recall: true with
 //                      mode 'pic' when the answer's card is a picture only, no card in the question has a label, the
 //                      answer isn't written in the prompt (absent, or masked: a speaker) and it isn't cued (the review's
@@ -87,6 +90,10 @@
 //   W.due(id)  W.overdue(id) (how late, for sorting)  W.lateness(id) (days late / its gap)  W.gap(id) its gap in days
 //   W.strength(id) 0..1  W.stars(id) 0..3 (the notebook's)  W.recallDays(id) the calendar days it was recalled from memory
 //   W.isOld(id) met in an earlier session or 5+ minutes ago (a prompt for it is a review)
+//   W.askedAgo(id) play seconds since a question last asked it (right or wrong: r.qa), Infinity if never
+//   W.expose(id) / W.heard(text) a line just said or showed the word (G.speak, the dialogue, a picture held up with it);
+//   W.justShown(id) within the last W.EXPOSE play seconds (then a question about it is no recall from memory, S2 review
+//   #6: no say-it-first, a picture-only pick is a plain P)   W.shownAgo(id)
 //   W.list(minStage) ids at that stage or more   W.count(minStage)
 //   W.newSession(reason) ('load', 'new', 'night')   W.step() every frame (the clock, a new calendar date)
 //   W.upgrade() an older save's records onto the new ladder (state.js on load; idempotent)   W.switchDay() wm.v2
@@ -94,6 +101,11 @@
 //   missed ones (due again in minutes), then the rest, the most overdue for its gap first (days late / the box's gap;
 //   when that ties, the longer gap first: AUDIT 2.4); next(o) the first of them; count(o); ask(id, o) a question for that
 //   word fit for its stage (yieldable; see intro.js).
+//   A moment, not a quiz chain (S2 review #10-#14): one talk asks R.TALK (3) questions at most (G.ask, a phrase, a listen
+//   board count: R.asked(); the count starts again once the map is free); a person asks one review at most per place a
+//   day (their greeting's word, Lola's photo, a deferred word's, a letter's drawing, a photo favour: room(who) before,
+//   mark(who) after; saved in wm.rq); and the reviews a moment picks (G.favores.dueWord, G.intro.reviewFor, the dog's
+//   cards) skip a word asked in the last R.REASK play seconds (W.askedAgo). talkQ() the questions in this talk.
 // G.budget (review-first pacing, AUDIT 2.9; new items are words and phrases): canIntro(n, {id, story}) may n new items be
 //   introduced now? Always in a chapter's beat (the story is the spine, paced by its morning gates: G.budget.story(); its
 //   words count toward the day). Elsewhere (the open world: a zone's people, Lola's animals, tap-to-ask, the album,
@@ -108,7 +120,8 @@
 //   recent(sec) words met in the last sec play-seconds (300), session() words met this session, pending() words waiting
 //   for their follow-ups, left(o).
 // Saved: G.state.wm = {clock, sess, day, date, sessAt, ms (memory session), v2 (switch day), d0 (first day played),
-//   pace: {d (day number), t (today's target), fr (the fraction carried), q: [ids waiting]}}.
+//   pace: {d (day number), t (today's target), fr (the fraction carried), q: [ids waiting]}, rq: {d (game day), k: {who@place: 1}}
+//   (today's reviews by person and place)}.
 'use strict';
 (function () {
   const D = () => G.data;
@@ -154,6 +167,7 @@
   W.step = function () { // day.js, every frame a game is on
     if (!G.state) return;
     const m = wm(); m.clock += 1 / 60;
+    if (talkN && G.field && G.top && G.top() === G.field && !G.field.locked) talkN = 0; // (the map is free: the talk is over)
     if (++dateT >= 600) { dateT = 0; if (m.date && m.date !== G.today()) { m.day++; m.date = G.today(); } } // played past midnight
     if (G.hist) G.hist.step(); // the learning history: today's minutes of play (src/history.js)
   };
@@ -236,7 +250,7 @@
     if (st <= r.st) return false;
     ver++;
     r.st = st; r.learned = st >= 3;
-    if (st === 3 && r.s3 == null) r.s3 = wm().day;
+    if (st === 3 && r.s3 == null) { r.s3 = wm().day; r.s3n = dayNum(); } // (s3n: its calendar day, phrases.js patternShown)
     log('stage', id, { st });
     return true;
   }
@@ -293,13 +307,32 @@
     r.last = W.now(); r.n++;
     return true;
   };
+  // ---------- just said or shown (S2 review #6): no recall from memory for a moment ----------
+  // Every line that says or writes a word (G.speak, the dialogue: ui.js) and a picture held up with it marks it; a
+  // question asked within W.EXPOSE play seconds of that is no recall from memory (G.ask, G.sayFirst.can). In memory only.
+  W.EXPOSE = 60;
+  let shown = {}, shownOf = null;
+  const book = () => { if (shownOf !== G.state) { shownOf = G.state; shown = {}; } return shown; };
+  W.expose = id => { if (G.state && id && W.item(id)) book()[id] = W.now(); };
+  W.shownAgo = id => { const t = G.state ? book()[id] : null, a = t == null ? Infinity : W.now() - t; return a < 0 ? Infinity : a; };
+  W.justShown = id => W.shownAgo(id) < W.EXPOSE;
+  let plainIds = null; // (a word's spoken forms -> its id: G.speak('la concha') says concha)
+  const plainKey = s => (G.speech ? G.speech.norm(s) : String(s).toLowerCase()).replace(/[¡!¿?.,;:]/g, ' ').replace(/\s+/g, ' ').trim();
+  W.heard = function (text) {
+    if (!G.state || text == null) return;
+    const ids = G.richIds ? G.richIds(text) : [];
+    if (ids.length) { ids.forEach(W.expose); return; }
+    if (!plainIds) { plainIds = {}; for (const id in D().words) D().words[id].es.split(' / ').forEach(f => { const k = plainKey(f); plainIds[k] = plainIds[k] || id; plainIds[k.replace(/^(el|la|los|las) /, '')] = plainIds[k.replace(/^(el|la|los|las) /, '')] || id; }); }
+    String(text).split(/[.!?¡¿]/).forEach(p => { const k = plainKey(p), id = plainIds[k] || plainIds[k.replace(/^(el|la|los|las|un|una) /, '')]; if (id) W.expose(id); });
+  };
+  W.askedAgo = id => { const r = W.rec(id); return r && r.qa != null ? Math.max(0, W.now() - r.qa) : Infinity; };
 
   // ---------- recall from memory, and the stages' rules (since the switch) ----------
   // the history's letter for a recall from memory, or null: F said before any written cue, V picked from picture-only
   // cards on a later calendar day than the last time it was met or used, C a grown-up's check
   function memOf(o, mode, first, cued, ld0, dn) {
     if (o.parent || mode === 'parent') return 'C';
-    if (!first || cued || o.echo || !o.recall) return null;
+    if (!first || cued || o.echo || o.fresh || !o.recall) return null; // (fresh: said or shown a moment ago)
     if (o.said) return 'F';
     if (mode === 'pic' && ld0 != null && ld0 < dn) return 'V';
     return null;
@@ -325,10 +358,11 @@
     // after hearing it (an echo), K a cued pick (a forced pair too), C a grown-up's check, L/l a spoken instruction
     // understood (listen-and-do, src/listen.js: the word heard in a sentence, no picture), F recalled from memory and
     // said, V recalled from memory from pictures alone (capitals: right on the first try)
-    const hk = st0 < 1 ? null : mem || (o.said ? (cued || o.echo ? 'E' : first ? 'S' : 's') : cued ? 'K' : mode === 'listen' ? (first ? 'L' : 'l') : mode === 'text' || mode === 'match' ? (first ? 'R' : 'r') : first ? 'P' : 'p');
+    // (fresh, said or shown a moment ago: a plain pick, or an echo when said)
+    const hk = st0 < 1 ? null : mem || (o.said ? (cued || o.echo || o.fresh ? 'E' : first ? 'S' : 's') : cued ? 'K' : mode === 'listen' ? (first ? 'L' : 'l') : (mode === 'text' || mode === 'match') && !o.fresh ? (first ? 'R' : 'r') : first ? 'P' : 'p');
     if (hk && G.hist) G.hist.event(id, hk, { answer: true, said: !!o.said });
     if (st0 < 1) W.meet(id, o.how || 'answer');
-    r.last = W.now(); r.ru = r.last; r.n++; r.ret++; // (ru: the last retrieval, chapters.js nudge)
+    r.last = W.now(); r.ru = r.last; r.qa = r.last; r.n++; r.ret++; // (ru: the last retrieval, chapters.js nudge; qa: last asked)
     r.ld = dn;
     if (first) { r.right++; r.mc = 0; } // (a miss was counted by answerWrong)
     if (cued) r.cue++;
@@ -342,7 +376,7 @@
       // calendar day than the day it was met; 3 -> 4 once recalled from memory on 2 such days, 2+ days apart. Never by
       // a listen-and-do tap; never past known on the day it was missed (the answer was just shown)
       const later = r.mdn == null || dn > r.mdn, lapsed = r.lapse === dn;
-      const recallType = !!mem || (!o.echo && (mode === 'text' || mode === 'match' || mode === 'say' || mode === 'parent' || (o.said && mode !== 'both'))); // (an echo just repeats what was heard)
+      const recallType = !!mem || (!o.echo && !o.fresh && (mode === 'text' || mode === 'match' || mode === 'say' || mode === 'parent' || (o.said && mode !== 'both'))); // (an echo just repeats what was heard; fresh: it was just said or shown)
       if (mem && later && !lapsed) { const rd = Array.isArray(r.rd) ? r.rd : (r.rd = []); if (rd[rd.length - 1] !== dn) { rd.push(dn); if (rd.length > 4) rd.shift(); } }
       if (mode !== 'listen') {
         if (r.st === 1) setStage(r, id, 2);
@@ -367,7 +401,7 @@
     const r = W.rec(id, true); if (!r) return;
     if (r.st < 1) return; // an unmet word can't be missed (it's still a puzzle)
     if (G.hist) G.hist.event(id, o.parent ? 'c' : 'm'); // (the history, src/history.js: before the last day moves)
-    r.wrong++; r.last = W.now(); r.ld = dayNum(); r.lapse = dayNum();
+    r.wrong++; r.last = W.now(); r.qa = r.last; r.ld = dayNum(); r.lapse = dayNum();
     r.box = (r.box | 0) >= 4 ? 2 : 1; if (r.fu === 2) r.fu = 1; // (forgotten: back to the bottom of the ladder, not one box down)
     schedule(r, W.MISS);
     missed(r);
@@ -424,6 +458,18 @@
   };
   R.next = o => R.due(1, o)[0] || null;
   R.count = o => R.due(1e9, o).length;
+  // ---------- a moment, not a quiz chain (see the top) ----------
+  R.TALK = 3; R.REASK = 180;
+  let talkN = 0;
+  R.asked = () => { talkN++; };
+  R.talkQ = () => talkN;
+  R.talkEnd = () => { talkN = 0; };
+  R.fresh = id => W.askedAgo(id) >= R.REASK; // (not asked a moment ago)
+  const rq = () => { const m = wm(); if (!isObj(m.rq) || m.rq.d !== m.day || !isObj(m.rq.k)) m.rq = { d: m.day, k: {} }; return m.rq; };
+  const rqKey = who => who + '@' + (G.field ? (G.zones ? G.zones.area(G.field.mapId) : G.field.mapId) : '');
+  R.room = who => !!G.state && talkN < R.TALK && !(who && rq().k[rqKey(who)]);
+  R.mark = who => { if (G.state && who) { rq().k[rqKey(who)] = 1; save(); } };
+  R.marked = who => !!G.state && !!who && !!rq().k[rqKey(who)];
 
   // ---------- the new-word budget: review-first pacing (AUDIT 2.9) ----------
   const B = G.budget = {};

@@ -353,7 +353,7 @@ async function phrases(browser) {
     await g.fieldIdle('villa');
     const look = async st => {
       await g.ev(st => {
-        const W = G.words; W.meet('f_quiero', 'phrase'); Object.assign(W.rec('f_quiero'), { st, fu: 0, due: null, dd: W.day() + 4 }); G.phrase.state().intro.f_quiero = { d: 0, at: 'villa' };
+        const W = G.words; W.meet('f_quiero', 'phrase'); Object.assign(W.rec('f_quiero'), { st: Math.floor(st), fu: 0, due: null, dd: W.day() + 4, s3n: st === 3 ? W.dayNum() : W.dayNum() - 1 }); G.phrase.state().intro.f_quiero = { d: 0, at: 'villa' }; // (3: gold today; 3.5: gold since yesterday)
         window.__drawn = []; const tc = G.textC, bt = G.bigText, ds = G.phrase.drawSentence, dr = G.PhraseAsk.prototype.draw;
         window.__undo = () => { G.textC = tc; G.bigText = bt; G.phrase.drawSentence = ds; G.PhraseAsk.prototype.draw = dr; };
         G.PhraseAsk.prototype.draw = function () { window.__inAsk = true; try { return dr.apply(this, arguments); } finally { window.__inAsk = false; } }; // (only the request's own drawing: not a card still popping up)
@@ -369,9 +369,10 @@ async function phrases(browser) {
       const built = await g.ev(() => { const n = window.__drawn.filter(x => x[0] === 'bubble' && x[1] === 1).length; window.__undo(); return n; });
       return Object.assign(d, { built, shown: await g.ev(() => G.phrase.patternShown('f_quiero')) });
     };
-    const s2 = await look(2), s3 = await look(3), s4 = await look(4);
+    const s2 = await look(2), s3 = await look(3), s35 = await look(3.5), s4 = await look(4);
     check('phrases: a phrase not gold yet: its pattern written in full (the frame card, her bubble)', s2.shown === 1 && s2.card.length && s2.card.every(a => a === 1) && s2.bubble.every(a => a == null || a === 1), JSON.stringify(s2));
-    check('phrases: gold (stage 3): the pattern faint (' + s3.shown + ')', s3.shown > 0 && s3.shown < 1 && s3.card.length && s3.card.every(a => a < 1) && s3.bubble.some(a => a > 0 && a < 1), JSON.stringify(s3));
+    check('phrases: gold (stage 3) today: the pattern faint (' + s3.shown + ')', s3.shown > 0 && s3.shown < 1 && s3.card.length && s3.card.every(a => a < 1) && s3.bubble.some(a => a > 0 && a < 1), JSON.stringify(s3));
+    check('phrases: gold since an earlier day: the pattern not written at all (S2 review #2/#17: said whole now, it is recalled)', s35.shown === 0 && !s35.card.length && s35.bubble.every(a => a == null || a === 0), JSON.stringify(s35));
     check('phrases: solid (stage 4): not written at all (saying it is recall)', s4.shown === 0 && !s4.card.length && s4.bubble.some(a => a === 0), JSON.stringify(s4));
     check('phrases: ...once built (or said), her bubble shows the whole phrase again', s4.built > 0, JSON.stringify(s4));
     check('phrases: no console errors', !g.errors.length, g.errors.join('\n'));

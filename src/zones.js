@@ -251,7 +251,8 @@
   }
 
   // ---------- a zone's word: met here, or brought back if it was met elsewhere (any zone may be the first) ----------
-  // not met: its one-unknown puzzle (G.intro.show: held up, then "which word is this?"); met: a question about it.
+  // not met: its one-unknown puzzle (G.intro.show: held up, then "which word is this?"); met: a question about it (right
+  // after its line said and showed it: no say-it-first and no recall from memory, a plain pick: words.js W.justShown).
   // (La playa has its own copy, G.playa.meetW; El bosque and later zones use this one.)
   Z.meetW = function* (id, o = {}) {
     const K = G.chapters.K;
@@ -419,12 +420,13 @@
       if (G.chapters && (yield* G.chapters.talk('lola', f))) return;
       const z = Z.def(zone), w = st(); if (!isObj(w.lola)) w.lola = {};
       const first = !w.lola.met; w.lola.met = true;
-      if (Z.lolaTalked(f.mapId) && G.favores && (yield* G.favores.talk('lola', f))) return; // (her favour of the day, a zone's)
+      const talked = Z.lolaTalked(f.mapId); // (her hello here today was before this talk)
+      if (talked && G.favores && (yield* G.favores.talk('lola', f))) return; // (her favour of the day, a zone's)
       const intro = first && !(G.phrase && G.phrase.named('lola')); // (she just said "Me llamo Lola": src/phrases.js)
       yield sayP('lola', null, intro ? TT(met('hola') ? '¡[hola], {name}! ¡Soy Lola!' : '¡Hola, {name}! ¡Soy Lola!', 'Hi, {name}! I\'m Lola. I explore everywhere!') : TT(met('hola') ? '¡[hola], {name}!' : '¡Hola, {name}!', 'Hi, {name}!'));
       if (z) yield sayP('lola', { icon: z.icon }, TT('¡' + z.name + '!', 'This is ' + (z.en || z.name) + '!'));
       w.lola[f.mapId] = day(); G.st.autosave();
-      if (!(G.hearts && G.hearts.talkGreeted === 'lola')) yield* Z.lolaPhoto(zone); // (her greeting asked one already: not now)
+      if (!talked) yield* Z.lolaPhoto(zone); // (her first hello here today only; G.review.room: not when she asked one already)
       if (z && z.lola) { yield* z.lola(f); return; }
       const sp = dogHere(f) && (f.def.dogSpots || []).find(Z.dogReady);
       if (sp) { G.chapters.point(sp.at[0] * T + 12, sp.at[1] * T); try { yield sayP('lola', { icon: 'huella' }, TT('¡Mira, {dog}!', 'Look! {dog} can play over there: tap the paw prints!')); } finally { G.chapters.point(null); } }
@@ -436,13 +438,14 @@
   let albumWords = null;
   const albumWord = id => { if (!albumWords && G.animals) albumWords = new Set(G.animals.list().map(a => G.animals.KINDS[a] && G.animals.KINDS[a].word).filter(Boolean)); return !!albumWords && albumWords.has(id); };
   Z.lolaPhoto = function* (zone) {
-    const FV = G.favores; if (!G.state || !FV || !FV.dueWord) return false;
+    const FV = G.favores; if (!G.state || !FV || !FV.dueWord || !G.review.room('lola')) return false; // (one review from her in a place a day, and the talk has room: words.js)
     const away = id => Z.ofWord(id) !== zone;
     const id = FV.dueWord({ filter: id => away(id) && albumWord(id), noFallback: true }) || FV.dueWord({ filter: away, noFallback: true });
     if (!id) return false;
     const L = LOLA_PHOTO[G.r(LOLA_PHOTO.length)];
     yield sayP('lola', { icon: 'foto' }, TT(L[0], L[1]));
     yield* G.review.ask(id, { who: 'lola' });
+    G.review.mark('lola'); if (G.hearts) G.hearts.talkGreeted = 'lola'; // (a deferred word's review won't stack on it)
     return true;
   };
   // Nico in a zone: his hide-and-seek with that zone's hiding places (seek.js, one game per zone)

@@ -211,6 +211,14 @@
     lola: ['cangrejo', 'gaviota', 'tortuga', 'oso', 'ardilla', 'venado', 'paloma', 'catarina', 'vaca', 'oveja', 'llama', 'marmota', 'monarca', 'mar', 'elbosque', 'lamontana'],
   };
   const GREET = ['hola', 'buenosdias', 'buenasnoches', 'adios', 'comoestas'];
+  // something of their own comes next in this talk: a chapter's beat going on, or their bubble (a side game, a letter
+  // for them, a zone's moment); not a bubble that waits for later (Tomás's letter offer)
+  function ownNext(npc) {
+    if (G.chapters && G.chapters.running && G.chapters.running()) return true;
+    const f = G.field, n = f && f.npc ? f.npc(npc) : null;
+    let a = null; try { a = n && n.alert ? n.alert() : null; } catch (e) { a = null; }
+    return !!a && !a.later && !a.wait;
+  }
   H.greetKind = function () {
     const met = id => G.st.seen(id);
     if (G.day && G.day.over() && met('buenasnoches')) return 'noches';
@@ -238,16 +246,17 @@
     yield 20;
     // a friend you haven't swapped names with says theirs ("Me llamo Pepe. ¿Y tú?"), or some days asks what you like
     // ("¿Qué te gusta?"): that's the day's question with them (src/phrases.js, docs/LEARNING_PLAN_2.md Phase 2)
-    if (G.phrase && ((yield* G.phrase.meetName(npc)) || (yield* G.phrase.likeAsk(npc)))) { yield* H.milestones(npc); return true; }
+    if (G.phrase && ((yield* G.phrase.meetName(npc)) || (yield* G.phrase.likeAsk(npc)))) { H.talkGreeted = npc; G.review.mark(npc); yield* H.milestones(npc); return true; } // (the day's question with them: no drawing or photo after it in this talk)
     // one word that's due, wherever she met it (AUDIT C6: a beach word is reviewed in the forest too), asked as picture
     // cards (G.review.ask: a form that fits any place); when nothing is due, one of their own words she hasn't used
-    // today (G.favores.dueWord: the place's words are the fallback)
-    // (their favour of the day comes next in this talk: that's the review, a moment and not a quiz chain)
-    const pool = H.POOLS[npc] || [], fav = !!(G.favores && G.favores.alert && G.favores.alert(npc));
-    const due = fav ? null : G.favores && G.favores.dueWord ? G.favores.dueWord({ pool, filter: id => !GREET.includes(id) }) : G.review.next({ filter: id => pool.includes(id) && !GREET.includes(id) });
+    // today (G.favores.dueWord: the place's words are the fallback). A moment, not a quiz chain (S2 review #12): not when
+    // something of their own comes next in this talk (their favour, a chapter's beat, a side game, a letter for them:
+    // their bubble), nor when they asked a review in this place today or the talk has had its questions (G.review.room)
+    const pool = H.POOLS[npc] || [], fav = !!(G.favores && G.favores.alert && G.favores.alert(npc)) || ownNext(npc);
+    const due = fav || !G.review.room(npc) ? null : G.favores && G.favores.dueWord ? G.favores.dueWord({ pool, filter: id => !GREET.includes(id) }) : G.review.next({ filter: id => pool.includes(id) && !GREET.includes(id) });
     if (due) {
       if (G.vocabLog) G.vlog.greet = npc; try { yield* G.review.ask(due, { who: npc }); } finally { if (G.vlog) G.vlog.greet = null; }
-      H.talkGreeted = npc; // (two questions in this talk: their own word or drawing waits for another time, zones.js Lola, connect.js)
+      H.talkGreeted = npc; G.review.mark(npc); // (two questions in this talk: their own word or drawing waits for another time, zones.js Lola, connect.js)
     }
     yield* H.milestones(npc);
     return true;

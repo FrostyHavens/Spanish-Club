@@ -134,6 +134,7 @@
       const t = this.pages[this.pi].t;
       if (G.vocabLog) G.vlog('shown', G.richIds(t), { via: 'dialogue', who: this.opts.who || null }); // (the dev-only log, vocablog.js)
       G.richIds(t).forEach(id => G.st && G.st.see(id)); // (a met word met again; an unmet one stays unmet)
+      if (G.words && G.words.expose) { G.richIds(t).forEach(G.words.expose); const sh = this.opts.show; if (sh) G.words.expose(typeof sh === 'string' ? sh : sh.icon); } // (written, or its picture held up: just shown, words.js)
       this.lines = G.richLayout(t, this.boxW - 18 - (this.opts.noVoice ? 0 : 24), { noPic: this.opts.noPic }); // room for the speaker button
       this.shown = 0; this.scroll = 0; this.t = 0;
       this.spoke = !!this.opts.noVoice;
@@ -300,6 +301,7 @@
   }
   G.speak = function (text) {
     if (G.vocabLog) G.vlog.heard(text); // (the dev-only log, vocablog.js: as if every device could speak)
+    if (G.words && G.words.heard) G.words.heard(text); // (just said: no recall from memory for a moment, words.js)
     try {
       if (!G.prefs.voice || G.audio.muted) return;
       const ss = window.speechSynthesis; if (!ss) { G.voiceStatus = 'no speech'; return; }

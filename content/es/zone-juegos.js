@@ -418,6 +418,9 @@
   //  The people: Ana, Pablo, Don Chuy; Lola and Nico as everywhere
   // =====================================================================
   const sideAlert = {};
+  // a favour waiting while their own bubble is down (nothing of theirs on offer, only a game to play again): the favour
+  // runs (G.errands.talk), never a game in its way that leaves the bubble up and the guide sending her back
+  const favFirst = id => !(sideAlert[id] && !(id !== 'chuy' && CH.current('juegos')) && sideAlert[id]()) && !!(G.favores && G.favores.alert(id)); // (as the bubble: the kids' games wait while their story goes on)
   function person(id, x, y, dir, side, line, o = {}) {
     return Object.assign({ id, npc: id, x, y, dir, fixed: !!o.fixed, wander: o.wander || 0,
       alert: () => CH.alert(id) || (G.state && sideAlert[id] && !(id !== 'chuy' && CH.current('juegos')) ? sideAlert[id]() : null) || (G.favores && G.favores.alert(id)) || null, // (the kids' games wait while their story goes on)
@@ -425,7 +428,7 @@
         const n = npcAt(f, id); if (n) { n.ride = null; n.talking = true; }
         try {
           if (yield* CH.talk(id, f)) return;
-          if (side && (yield* side(f))) return;
+          if (side && !favFirst(id) && (yield* side(f))) return; // (the talk follows the bubble: a favour waiting goes before a game replayed, S2 review #9)
           if (G.errands && (yield* G.errands.talk(id, f))) return;
           yield* line(f);
         } finally { if (n) n.talking = false; }

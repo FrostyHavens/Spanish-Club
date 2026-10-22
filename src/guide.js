@@ -122,7 +122,7 @@
     }
     for (const v of L) {
       if (v.done || !FV.alert(v.who)) continue;
-      const n = here(f, v.who); if (n) return { why: 'favour ' + v.who, pts: [person(n)] };
+      const n = here(f, v.who); if (n) return { why: 'favour ' + v.who, pts: [person(n)], sig: 'fav ' + v.kind + ' ' + v.word + ' ' + (v.on ? 1 : 0) + (v.done ? 1 : 0) }; // (sig: what a talk that does the favour changes, the net below)
       const m = mapOfNpc(v.who); if (m) return { why: 'favour ' + v.who, map: m, badge: { who: v.who } };
     }
     return null;
@@ -214,9 +214,10 @@
   // single thing on the maps in between, brought you back to where that same goal sends you through that door again: the
   // front door, AUDIT C1), or the same talk (the arrow led you to someone, and after their talk it's straight back on
   // them for the same reason, and the talk was word for word the one before: Lola's hello, AUDIT C2; a talk that gets
-  // something done moves the arrow on, so a shell given or a pail poured is never one). That goal is set aside for a few
-  // minutes (the next tier leads) and GD.loops logs it: tools/test-live.js fails if it ever fires, so it's a net for her,
-  // never a cover for a bug.
+  // something done moves the arrow on, so a shell given or a pail poured is never one; or, for a goal that says what its
+  // talk changes (g.sig: a favour's state), a talk that changed nothing of it twice in a row, whatever was said: Ana's
+  // Simón dice in the way of her favour, S2 review #9). That goal is set aside for a few minutes (the next tier leads)
+  // and GD.loops logs it: tools/test-live.js fails if it ever fires, so it's a net for her, never a cover for a bug.
   GD.ASIDE = 3 * 60 * 60; // frames a goal stays set aside (~3 minutes of play)
   GD.loops = [];
   const set = {}, said = {}; // set aside: map|why -> frame; the last talk the arrow led to: map|why -> its lines
@@ -239,7 +240,7 @@
   }
   // the same talk: a talk begins (the map locked) with the person the arrow was on; it ends (free again) -> ended
   function talkCheck(f, free) {
-    if (!free) { if (!talk && shown && f.talkWith && shown.pts && shown.pts.length === 1 && shown.pts[0].npc === f.talkWith) talk = { k: f.mapId + '|' + shown.why, why: shown.why, npc: f.talkWith, n0: G.said.n }; return; }
+    if (!free) { if (!talk && shown && f.talkWith && shown.pts && shown.pts.length === 1 && shown.pts[0].npc === f.talkWith) talk = { k: f.mapId + '|' + shown.why, why: shown.why, npc: f.talkWith, n0: G.said.n, sig: shown.sig }; return; }
     if (talk) { const lines = G.saidSince(talk.n0).join(' | '); if (lines) ended = Object.assign(talk, { lines }); talk = null; }
     f.talkWith = null;
   }
@@ -248,8 +249,9 @@
   function againCheck(f, g) {
     const e = ended; ended = null; if (!e) return false;
     if (!(g && g.pts && g.pts.length === 1 && g.pts[0].npc === e.npc && f.mapId + '|' + g.why === e.k)) { delete said[e.k]; return false; } // (the arrow moved on: something got done)
-    if (said[e.k] === e.lines) { delete said[e.k]; loop('talk', f, e.why); return true; }
-    said[e.k] = e.lines; return false;
+    const stuck = e.sig != null && g.sig === e.sig, prev = said[e.k]; // (stuck: what the arrow was there for didn't change)
+    if (prev && (prev.lines === e.lines || (stuck && prev.stuck))) { delete said[e.k]; loop('talk', f, e.why); return true; }
+    said[e.k] = { lines: e.lines, stuck }; return false;
   }
 
   // ---------- every frame (field.js, after the map's update) ----------

@@ -127,7 +127,7 @@
   const tapped0 = AN.tapped;
   AN.tapped = function (f, a) {
     const r = tapped0.call(this, f, a);
-    if (f && Z.of(f.mapId) === 'bosque' && KINDS.includes(a.kind) && !met(a.kind) && !f.locked && G.top() === f && !CH.running()) {
+    if (f && Z.of(f.mapId) === 'bosque' && KINDS.includes(a.kind) && !met(a.kind) && !(a.kind === 'luciernaga' && jarOn()) && !f.locked && G.top() === f && !CH.running()) { // (not every firefly caught for the jar: the jar's talk named it once, S2 review #5)
       CH.scene(f, (function* () {
         yield 30;
         if (met(a.kind)) return;
@@ -144,12 +144,15 @@
   // =====================================================================
   const sideAlert = {};
   // a forest person's talk: the story first, then their side quest, then the town's (presents, favours...), then a line
+  // a favour waiting while their own bubble is down (nothing of theirs on offer, only a game to play again): the favour
+  // runs (G.errands.talk), never a game in its way that leaves the bubble up and the guide sending her back
+  const favFirst = id => !(sideAlert[id] && sideAlert[id]()) && !!(G.favores && G.favores.alert(id));
   function person(id, x, y, dir, side, line, o = {}) {
     return Object.assign({ id, npc: id, x, y, dir, fixed: !!o.fixed, wander: o.wander || 0,
       alert: () => CH.alert(id) || (G.state && sideAlert[id] ? sideAlert[id]() : null) || (G.favores && G.favores.alert(id)) || null,
       talk: function* (f) {
         if (yield* CH.talk(id, f)) return;
-        if (side && (yield* side(f))) return;
+        if (side && !favFirst(id) && (yield* side(f))) return; // (the talk follows the bubble: a favour waiting goes before a game replayed, S2 review #9)
         if (G.errands && (yield* G.errands.talk(id, f))) return;
         yield* line(f);
       } }, o.extra || {});

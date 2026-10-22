@@ -87,7 +87,7 @@
   FV.dueWord = function (o = {}) {
     if (!G.state || !G.review || !G.words) return null;
     const pool = o.pool || [], ex = o.exclude || [], min = o.minStage || 1;
-    const ok = id => !!W(id) && G.iconDrawn(id) && !ex.includes(id) && (!o.onlyPool || pool.includes(id)) && (!o.filter || o.filter(id));
+    const ok = id => !!W(id) && G.iconDrawn(id) && !ex.includes(id) && (!o.onlyPool || pool.includes(id)) && G.review.fresh(id) && (!o.filter || o.filter(id)); // (never a word asked a moment ago: words.js G.review.REASK)
     const due = G.review.due(1e9, { minStage: min, filter: ok });
     if (due.length) { const p = o.prefer ? due.slice(0, 6).find(o.prefer) : null; return p || due[0]; }
     if (o.noFallback) return null;
@@ -197,11 +197,15 @@
       reward(v); yield say(v.who, TT('¡Muy bien!', 'Very good!'));
     },
     *thing(v) {
+      // (its word was fixed in the morning: reviewed since by the dog or a greeting, it's not due any more: another one
+      // that is, else one of their own things not used today; nothing else fits: the same word. S2 review #14)
+      if ((!G.words.due(v.word) && G.words.lastDay(v.word) === G.words.dayNum()) || !G.review.fresh(v.word)) { const w = FV.PICK.thing(v.who, THINGS[v.who] || [], id => known(id) && id !== v.word && !FV.today().some(o => o !== v && o.word === id)); if (w) { v.word = w; G.st.autosave(); } }
       if (!(THINGS[v.who] || []).includes(v.word)) { // a word from anywhere (not one of their things here): a photo of it
         const k = G.r(PHOTO.length);
         yield sayShow(v.who, { icon: 'foto' }, TT(PHOTO[k], PHOTO_EN[k]));
-        yield* G.review.ask(v.word, { who: v.who });
-        reward(v); yield say(v.who, TT(['¡[gracias], {name}!', '¡Muy bien!', '¡Eso es! ¡[gracias]!'][G.r(3)], 'Thank you, {name}!'));
+        yield* G.review.ask(v.word, { who: v.who }); G.review.mark(v.who);
+        const T3 = [['¡[gracias], {name}!', 'Thank you, {name}!'], ['¡Muy bien!', 'Very good!'], ['¡Eso es! ¡[gracias]!', 'That\'s it! Thank you!']][G.r(3)];
+        reward(v); yield say(v.who, TT(T3[0], T3[1]));
         return;
       }
       yield say(v.who, TT('¡{name}! ¿Y esto?', '{name}! And this?'));

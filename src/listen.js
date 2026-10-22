@@ -68,6 +68,7 @@
   class ListenDo {
     constructor(req, o, w) {
       G.toastT = 0; this.transparent = true; this.req = req; this.o = o || {}; this.w = w; this.t = 0;
+      if (G.review && G.review.asked) G.review.asked(); // (a question in this talk: words.js, a moment not a quiz chain)
       this.who = this.o.who || req.who || null;
       this.cells = req.tray.map((c, i) => Object.assign({}, c, { left: c.n, i }));
       this.basket = []; this.fly = []; this.off = {}; this.miss = null; this.first = null; this.gold = [];
@@ -137,9 +138,10 @@
       if (this.cardOff[k]) { G.audio.sfx('boop'); return; }
       this.answer(id, k);
     }
-    heard(alts) { // the mic: a number she said, among the cards
-      const k = G.mic.best(this.req.cards.map(id => G.mic.target({ word: id })), alts, this.req.cards.findIndex(id => RQ().numOf(id) === this.req.answer));
-      if (k < 0 || this.cardOff[k]) { this.mic.miss(); return; }
+    heard(alts) { // the mic: a number she said, among the cards (another number heard: "¡Otra vez!", never a miss: only a tap can be wrong)
+      const right = this.req.cards.findIndex(id => RQ().numOf(id) === this.req.answer);
+      const k = G.mic.best(this.req.cards.map(id => G.mic.target({ word: id })), alts, right);
+      if (k < 0 || this.cardOff[k] || k !== right) { this.mic.miss(); return; }
       this.said = true; this.answer(this.req.cards[k], k);
     }
     // the first answer counts (the model, the history); then right or shown

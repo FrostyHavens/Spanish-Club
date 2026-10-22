@@ -18,11 +18,15 @@
 //   The form, from the word's stage (G.intro.form; the answer-card rules: learn.js Choice.view never lets pictures give
 //   it away, and word-only cards wait for a word well known, docs/AUDIT_2026-10.md 2.7):
 //     met (1)        hear it, pick its picture (picture-only cards: recognition, as for any met word)
-//     known and up   say it first (G.sayFirst, every time here): its picture held up with the question for its kind of
-//                    word (¿Quién es?, ¿Qué hace?, ¿Cuántas hay?...: G.qform) and the big mic beside it, alone; said: a
-//                    recall; else the cards: its word among word-only ones (remembered+) or picture + word (known: a
-//                    reveal, a cued use). Without the mic (off, or "quiet"): known -> hear it, pick its picture;
-//                    remembered+ -> its picture, pick its word (recall)
+//     known (2)      hear it, pick its picture; now and then (1 in 3, G.sayFirst.want) say it first: its picture held
+//                    up with the question for its kind of word (¿Quién es?, ¿Qué hace?, ¿Cuántas hay?...: G.qform) and
+//                    the big mic beside it, alone; said: a recall; else the picture is put away and she hears it and
+//                    picks its picture (a plain pick: the box still moves, S2 review #1/#16)
+//     remembered+    every other time it's asked here, from its picture: say it first with the mic (G.sayFirst, every time
+//                    here), its word among word-only cards if it isn't said or without the mic; the others: hear it,
+//                    pick its picture (picture-only: recall from memory on a later day, so a child who never speaks
+//                    reaches solid here too, S2 review #3)
+//   Every form a tap answers moves the word on: a quiet day or a broken mic never stalls it.
 //
 // API (G.warmup, short WU):
 //   WU.wait(f) why it can't start now ('done', 'story', 'find', 'busy'... or null: it can)   WU.pick(f, n) the words
@@ -106,7 +110,7 @@
     if (!G.state) return [];
     const Wd = G.words, td = G.today(), zone = f ? here(f) : 'villa';
     const earlier = id => { const r = Wd.rec(id); return !!r && (r.how === 'old' || (r.mdate ? r.mdate !== td : r.ms < Wd.sess())); };
-    const due = G.review.due(1e9).filter(id => G.iconDrawn(id));
+    const due = G.review.due(1e9).filter(id => G.iconDrawn(id) && G.review.fresh(id)); // (never one asked a moment ago)
     let L = due.filter(earlier);
     if (L.length < WU.MIN) L = L.concat(due.filter(id => L.indexOf(id) < 0));
     const late = id => { const r = Wd.rec(id), g = Wd.gapDays(id); return (g == null ? 3 : g) - (Wd.BOX_DAYS[Math.max(1, r.box | 0)] | 0); };
@@ -248,18 +252,21 @@
     if (WU.FORMS[wd.topic]) return !!(yield* WU.FORMS[wd.topic](id, extra));
     // two other met words: the same topic first, never one that looks or sounds like another card (G.wordsAlike: the mic
     // hears them all)
-    const met = shuffle(Wd.list(1).filter(k => k !== id && G.iconDrawn(k) && G.baseForm(k) !== G.baseForm(id)));
+    const met = shuffle(Wd.list(1).filter(k => k !== id && G.iconDrawn(k) && G.baseForm(k) !== G.baseForm(id) && !G.qform.clash(id, k)));
     const pool = [];
     for (const k of met.filter(k => G.data.words[k].topic === wd.topic).concat(met.filter(k => G.data.words[k].topic !== wd.topic))) {
       if (pool.length >= 2) break;
       if (G.wordsApart([id].concat(pool, [k]))) pool.push(k);
     }
-    const ch = G.wordChoices(id, [id].concat(pool), pool.length + 1);
-    // the form (G.intro.form: the question for its kind of word, no give-aways): known and up, with the mic -> say it
-    // first, every time (its picture, its question, the big mic beside it), then its cards; else heard -> its picture,
-    // or (remembered+, no mic) its picture -> its word
-    const q = G.intro.form(id, ch, { say: st >= 2 && G.sayFirst.want(id, { always: true }), recall: true });
+    const ch = G.intro.cards(G.wordChoices(id, [id].concat(pool), pool.length + 1));
+    // the form (G.intro.form: the question for its kind of word, no give-aways), every one moving the word on when
+    // tapped (S2 review #1/#3/#16): remembered+ -> every other card from its picture (say it first with the mic, its
+    // word among word-only cards without), the others heard -> its picture (picture-only: recall from memory on a later
+    // day, for a child who never speaks too); known -> say it first now and then (1 in 3, as any review), else heard
+    const r = Wd.rec(id), fromPic = st >= 3 && ((r.ret | 0) + (r.wrong | 0)) % 2 === 0; // (by the times it was asked: every other one)
+    const q = G.intro.form(id, ch, { say: st >= 3 ? fromPic && G.sayFirst.want(id, { always: true }) : st >= 2 && G.sayFirst.want(id), pic: fromPic });
     if (q.show) q.micBig = true; else q.en = 'Which one? (listen, then tap it)';
+    if (q.sayAlt) q.sayAlt.en = 'Which one? (listen, then tap it)';
     if (q.sayFirst) q.sayEn = q.en + ' Say it (the big mic), or wait for the cards.';
     return !!(yield* G.ask(Object.assign({ choices: ch.choices, answer: ch.answer, layout: 'cards', review: true }, q, extra)));
   }

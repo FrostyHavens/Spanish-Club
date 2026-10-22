@@ -314,12 +314,15 @@
   //  The people: Don Lucho, Mateo; Lola and Nico as everywhere
   // =====================================================================
   const sideAlert = {};
+  // a favour waiting while their own bubble is down (nothing of theirs on offer, only a game to play again): the favour
+  // runs (G.errands.talk), never a game in its way that leaves the bubble up and the guide sending her back
+  const favFirst = id => !(sideAlert[id] && sideAlert[id]()) && !!(G.favores && G.favores.alert(id));
   function person(id, x, y, dir, side, line, o = {}) {
     return Object.assign({ id, npc: id, x, y, dir, fixed: !!o.fixed, wander: o.wander || 0,
       alert: () => CH.alert(id) || (G.state && sideAlert[id] ? sideAlert[id]() : null) || (G.favores && G.favores.alert(id)) || null,
       talk: function* (f) {
         if (yield* CH.talk(id, f)) return;
-        if (side && (yield* side(f))) return;
+        if (side && !favFirst(id) && (yield* side(f))) return; // (the talk follows the bubble: a favour waiting goes before a game replayed, S2 review #9)
         if (G.errands && (yield* G.errands.talk(id, f))) return;
         yield* line(f);
       } }, o.extra || {});
@@ -741,7 +744,8 @@
   AN.update = function (f) {
     anUp0.call(this, f);
     if (!inZone(f) || !G.state) return;
-    hook(f.player);
+    const other = a => !!(a && G.frame - a.f0 < a.len); // (a park or grandparents' move going on, "Salta dos veces" from the dog's card: theirs draws it, S2 review #15)
+    if (!other(f.player.act) && !other(f.player.ab)) hook(f.player);
     for (const id of ['lucho', 'mateo']) { const n = f.npc(id); if (n) hook(n); }
     if (outside(f)) shiverTick(f);
   };

@@ -5,8 +5,9 @@
 //             error, silence, a tap elsewhere or ~4 s -> the cards appear: no wrong sound, no miss; the recognizer only
 //             starts inside a tap; a word said-first today isn't asked that way again; quiet mode (the grown-ups' row) and
 //             the mic off: never
-//   warmup    the dog's warm-up: its say step every time (stage 2+), the cards after by stage, picture-only for a word
-//             only met
+//   warmup    the dog's warm-up: a known word's say step now and then (then heard, picture-only cards: a tap moves it
+//             on), a remembered word's every other card (word-only cards if not said), the others heard -> picture-only
+//             (recall from memory for a child who doesn't speak); picture-only for a word only met
 //   cards     the first review is picture-only (and every review below stage 3); word-only cards only at stage 3+,
 //             never two alike (abuela / abuelo, gato / pato); one text size and one colour across a question's cards
 //   puzzle    a page puzzle's last pair joins by itself (answerRight {forced: true}), never asked
@@ -27,7 +28,7 @@ const art = id => (/^(el|la|los|las) /.exec(C.words[id].es.split(' / ')[0]) || [
 const STRESSED_A = ['agua', 'aguila'];
 const fem = id => art(id) === 'la' || art(id) === 'las' || STRESSED_A.includes(id);
 const ANIMALS = ['animales', 'granja', 'mar', 'fauna', 'bichos', 'rancho', 'faunamontana'];
-const OWN = { ven: '¿Qué le dices?', sientate: '¿Qué le dices?', pata: '¿Qué le dices?', nadar: '¿Qué le gusta hacer?', rapido: '¿Cómo va?', despacio: '¿Cómo va?', grande: '¿Cómo es?', pequeno: '¿Cómo es?', caliente: '¿Cómo es?', frio: '¿Qué tiempo hace?', familia: '¿Quiénes son?' };
+const OWN = { ven: '¿Qué le dices?', sientate: '¿Qué le dices?', pata: '¿Qué le dices?', nadar: '¿Qué le gusta hacer?', rapido: '¿Cómo va?', despacio: '¿Cómo va?', grande: '¿Cómo es?', pequeno: '¿Cómo es?', caliente: '¿Cómo está?', frio: '¿Qué tiempo hace?', familia: '¿Quiénes son?' }; // (caliente: about a hot thing held up, el chocolate, never a person: S2 review #8)
 // the question a native speaker would ask about this word's picture
 function expected(id) {
   const w = C.words[id], t = w.topic, a = art(id);
@@ -137,8 +138,15 @@ async function sayfirst(browser) {
     check('sayfirst: ...and the count waits for the next word', await g.ev(() => !!G.top().say));
     await answered(g);
 
+    // ---- never right after the word was said or shown (S2 review #6): an echo, not a recall ----
+    await g.ev(() => { G.sayFirst.n = G.sayFirst.EVERY - 1; G.say([{ t: '¡Mira! ¡Una [vaca]!', en: 'Look!' }], { show: 'vaca' }); });
+    await g.drive(() => G.top() === G.field && !G.field.locked, 'the line');
+    await ask(g, 'vaca'); await choiceUp(g);
+    check('sayfirst: a word a line just said and showed: no say step (straight to the cards), the count isn\'t used', await g.ev(() => !G.top().say && !G.top().o.sayFirst && G.sayFirst.n === G.sayFirst.EVERY - 1));
+    await answered(g);
+    check('sayfirst: ...and the pick is a plain pick (fresh: no recall from memory)', await g.ev(() => { const a = window.__ar.find(a => a.id === 'vaca'); return !!a && a.o.fresh === true && !a.o.recall; }));
     // ---- the say step: its picture and the big mic alone, the question for its kind of word, no cards ----
-    await g.ev(() => { G.sayFirst.n = G.sayFirst.EVERY - 1; window.__sfx.length = 0; window.__ar.length = 0; });
+    await g.ev(() => { G.sayFirst.n = G.sayFirst.EVERY - 1; G.words.addTime(G.words.EXPOSE); window.__sfx.length = 0; window.__ar.length = 0; }); // (a minute later: the words asked above aren't fresh any more)
     await ask(g, 'gato'); await choiceUp(g);
     const s1 = await g.ev(() => { const s = G.top(), m = s.micRect(); return { say: !!s.say, show: s.o.show, prompt: s.o.prompt, mic: m, nearPic: m.x > G.W / 2 && m.y < 70, shown: !!s.mic && s.mic.shown(), sayEn: s.o.sayEn }; });
     check('sayfirst: the picture held up, "¿Quién es?" (an animal), the big mic beside the picture, no cards yet', s1.say && s1.show === 'gato' && s1.prompt === '¿Quién es?' && s1.nearPic && s1.mic.w >= 44 && s1.shown && /Say it/.test(s1.sayEn), JSON.stringify(s1));
@@ -156,7 +164,7 @@ async function sayfirst(browser) {
 
     // ---- heard something else, an error, silence: the cards appear, no "wrong", no sad sound, no miss ----
     for (const [label, reply, id] of [['another word', { results: [['la casa', 0.9]] }, 'perro'], ['an error', { error: 'network' }, 'manzana'], ['silence', { error: 'no-speech' }, 'pelota']]) {
-      await g.ev(() => { G.sayFirst.n = G.sayFirst.EVERY - 1; window.__sfx.length = 0; window.__ar.length = 0; window.__aw.length = 0; });
+      await g.ev(() => { G.sayFirst.n = G.sayFirst.EVERY - 1; G.words.addTime(G.words.EXPOSE); window.__sfx.length = 0; window.__ar.length = 0; window.__aw.length = 0; });
       await ask(g, id); await choiceUp(g);
       const w0 = await g.ev(id => G.words.rec(id).wrong, id);
       await speak(g, reply);
@@ -172,7 +180,7 @@ async function sayfirst(browser) {
     }
 
     // ---- no tap on the mic: the cards come by themselves after about 4 s, and the recognizer never started ----
-    await g.ev(() => { G.sayFirst.n = G.sayFirst.EVERY - 1; });
+    await g.ev(() => { G.sayFirst.n = G.sayFirst.EVERY - 1; G.words.addTime(G.words.EXPOSE); });
     const n0 = await g.ev(() => window.__sr.starts.length);
     await ask(g, 'flor'); await choiceUp(g);
     const f0 = await g.ev(() => G.frame);
@@ -182,7 +190,7 @@ async function sayfirst(browser) {
     check('sayfirst: ...and the recognizer never started (it only starts inside a tap on the mic)', t.starts === n0 && await g.ev(() => window.__sr.starts.every(s => s.during === 'touchend')), JSON.stringify(t));
     await answered(g);
     // a tap anywhere else: at once
-    await g.ev(() => { G.sayFirst.n = G.sayFirst.EVERY - 1; });
+    await g.ev(() => { G.sayFirst.n = G.sayFirst.EVERY - 1; G.words.addTime(G.words.EXPOSE); });
     await ask(g, 'arbol'); await choiceUp(g);
     await g.tap(160, 118);
     check('sayfirst: a tap anywhere else shows the cards at once (and picks nothing)', await g.ev(() => !G.top().say && G.top().revealed === 'tap' && !G.top().won));
@@ -220,40 +228,52 @@ async function warmup(browser) {
   const { ctx, g } = await openWith(browser, 'q-warmup');
   try {
     await game(g, { st: KNOWN });
-    await g.ev(() => { G.warmup.start(G.field, ['casa', 'concha', 'oso', 'rojo']); });
-    // casa (known): the say step, every time in the warm-up (the counter doesn't matter)
+    // oso and rojo remembered (from their picture this time: asked an even number of times), verde remembered (heard
+    // this time: asked an odd number of times)
+    await g.ev(() => { const W = G.words; Object.assign(W.rec('oso'), { st: 3, ret: 2, wrong: 0, learned: true, gold: true }); Object.assign(W.rec('rojo'), { ret: 2, wrong: 0 }); Object.assign(W.rec('verde'), { ret: 2, wrong: 1 }); G.sayFirst.n = G.sayFirst.EVERY - 1; });
+    await g.ev(() => { G.warmup.start(G.field, ['casa', 'concha', 'oso', 'rojo', 'verde']); });
+    // casa (known): say it first now and then (here: its turn, 1 in 3 as in any review)
     await g.until(() => G.top().constructor.name === 'Choice' && G.top().o.warmup && G.top().t > 10 && G.input.ready(), null, 'the first card');
     const q1 = await g.ev(() => { const s = G.top(); return { say: !!s.say, big: s.big(), show: s.o.show, prompt: s.o.prompt, skip: s.skip() }; });
-    check('warmup: a known word: "say it first", its picture, "¿Qué es?" (a thing), the big mic, the skip button', q1.say && q1.big && q1.show === 'casa' && q1.prompt === '¿Qué es?' && q1.skip, JSON.stringify(q1));
+    check('warmup: a known word, its turn: "say it first", its picture, "¿Qué es?" (a thing), the big mic, the skip button', q1.say && q1.big && q1.show === 'casa' && q1.prompt === '¿Qué es?' && q1.skip, JSON.stringify(q1));
     await still(g, 'warmup_say');
     await g.tap(160, 118);
     await g.until(() => !G.top().say, null, 'the cards');
-    const c1 = await g.ev(() => { const s = G.top(); return s.ch.map((c, k) => (s.view(k).icon ? 'P' : '') + (s.view(k).label ? 'W' : '')).join(); });
-    check('warmup: ...not said: its cards: picture + word (a known word, not yet well known: no word-only cards)', c1 === 'PW,PW,PW', c1);
+    const c1 = await g.ev(() => { const s = G.top(); return { v: s.ch.map((c, k) => (s.view(k).icon ? 'P' : '') + (s.view(k).label ? 'W' : '')).join(), show: s.o.show || null, mask: (s.o.mask || []).includes('casa'), big: s.big() }; });
+    check('warmup: ...not said: the picture is put away, she hears it and picks its picture (picture-only cards: S2 review #1/#16)', c1.v === 'P,P,P' && !c1.show && c1.mask && !c1.big, JSON.stringify(c1));
+    await g.frames(8); await still(g, 'warmup_say_heard');
+    const b0 = await g.ev(() => G.words.rec('casa').box);
     await g.tapRect(await g.ev(() => G.top().rects()[G.top().o.answer]));
     await g.until(() => window.__ar.some(a => a.id === 'casa'), null, 'casa answered');
-    check('warmup: ...the tap under its own picture is a cued use (a reveal, not a recall)', await g.ev(() => window.__ar.find(a => a.id === 'casa').o.cued === true));
+    const ca = await g.ev(b0 => { const a = window.__ar.find(a => a.id === 'casa'), r = G.words.rec('casa'); return { cued: !!a.o.cued, recall: !!a.o.recall, mode: a.o.mode, up: r.box > b0, due: G.words.due('casa') }; }, b0);
+    check('warmup: ...that tap moves the word on (uncued: up a box, not due any more), a plain pick (its picture was just held up: no recall)', !ca.cued && !ca.recall && ca.mode === 'pic' && ca.up && !ca.due, JSON.stringify(ca));
     // concha (only met): heard, picture-only cards, no say step
     await g.until(() => G.top().constructor.name === 'Choice' && G.top().o.warmup && G.warmup.cur().i === 1 && G.top().t > 10 && G.input.ready(), null, 'the second card', 15000);
     const q2 = await g.ev(() => { const s = G.top(); return { say: !!s.say, show: s.o.show || null, mask: s.o.mask, pics: s.ch.every((c, k) => !!s.view(k).icon && !s.view(k).label) }; });
     check('warmup: a word only met: heard (a speaker), picture-only cards, no say step', !q2.say && !q2.show && q2.mask && q2.mask.includes('concha') && q2.pics, JSON.stringify(q2));
     await g.tapRect(await g.ev(() => G.top().rects()[G.top().o.answer]));
-    // oso (known): said first
+    // oso (remembered, from its picture this time): said first
     await g.until(() => G.top().constructor.name === 'Choice' && G.top().o.warmup && G.warmup.cur().i === 2 && G.top().t > 10 && G.input.ready(), null, 'the third card', 15000);
-    check('warmup: the next known word: "say it first" again (every time here), "¿Quién es?" for an animal', await g.ev(() => !!G.top().say && G.top().o.prompt === '¿Quién es?'));
+    check('warmup: a remembered word from its picture: "say it first" (every such card here), "¿Quién es?" for an animal', await g.ev(() => !!G.top().say && G.top().o.prompt === '¿Quién es?'));
     await speak(g, { results: [['oso', 0.8]] });
     await g.until(() => G.top().constructor.name !== 'Choice' || !!G.top().won, null, 'oso said');
-    // rojo (remembered): said nothing -> word-only cards (a recall), "¿De qué color es?"
-    await past(g, () => G.top().constructor.name === 'Choice' && G.top().o.warmup && G.warmup.cur().i === 3 && G.top().t > 10 && G.input.ready(), 'the fourth card'); // (oso said: known -> remembered, its gold card first)
+    // rojo (remembered, from its picture): said nothing -> word-only cards (a recall), "¿De qué color es?"
+    await past(g, () => G.top().constructor.name === 'Choice' && G.top().o.warmup && G.warmup.cur().i === 3 && G.top().t > 10 && G.input.ready(), 'the fourth card', 30000);
     check('warmup: a colour: "¿De qué color es?"', await g.ev(() => !!G.top().say && G.top().o.prompt === '¿De qué color es?'));
     await g.tap(160, 118);
     await g.until(() => !G.top().say, null, 'the cards');
     check('warmup: ...a remembered word not said: word-only cards (recall)', await g.ev(() => { const s = G.top(); return s.ch.every((c, k) => !s.view(k).icon && !!s.view(k).label); }));
     await g.frames(8); await still(g, 'warmup_text');
     await g.tapRect(await g.ev(() => G.top().rects()[G.top().o.answer]));
+    // verde (remembered, heard this time): no say step, picture-only cards: a child who never speaks recalls it from
+    // memory here too (the way to solid, S2 review #3)
+    await past(g, () => G.top().constructor.name === 'Choice' && G.top().o.warmup && G.warmup.cur().i === 4 && G.top().t > 10 && G.input.ready(), 'the fifth card', 30000);
+    const q5 = await g.ev(() => { const s = G.top(); return { say: !!s.say, show: s.o.show || null, mask: (s.o.mask || []).includes('verde'), pics: s.ch.every((c, k) => !!s.view(k).icon && !s.view(k).label) }; });
+    check('warmup: a remembered word, every other card: heard, picture-only cards (no say step)', !q5.say && !q5.show && q5.mask && q5.pics, JSON.stringify(q5));
+    await g.tapRect(await g.ev(() => G.top().rects()[G.top().o.answer]));
     await g.drive(() => !G.warmup.cur() && G.top() === G.field && !G.field.locked, 'the end of the warm-up');
-    const r = await g.ev(() => ({ last: G.hist.state().wu.last, oso: window.__ar.find(a => a.id === 'oso'), rojo: window.__ar.find(a => a.id === 'rojo') }));
-    check('warmup: four right; oso said first (a recall said aloud), rojo picked from word-only cards', r.last && r.last.right === 4 && r.oso.o.mode === 'say' && r.oso.o.recall && r.rojo.o.mode === 'text' && !r.rojo.o.cued, JSON.stringify(r));
+    const r = await g.ev(() => ({ last: G.hist.state().wu.last, oso: window.__ar.find(a => a.id === 'oso'), rojo: window.__ar.find(a => a.id === 'rojo'), verde: window.__ar.find(a => a.id === 'verde') }));
+    check('warmup: five right; oso said first (a recall said aloud), rojo picked from word-only cards, verde from picture-only cards (recall: true)', r.last && r.last.right === 5 && r.oso.o.mode === 'say' && r.oso.o.recall && r.rojo.o.mode === 'text' && !r.rojo.o.cued && r.verde.o.mode === 'pic' && r.verde.o.recall === true, JSON.stringify(r));
     check('warmup: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
 }
@@ -314,6 +334,18 @@ async function cards(browser) {
     check('cards: a short word among long ones is drawn at the same size as them (no "no" twice as big)', mixed.length === 3 && mixed.every(x => !x.big), JSON.stringify(mixed));
     check('cards: ...all short: all big, together', short.length === 3 && short.every(x => x.big), JSON.stringify(short));
     check('cards: ...and one colour for every card until it is answered (a gold word among blue ones would point at it)', [mixed, short, gold].every(L => L.every(x => x.col === L[0].col)), JSON.stringify(gold));
+    // caliente (its own picture a hot face): never asked about a person (S2 review #8/#20): its picture held up is the hot
+    // chocolate ("¿Cómo está el chocolate?"), its card shows the hot chocolate too, and el chocolate is never a card beside it
+    await g.ev(() => { const W = G.words; for (const id of ['caliente', 'chocolate', 'elsol', 'helado', 'mar']) { W.meet(id, 'test'); Object.assign(W.rec(id), { st: id === 'caliente' ? 3 : 2, fu: 0 }); } });
+    const hot = [];
+    for (let i = 0; i < 6; i++) {
+      await g.ev(i => { G.words.rec('caliente').n = i; }, i);
+      await ask(g, 'caliente'); await choiceUp(g);
+      hot.push(await g.ev(() => { const s = G.top(), k = s.o.answer; return { show: s.o.show || null, prompt: s.o.prompt, words: s.ch.map(c => c.word), pic: s.view(k).icon ? s.view(k).icon.icon || s.view(k).icon : null, label: s.view(k).label }; }));
+      await answered(g);
+    }
+    check('cards: caliente: its picture held up is the hot chocolate ("¿Cómo está el chocolate?"), never its face; heard: its card shows the hot chocolate', hot.every(q => (q.show ? q.show === 'chocolate' && /Cómo está el/.test(q.prompt) : q.pic === 'chocolate')) && hot.some(q => q.show) && hot.some(q => !q.show), JSON.stringify(hot));
+    check('cards: ...and el chocolate is never one of its cards', hot.every(q => !q.words.includes('chocolate')), JSON.stringify(hot.map(q => q.words)));
     await g.ev(() => { G.audio.setPref('sayFirst', true); });
     check('cards: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
@@ -356,6 +388,10 @@ async function forms(browser) {
     check('forms: never "¿Qué es?" for a word that isn\'t a thing (actions, colours, feelings, numbers, greetings: AUDIT M3)', !notThing.length, notThing.map(f => f.id).join());
     check('forms: every question has its English help line, and is the same as its registered template (G.requests.LINES q.ask)', all.every(f => f.en && /[a-z]/.test(f.en) && f.en !== f.t && (f.kind === 'number' || f.line === f.t)), JSON.stringify(all.find(f => !f.en || f.en === f.t)));
     check('forms: an action shows the one doing it (its own picture), a colour its colour, an animal itself', ['corre', 'rojo', 'oso'].every(id => all.find(f => f.id === id).show === id));
+    // caliente (its own picture is a hot face): asked about a hot THING held up, never about a person (S2 review #8/#20)
+    const cal0 = all.find(f => f.id === 'caliente');
+    check('forms: caliente: "¿Cómo está?" over the mug of hot chocolate (never "¿Cómo es?" over its hot face)', cal0.t === '¿Cómo está?' && cal0.show === 'chocolate', JSON.stringify(cal0));
+    check('forms: ...once el chocolate is met: "¿Cómo está el chocolate?"', await g.ev(() => { G.words.meet('chocolate', 't'); return G.qform.of('caliente').t === '¿Cómo está el [chocolate]?' && G.requests.LINES['q.ask']('caliente') === G.qform.of('caliente').t; }));
     // numbers: ¿Cuántos? / ¿Cuántas? from the counted thing, for every number and every countable thing
     const things = WORDS.filter(id => { const a = art(id); return (a === 'el' || a === 'la') && !(C.mass || []).includes(id); });
     const nums = await g.ev(([N, T]) => { const o = []; for (const n of N) for (const t of T) { const f = G.qform.of(n, { thing: t }); o.push({ n, t, q: f.t, count: f.show.count, icon: f.show.icon, want: G.requests.numOf(n) }); } return o; }, [C.numberWords10, things]);
