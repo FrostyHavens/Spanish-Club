@@ -124,7 +124,7 @@
     if (c.when === 'morning' && st().lastDoneSess === G.words.sess()) return 'morning';
     // (the play itself is never blocked by a daily word count: the world is open; the teaching rules live inside the
     // activities, docs/WORLD_PLAN.md. But a chapter brings several new words at once, so a NEW one waits for room:)
-    if (CH.paced() && !CH.EXEMPT.includes(id) && !CH.room()) return 'room';
+    if (CH.paced() && !CH.EXEMPT.includes(id) && !(c.n === 1 && CH.firstDay()) && !CH.room()) return 'room';
     return null;
   };
   // Story pacing (S2, the open-world learning audit: 70 of 77 new items came from chapters, the backlog grew every day):
@@ -134,16 +134,17 @@
   // ('room'), its giver has no story bubble and no "tomorrow" talk, and the guide doesn't point at it (it isn't live):
   // the arrow goes to what brings the backlog down or is free play (the dog's cards, greetings and favours, the day's
   // play). The first chapters that teach how to play (CH.EXEMPT: the opener's day and the first morning) never wait, nor
-  // does anything on the save's first play day (CH.firstDay: a new player who picks "¡A explorar!" finds a zone's first
-  // chapter, AUDIT C3); after that a zone whose first chapter waits still has Lola, its animals, the dog's spot.
+  // does a zone's first chapter on the save's first play day (CH.firstDay: a new player who picks "¡A explorar!" finds
+  // it, AUDIT C3; its second waits like any); after that a zone whose first chapter waits still has Lola, its animals,
+  // the dog's spot.
   // One switch: CH.PACED (on); off with G.budget's open() too (tools/harness.js open(..., {openPacing: true}),
   // OPEN_PACING=1), for tests about a chapter's content.
   CH.PACED = true;
   CH.PACE = { backlog: 8, today: 4 };
   CH.EXEMPT = ['c1', 'c2', 'c3'];
   CH.paced = () => CH.PACED && !(G.budget && G.budget.open && G.budget.open());
-  CH.firstDay = () => { const m = G.words.wm(); return m.d0 != null && m.d0 >= G.words.dayNum(); }; // (the save's first play day: a new player is never held)
-  CH.room = () => !G.budget || !G.state || CH.firstDay() || (G.budget.backlog() <= CH.PACE.backlog && G.budget.today() <= CH.PACE.today);
+  CH.firstDay = () => { const m = G.words.wm(); return m.d0 != null && m.d0 >= G.words.dayNum(); }; // (the save's first play day)
+  CH.room = () => !G.budget || !G.state || (G.budget.backlog() <= CH.PACE.backlog && G.budget.today() <= CH.PACE.today);
   CH.waiting = () => !!G.state && CH.paced() && CH.lines().some(l => !CH.current(l) && !!CH.next(l) && CH.gate(CH.next(l)) === 'room'); // (a chapter waits for room: guide.js)
   CH.ready = (id, o) => !CH.gate(id, o);
   // the older errands after chapter 10 (errands.js): one a day, on a day with room for new words

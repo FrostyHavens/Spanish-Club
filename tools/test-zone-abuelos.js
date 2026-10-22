@@ -152,7 +152,7 @@ async function animals(browser) {
 
 // ---------- the story, by taps ----------
 async function story(browser) {
-  const { ctx, g } = await open(browser, 'abuelos-story', true);
+  const { ctx, g } = await open(browser, 'abuelos-story', true, { openPacing: true }); // (the chapters' content back to back in one day: story pacing, src/chapters.js, would hold the second; it's tested in test-memory.js)
   try {
     await fresh(g, { map: 'abuelos_casa', x: 11, y: 5 });
     await idle(g, 'abuelos_casa');
