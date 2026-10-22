@@ -173,13 +173,17 @@
     S.autosave();
   }
   // play beat k of chapter id (a scene: the caller has locked the map). Returns true if it ran.
+  // (a beat whose map went away under it, G.goto or back to the title mid-beat, never reached its finally: without this
+  // check it would count as running for the rest of the page session, holding the dog's warm-up back ('story') and
+  // letting every open-world word in (G.budget.story); the learning audit's sixth day)
   let running = null;
-  CH.running = () => running;
+  const live0 = () => { if (running && (running.s !== G.state || !running.f || G.scenes.indexOf(running.f) < 0)) running = null; return running; };
+  CH.running = () => live0();
   function* play(id, f, k, i) {
     const sc = scripts[id], b = sc.beats[k];
     if (!b) return false;
     if (!CH.active(id)) CH.start(id);
-    running = { id, k };
+    running = { id, k, f, s: G.state };
     let r;
     try { r = yield* b.run(f, CH.ctx(id), i); } finally { running = null; }
     if (r === false) { restage(f); return true; }
@@ -317,7 +321,7 @@
   CH.runSpot = function* (f, L) { return yield* play(L.id, f, L.k, L.i); };
   // an animal (kind), 'cat' or 'canelo' tapped -> true when the chapter took it (it plays as a scene)
   CH.tapped = function (kind, f) {
-    if (!G.state || !f || (!f.locked && G.top() !== f) || running) return false;
+    if (!G.state || !f || (!f.locked && G.top() !== f) || live0()) return false;
     const L = find(L => L.b.tap === kind && when(L));
     if (L) {
       if (f.locked) f.tasks.add((function* () { while (f.locked) yield 1; scene(f, play(L.id, f, L.k)); })()); // (from a search: once it ends)
@@ -364,7 +368,7 @@
     const L = live(); // (the line here: its auto beats, and the arrival question)
     // an evening chapter waiting: the sunset comes soon
     if (!live({}, 'villa') && !CH.current()) { const nx = CH.next(); if (nx && CH.def(nx).when === 'evening' && !CH.gate(nx, { evening: true }) && G.day && G.day.bring && !G.day.brought()) G.day.bring(180); }
-    if (f.locked || G.top() !== f || G.fade.a > 0 || f.player.moving || running) return;
+    if (f.locked || G.top() !== f || G.fade.a > 0 || f.player.moving || live0()) return;
     if (!CH.openerDone || !CH.openerDone()) { if (f.mapId === 'casa' && CH.opener && G.state.name) scene(f, CH.opener(f)); return; } // (a new game: the opener first)
     const A = find(L => { const a = CH.autoOf(L); return !!a && (a === true || a === f.mapId) && when(L); });
     if (A) { scene(f, play(A.id, f, A.k)); return; }

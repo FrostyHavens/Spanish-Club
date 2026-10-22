@@ -325,6 +325,13 @@ async function scene(browser) {
     await up(g);
     await g.frames(10); await still(g, 'howmany');
     const said5 = await g.ev(n => G.data.words[n].es, r5.answerNum);
+    // another number heard first: "¡Otra vez!", never a wrong answer (only a tap can be wrong: S2 review #7)
+    const other5 = await g.ev(([cards, n]) => (window.__o5 = G.data.words[cards.find(id => id !== n)].es), [r5.cards, r5.answerNum]);
+    await g.ev(n => { window.__h5 = (G.hist.day().w[n] || [])[1] || ''; window.__sr.queue.push({ results: [[window.__o5, 0.9]] }); }, r5.answerNum);
+    await g.tapRect(await g.ev(() => G.top().micRect()));
+    await g.until(() => G.top().mic && G.top().mic.sad > 0 && !G.top().mic.listening(), null, '"¡Otra vez!" for another number', 8000);
+    check('scene: another number said ("' + other5 + '"): "¡Otra vez!", no wrong answer (still the first try, no card off, nothing in the history)', await g.ev(n => window.__r === undefined && G.top().first == null && !Object.values(G.top().cardOff).some(Boolean) && ((G.hist.day().w[n] || [])[1] || '') === window.__h5, r5.answerNum), await g.ev(n => JSON.stringify({ r: window.__r, first: G.top().first, off: G.top().cardOff, h: G.hist.day().w[n], h0: window.__h5 }), r5.answerNum));
+    await g.until(() => !G.top().mic.listening() && G.top().mic.sad === 0, null, 'the mic ready again', 8000);
     await g.ev(t => window.__sr.queue.push({ results: [[t, 0.9]] }), said5);
     await g.tapRect(await g.ev(() => G.top().micRect()));
     await g.drive(() => window.__r !== undefined, 'the spoken number'); // (a number that turns gold: its "¡Palabra de oro!" card first)

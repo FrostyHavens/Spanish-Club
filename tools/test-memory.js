@@ -388,6 +388,14 @@ async function story(browser) {
     check('story pacing: ...an exempt chapter (the first ones: c1-c3) never waits; the switch off (G.chapters.PACED, openPacing): never', p.exempt === null && p.off === null, JSON.stringify(p));
     check('story pacing: 5 new things today: it waits too, whatever the backlog (' + p.today5.bl + ')', p.today5.today >= 5 && p.today5.gate === 'room' && !p.today5.alert, JSON.stringify(p.today5));
     check('story pacing: a chapter already started always goes on (its beat live, its bubble)', p.started.gate === null && p.started.live && p.started.alert, JSON.stringify(p.started));
+    // a beat whose map goes away under it (back to the title, a G.goto mid-beat) isn't "running" for ever after: that held
+    // the dog's warm-up back and let every word in (G.budget.story) for the rest of the page session (the audit's day 6)
+    await g.ev(() => { const CH = G.chapters; G.state.quests.zt2 = 'done'; CH.add({ id: 'zt9', line: 'zt9', title: 'Prueba 9', en: 'Test 9', giver: 'pepe', words: [], icon: 'queso' }); CH.script('zt9', [{ who: 'pepe', run: function* () { for (;;) yield 1; } }]); CH.EXEMPT.push('zt9'); CH.scene(G.field, CH.talk('pepe', G.field)); });
+    await g.until(() => !!G.chapters.running() && G.chapters.running().id === 'zt9', null, 'the endless beat');
+    await g.ev(() => { G.goto('villa', 22, 13, 'down'); });
+    await g.until(() => G.top() === G.field && G.fade.a === 0, null, 'the new map');
+    check('story: a beat whose map went away (G.goto mid-beat) no longer counts as running; the story\'s pass for new words ends with it', await g.ev(() => !G.chapters.running() && !G.budget.story()));
+    await g.ev(() => { G.state.quests.zt9 = 'done'; });
     noErrors(g, 'story');
   } finally { await ctx.close(); }
 }

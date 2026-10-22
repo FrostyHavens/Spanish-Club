@@ -47,8 +47,12 @@ async function play(g, m, x, y, dir, upTo, o = {}) {
     if (o.bag) G.state.bag.items = o.bag;
     G.state.ch.lastDoneSess = G.words.sess();
     G.debug.dayShift = (G.debug.dayShift || 0) + 1; G.words.newSession('load'); // (the next day: everything is due)
-    G.goto(m, x, y, dir);
+    window.__arrive = m; G.goto(m, x, y, dir);
   }, [m, x, y, dir, upTo, o]);
+  // (arriving may ask the place's name first: with everything due the next chapter waits for room, chapters.js story
+  // pacing, and the place's question comes when no chapter is live here)
+  const arrived = () => g.drive(() => G.field && G.field.mapId === window.__arrive && G.top() === G.field && !G.field.locked && G.fade.a === 0 && !G.field.player.moving, 'arriving');
+  await arrived(); await g.frames(30); await arrived(); // (the place's question starts on the first free frame: it's over before anything is tapped)
   await g.fieldIdle(m);
   await g.frames(10);
 }
@@ -183,7 +187,7 @@ async function favores(browser) {
     check('pages: solved there', await g.ev(() => Object.keys(G.state.pages).length >= 1));
     // the morning greeting asks one due word after the greeting
     await goto(g, 'villa', 15, 13, 'down');
-    await g.ev(() => { G.state.heartlog = null; G.state.fav.list = []; });
+    await g.ev(() => { G.state.heartlog = null; G.state.fav.list = []; G.words.addTime(G.review.REASK); }); // (a few minutes later: the setup above asked every word at once, and a word just asked isn't asked again for a few minutes, S2 review #10-#14)
     const asked = [];
     await g.ev(() => { window.__asked = []; const o = G.ask; G.ask = function* (q) { window.__asked.push(q.who + ':' + (q.choices[q.answer] && q.choices[q.answer].word)); return yield* o(q); }; });
     await talk(g, 'pepe', 'Don Pepe\'s greeting');
