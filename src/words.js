@@ -3,8 +3,9 @@
 //   stage 0 unmet       never introduced: in speech it is only its picture (ui.js), it is never "seen" by appearing
 //   stage 1 met         its introduction puzzle (G.intro, learn.js / intro.js): picture + blue word, in the notebook
 //   stage 2 known       picked right without a cue: blue word (no picture in speech), 1 star in the notebook
-//   stage 3 remembered  gold, 2 stars: a recall-type right answer (word-only cards, a page match, said, a grown-up's
-//                       check, or a recall from memory below) on a LATER calendar day than the one it was met on
+//   stage 3 remembered  gold, 2 stars: a recall-type right answer (word-only cards, a page match, said (not an echo of
+//                       what was just heard), a grown-up's check, or a recall from memory below) on a LATER calendar day
+//                       than the one it was met on
 //   stage 4 solid       3 stars: recalled FROM MEMORY on 2 calendar days later than the one it was met on, at least 2
 //                       days apart. From memory (the history's F, V and C, src/history.js): said before any written cue
 //                       (say-it-first), picked from picture-only cards (no written word on screen) on a later day than the
@@ -22,7 +23,7 @@
 // (the quick re-ask helps, but the word climbs again from the next day, AUDIT 2.2).
 // Clocks: G.words.now() is play time in seconds (G.state.wm.clock, saved; day.js ticks it while a game is on, the dev
 // log's pace adds to it). A session is a page load / continue, a new game, or a new morning (day.js); the game's day
-// (W.day(): favours, carry, seek, chapters, stars per day...) is a new calendar date or a new morning, whichever comes
+// (W.day(): favours, carry, seek, connect, chapters...; stars are one per word per calendar date) is a new calendar date or a new morning, whichever comes
 // first (G.state.wm: {clock, sess, day, date}). The memory has its own session (wm.ms: a load or a new game, not a night
 // at home) for "a follow-up not asked is due anyway next time", and its own day: the calendar day number (W.dayNum()).
 // G.today() and G.debug.dayShift (whole days added to the real date) let tests and the audit play on later days.
@@ -41,7 +42,7 @@
 // wm.ms = wm.sess, wm.d0 = the first day the save was played (from the history, else the earliest word met); each record:
 // old box 1-5 (gaps 0, 1, 2, 4, 8 days) -> box 1, 2, 2, 3, 4 (W.OLD_BOX: the next gap after a right answer is the
 // closest to what it was, 1 day shorter at most: 2 -> 3 days for box 3, 4 -> 3 for box 4, 8 -> 16 for box 5), its
-// calendar due date kept (dc; a game-day one only, dd: its days still to go from today), so nothing falls due because
+// calendar due date kept (dc; a game-day one only, dd: its days to go from today, any record, W.rec), so nothing falls due because
 // of the upgrade; mdn from mdate; gk its card as shown. Stages, stars, counts and cards are untouched.
 // Slipping: a word missed 3 times (in a row, or 3 misses within W.SLIP.win play seconds) is marked slipping; the next
 // review question for it (G.review.ask, the dog's warm-up) is a fresh one-unknown introduction instead (G.intro.again,
@@ -183,7 +184,6 @@
     if (r.st >= 1) {
       const b = r.box | 0;
       r.box = b <= 0 ? 1 : W.OLD_BOX[Math.min(5, b)];
-      if (r.due == null && r.dc == null && r.dd != null) r.dc = dayNum() + Math.max(0, (r.dd | 0) - wm().day); // (a game-day date only: its days still to go)
       if (r.mdn == null) r.mdn = W.numOf(r.mdate);
       if (G.cards && G.cards.shownAt) { const k = G.cards.shownAt(r.st, r.gp); if (k > 0) r.gk = k; }
     }
@@ -213,6 +213,7 @@
     const ws = recsOf(id); let r = ws[id];
     if (r && (!isObj(r) || r.st == null)) r = ws[id] = migrate(isObj(r) ? r : {});
     if (r && r.v !== W.V) up(r);
+    if (r && r.st >= 1 && r.due == null && r.dc == null && r.dd != null) r.dc = dayNum() + ((r.dd | 0) - wm().day); // (a game-day due date only: its days to go, as calendar days)
     if (!r && make) { upState(); r = ws[id] = { st: 0, box: 0, due: null, dd: null, dc: null, fu: 0, met: null, ms: 0, md: 0, how: null, last: null, n: 0, right: 0, wrong: 0, said: 0, cue: 0, ret: 0, ft: {}, star: '', s3: null, gold: false, learned: false, v: W.V }; }
     return r || null;
   };

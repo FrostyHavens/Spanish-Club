@@ -320,6 +320,11 @@ async function beach(browser) {
     await g.frames(4); await g.shot('deferred_review');
     await g.drive(() => G.top() === G.field && !G.field.locked, 'the review');
     check('beach: no puzzle for the crab: still not met; the review moved its word on', await g.ev(a => G.words.stage('cangrejo') === 0 && G.words.rec(a).box === 3, q.ans));
+    // another crab a moment later: seen and named again, but not another question (once per word in 2 minutes)
+    await g.ev(() => { window.__asks = 0; const ch = G.choose; G.choose = function (o) { window.__asks++; return ch.call(this, o); }; G.animals.tapped(G.field, G.animals.find('cangrejo', G.field)); });
+    await g.until(() => G.top().constructor.name === 'TextBox' && G.top().opts.show === 'cangrejo', null, 'Lola calling out the crab again');
+    await g.drive(() => G.top() === G.field && !G.field.locked, 'the second crab');
+    check('beach: the same thing again within 2 minutes: seen and named, no second question', await g.ev(() => window.__asks === 0 && G.words.stage('cangrejo') === 0 && G.budget.backlog() === 7), await g.ev(() => JSON.stringify([window.__asks, G.budget.backlog()])));
 
     // the dog's warm-up, once the backlog is down to 5: its cards first, then the waiting crab is introduced
     await g.ev(() => { ['casa', 'perro', 'gato', 'arbol', 'flor', 'pan', 'leche', 'agua'].filter(id => G.words.due(id)).slice(0, 2).forEach(id => { G.words.rec(id).dc = G.words.dayNum() + 3; }); G.budget.flush(); });

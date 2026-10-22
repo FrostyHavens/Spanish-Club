@@ -317,8 +317,8 @@ async function ask(browser) {
     await g.until(() => window.__r !== undefined, null, 'the built phrase');
     const b = await g.ev(() => ({ r: window.__r, said: window.__said.slice(-3), e: G.hist.day().w.f_gusta[1], st: G.words.stage('f_gusta'), log: G.cards.log.map(l => l.id + ':' + l.how) }));
     check('ask: then a word card: the sentence is read aloud ("Me gusta el oso."), counted as built (P), its card grows (build)', b.r.how === 'built' && b.r.k === 0 && b.said.includes('Me gusta el oso.') && b.e === 'P' && b.log.includes('f_gusta:build'), JSON.stringify(b));
-    // a built phrase can't make it gold: saying it can
-    await g.ev(() => { const r = G.words.rec('f_gusta'); Object.assign(r, { st: 2, due: null, dd: 0, dc: 0 }); });
+    // a built phrase can't make it gold: saying it can (on a later day than it was met, words.js: as if met yesterday)
+    await g.ev(() => { const r = G.words.rec('f_gusta'); Object.assign(r, { st: 2, due: null, dd: 0, dc: 0, mdn: G.words.dayNum() - 1 }); });
     await request(g, 'f_gusta', { who: 'lola', slots: ['oso', 'gato', 'perro'], free: true });
     await askUp(g);
     await (async () => { const R2 = await g.ev(() => G.top().rects()); await g.tapRect(R2[0]); await g.tapRect(R2[2]); })();

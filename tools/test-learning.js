@@ -133,11 +133,11 @@ async function history(browser) {
     // the grown-up's check counts in the model: right = a recall (stage 2 -> 3), wrong = a miss (down a box)
     const m = await g.ev(() => {
       const W = G.words, H = G.hist;
-      W.meet('pan', 'test'); W.meet('leche', 'test'); Object.assign(W.rec('pan'), { st: 2, box: 2, fu: 0, due: null, dd: W.day(), dc: W.dayNum() }); Object.assign(W.rec('leche'), { st: 2, box: 3, fu: 0 });
+      W.meet('pan', 'test'); W.meet('leche', 'test'); Object.assign(W.rec('pan'), { st: 2, box: 2, fu: 0, due: null, dd: W.day(), dc: W.dayNum(), mdn: W.dayNum() - 2 }); Object.assign(W.rec('leche'), { st: 2, box: 3, fu: 0 }); // (pan met on an earlier day: gold needs a later day, words.js)
       H.checkStart(['pan', 'leche']); H.checkAnswer(true); H.checkAnswer(false);
       return { pan: W.stage('pan'), panBox: W.rec('pan').box, leche: W.rec('leche').box, wrong: W.rec('leche').wrong, d: H.day().w.pan[1] + H.day().w.leche[1] };
     });
-    check('history: a check\'s right is a recall in the word model (known -> remembered, up a box); not yet is a miss (down a box)', m.pan === 3 && m.panBox === 3 && m.leche === 2 && m.wrong === 1 && m.d === 'Cc', JSON.stringify(m));
+    check('history: a check\'s right is a recall in the word model (known -> remembered, up a box); not yet is a miss (back to box 1 from box 3)', m.pan === 3 && m.panBox === 3 && m.leche === 1 && m.wrong === 1 && m.d === 'Cc', JSON.stringify(m));
 
     // minutes: counted while the game is on, not when idle, not on the grown-ups' screens
     const s0 = await g.ev(() => G.hist.day().s);
@@ -242,9 +242,9 @@ async function slipping(browser) {
 //  The dog's warm-up
 // =====================================================================
 // due words: [id, stage, box, days since last met or used]. In Villa Sol: casa (town, 4 days, box 1: 4 late) 9, concha
-// (beach: another place, 1 day, box 1) 8, oso (forest: another place, 1 day, box 2) 7, perro (3 days, box 3) 6, manzana
-// (1 day, box 2) 5; hola isn't due, gato was met today
-const WORDS = [['casa', 2, 1, 4], ['concha', 1, 1, 1], ['oso', 2, 2, 1], ['perro', 3, 3, 3], ['manzana', 2, 2, 1], ['hola', 3, 3, 1], ['pan', 2, 2, 2], ['cama', 2, 2, 1]];
+// (beach: another place, 1 day, box 1) 8, oso (forest: another place, 1 day, box 2) 7, perro (4 days, box 3: a 3-day gap,
+// 1 late) 6, manzana (1 day, box 2) 5; hola isn't due, gato was met today
+const WORDS = [['casa', 2, 1, 4], ['concha', 1, 1, 1], ['oso', 2, 2, 1], ['perro', 3, 3, 4], ['manzana', 2, 2, 1], ['hola', 3, 3, 1], ['pan', 2, 2, 2], ['cama', 2, 2, 1]];
 async function warmup(browser) {
   const { ctx, g } = await openWith(browser, 'learn-warmup', true, { warmup: true });
   try {
@@ -302,7 +302,7 @@ async function warmup(browser) {
     check('warm-up: at the end the dog jumps for joy and gets a treat', await g.ev(() => window.__anims.includes('jump') && window.__anims.includes('eat') && window.__anims.includes('bring') && window.__anims.filter(k => k === 'wag').length >= 3));
     check('warm-up: ...and gives a heart', await g.ev(() => G.hearts.today('canelo') >= 1));
     const d = await today(g);
-    check('warm-up: the history: each word\'s retrieval with its gap (casa said, 4 days; concha picked, 1 day...)', d.w.casa && d.w.casa[0] === 4 && d.w.casa[1] === 'S' && d.w.concha[0] === 1 && d.w.concha[1] === 'P' && d.w.oso && d.w.perro && d.w.perro[0] === 3, JSON.stringify(d.w));
+    check('warm-up: the history: each word\'s retrieval with its gap (casa said, 4 days; concha picked, 1 day...)', d.w.casa && d.w.casa[0] === 4 && d.w.casa[1] === 'S' && d.w.concha[0] === 1 && d.w.concha[1] === 'P' && d.w.oso && d.w.perro && d.w.perro[0] === 4, JSON.stringify(d.w));
     check('warm-up: saved: today\'s done, 4 of 4 right', await g.ev(() => { const w = G.hist.state().wu; return w.d === G.today() && w.n === 1 && w.last.right === 4 && w.last.of === 4; }));
     // the guide carries on after; the dog follows again
     await g.frames(40);
@@ -459,7 +459,7 @@ async function dashboard(browser) {
     const free = () => g.until(() => !G.top().held(), null, 'the check\'s next word', 3000);
     await free(); await g.tapRect(await g.ev(() => G.top().noRect()));
     check('dashboard: check: right is a recall in the model and in the history (C)', await g.ev(w0 => G.words.rec(w0.id).right === w0.right + 1 && G.hist.day().w[w0.id][1] === w0.ev + 'C', w0));
-    check('dashboard: check: not yet is a miss (down a box) and in the history (c)', await g.ev(w1 => { const r = G.words.rec(w1.id); return r.wrong === w1.wrong + 1 && r.box === Math.max(1, w1.box - 1) && /c$/.test(G.hist.day().w[w1.id][1]); }, w1));
+    check('dashboard: check: not yet is a miss (back to box 2 from box 4+, else 1) and in the history (c)', await g.ev(w1 => { const r = G.words.rec(w1.id); return r.wrong === w1.wrong + 1 && r.box === (w1.box >= 4 ? 2 : 1) && /c$/.test(G.hist.day().w[w1.id][1]); }, w1));
     await g.frames(2); await still(g, 'dash_check_answered');
     await free(); await g.frames(2); await still(g, 'dash_check_next');
     await g.tapRect(await g.ev(() => G.top().skipRect()));

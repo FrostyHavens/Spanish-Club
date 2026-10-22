@@ -27,9 +27,10 @@
 // Pacing (words.js G.budget, AUDIT 2.9): show / watch / listen ask G.budget.canIntro themselves. A chapter's beat always
 // introduces (the story). In the open world, on a day with no room for a new word, the moment still happens, without a
 // card or a puzzle: the thing is held up and its name said (show), it happens (watch), it's heard (listen); then a word
-// she knows that is due is asked instead (G.review.ask: a review), and the new word waits in the queue (G.budget.defer)
-// to be introduced first when there's room: the dog's warm-up brings it after its cards (queued(o), src/warmup.js), or
-// the next time she meets the thing. They return false then (nothing met). note() never shows a card for a word not met.
+// she knows that is due is asked instead (G.review.ask: a review; once per word in I.DEFER_GAP play seconds), and the new
+// word waits in the queue (G.budget.defer) to be introduced first when there's room: the dog's warm-up brings it after
+// its cards (queued(o), src/warmup.js), or the next time she meets the thing. They return false then (nothing met).
+// note() never shows a card for a word not met.
 //   queued(o)  the first word waiting in the queue, introduced now if pacing allows (a show-and-name, o.who): true if met
 // G.review.ask(id, {who, prompt, en, pool, layout}) one question for a met word, fit for its stage: met -> hear it
 //   (a speaker in the prompt) and pick among picture + word cards; known -> its picture, pick its word; remembered+
@@ -92,12 +93,17 @@
     const ok = k => k !== id && G.iconDrawn(k) && G.baseForm(k) !== G.baseForm(id), top = D().words[id] && D().words[id].topic;
     return G.review.next({ topic: top, filter: ok }) || G.review.next({ filter: ok });
   };
-  // the moment without the new word: what she sees and hears (see()), then a review; the word waits in the queue
+  // the moment without the new word: what she sees and hears (see()), then a review (once per word in I.DEFER_GAP play
+  // seconds: the same swing ridden again and again isn't a question every time); the word waits in the queue
+  I.DEFER_GAP = 120;
+  const deferAt = {};
   function* deferred(id, o, see) {
     G.budget.defer(id, o.how || 'show');
     if (G.vocabLog) G.vlog('shown', id, { via: 'deferred', who: o.who || null });
     yield* see();
-    const k = I.reviewFor(id);
+    const now = Wd().now(), again = deferAt[id] != null && now >= deferAt[id] && now - deferAt[id] < I.DEFER_GAP;
+    deferAt[id] = now;
+    const k = !again && I.reviewFor(id);
     if (k) yield* G.review.ask(k, { who: o.who || null });
     return false;
   }

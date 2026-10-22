@@ -6,6 +6,15 @@ game did before). The short version of the audit: the old game showed 65 of its 
 spirit of *Tunic*: you start knowing almost nothing, meaning comes from pictures, actions and context, and every new
 word should feel like a small puzzle you solved, not a dictionary entry you were handed.
 
+> **2026-10 (Sprint 2, items 2.1-2.4 and 2.9 of `docs/AUDIT_2026-10.md`): the memory engine rebuilt.** Review gaps in
+> calendar days up to 150 days, a forgotten word really drops back, honest stages from the switch date, the most overdue
+> word for its gap reviewed first, and **review-first pacing** for the open world: new words and phrases there arrive
+> only while 5 or fewer words are due, about 2.5 a play day in year 1 (1.8 in year 2, 1.5 after), more only with nothing
+> due, never more than 8 in a calendar day. The story's chapters always introduce their words. On a busy day an
+> open-world new thing is still seen and heard (and goes in the album), a due word is reviewed instead, and the new word
+> waits in a small queue (the dog's warm-up introduces it once there's room, or the next time she meets it). The rules
+> below and `src/words.js`'s header have the details; the note that follows is history.
+
 > **2026-10-17, the open world: no daily word limit.** The parent asked for freedom to explore, so the new-word budget
 > no longer gates anything (no "6 a day / 8 a date", no "soon", no "busy" review days that hold the story back;
 > `G.budget.canIntro` is always true and `G.chapters.gate` only checks the chapter before and morning / evening). The
@@ -39,12 +48,19 @@ Each word has a strength the game keeps per save (`G.state.words[id]`), replacin
 | 0 | unmet | — | its picture + a faint blank in speech (Tunic's "unreadable" text); no card yet |
 | 1 | met | its introduction puzzle | picture + blue word; a card with a seed |
 | 2 | known | picked right without a cue | picture + blue word; its plant at least a sprout |
-| 3 | remembered | recalled from a picture/sound with word-only choices, or said | picture + gold word; a gold card, in flower |
-| 4 | solid | remembered again on a later day (3 first-try answers over ≥2 days) | picture + gold word; two flowers (a third, gold, with use) |
+| 3 | remembered | a recall-type right answer (word-only choices, a page match, said, a grown-up's check, a recall from memory) on a **later calendar day** than it was met | picture + gold word; a gold card, in flower |
+| 4 | solid | **recalled from memory** on 2 later calendar days at least 2 days apart: said before any written cue, picked from picture-only cards on a later day than it was last used, or a grown-up's check | picture + gold word; two flowers (a third, gold, with use) |
 
-Behind the stage sits a small Leitner box (1–5) with a due time measured in sessions/days: a word answered right
-moves up a box and is due later (same session → next day → +2 days → +4 → +8); a miss drops it a box and it comes
-back within 1–3 minutes. Stars (at most one per word per day, from first-try answers) are only counted now, never shown.
+(Since 2026-10, from the day the new code first ran on a save (`G.state.wm.v2`). Before it, gold came the same day and
+solid from any 3 first-try answers over 2 days; what was earned then stays, and a card never shrinks. Never toward a
+stage: cued picks, listen-and-do taps, a page puzzle's forced last pair, or a right answer the day the word was missed.)
+
+Behind the stage sits a Leitner box (1–8) with a due time in **calendar days** (a night at home in the same sitting
+moves nothing): a word answered right when due moves up a box: same session → next day → +3 days → +7 → +16 → +35 →
++75 → +150. A miss sends it back to box 2 (from box 4 or more) or box 1 and it comes back in 1.5 minutes; a right
+answer that same day can't lift it above box 2, so it climbs again from the next day. When time is short, the review
+asks the words most overdue for their gap first (days late divided by the box's gap). Stars (at most one per word per
+day, from first-try answers) are only counted now, never shown.
 
 **Cards that grow** (2026-10-11, `src/cards.js`): a 7-year-old doesn't care about stars, so the visible progress is
 on the word itself. Each word met is a card whose plant grows every time it's used (say 5, pick 2, find 2, page match
