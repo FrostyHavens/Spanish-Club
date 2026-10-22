@@ -424,10 +424,27 @@
       yield sayP('lola', null, intro ? TT(met('hola') ? '¡[hola], {name}! ¡Soy Lola!' : '¡Hola, {name}! ¡Soy Lola!', 'Hi, {name}! I\'m Lola. I explore everywhere!') : TT(met('hola') ? '¡[hola], {name}!' : '¡Hola, {name}!', 'Hi, {name}!'));
       if (z) yield sayP('lola', { icon: z.icon }, TT('¡' + z.name + '!', 'This is ' + (z.en || z.name) + '!'));
       w.lola[f.mapId] = day(); G.st.autosave();
+      if (!(G.hearts && G.hearts.talkGreeted === 'lola')) yield* Z.lolaPhoto(zone); // (her greeting asked one already: not now)
       if (z && z.lola) { yield* z.lola(f); return; }
       const sp = dogHere(f) && (f.def.dogSpots || []).find(Z.dogReady);
       if (sp) { G.chapters.point(sp.at[0] * T + 12, sp.at[1] * T); try { yield sayP('lola', { icon: 'huella' }, TT('¡Mira, {dog}!', 'Look! {dog} can play over there: tap the paw prints!')); } finally { G.chapters.point(null); } }
     } });
+  // Lola travels everywhere, so she remembers everywhere (polish plan 2.5): the first time she says hello in a place each
+  // day, a photo from her album of something from ANOTHER place that is due (an animal first: the album's), asked as
+  // picture cards (G.review.ask); nothing when nothing from elsewhere is due. -> true when she asked
+  const LOLA_PHOTO = [['¡Mira mi foto! ¿Te acuerdas?', 'Look at my photo! Do you remember? (what is it?)'], ['¡{name}! ¡Una foto de mi viaje!', '{name}! A photo from my travels! (what is it?)'], ['¡Mira! ¿Te acuerdas de esto?', 'Look! Do you remember this? (what is it?)']];
+  let albumWords = null;
+  const albumWord = id => { if (!albumWords && G.animals) albumWords = new Set(G.animals.list().map(a => G.animals.KINDS[a] && G.animals.KINDS[a].word).filter(Boolean)); return !!albumWords && albumWords.has(id); };
+  Z.lolaPhoto = function* (zone) {
+    const FV = G.favores; if (!G.state || !FV || !FV.dueWord) return false;
+    const away = id => Z.ofWord(id) !== zone;
+    const id = FV.dueWord({ filter: id => away(id) && albumWord(id), noFallback: true }) || FV.dueWord({ filter: away, noFallback: true });
+    if (!id) return false;
+    const L = LOLA_PHOTO[G.r(LOLA_PHOTO.length)];
+    yield sayP('lola', { icon: 'foto' }, TT(L[0], L[1]));
+    yield* G.review.ask(id, { who: 'lola' });
+    return true;
+  };
   // Nico in a zone: his hide-and-seek with that zone's hiding places (seek.js, one game per zone)
   Z.nico = (x, y) => ({ id: 'nico', npc: 'nico', x, y, dir: 'down', wander: 1,
     alert: () => (G.chapters && G.chapters.alert('nico')) || (G.seek && G.seek.alert('nico')) || null,

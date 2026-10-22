@@ -408,8 +408,11 @@ Files a zone step touches (and nothing else unless the engine truly needs it):
 - **Every door opens** or says why (in pictures). Nothing is a dead end: the zone always has its play (Lola, the dog's
   spot, things to pick up, Nico, the animals to tap).
 - **The dog has something to do** in every zone (a `dogSpots` entry at least), and never blocks anything.
-- **Never require another zone.** A zone's story and favours use the zone's words and universal words; a cross-zone
-  quest (Tomás's letters) only appears between zones already visited.
+- **Never require another zone.** A zone's story and its quests use the zone's words and universal words; a cross-zone
+  quest (Tomás's letters) only appears between zones already visited. **Review is the exception** (polish plan 2.5,
+  2026-10): greetings, favours, Lola, the letters and the dog's cards ask about any word she has met that is due,
+  wherever she met it, in a form that fits where she is (its picture held up, picture cards: `G.favores.dueWord`,
+  `G.review.ask`), never "bring me" a thing that isn't in the place; the place's own words when nothing is due.
 - **One unknown at a time**, used again soon (`docs/LEARNING_DESIGN.md`).
 
 ## Framework additions from the zone steps (use them in the next zones)

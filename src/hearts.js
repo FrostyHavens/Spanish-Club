@@ -2,7 +2,8 @@
 // Everyone in town (and Canelo) has 0-5 hearts, saved in G.state.hearts[npc]. Hearts go up:
 //   - a greeting answered (by voice or by tap): once a day per person, +1. From chapter 3 on, the first talk of the
 //     day with someone starts with their greeting as a G.ask question (a sun, a moon or a wave: buenos días, buenas
-//     noches or hola), so the kids' mic is there, then one due word from their pool (H.POOLS);
+//     noches or hola), so the kids' mic is there, then one due word from any place (their pool, H.POOLS, when none
+//     is due: polish plan 2.5);
 //   - a gift they like (G.hearts.gift(npc, word), once a day per person): +1 (LIKES below; Canelo likes el hueso);
 //   - finishing their errand (maps.js finishQuest -> giver): +2, not counted in the daily cap;
 //   - Canelo: care (food, water, the ball, petting, a trick shown) +1 each, and +1 for every trick learned (not capped).
@@ -155,7 +156,9 @@
 
   // ---------- 1 heart: they call you by name as you pass ----------
   const waved = {};
+  H.talkGreeted = null; // (whose greeting just asked a word, in the talk going on: cleared once the map is free)
   H.update = function (f) {
+    if (!f.locked && G.top() === f) H.talkGreeted = null;
     if (f.locked || G.top() !== f || !f.amb || !G.state) return;
     const p = f.player;
     for (const n of f.npcs) {
@@ -176,8 +179,8 @@
   // The person waves under a sun (the morning: the first minutes of a session), a moon (the evening, once buenas noches
   // is met) or neither, and you answer: [buenos días / buenas noches / hola] when both time-of-day greetings are met,
   // else the right greeting among known words that aren't greetings (hola is never a card beside buenos días before
-  // buenas noches exists: it would be right too). Then one word that is due from their pool (POOLS: what their trade
-  // shows), asked for its stage (G.review.ask). Once a day each; a heart.
+  // buenas noches exists: it would be right too). Then one word that is due, wherever it was met, else one from their
+  // pool (POOLS: what their trade shows), asked for its stage (G.review.ask). Once a day each; a heart.
   H.POOLS = {
     mama: ['buenosdias', 'buenasnoches', 'perro', 'ven', 'sientate', 'hueso', 'agua', 'cama', 'pelota', 'galleta', 'casa', 'comoestas', 'bien', 'feliz', 'cansado'],
     pepe: ['hola', 'buenosdias', 'manzana', 'platano', 'naranja', 'queso', 'porfavor', 'gracias', 'si', 'no', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'rojo', 'amarillo', 'verde'],
@@ -236,10 +239,16 @@
     // a friend you haven't swapped names with says theirs ("Me llamo Pepe. ¿Y tú?"), or some days asks what you like
     // ("¿Qué te gusta?"): that's the day's question with them (src/phrases.js, docs/LEARNING_PLAN_2.md Phase 2)
     if (G.phrase && ((yield* G.phrase.meetName(npc)) || (yield* G.phrase.likeAsk(npc)))) { yield* H.milestones(npc); return true; }
-    // one word that's due, from what they know about
-    const pool = H.POOLS[npc] || [];
-    const due = G.review.next({ filter: id => pool.includes(id) && !GREET.includes(id) });
-    if (due) { if (G.vocabLog) G.vlog.greet = npc; try { yield* G.review.ask(due, { who: npc }); } finally { if (G.vlog) G.vlog.greet = null; } }
+    // one word that's due, wherever she met it (AUDIT C6: a beach word is reviewed in the forest too), asked as picture
+    // cards (G.review.ask: a form that fits any place); when nothing is due, one of their own words she hasn't used
+    // today (G.favores.dueWord: the place's words are the fallback)
+    // (their favour of the day comes next in this talk: that's the review, a moment and not a quiz chain)
+    const pool = H.POOLS[npc] || [], fav = !!(G.favores && G.favores.alert && G.favores.alert(npc));
+    const due = fav ? null : G.favores && G.favores.dueWord ? G.favores.dueWord({ pool, filter: id => !GREET.includes(id) }) : G.review.next({ filter: id => pool.includes(id) && !GREET.includes(id) });
+    if (due) {
+      if (G.vocabLog) G.vlog.greet = npc; try { yield* G.review.ask(due, { who: npc }); } finally { if (G.vlog) G.vlog.greet = null; }
+      H.talkGreeted = npc; // (two questions in this talk: their own word or drawing waits for another time, zones.js Lola, connect.js)
+    }
     yield* H.milestones(npc);
     return true;
   };

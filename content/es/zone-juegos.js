@@ -578,7 +578,10 @@
     if (daily('bub').done) return false;
     const first = !st().metChuy; st().metChuy = true;
     if (first) yield* say('chuy', T('¡Hola, {name}! Soy Don Chuy.', 'Hello, {name}! I\'m Don Chuy. I sell bubble wands!'));
-    yield* meetW('burbujas', { who: 'chuy', prompt: '¡Mira! ¡[burbujas:Burbujas]!', en: 'Look! Bubbles!', known: othersFor('burbujas', ['pelota', 'papalote', 'agua', 'flor']) });
+    // once she knows them, she asks for them: "¿Qué quieres?" "Quiero burbujas, por favor." (a daily routine with a
+    // phrase, polish plan 2.10: src/phrases.js; the old question when phrases are off or Quiero can't come yet)
+    const ph = G.phrase && G.words.stage('burbujas') >= 2 ? yield* G.phrase.quiero('chuy', ['burbujas'], { onGet: function* () { yield* sayShow('chuy', 'burbujas', T('¡[burbujas:Burbujas]! ¡Aquí tienes!', 'Bubbles! Here you are!')); } }) : null;
+    if (!ph || ph.cancel) yield* meetW('burbujas', { who: 'chuy', prompt: '¡Mira! ¡[burbujas:Burbujas]!', en: 'Look! Bubbles!', known: othersFor('burbujas', ['pelota', 'papalote', 'agua', 'flor']) });
     JG.bub = { list: [], n: 0, want: 6, made: 0 }; for (let k = 0; k < 4; k++) bubSpawn(f);
     G.audio.sfx('chime');
     yield* JG.tpr('atrapa', { who: 'chuy', prompt: '¡[atrapa:Atrápalas]!', en: 'Catch them!', ask: '¡Las [burbujas]! ¿Qué hago?', askEn: 'The bubbles! What do I do?',

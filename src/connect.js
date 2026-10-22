@@ -8,11 +8,12 @@
 //   their place. The letter goes in your hands (a story thing: it can't be dropped); the corner shows it with their
 //   face; the guide's arrow leads there (to the bus stop when it's another place: the world map shows the letter over
 //   that place, and the bus takes you), and their bubble shows it once you're near. Delivering: "¡Es de Mamá!" (the
-//   sender's face), a thank-you, a heart and a star. Every other letter they write back (to the town friend who wrote,
-//   or later between places), so letters go both ways and the child travels across the world.
+//   sender's face), a drawing inside of a word that's due (from the sender's place first: "¡Mira! ¡Un dibujo!", picture
+//   cards, polish plan 2.5), a thank-you, a heart and a star. Every other letter they write back (to the town friend who
+//   wrote, or later between places), so letters go both ways and the child travels across the world.
 // The zones' people (G.hearts.ZONE): Don Paco, Marina, Doña Nieves, Tere, Elena, Doña Lupe, Ana, Pablo, Don Chuy,
 //   Abuela, Abuelo, the baby, Don Lucho, Mateo and Lola have hearts like the town: a greeting a day (after their zone's
-//   first chapter: answer it, then one due word from their zone's words, G.review), a thing they like as a present
+//   first chapter: answer it, then one due word from any place, else their zone's, G.favores.dueWord), a thing they like as a present
 //   (G.hearts.LIKES), the 3-heart secret (a rare animal of their place, shown in pictures) and sticker, the 5-heart photo.
 //   Lola is special: the first time you meet her in each place she gets a heart, so exploring all five places makes her
 //   your best friend; the Amigos page shows where you've met her.
@@ -117,6 +118,11 @@
     bag().take('carta', { q: 'post', to: who }); G.audio.jingle('item');
     if (G.cards && met('carta')) G.cards.grow('carta', 'give', { x: G.W / 2, y: G.H / 2 });
     if (it.from && it.from !== who) yield* CK.sayShow(who, { face: it.from }, TT('¡Es de ' + short(it.from) + '!', 'It\'s from ' + (it.from === 'canelo' ? G.dogName() : nm(it.from)) + '!'));
+    // inside, a drawing of something she knows that is due: from the sender's place first (letters span every place,
+    // polish plan 2.5), asked with its picture
+    const fz = it.from ? (H.zoneOf(it.from) === '*' ? null : H.zoneOf(it.from)) : null, FV = G.favores;
+    const pic = FV && FV.dueWord && H.talkGreeted !== who ? (fz && FV.dueWord({ filter: id => Z.ofWord(id) === fz, noFallback: true })) || FV.dueWord({ noFallback: true }) : null; // (not after their greeting's word: a moment, not a quiz)
+    if (pic) { yield* CK.sayShow(who, { icon: 'carta' }, TT('¡Mira! ¡Un dibujo!', 'Look! There\'s a drawing in the letter. What is it?')); yield* G.review.ask(pic, { who }); }
     const s = st(); s.n++; s.log[who] = (s.log[who] | 0) + 1;
     G.state.stars++; G.fx.flyStar(G.W / 2, 90, 0); G.audio.sfx('star'); CK.confetti();
     yield* CK.say(who, TT(met('gracias') ? '¡[gracias:Gracias], {name}!' : '¡Gracias, {name}!', 'Thank you, {name}!'));
