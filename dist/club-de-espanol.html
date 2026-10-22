@@ -9001,7 +9001,8 @@ G.store = {
       // words: id -> the word model's record (words.js: stage, Leitner box, due, counts). Older saves held
       // {learned, right, wrong, said} (present = seen); words.js migrates those when it first reads them.
       words: {},
-      wm: { clock: 0, sess: 0, day: 0, date: '' }, // words.js: play-time clock, session and day counters
+      wm: { clock: 0, sess: 0, day: 0, date: '' }, // words.js: play-time clock, session and day counters (and the memory's:
+                          // its session, the switch day v2, the first day d0, the pacing's queue and daily target)
       finds: {},          // intro.js: find-it puzzles going on: word id -> {who, map, at, wrong, found}
       pages: {},          // notebook page puzzles solved (intro.js): id -> {d: the day it was solved} (older saves: true)
       quests: {},         // id -> 'active' | 'done'
@@ -9115,6 +9116,7 @@ G.store = {
     G.state = devicePrefs(s); S.slot = n; bound = s; badSlot = null;
     Object.assign(status, { at: s.savedAt || 0, fails: 0, why: null });
     if (G.chapters) G.chapters.migrate(); // a game from before the chapters: its errands map onto them (chapters.js)
+    if (G.words) G.words.upgrade(); // its words onto the memory's newer ladder and stages (words.js: kept, never all due at once)
     if (G.words) G.words.newSession('load'); // a new session (and a new day on a new date)
     return true;
   };
@@ -9229,24 +9231,47 @@ G.store = {
 //   stage 0 unmet       never introduced: in speech it is only its picture (ui.js), it is never "seen" by appearing
 //   stage 1 met         its introduction puzzle (G.intro, learn.js / intro.js): picture + blue word, in the notebook
 //   stage 2 known       picked right without a cue: blue word (no picture in speech), 1 star in the notebook
-//   stage 3 remembered  recalled from a picture or sound with word-only cards, matched on a page puzzle, or said: gold, 2 stars
-//   stage 4 solid       remembered again on a later day (3 uncued first-try answers over 2+ days, after reaching 3): 3 stars
-// Box 1-5 (0 = not met): right uncued first try -> up a box, due later: box 1 the same session (minutes), 2 the next day,
-// 3 +2 days, 4 +4, 5 +8 days; a miss -> down a box (not below 1), due again in ~1.5 minutes. A just-met word gets two
-// follow-ups first (fu 1 -> due at +1.5 min, fu 2 -> +6 min), and the review engine asks those before anything else.
+//   stage 3 remembered  gold, 2 stars: a recall-type right answer (word-only cards, a page match, said (not an echo of
+//                       what was just heard), a grown-up's check, or a recall from memory below) on a LATER calendar day
+//                       than the one it was met on
+//   stage 4 solid       3 stars: recalled FROM MEMORY on 2 calendar days later than the one it was met on, at least 2
+//                       days apart. From memory (the history's F, V and C, src/history.js): said before any written cue
+//                       (say-it-first), picked from picture-only cards (no written word on screen) on a later day than the
+//                       last time it was met or used, or a grown-up's check
+// (Since the switch, 2026-10 (G.state.wm.v2: the calendar day this code first ran on the save, AUDIT 2.3). Before it,
+// gold came from a recall-type answer the same day and solid from 3 uncued first tries over 2+ days; whatever was
+// earned then stays: a stage never goes down, and a card never shrinks, cards.js.) Never toward a stage: a cued pick, a
+// listen-and-do tap (mode 'listen'), a forced pair (o.forced: the last pair of a page puzzle), and a right answer on
+// the calendar day it was missed (after a miss the answer was just shown; it can still become known).
+// Boxes 1-8 (0 = not met), in CALENDAR days (W.dayNum(), not the game's day: a night at home in the same sitting moves
+// nothing, AUDIT 2.1): box 1 the same session (minutes), 2 the next day, 3 +3 days, 4 +7, 5 +16, 6 +35, 7 +75, 8 +150
+// (W.BOX_DAYS). A right uncued first try, when it was due -> up a box (a just-met word's two follow-ups first: fu 1 ->
+// due at +1.5 min, fu 2 -> +6 min, then box 2); asked again too soon, nothing moves. A miss -> back to box 2 (from box 4
+// or more) or box 1, due again in ~1.5 minutes; on the calendar day of a miss a right answer can't lift it above box 2
+// (the quick re-ask helps, but the word climbs again from the next day, AUDIT 2.2).
 // Clocks: G.words.now() is play time in seconds (G.state.wm.clock, saved; day.js ticks it while a game is on, the dev
-// log's pace adds to it). A session is a page load / continue, a new game, or a new morning (day.js); a day is a new
-// calendar date or a new morning, whichever comes first (G.state.wm: {clock, sess, day, date}). G.today() and
-// G.debug.dayShift (whole days added to the real date) let tests and the audit play on later days.
-// Saved per word (G.state.words[id]): {st, box, due (play s; and ds, the session: due anyway in a later one) | dd (day) +
-// dc (calendar day number), fu, met (play s),
-// ms (session met), md (day met), mdate (the calendar date it was met: the chapters' daily budget), how, last, n (encounters), right, wrong, said, cue (cued right answers), ret (active
-// retrievals), ft {date: uncued first-try rights}, star (date of the last star), s3 (day it reached stage 3), gold
-// (its "¡Palabra de oro!" was shown), learned (= st >= 3, for older readers),
-// ld (the calendar day number it was last met or used: picked, recalled, said, missed, checked by a grown-up; passive
-// appearances in a line don't count; older records: estimated from star / ft / mdate, W.lastDay), mc (misses in a row),
-// mw (play times of the last 3 misses), slip ({d: day number, n: right first tries since, re: 1 once re-introduced}:
-// a SLIPPING word, docs/LEARNING_PLAN_2.md Phase 1)}.
+// log's pace adds to it). A session is a page load / continue, a new game, or a new morning (day.js); the game's day
+// (W.day(): favours, carry, seek, connect, chapters...; stars are one per word per calendar date) is a new calendar date or a new morning, whichever comes
+// first (G.state.wm: {clock, sess, day, date}). The memory has its own session (wm.ms: a load or a new game, not a night
+// at home) for "a follow-up not asked is due anyway next time", and its own day: the calendar day number (W.dayNum()).
+// G.today() and G.debug.dayShift (whole days added to the real date) let tests and the audit play on later days.
+// Saved per word (G.state.words[id]): {st, box, due (play s; and ds, the memory session: due anyway in a later one) |
+// dc (the calendar day number it is due; dd, the game day, is still written for an older copy of the game), fu,
+// met (play s), ms (session met), md (game day met), mdate (the calendar date it was met), mdn (its day number),
+// how, last, n (encounters), right, wrong, said, cue (cued right answers), ret (active retrievals), ft {date: uncued
+// first-try rights}, star (date of the last star), s3 (game day it reached stage 3), gold (its "¡Palabra de oro!" was
+// shown), learned (= st >= 3, for older readers), ld (the calendar day number it was last met or used: picked, recalled,
+// said, missed, checked by a grown-up; passive appearances in a line don't count; older records: estimated from star /
+// ft / mdate, W.lastDay), lapse (the calendar day number of its last miss), rd [calendar day numbers it was recalled
+// from memory, newest last, up to 4], mc (misses in a row), mw (play times of the last 3 misses), slip ({d: day number,
+// n: right first tries since, re: 1 once re-introduced}: a SLIPPING word, docs/LEARNING_PLAN_2.md Phase 1), gk (its
+// card's points as shown at the switch: a floor, cards.js), v (2: upgraded)}.
+// Upgrading an older save (W.upgrade, on load; W.rec does it per record on demand): G.state.wm.v2 = today (the switch),
+// wm.ms = wm.sess, wm.d0 = the first day the save was played (from the history, else the earliest word met); each record:
+// old box 1-5 (gaps 0, 1, 2, 4, 8 days) -> box 1, 2, 2, 3, 4 (W.OLD_BOX: the next gap after a right answer is the
+// closest to what it was, 1 day shorter at most: 2 -> 3 days for box 3, 4 -> 3 for box 4, 8 -> 16 for box 5), its
+// calendar due date kept (dc; a game-day one only, dd: its days to go from today, any record, W.rec), so nothing falls due because
+// of the upgrade; mdn from mdate; gk its card as shown. Stages, stars, counts and cards are untouched.
 // Slipping: a word missed 3 times (in a row, or 3 misses within W.SLIP.win play seconds) is marked slipping; the next
 // review question for it (G.review.ask, the dog's warm-up) is a fresh one-unknown introduction instead (G.intro.again,
 // intro.js); it stays slipping until it is answered right on the first try twice. W.slipping(id), W.needsReintro(id).
@@ -9256,27 +9281,62 @@ G.store = {
 // API (G.words, short W below):
 //   W.stage(id) 0..4   W.met(id)   W.rec(id) the record (made and migrated on demand; null for a word not in D.words)
 //   W.meet(id, how, o) stage 0 -> 1 (how: 'show' 'find' 'watch' 'listen' 'answer' 'co' 'tap' ...; o.who), schedules the
-//                      follow-ups; true if it was new. (G.intro.* call it and add the small celebration.)
-//   W.answerRight(id, {cued, said, echo, parent, firstTry = true, mode: 'both'|'text'|'pic'|'match'|'say'|'parent'|
-//                      'listen', review}) -> {stage, up, star, gold}: an active retrieval. Uncued first tries move the box and the
-//                      stage; a star at most once per word per day (first tries only). echo: said right after hearing
-//                      it (a listening question answered aloud: the history's echo, not a recall); parent: a grown-up's
-//                      check (a recall, recorded as 'parent'); mode 'listen': the word understood in a spoken instruction
-//                      with no picture (listen-and-do, src/listen.js; receptive, so it moves the box like a pick, never
-//                      to gold: gold stays for recalling the word's form or saying it)
-//   W.answerWrong(id, {parent})  a miss: down a box, due again soon (3 misses: slipping)
+//                      follow-ups; true if it was new. (G.intro.* call it and add the small celebration.) It never asks
+//                      the pacing: content asks G.budget.canIntro first (G.intro.show / watch / listen do it themselves)
+//   W.answerRight(id, o) -> {stage, up, star, gold}: an active retrieval. Uncued first tries move the box and the stage;
+//                      a star at most once per word per day (first tries only). o:
+//                        firstTry (default true), cued (it could be matched or was just shown), review, noStar, noGrow
+//                        mode: 'both' (picture + word cards) | 'text' (word-only cards) | 'pic' (picture-only cards) |
+//                          'match' (a page puzzle) | 'say' (said, its card not written) | 'parent' | 'listen' (the word
+//                          understood in a spoken instruction with no picture: listen-and-do, src/listen.js; receptive,
+//                          so it moves the box like a pick, never the stage)
+//                        said: said aloud (the mic); echo: said right after hearing it (no recall)
+//                        recall: true  the question gave nothing written to read. The two forms other files use:
+//                          answerRight(id, { mode: 'say', recall: true, said: true })  say-it-first: said before any
+//                            written cue (the history's F, recall from memory)
+//                          answerRight(id, { mode: 'pic', recall: true })  picked from picture-only cards, no written
+//                            word on screen (the history's V when it is a later calendar day than the word was last
+//                            met or used; the same day it is a plain pick, P)
+//                        parent: a grown-up's check (mode 'parent': the history's C, recall from memory)
+//                        forced: the only answer left (the last pair of a page puzzle): a cued pick, nothing moves
+//                      Who passes what (the engine can't see the screen): G.ask (learn.js) passes recall: true with
+//                      mode 'pic' when the answer's card is a picture only, no card in the question has a label, the
+//                      answer isn't written in the prompt (absent, or masked: a speaker) and it isn't cued (the review's
+//                      "hear it, pick the picture", the warm-up's picture cards); say-it-first passes {mode: 'say',
+//                      recall: true, said: true}; the grown-ups' check passes parent (history.js); a page puzzle's last
+//                      pair passes forced; listen-and-do passes mode 'listen'. (pet.js: a care card said to the dog has
+//                      no word on it: it could pass recall: true too.) Without recall: true a picture-only pick is a P
+//                        how: 'answer' (G.ask: a question whose answer is a word not met yet meets it with the right
+//                          pick; in the open world on a day with no room for new words it doesn't: G.budget.defer)
+//   W.answerWrong(id, {parent})  a miss: back to box 2 or 1, due again soon (3 misses: slipping)
 //   W.lastDay(id) the day number it was last met or used (or null)   W.gapDays(id) days since then (or null)
 //   W.slipping(id)  W.needsReintro(id) (slipping, not re-introduced yet)  W.reintroduced(id) (G.intro.again calls it)
 //   W.encounter(id, how) a passive meeting of a met word (heard, named, in the bag...): only `last` and `n`
-//   W.due(id)  W.overdue(id) (how late, for sorting)  W.strength(id) 0..1  W.stars(id) 0..3 (the notebook's)
+//   W.due(id)  W.overdue(id) (how late, for sorting)  W.lateness(id) (days late / its gap)  W.gap(id) its gap in days
+//   W.strength(id) 0..1  W.stars(id) 0..3 (the notebook's)  W.recallDays(id) the calendar days it was recalled from memory
 //   W.isOld(id) met in an earlier session or 5+ minutes ago (a prompt for it is a review)
 //   W.list(minStage) ids at that stage or more   W.count(minStage)
 //   W.newSession(reason) ('load', 'new', 'night')   W.step() every frame (the clock, a new calendar date)
-// G.review: due(n, {topic, filter, exclude, minStage, maxStage}) the words due now, just-met follow-ups first, then
-//   missed ones, then by box and lateness; next(o) the first of them; ask(id, o) a question for that word fit for its
-//   stage (yieldable; see intro.js). G.budget: recent(sec) words met in the last sec play-seconds (300), session() words
-//   met this session, pending() words waiting for their follow-ups, canIntro(n, {hard}) (<= 5 per 5 min, <= 6 per
-//   session, 8 with hard), left(o).
+//   W.upgrade() an older save's records onto the new ladder (state.js on load; idempotent)   W.switchDay() wm.v2
+// G.review: due(n, {topic, filter, exclude, minStage, maxStage}) the words due now: just-met follow-ups first, then
+//   missed ones (due again in minutes), then the rest, the most overdue for its gap first (days late / the box's gap;
+//   when that ties, the longer gap first: AUDIT 2.4); next(o) the first of them; count(o); ask(id, o) a question for that
+//   word fit for its stage (yieldable; see intro.js).
+// G.budget (review-first pacing, AUDIT 2.9; new items are words and phrases): canIntro(n, {id, story}) may n new items be
+//   introduced now? Always in a chapter's beat (the story is the spine, paced by its morning gates: G.budget.story(); its
+//   words count toward the day). Elsewhere (the open world: a zone's people, Lola's animals, tap-to-ask, the album,
+//   phrases) only while the backlog (words due by calendar day; not the follow-ups and misses of this session) is 5 or
+//   fewer, up to today's soft target (B.target(): about 2.5 a play day in year 1, 1.8 in year 2, 1.5 from year 3, by days
+//   since the save began; the fraction carries to the next play day), beyond it only while the backlog is 0, and never
+//   past 8 new items in a calendar day (the story's count too). why(n) the reason it's no ('cap' | 'backlog' | 'target')
+//   or null; backlog(); today() items met today; target(); defer(id, src) a word seen but not introduced waits in a small
+//   queue (saved, B.PACE.qmax, newest kept) to be introduced first when pacing allows (the dog's warm-up, G.intro.queued;
+//   or the next time she sees it); queue(); unqueue(id) (W.meet). open(): no pacing (B.OPEN, G.debug.openPacing,
+//   window.__openPacing: tools/harness.js open(..., {openPacing: true})). The older counts stay for the audit and tests:
+//   recent(sec) words met in the last sec play-seconds (300), session() words met this session, pending() words waiting
+//   for their follow-ups, left(o).
+// Saved: G.state.wm = {clock, sess, day, date, sessAt, ms (memory session), v2 (switch day), d0 (first day played),
+//   pace: {d (day number), t (today's target), fr (the fraction carried), q: [ids waiting]}}.
 'use strict';
 (function () {
   const D = () => G.data;
@@ -9284,8 +9344,11 @@ G.store = {
   W.STAGES = ['unmet', 'met', 'known', 'remembered', 'solid'];
   W.FOLLOW = [90, 360];               // just met: asked again after 1.5 min, then 6 min (play seconds)
   W.MISS = 90;                        // a miss: due again after 1.5 min
-  W.BOX_DAYS = [0, 0, 1, 2, 4, 8];    // box -> days until due (box 1: the same session)
+  W.BOX_DAYS = [0, 0, 1, 3, 7, 16, 35, 75, 150]; // box -> calendar days until due (box 1: the same session)
+  W.MAXBOX = W.BOX_DAYS.length - 1;
+  W.OLD_BOX = [0, 1, 2, 2, 3, 4];     // an older record's box (1-5: gaps 0, 1, 2, 4, 8 days) -> its box on this ladder
   W.SLIP = { n: 3, win: 600, rights: 2 }; // 3 misses (in a row, or within 10 min of play) -> slipping, until 2 right first tries
+  W.V = 2;                            // the record's version (r.v)
 
   // ---------- calendar ----------
   G.debug = G.debug || {};
@@ -9295,18 +9358,22 @@ G.store = {
   W.dayNum = dayNum;
 
   // ---------- session, day and clock (G.state.wm) ----------
+  const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
   const wm = () => {
     const s = G.state; if (!s) return { clock: 0, sess: 0, day: 0, date: '' };
-    if (!s.wm || typeof s.wm !== 'object') s.wm = { clock: 0, sess: 0, day: 0, date: '' };
+    if (!isObj(s.wm)) s.wm = { clock: 0, sess: 0, day: 0, date: '' };
     return s.wm;
   };
   W.wm = wm;
   W.now = () => wm().clock;
   W.sess = () => wm().sess;
   W.day = () => wm().day;
+  W.msess = () => { const m = wm(); if (m.ms == null) m.ms = m.sess | 0; return m.ms; }; // (the memory's session: not a night at home)
   W.newSession = function (reason) {
     const m = wm();
+    W.upgrade();
     m.sess = (m.sess | 0) + 1;
+    if (reason !== 'night') m.ms = W.msess() + 1; // (a night at home in the same sitting is the game's new day, not the memory's)
     if (reason === 'night' || !m.day || m.date !== G.today()) m.day = (m.day | 0) + 1;
     m.date = G.today(); m.sessAt = m.clock;
     if (G.vocabLog) G.vlog.ev({ ty: 'session', sess: m.sess, day: m.day, date: m.date, why: reason || '' });
@@ -9321,16 +9388,50 @@ G.store = {
   W.addTime = sec => { if (G.state && sec > 0) wm().clock += sec; };
 
   // ---------- records ----------
-  const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
   // an old record (before stages: {learned, right, wrong, said}; present = seen) becomes: learned -> stage 2, or 3 when
   // it was answered right twice or said; seen -> met. Either way it's due now.
   function migrate(r) {
     const st = r.learned ? ((r.right | 0) >= 2 || (r.said | 0) >= 1 ? 3 : 2) : 1;
-    Object.assign(r, { st, box: st >= 3 ? 2 : 1, due: null, dd: wm().day, dc: null, fu: 0, met: 0, ms: 0, md: 0, how: 'old', last: 0, n: 1,
-      right: r.right | 0, wrong: r.wrong | 0, said: r.said | 0, cue: 0, ret: (r.right | 0) + (r.said | 0), ft: {}, star: '', s3: st >= 3 ? 0 : null, gold: st >= 3, learned: st >= 3 });
+    Object.assign(r, { st, box: st >= 3 ? 2 : 1, due: null, dd: wm().day, dc: dayNum(), fu: 0, met: 0, ms: 0, md: 0, how: 'old', last: 0, n: 1,
+      right: r.right | 0, wrong: r.wrong | 0, said: r.said | 0, cue: 0, ret: (r.right | 0) + (r.said | 0), ft: {}, star: '', s3: st >= 3 ? 0 : null, gold: st >= 3, learned: st >= 3, mdn: null, v: W.V });
     return r;
   }
   W.migrate = migrate;
+  // ---------- the switch (AUDIT 2.1-2.3): an older save's records onto the new ladder ----------
+  // wm.v2: the calendar day this code first ran on the save; wm.d0: the first day it was played (the pacing's year)
+  function firstDay() {
+    let best = dayNum();
+    const see = n => { if (Number.isFinite(n) && n < best) best = n; };
+    const h = G.state.hist; if (isObj(h) && isObj(h.d)) for (const k in h.d) see(isObj(h.d[k]) ? h.d[k].n : null);
+    for (const ws of [G.state.words, isObj(G.state.phrases) && G.state.phrases.r]) if (isObj(ws)) for (const id in ws) { const r = ws[id]; if (isObj(r)) see(W.numOf(r.mdate)); }
+    return best;
+  }
+  function upState() {
+    if (!G.state) return;
+    const m = wm();
+    if (m.v2 == null) { m.v2 = dayNum(); W.msess(); }
+    if (m.d0 == null) m.d0 = firstDay();
+  }
+  W.switchDay = () => (G.state ? (upState(), wm().v2) : null);
+  // one record: its box onto the new ladder, its calendar due date kept, the day it was met, its card as shown now
+  function up(r) {
+    upState();
+    if (r.st >= 1) {
+      const b = r.box | 0;
+      r.box = b <= 0 ? 1 : W.OLD_BOX[Math.min(5, b)];
+      if (r.mdn == null) r.mdn = W.numOf(r.mdate);
+      if (G.cards && G.cards.shownAt) { const k = G.cards.shownAt(r.st, r.gp); if (k > 0) r.gk = k; }
+    }
+    r.v = W.V;
+    return r;
+  }
+  // every record of the save (state.js on load, W.newSession): idempotent
+  W.upgrade = function () {
+    if (!G.state) return;
+    upState();
+    for (const id in G.state.words) W.rec(id);
+    const p = G.state.phrases; if (isObj(p) && isObj(p.r)) for (const id in p.r) W.rec(id);
+  };
   // Phrases (docs/LEARNING_PLAN_2.md, Phase 2; content/es/words.js C.phrases, src/phrases.js) are learnable items too:
   // the same record, stages, boxes, history and cards, kept apart in G.state.phrases.r so that every list of WORDS
   // (W.list, the review engine, the warm-up's words, the notebook's pages, the save slots' counts) stays words only.
@@ -9346,10 +9447,13 @@ G.store = {
     if (!G.state || !W.item(id)) return null;
     const ws = recsOf(id); let r = ws[id];
     if (r && (!isObj(r) || r.st == null)) r = ws[id] = migrate(isObj(r) ? r : {});
-    if (!r && make) r = ws[id] = { st: 0, box: 0, due: null, dd: null, dc: null, fu: 0, met: null, ms: 0, md: 0, how: null, last: null, n: 0, right: 0, wrong: 0, said: 0, cue: 0, ret: 0, ft: {}, star: '', s3: null, gold: false, learned: false };
+    if (r && r.v !== W.V) up(r);
+    if (r && r.st >= 1 && r.due == null && r.dc == null && r.dd != null) r.dc = dayNum() + ((r.dd | 0) - wm().day); // (a game-day due date only: its days to go, as calendar days)
+    if (!r && make) { upState(); r = ws[id] = { st: 0, box: 0, due: null, dd: null, dc: null, fu: 0, met: null, ms: 0, md: 0, how: null, last: null, n: 0, right: 0, wrong: 0, said: 0, cue: 0, ret: 0, ft: {}, star: '', s3: null, gold: false, learned: false, v: W.V }; }
     return r || null;
   };
   const save = () => { if (G.st && G.st.autosave) G.st.autosave(); };
+  let ver = 0; // (bumped by every change to a schedule or a stage: G.budget's memo)
   const log = (ty, id, o) => { if (G.vocabLog) G.vlog(ty, id, o); };
   W.stage = id => { const r = W.rec(id); return r ? r.st | 0 : 0; };
   W.met = id => W.stage(id) >= 1;
@@ -9358,26 +9462,30 @@ G.store = {
   W.stars = id => Math.max(0, Math.min(3, W.stage(id) - 1));
   function setStage(r, id, st) {
     if (st <= r.st) return false;
+    ver++;
     r.st = st; r.learned = st >= 3;
     if (st === 3 && r.s3 == null) r.s3 = wm().day;
     log('stage', id, { st });
     return true;
   }
-  // when it's due next: in play seconds (sec) or in days (box 2+)
+  // when it's due next: in play seconds (sec) or in calendar days (box 2+). (dd, the game day, is written too, so an
+  // older copy of the game reading this save still finds a due date)
   function schedule(r, sec, days) {
-    if (sec != null) { r.due = W.now() + sec; r.ds = wm().sess; r.dd = null; r.dc = null; } // (and due anyway next session)
-    else { r.due = null; r.dd = wm().day + days; r.dc = dayNum() + days; }
+    ver++;
+    if (sec != null) { r.due = W.now() + sec; r.ds = W.msess(); r.dd = null; r.dc = null; } // (and due anyway next memory session)
+    else { r.due = null; r.ds = null; r.dc = dayNum() + days; r.dd = wm().day + days; }
   }
 
   W.meet = function (id, how, o = {}) {
     const r = W.rec(id, true); if (!r) return false;
     r.last = W.now(); r.n++;
     if (r.st >= 1) return false;
-    r.st = 1; r.box = 1; r.fu = 1; r.met = W.now(); r.ms = wm().sess; r.md = wm().day; r.mdate = G.today(); r.how = how || 'meet';
+    r.st = 1; r.box = 1; r.fu = 1; r.met = W.now(); r.ms = wm().sess; r.md = wm().day; r.mdate = G.today(); r.mdn = dayNum(); r.how = how || 'meet';
     r.ld = dayNum();
     schedule(r, W.FOLLOW[0]);
     log('meet', id, { how: r.how, who: o.who || null });
     if (G.hist) G.hist.met(id); // (the learning history: words met today)
+    if (G.budget) G.budget.unqueue(id);
     save();
     return true;
   };
@@ -9414,20 +9522,42 @@ G.store = {
     return true;
   };
 
-  // an active retrieval: o {cued, said, firstTry (default true), mode, review}
+  // ---------- recall from memory, and the stages' rules (since the switch) ----------
+  // the history's letter for a recall from memory, or null: F said before any written cue, V picked from picture-only
+  // cards on a later calendar day than the last time it was met or used, C a grown-up's check
+  function memOf(o, mode, first, cued, ld0, dn) {
+    if (o.parent || mode === 'parent') return 'C';
+    if (!first || cued || o.echo || !o.recall) return null;
+    if (o.said) return 'F';
+    if (mode === 'pic' && ld0 != null && ld0 < dn) return 'V';
+    return null;
+  }
+  W.recallDays = id => { const r = W.rec(id); return r && Array.isArray(r.rd) ? r.rd.slice() : []; };
+  // solid: recalled from memory on 2 calendar days (both later than the one it was met on), at least 2 days apart
+  const solidReady = r => Array.isArray(r.rd) && r.rd.length >= 2 && r.rd[r.rd.length - 1] - r.rd[0] >= 2;
+
+  // an active retrieval: o (see the API above)
   W.answerRight = function (id, o = {}) {
-    const r = W.rec(id, true); if (!r) return { stage: 0, up: false, star: false, gold: false };
-    const first = o.firstTry !== false, mode = o.mode || 'both', day = G.today(), st0 = r.st, cued = !!o.cued || st0 < 1; // (meeting a word by answering is its puzzle, not a retrieval)
+    const none = { stage: 0, up: false, star: false, gold: false };
+    const r = W.rec(id, true); if (!r) return none;
+    const st0 = r.st;
+    // (pacing: a question whose answer isn't met yet meets it by the right pick; in the open world on a day with no room
+    // for a new word it doesn't: no card, and the word waits in the queue, G.budget.defer)
+    if (st0 < 1 && o.how === 'answer' && G.budget && !G.budget.canIntro(1, { id })) { G.budget.defer(id, 'answer'); return Object.assign(none, { deferred: true }); }
+    const first = o.firstTry !== false, mode = o.mode || 'both', day = G.today(), dn = dayNum();
+    const cued = !!o.cued || !!o.forced || st0 < 1; // (meeting a word by answering is its puzzle, not a retrieval; a forced pair is no choice)
+    const ld0 = st0 >= 1 ? W.lastDay(id) : null; // (the last time it was met or used, before this answer)
     const pts0 = G.cards && st0 >= 1 ? G.cards.pts(id) : 0; // (its card before the stage moves: a new stage's floor would hide the growth)
+    const mem = st0 >= 1 ? memOf(o, mode, first, cued, ld0, dn) : null;
     // the history's event (src/history.js): P/p pick, R/r recall (word-only cards, a page match), S/s said, E said right
-    // after hearing it (an echo), K a cued pick, C a grown-up's check, L a spoken instruction understood (capitals: right
-    // on the first try)
-    // L/l a spoken instruction understood (listen-and-do, src/listen.js: the word heard in a sentence, no picture)
-    const hk = st0 < 1 ? null : o.parent ? 'C' : o.said ? (cued || o.echo ? 'E' : first ? 'S' : 's') : cued ? 'K' : mode === 'listen' ? (first ? 'L' : 'l') : mode === 'text' || mode === 'match' ? (first ? 'R' : 'r') : first ? 'P' : 'p';
+    // after hearing it (an echo), K a cued pick (a forced pair too), C a grown-up's check, L/l a spoken instruction
+    // understood (listen-and-do, src/listen.js: the word heard in a sentence, no picture), F recalled from memory and
+    // said, V recalled from memory from pictures alone (capitals: right on the first try)
+    const hk = st0 < 1 ? null : mem || (o.said ? (cued || o.echo ? 'E' : first ? 'S' : 's') : cued ? 'K' : mode === 'listen' ? (first ? 'L' : 'l') : mode === 'text' || mode === 'match' ? (first ? 'R' : 'r') : first ? 'P' : 'p');
     if (hk && G.hist) G.hist.event(id, hk, { answer: true, said: !!o.said });
     if (st0 < 1) W.meet(id, o.how || 'answer');
     r.last = W.now(); r.ru = r.last; r.n++; r.ret++; // (ru: the last retrieval, chapters.js nudge)
-    r.ld = dayNum();
+    r.ld = dn;
     if (first) { r.right++; r.mc = 0; } // (a miss was counted by answerWrong)
     if (cued) r.cue++;
     if (first && !cued && !o.echo && isObj(r.slip) && st0 >= 1 && ++r.slip.n >= W.SLIP.rights) r.slip = null; // (slipping: right twice, it's back)
@@ -9436,24 +9566,26 @@ G.store = {
     if (first && !cued) {
       r.ft[day] = (r.ft[day] | 0) + 1;
       const keys = Object.keys(r.ft); if (keys.length > 12) delete r.ft[keys[0]]; // (only the recent days matter)
-      // the stage: 1 -> 2 by any uncued answer; 2 -> 3 by recall (word-only cards, a page match, saying it outside
-      // picture+word cards); 3 -> 4 on a later day once 3 uncued first tries over 2+ days have come since
-      const recall = mode === 'text' || mode === 'match' || mode === 'say' || mode === 'parent' || (o.said && mode !== 'both');
-      if (r.st === 1) setStage(r, id, 2);
-      else if (r.st === 2 && recall) setStage(r, id, 3);
-      else if (r.st === 3 && r.s3 != null && wm().day > r.s3) {
-        const days = Object.keys(r.ft).filter(k => r.ft[k] > 0), n = days.reduce((a, k) => a + r.ft[k], 0);
-        if (n >= 3 && days.length >= 2) setStage(r, id, 4);
+      // the stage (since the switch, see the top): 1 -> 2 by any uncued answer; 2 -> 3 by a recall-type answer on a later
+      // calendar day than the day it was met; 3 -> 4 once recalled from memory on 2 such days, 2+ days apart. Never by
+      // a listen-and-do tap; never past known on the day it was missed (the answer was just shown)
+      const later = r.mdn == null || dn > r.mdn, lapsed = r.lapse === dn;
+      const recallType = !!mem || (!o.echo && (mode === 'text' || mode === 'match' || mode === 'say' || mode === 'parent' || (o.said && mode !== 'both'))); // (an echo just repeats what was heard)
+      if (mem && later && !lapsed) { const rd = Array.isArray(r.rd) ? r.rd : (r.rd = []); if (rd[rd.length - 1] !== dn) { rd.push(dn); if (rd.length > 4) rd.shift(); } }
+      if (mode !== 'listen') {
+        if (r.st === 1) setStage(r, id, 2);
+        else if (r.st === 2 && recallType && later && !lapsed) setStage(r, id, 3);
+        if (r.st === 3 && solidReady(r)) setStage(r, id, 4);
       }
       // the box, only when it was due (asked again too soon, it stays where it is): a just-met word's follow-ups
-      // first, then up a box
+      // first, then up a box (on the day of a miss, box 2 at most: it climbs again from the next day)
       const ready = r.due != null ? W.now() >= r.due - 30 || W.due(id) : W.due(id);
       if (!ready) { /* massed: no change */ }
       else if (r.fu === 1) { r.fu = 2; schedule(r, W.FOLLOW[1]); }
       else if (r.fu === 2) { r.fu = 0; r.box = 2; schedule(r, null, W.BOX_DAYS[2]); }
-      else { r.box = Math.min(5, Math.max(1, r.box) + 1); schedule(r, null, W.BOX_DAYS[r.box]); }
+      else { r.box = Math.min(lapsed ? 2 : W.MAXBOX, Math.max(1, r.box) + 1); schedule(r, null, W.BOX_DAYS[r.box]); }
     }
-    log('retrieval', id, { said: !!o.said || null, cued: cued || null, mode, first: first || null, st0, st: r.st, review: o.review || null, star: star || null });
+    log('retrieval', id, { said: !!o.said || null, cued: cued || null, mode, first: first || null, st0, st: r.st, review: o.review || null, star: star || null, mem: mem || null });
     // its card grows (cards.js): a pick, a page match (saying it grows it through G.st.said, mic.js)
     if (G.cards && !o.said && !o.noGrow && st0 >= 1) G.cards.grow(id, mode === 'match' ? 'match' : mode === 'listen' ? 'listen' : 'pick', first ? { from: pts0 } : { add: 1, from: pts0 });
     save();
@@ -9463,8 +9595,8 @@ G.store = {
     const r = W.rec(id, true); if (!r) return;
     if (r.st < 1) return; // an unmet word can't be missed (it's still a puzzle)
     if (G.hist) G.hist.event(id, o.parent ? 'c' : 'm'); // (the history, src/history.js: before the last day moves)
-    r.wrong++; r.last = W.now(); r.ld = dayNum();
-    r.box = Math.max(1, (r.box | 0) - 1); if (r.fu === 2) r.fu = 1;
+    r.wrong++; r.last = W.now(); r.ld = dayNum(); r.lapse = dayNum();
+    r.box = (r.box | 0) >= 4 ? 2 : 1; if (r.fu === 2) r.fu = 1; // (forgotten: back to the bottom of the ladder, not one box down)
     schedule(r, W.MISS);
     missed(r);
     save();
@@ -9473,18 +9605,25 @@ G.store = {
   // ---------- due ----------
   W.due = function (id) {
     const r = W.rec(id); if (!r || r.st < 1) return false;
-    if (r.due != null) return W.now() >= r.due || (r.ds != null && wm().sess > r.ds);
-    if (r.dd != null) return wm().day >= r.dd || (r.dc != null && dayNum() >= r.dc);
+    if (r.due != null) return W.now() >= r.due || (r.ds != null && W.msess() > r.ds);
+    if (r.dc != null) return dayNum() >= r.dc;
     return true;
   };
-  // how late it is (bigger = later), to sort the due words: seconds for box 1, days * 1e5 for the rest
+  // how late it is (bigger = later), to sort the due words: seconds for the minutes' timers, days * 1e5 for the rest
   W.overdue = function (id) {
     const r = W.rec(id); if (!r) return 0;
     if (r.due != null) return W.now() - r.due;
-    if (r.dd != null) return Math.max(wm().day - r.dd, r.dc != null ? dayNum() - r.dc : 0) * 1e5;
+    if (r.dc != null) return (dayNum() - r.dc) * 1e5;
     return 1e6;
   };
-  W.strength = id => { const r = W.rec(id); return !r || r.st < 1 ? 0 : Math.min(1, (r.st - 1) / 3 * 0.7 + (Math.max(1, r.box) - 1) / 4 * 0.3); };
+  W.gap = id => { const r = W.rec(id); return r ? W.BOX_DAYS[Math.max(1, Math.min(W.MAXBOX, r.box | 0))] : 0; };
+  // days late for its gap (0: due today; 1: a whole gap late), for the review's order (AUDIT 2.4)
+  W.lateness = function (id) {
+    const r = W.rec(id); if (!r || r.due != null) return 0;
+    if (r.dc == null) return 1;
+    return Math.max(0, dayNum() - r.dc) / Math.max(1, W.gap(id));
+  };
+  W.strength = id => { const r = W.rec(id); return !r || r.st < 1 ? 0 : Math.min(1, (r.st - 1) / 3 * 0.7 + (Math.max(1, r.box) - 1) / (W.MAXBOX - 1) * 0.3); };
   W.isOld = id => { const r = W.rec(id); return !!r && r.st >= 1 && (r.ms < wm().sess || W.now() - (r.met || 0) >= 300); };
   W.starToday = id => { const r = W.rec(id); return !!r && r.star === G.today(); };
 
@@ -9499,11 +9638,14 @@ G.store = {
       if (topics && !topics.includes(D().words[id].topic)) return false;
       return !o.filter || o.filter(id);
     });
+    // just-met follow-ups, then misses (due again in minutes), then the rest: the most overdue for its gap first (a word
+    // a whole gap late before one due today), then the longer gap (closest to long-term memory), then the latest
     const grp = id => { const r = W.rec(id); return r.fu ? 0 : r.due != null ? 1 : 2; };
+    const late = {}, gp = {}; ids.forEach(id => { late[id] = W.lateness(id); gp[id] = W.gap(id); });
     ids.sort((a, b) => {
       const ga = grp(a), gb = grp(b); if (ga !== gb) return ga - gb;
       const ra = W.rec(a), rb = W.rec(b);
-      if (ga === 2 && ra.box !== rb.box) return ra.box - rb.box;
+      if (ga === 2) { if (late[a] !== late[b]) return late[b] - late[a]; if (gp[a] !== gp[b]) return gp[b] - gp[a]; }
       return W.overdue(b) - W.overdue(a) || (ra.last || 0) - (rb.last || 0);
     });
     return ids.slice(0, n);
@@ -9511,18 +9653,70 @@ G.store = {
   R.next = o => R.due(1, o)[0] || null;
   R.count = o => R.due(1e9, o).length;
 
-  // ---------- the new-word budget ----------
+  // ---------- the new-word budget: review-first pacing (AUDIT 2.9) ----------
   const B = G.budget = {};
-  B.LIMITS = { win: 300, per5: 5, session: 6, hard: 8 };
+  B.LIMITS = { win: 300, per5: 5, session: 6, hard: 8 }; // (the older counts: the audit, the grown-ups)
+  B.PACE = { backlog: 5, cap: 8, rate: [2.5, 1.8, 1.5], qmax: 6 }; // backlog: new things only at or under it; cap: new items a calendar day; rate: the soft target a play day, years 1, 2, 3+
+  B.OPEN = false; // true: no pacing (the open world of 2026-10-17); tests: open(..., { openPacing: true })
+  B.open = () => B.OPEN || !!(G.debug && G.debug.openPacing) || (typeof window !== 'undefined' && !!window.__openPacing);
+  B.story = () => !!(G.chapters && G.chapters.running && G.chapters.running()); // (a chapter's beat: the story)
+  const allRecs = () => { if (!G.state) return []; const p = G.state.phrases, out = []; for (const ws of [G.state.words, isObj(p) && p.r]) if (isObj(ws)) for (const id in ws) { const r = W.rec(id); if (r) out.push(r); } return out; };
   const metList = () => Object.keys(G.state ? G.state.words : {}).map(W.rec).filter(r => r && r.st >= 1 && r.how !== 'old');
   B.recent = (sec = B.LIMITS.win) => metList().filter(r => r.met != null && W.now() - r.met < sec).length;
   B.session = () => metList().filter(r => r.ms === wm().sess).length;
   B.pending = () => metList().filter(r => r.fu > 0).length;
   B.left = (o = {}) => Math.max(0, Math.min(B.LIMITS.per5 - B.recent(), (o.hard ? B.LIMITS.hard : B.LIMITS.session) - B.session()));
-  // No daily word limit any more (2026-10-17, the open world): canIntro is always true; the counts above stay for the
-  // audit and grown-ups. Good teaching stays inside each activity (one unknown at a time, used again soon after).
-  B.OPEN = true;
-  B.canIntro = (n = 1, o = {}) => B.OPEN || B.left(o) >= n;
+  // (worked out once a frame at most, the bubbles ask every frame; any change through this file starts again: ver.
+  // Changing a record by hand (tests): G.budget.flush())
+  let memo = {};
+  const fresh = () => { const k = G.frame + '|' + ver + '|' + dayNum() + '|' + W.msess() + '|' + wm().clock + '|' + G.today(); if (memo.k !== k || memo.s !== G.state) memo = { k, s: G.state, bl: null, td: null }; return memo; };
+  B.flush = () => { memo = {}; };
+  // the backlog: words due by calendar day (and follow-ups or misses left from an earlier session), not this session's
+  B.backlog = function () {
+    if (!G.state) return 0;
+    const m = fresh(); if (m.bl != null) return m.bl;
+    const ms = W.msess(); let n = 0;
+    for (const id in G.state.words) { const r = W.rec(id); if (r && r.st >= 1 && W.due(id) && !(r.due != null && r.ds === ms)) n++; }
+    return (m.bl = n);
+  };
+  // new items (words and phrases) met today, by calendar date: the story's too
+  B.today = function () {
+    if (!G.state) return 0;
+    const m = fresh(); if (m.td != null) return m.td;
+    const t = G.today(); return (m.td = allRecs().filter(r => r.st >= 1 && r.how !== 'old' && r.mdate === t).length);
+  };
+  // today's soft target: the rate of the save's year, a whole number a play day (the fraction carries to the next)
+  B.rate = () => { const d = dayNum() - (wm().d0 != null ? wm().d0 : dayNum()), R = B.PACE.rate; return d < 365 ? R[0] : d < 730 ? R[1] : R[2]; };
+  function pace() {
+    upState();
+    const m = wm(); if (!isObj(m.pace)) m.pace = { d: null, t: 0, fr: 0, q: [] };
+    const p = m.pace; if (!Array.isArray(p.q)) p.q = [];
+    const dn = dayNum();
+    if (p.d !== dn) { p.fr = (+p.fr || 0) + B.rate(); p.t = Math.floor(p.fr + 1e-9); p.fr = Math.round((p.fr - p.t) * 1000) / 1000; p.d = dn; }
+    return p;
+  }
+  B.target = () => (G.state ? pace().t : 0);
+  B.why = function (n = 1) {
+    if (!G.state) return null;
+    const t = B.today();
+    if (t + n > B.PACE.cap) return 'cap';
+    const bl = B.backlog();
+    if (bl > B.PACE.backlog) return 'backlog';
+    if (t + n > B.target() && bl > 0) return 'target';
+    return null;
+  };
+  B.canIntro = (n = 1, o = {}) => B.open() || !!o.story || B.story() || !B.why(n);
+  // the queue: words seen in the open world but not introduced (no room that day), newest kept
+  B.queue = () => (G.state ? pace().q.filter(id => D().words[id] && !W.met(id)) : []);
+  B.defer = function (id, src) {
+    if (!G.state || !D().words[id] || W.met(id)) return false;
+    const p = pace(); p.q = p.q.filter(k => k !== id); p.q.push(id);
+    while (p.q.length > B.PACE.qmax) p.q.shift();
+    log('defer', id, { src: src || null, why: B.why() });
+    save();
+    return true;
+  };
+  B.unqueue = id => { if (!G.state) return; const m = wm(); if (isObj(m.pace) && Array.isArray(m.pace.q) && m.pace.q.indexOf(id) >= 0) m.pace.q = m.pace.q.filter(k => k !== id); };
 })();
 
 </script>
@@ -9541,8 +9735,13 @@ G.store = {
 //      events: one letter per retrieval, in order: P pick, R recall (word-only cards, a page match), S said aloud,
 //        L listen (the word understood in a spoken instruction with no picture: listen-and-do, src/listen.js, one per
 //        word per request) (capital: right on the first try; p, r, s, l: right after a miss), K a cued pick (it could be
-//        matched), E said right after hearing it (an echo), m a miss, C / c a grown-up's check right / wrong. (Up to
-//        H.EVMAX a word a day.) An L that comes first on a day the word is back after 1+ days counts for retention.
+//        matched; a page puzzle's forced last pair too), E said right after hearing it (an echo), m a miss, C / c a
+//        grown-up's check right / wrong, and RECALLED FROM MEMORY (2026-10, AUDIT 2.3 / 2.6; always first try):
+//        F said before any written cue (say-it-first: words.js answerRight {mode: 'say', recall: true, said: true}),
+//        V picked from picture-only cards with no written word on screen, on a later calendar day than the word was last
+//        met or used (answerRight {mode: 'pic', recall: true}; the same day it is a P). F, V and C (H.MEM) are the
+//        stages' evidence for solid (words.js). (Up to H.EVMAX a word a day.) An L that comes first on a day the word is
+//        back after 1+ days counts for retention.
 //   old: { days, s, rn, rr, pr, sp, cy, cn }   the folded days' totals (see stats below)
 //   pre: seconds of play before the history began (an older save's G.state.playTime)
 //   chk: { cur: {d, at, ids, r: [1 | 0 | null], i} | null, log: [{d, at, ids, r}] }   the grown-ups' word checks
@@ -9558,7 +9757,8 @@ G.store = {
 // API (G.hist, short H): (o.days: the last n calendar days including today; o.all: everything, the folded days too)
 //   H.state()                 the saved object          H.day(key?) a day's record (today's by default, made on demand)
 //   H.days()                  the kept days' keys, oldest first
-//   H.events(o)               [{day, n, word, kind: 'pick'|'recall'|'say'|'listen'|'miss'|'parent', first, ok, cued, echo, gap}]
+//   H.events(o)               [{day, n, word, kind: 'pick'|'recall'|'say'|'listen'|'miss'|'parent', first, ok, cued, echo,
+//                             mem (recalled from memory: F, V, C), gap}]   H.isMem(letter)
 //   H.stats(o)                {rn, rr (retention: first events after a day or more, right first try), pr (practice
 //                             events, the grown-ups' checks apart), sp (said aloud), cy, cn (checks right / wrong), s}
 //   H.retention(o)            {n, right, pct}  (pct null with no data)      H.retentionByDay(n) [{key, n, right, pct}]
@@ -9578,7 +9778,9 @@ G.store = {
   H.EVMAX = 60;         // events kept per word per day (a dog trick can be said fifty times...)
   H.IDLE = 180 * 60;    // frames without a touch or a key before play time stops counting (3 min)
   H.CHECK_N = 10;       // words in a grown-ups' check
-  H.KIND = { P: 'pick', p: 'pick', K: 'pick', R: 'recall', r: 'recall', S: 'say', s: 'say', E: 'say', L: 'listen', l: 'listen', m: 'miss', C: 'parent', c: 'parent' };
+  H.KIND = { P: 'pick', p: 'pick', K: 'pick', R: 'recall', r: 'recall', S: 'say', s: 'say', E: 'say', L: 'listen', l: 'listen', m: 'miss', C: 'parent', c: 'parent', F: 'say', V: 'recall' };
+  H.MEM = 'FVC'; // recalled from memory: said before any written cue, picked from pictures alone on a later day, a grown-up's check
+  H.isMem = c => !!c && c.length === 1 && H.MEM.indexOf(c) >= 0;
   const ADULT = ['GrownUps', 'LearningDash', 'MicTest', 'Controls', 'QuestLog', 'Backup', 'ProblemLog']; // grown-ups' screens: not play time
   const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
   const W = () => G.words, D = () => G.data;
@@ -9660,7 +9862,7 @@ G.store = {
   };
 
   // ---------- reading ----------
-  const CAP = c => c === 'P' || c === 'R' || c === 'S' || c === 'L' || c === 'C';
+  const CAP = c => c === 'P' || c === 'R' || c === 'S' || c === 'L' || c === 'C' || c === 'F' || c === 'V';
   // one day's numbers: rn / rr retention (each word's first event that day, after a day or more: was it right first
   // try? a cued pick or an echo is no test, and a check before it means it was just seen), pr practice (every event but
   // the grown-ups' checks), sp said aloud, cy / cn checks right / wrong, s seconds played
@@ -9669,7 +9871,7 @@ G.store = {
     for (const id in d.w) {
       const e = d.w[id]; if (!Array.isArray(e) || typeof e[1] !== 'string') continue;
       const ev = e[1], gap = e[0];
-      for (const c of ev) { if (c === 'C') o.cy++; else if (c === 'c') o.cn++; else { o.pr++; if (c === 'S' || c === 's' || c === 'E') o.sp++; } }
+      for (const c of ev) { if (c === 'C') o.cy++; else if (c === 'c') o.cn++; else { o.pr++; if (c === 'S' || c === 's' || c === 'E' || c === 'F') o.sp++; } }
       const c0 = ev[0];
       if (c0 && gap >= minGap && c0 !== 'C' && c0 !== 'c' && c0 !== 'K' && c0 !== 'E') { o.rn++; if (CAP(c0)) o.rr++; }
     }
@@ -9709,7 +9911,7 @@ G.store = {
       const key = keys(st()).find(k => st().d[k] === d);
       for (const id in d.w) {
         const e = d.w[id]; if (!Array.isArray(e) || typeof e[1] !== 'string') continue;
-        [...e[1]].forEach((c, i) => out.push({ day: key, n: d.n, word: id, kind: H.KIND[c], first: CAP(c) || c === 'K' || c === 'E', ok: c !== 'm' && c !== 'c', cued: c === 'K' || c === 'E', echo: c === 'E', gap: i ? 0 : e[0] }));
+        [...e[1]].forEach((c, i) => out.push({ day: key, n: d.n, word: id, kind: H.KIND[c], first: CAP(c) || c === 'K' || c === 'E', ok: c !== 'm' && c !== 'c', cued: c === 'K' || c === 'E', echo: c === 'E', mem: H.isMem(c), gap: i ? 0 : e[0] }));
       }
     }
     return out;
@@ -9749,7 +9951,7 @@ G.store = {
       for (const id in d.w) {
         if (!W().isPhrase(id)) continue;
         const e = d.w[id]; if (!Array.isArray(e) || typeof e[1] !== 'string') continue;
-        for (const c of e[1]) { if (c === 'S' || c === 's' || c === 'E') { out.said++; if (k === td) out.today++; } else if (c === 'P' || c === 'p') out.built++; }
+        for (const c of e[1]) { if (c === 'S' || c === 's' || c === 'E' || c === 'F') { out.said++; if (k === td) out.today++; } else if (c === 'P' || c === 'p') out.built++; }
       }
     }
     return out;
@@ -9857,6 +10059,13 @@ G.store = {
 //   numcol   (two details) count          "Dame dos flores amarillas."
 //   numsize  (two details) count          "Dame tres hongos pequeños."
 //   howmany2 (two details) count, answer  "¿Cuántas conchas azules hay?" / "¿Cuántos osos pequeños hay?"
+// Done with her own body (AUDIT M2, polish plan 2.10: the park's board), then her character does it on the map:
+//   actnum   an action, how many times    "Salta dos veces." "Gira una vez."   (pick: the action's picture, twice)
+//   self     a part of her body           "Tócate la nariz." "Tócate los ojos."
+// And when no detail word is known yet (a beach-first child knows shells and crabs, but no colour or number), the
+// plain request, so listen-and-do reaches every thing on a board (RQ.FALL: only when nothing else can be made):
+//   thing    tap the right one            "Dame la concha." "Toca al cangrejo." "¿Dónde está la tortuga?"
+//   act      do it                        "Baila."
 // A request's tray (the board of 4-6 pictures without labels, src/listen.js) is built so that each word is really
 // needed: a word is TESTED when a picture differs from the right one only in that word's detail (a red and a green
 // apple test "roja"; a red apple and a red flower test "manzana"; a pile bigger than the number tests the number).
@@ -10004,9 +10213,25 @@ G.store = {
   };
   const cap = s => s.replace(/^([¿¡]?)(\S)/, (m, a, b) => a + b.toUpperCase());
   const VERB = { give: 'Dame', bring: 'Tráeme', touch: 'Toca' };
-  // the whole sentence: {text, say}. r.verb: 'give' | 'bring' | 'touch' | 'where' | 'howmany'; r.polite: ", por favor".
-  // An animal or a person touched takes the personal a: "Toca al perro grande." "Toca a la vaca pequeña."
+  // an action, done n times: "Salta dos veces." "Gira una vez." (vez is feminine: una vez), or just "Baila."
+  function actSentence(r) {
+    const w = WD(r.thing); if (!w) return null;
+    const F = cap(w.es.split(' / ')[0]), n = r.num ? RQ.numOf(r.num) : 0;
+    const times = r.num ? [tok(r.num, RQ.numWord(r.num, 'f')), RQ.numWord(r.num, 'f'), n === 1 ? 'vez' : 'veces'] : null, end = /[?!]$/.test(F) ? '' : '.'; // (a word with its own marks, ¿cómo estás?: as it is)
+    const text = tok(r.thing, F) + (times && end ? ' ' + times[0] + ' ' + times[2] : ''), say = F + (times && end ? ' ' + times[1] + ' ' + times[2] : '');
+    return { text: text + end, say: say + end, np: '¡' + say + '!', npText: '¡' + text + '!' };
+  }
+  // a part of her body: "Tócate la nariz." "Tócate los ojos."
+  function selfSentence(r) {
+    const np = RQ.np({ thing: r.thing }); if (!np) return null;
+    return { text: 'Tócate ' + np.text + '.', say: 'Tócate ' + np.plain + '.', np: '¡Tócate ' + np.plain + '!', npText: '¡Tócate ' + np.text + '!' };
+  }
+  // the whole sentence: {text, say}. r.verb: 'give' | 'bring' | 'touch' | 'where' | 'howmany' | 'act' | 'self';
+  // r.polite: ", por favor". An animal or a person touched takes the personal a: "Toca al perro grande." "Toca a la vaca
+  // pequeña."
   RQ.sentence = function (r) {
+    if (r.verb === 'act') return actSentence(r);
+    if (r.verb === 'self') return selfSentence(r);
     const base = Object.assign({}, r, r.verb === 'howmany' ? { def: false, plural: true, num: null } : {}, { pre: null });
     const np = RQ.np(base); if (!np) return null;
     const obj = r.verb === 'touch' && RQ.animate(r.thing) ? RQ.np(Object.assign(base, { pre: 'a' })) : np;
@@ -10026,9 +10251,12 @@ G.store = {
   // things: { word id: {cols: [colour word ids it comes in], count: 1 (it can be counted: piles, "¿cuántas?"), sizes: 1
   //   (big and small), animal: 1 (touched or looked for: "Toca al perro grande", never handed over), noHold: 1 (a thing
   //   you can't hold: the sun, a cloud, a snowman: touched or looked for too, "Toca la nube grande", never "Dame el sol")}
-  //   }; carry: 1 (a world request: the things are scattered on the map to pick up and bring, src/listen.js); places:
-  //   { zone: things } (Lola: the board of the place she's in)
-  const A = { sizes: 1, count: 1, animal: 1 };
+  //   verb: 1 (an action she does: "Salta dos veces"; count: 1 for how many times, up to three), body: 1 (a part of her
+  //   body: "Tócate la nariz")}; carry: 1 (a world request: the things are scattered on the map to pick up and bring,
+  //   src/listen.js); places: { zone: things } (Lola: the board of the place she's in)
+  // Every place has a board (AUDIT M2, polish plan 2.10): Villa Sol (Don Pepe, Nico, Lucía), the beach (Don Paco), the
+  // forest (Doña Lupe, Elena), the park (Ana), the grandparents' (Abuelo), the mountain (Mateo, Don Lucho).
+  const A = { sizes: 1, count: 1, animal: 1 }, V = { verb: 1, count: 1 }, B = { body: 1 };
   RQ.holds = d => !!d && !d.animal && !d.noHold; // (a thing she can hand over: "Dame...", counted into the basket)
   const FRUIT = { manzana: { cols: ['rojo', 'verde', 'amarillo'], count: 1 }, platano: { cols: ['amarillo', 'verde'], count: 1 }, naranja: { count: 1 } };
   const COLS = ['rojo', 'azul', 'amarillo', 'verde', 'rosa', 'blanco'];
@@ -10052,6 +10280,15 @@ G.store = {
     // La montaña: Mateo's weather things (clouds, the sun, snowmen: big and small, to touch or find, never handed over)
     // and the clothes for the cold
     mateo: { things: { nube: { sizes: 1, count: 1, noHold: 1 }, elsol: { sizes: 1, noHold: 1 }, muneco: { sizes: 1, noHold: 1 }, gorro: { cols: COLS }, bufanda: { cols: COLS }, guantes: { cols: COLS } } },
+    // ...and Don Lucho's mountain animals (big and small, how many): "Toca a la llama grande." "¿Cuántas marmotas hay?"
+    // "¿Dónde está el águila pequeña?"
+    lucho: { things: { llama: A, marmota: A, puma: A, aguila: A, lobo: A, zorrillo: A } },
+    // La playa: Don Paco's catch: shells by colour and number, starfish to count, crabs, turtles, fish and gulls big and
+    // small: "Dame dos conchas blancas." "¿Cuántas estrellas de mar hay?" "Toca al cangrejo pequeño."
+    paco: { things: { concha: { cols: ['rosa', 'blanco', 'azul', 'amarillo'], count: 1 }, estrellamar: { count: 1 }, cangrejo: A, tortuga: A, pez: A, gaviota: A } },
+    // El parque de juegos: Ana's games, with her whole body (she does them on the map): "Salta dos veces." "Gira una
+    // vez." "Tócate la nariz." "Tócate los ojos."
+    ana: { things: { salta: V, gira: V, baila: V, nariz: B, ojos: B, boca: B, cabeza: B, mano: B, pie: B } },
     // the dog's warm-up (src/warmup.js): his own things, and every board above (RQ.spec('dog'))
     dog: { things: { pelota: { cols: COLS }, hueso: { count: 1 } } },
   };
@@ -10070,7 +10307,7 @@ G.store = {
   // every word a board may use (its things, their colours, the sizes, the numbers)
   RQ.words = function (spec) {
     const out = new Set(); if (!spec) return [];
-    const add = t => { const o = spec.things[t]; out.add(t); (o.cols || []).forEach(c => out.add(c)); if (o.sizes) { out.add('grande'); out.add('pequeno'); } if (o.count) RQ.NUMS.slice(0, spec.carry ? 3 : 5).forEach(n => out.add(n)); };
+    const add = t => { const o = spec.things[t]; out.add(t); (o.cols || []).forEach(c => out.add(c)); if (o.sizes) { out.add('grande'); out.add('pequeno'); } if (o.count) RQ.NUMS.slice(0, spec.carry || o.verb ? 3 : 5).forEach(n => out.add(n)); };
     if (spec.places) for (const z in spec.places) RQ.words(Object.assign({}, spec, { places: null, things: spec.places[z] })).forEach(w => out.add(w));
     else Object.keys(spec.things || {}).forEach(add);
     return [...out].filter(WD);
@@ -10083,15 +10320,29 @@ G.store = {
   RQ.colHex = colHex;
   const drawable = t => !!WD(t) && (!G.iconDrawn || G.iconDrawn(t));
   // the templates a board allows for a thing, with what each needs
-  const TPL1 = ['num', 'col', 'size', 'howmany'], TPL2 = ['numcol', 'numsize', 'howmany2'];
-  RQ.TPLS = TPL1.concat(TPL2);
+  const TPL1 = ['num', 'col', 'size', 'howmany', 'actnum', 'self'], TPL2 = ['numcol', 'numsize', 'howmany2'];
+  const FALL = ['thing', 'act']; // (the plain requests: only when nothing with a detail can be made, RQ.make)
+  RQ.TPLS = TPL1.concat(TPL2, FALL);
   RQ.TWO_DETAILS = TPL2;
+  RQ.FALL = FALL;
+  // the things of a kind on a board she knows and that have a picture: nouns ('noun'), actions ('verb'), her body ('body')
+  const kindOf = d => (d.verb ? 'verb' : d.body ? 'body' : 'noun');
+  const peers = (th, t) => Object.keys(th).filter(k => k !== t && kindOf(th[k]) === kindOf(th[t]) && RQ.known(k) && drawable(k) && (kindOf(th[k]) === 'verb' || !!RQ.noun(k)));
   // all the requests one template could make on this board: [{tpl, thing, col, size, num, answer}]
   function options(spec, tpl, o) {
     const out = [], th = spec.things || {}, carry = !!(o.carry || spec.carry), maxN = carry ? 3 : 5;
     const nums = RQ.NUMS.slice(0, maxN).filter(RQ.known), sizes = ['grande', 'pequeno'].filter(RQ.known);
     for (const t of Object.keys(th)) {
-      const d = th[t], n = RQ.noun(t); if (!n || !RQ.known(t) || !drawable(t)) continue;
+      const d = th[t];
+      if (d.verb || d.body) { // an action (how many times) or a part of her body: never carried, two others to choose from
+        if (carry || !RQ.known(t) || !drawable(t) || (d.body && !RQ.noun(t)) || peers(th, t).length < (tpl === 'actnum' ? 1 : 2)) continue;
+        if (tpl === 'actnum' && d.verb && d.count) nums.filter(k => RQ.numOf(k) <= 3 && (k !== 'uno' || o.focus === 'uno' || o.one || nums.length === 1)).forEach(num => out.push({ tpl, thing: t, num }));
+        if (tpl === 'act' && d.verb) out.push({ tpl, thing: t });
+        if (tpl === 'self' && d.body) out.push({ tpl, thing: t });
+        continue;
+      }
+      const n = RQ.noun(t); if (!n || !RQ.known(t) || !drawable(t)) continue;
+      if (tpl === 'thing' && !carry && peers(th, t).length >= 2) out.push({ tpl, thing: t });
       const cols = (d.cols || []).filter(RQ.known), canCount = !!d.count && !n.plOnly;
       if (tpl === 'num' && canCount && RQ.holds(d)) nums.filter(k => k !== 'uno' || o.focus === 'uno' || o.one).forEach(num => out.push({ tpl, thing: t, num })); // ("una": now and then, RQ.ONE)
       if (tpl === 'col' && cols.length && d.cols.length >= 2) cols.forEach(col => out.push({ tpl, thing: t, col }));
@@ -10112,7 +10363,8 @@ G.store = {
   const usesWord = (r, id) => r.thing === id || r.col === id || r.size === id || r.num === id || r.answerNum === id;
   const CARRY_TPL = ['num', 'col', 'numcol'];
   const tplsFor = (level, carry) => (level >= 2 ? TPL1.concat(TPL2) : TPL1).filter(t => !carry || CARRY_TPL.includes(t));
-  RQ.feasible = (spec, id, level) => !!spec && tplsFor(level || RQ.level(), !!spec.carry).some(tpl => options(spec, tpl, {}).some(r => !id || usesWord(r, id)));
+  const fallFor = carry => (carry ? [] : FALL);
+  RQ.feasible = (spec, id, level) => !!spec && tplsFor(level || RQ.level(), !!spec.carry).concat(fallFor(!!spec.carry)).some(tpl => options(spec, tpl, {}).some(r => !id || usesWord(r, id)));
   // the ramp (src/history.js keeps it in G.state.hist.ld)
   const ld = () => (G.hist && G.hist.listenState ? G.hist.listenState() : null);
   RQ.level = () => { const L = ld(); return L && L.lvl === 2 ? 2 : 1; };
@@ -10135,6 +10387,12 @@ G.store = {
     let all = [];
     const one = rnd() < RQ.ONE; // ("Dame una concha": counting one now and then, for un / una)
     for (const t of tpls) all = all.concat(options(spec, t, { carry, focus: o.focus, one }));
+    // the plain requests ("Dame la concha.", "Baila."): when nothing with a detail can be made (no colour, number or
+    // size known yet), or nothing about the word that's due
+    if (!o.tpl && (!all.length || (o.focus && !all.some(r => usesWord(r, o.focus))))) {
+      let fb = []; for (const t of fallFor(carry)) fb = fb.concat(options(spec, t, { carry, focus: o.focus, one }));
+      all = all.length ? all.concat(fb.filter(r => usesWord(r, o.focus))) : fb;
+    }
     if (!all.length) return null;
     // the word that's due comes first, then (level 2) mostly a two-detail one, else one detail; one at random
     let pool = o.focus ? all.filter(r => usesWord(r, o.focus)) : [];
@@ -10155,13 +10413,20 @@ G.store = {
     r.level = o.level; r.carry = !!o.carry; r.who = spec.who || null;
     r.kind = /^howmany/.test(r.tpl) ? 'howmany' : /^num/.test(r.tpl) ? 'count' : 'pick';
     r.n = r.num ? RQ.numOf(r.num) : r.kind === 'pick' ? 1 : null;
-    const cols = (d.cols || []).slice(), others = Object.keys(th).filter(t => t !== r.thing && drawable(t) && RQ.noun(t) && !(r.kind === 'count' && !RQ.holds(th[t])));
+    const cols = (d.cols || []).slice(), others = Object.keys(th).filter(t => t !== r.thing && drawable(t) && RQ.noun(t) && !th[t].verb && !th[t].body && !(r.kind === 'count' && !RQ.holds(th[t])));
     const otherCol = c => shuffle(cols.filter(x => x !== c));
     const sizeO = s => (s === 'grande' ? 'pequeno' : 'grande');
     const otherThing = need => shuffle(others.filter(t => need(th[t])));
     const cells = [], add = c => { cells.push(Object.assign({ thing: r.thing, col: null, size: null, n: 1 }, c)); return c; };
     const metFirst = L => L.sort((a, b) => (G.words && G.words.met ? (G.words.met(b) ? 1 : 0) - (G.words.met(a) ? 1 : 0) : 0));
-    if (r.kind === 'pick') {
+    if (d.verb || d.body || r.tpl === 'thing') {
+      // an action, a part of her body, a plain thing: the right one among others she knows (each one tests the word);
+      // an action done n times: the same action another number of times too (that tests the number)
+      const P = shuffle(peers(th, r.thing)), k = r.n || 1;
+      add({ right: true, n: k });
+      if (r.tpl === 'actnum') { const alt = [1, 2, 3].filter(x => x !== k), k2 = alt[Math.floor(rnd() * alt.length)]; add({ n: k2 }); P.slice(0, 2).forEach((t, i) => add({ thing: t, n: i ? k2 : k })); }
+      else P.slice(0, 3).forEach(t => add({ thing: t }));
+    } else if (r.kind === 'pick') {
       // the right one, a picture that differs only in the detail, one that differs only in the thing, then others
       add({ col: r.col || null, size: r.size || null, right: true });
       if (r.col) { otherCol(r.col).slice(0, 2).forEach(c => add({ col: c })); const t2 = metFirst(otherThing(x => (x.cols || []).includes(r.col)))[0]; if (t2) add({ thing: t2, col: r.col }); }
@@ -10203,19 +10468,23 @@ G.store = {
       thing: wrong.some(c => c.thing !== r.thing && same(c, right, 'thing')),
       col: !!r.col && wrong.some(c => c.col !== r.col && same(c, right, 'col')),
       size: !!r.size && wrong.some(c => c.size !== r.size && same(c, right, 'size')),
-      num: !!r.num, // (the right pile always has more than asked; a "¿cuántas?" is her answer: src/listen.js)
+      // (the right pile always has more than asked; a "¿cuántas?" is her answer: src/listen.js; an action done n times:
+      // the same action another number of times is on the tray)
+      num: r.tpl === 'actnum' ? wrong.some(c => c.thing === r.thing && (c.n | 0) !== r.n) : !!r.num,
     };
     if (r.kind !== 'howmany') { shuffle(cells); r.answer = cells.findIndex(c => c.right); }
     else shuffle(cells);
     r.tray = cells;
-    r.verb = o.verb || (r.kind === 'howmany' ? 'howmany' : o.carry ? 'bring' : !RQ.holds(d) ? (rnd() < 0.5 ? 'touch' : 'where') : 'give');
-    r.polite = r.verb !== 'where' && r.verb !== 'howmany' && r.verb !== 'touch' && RQ.known('porfavor') && rnd() < 0.5;
+    r.verb = o.verb || (d.verb ? 'act' : d.body ? 'self' : r.kind === 'howmany' ? 'howmany' : o.carry ? 'bring' : !RQ.holds(d) ? (rnd() < 0.5 ? 'touch' : 'where') : 'give');
+    r.polite = !['where', 'howmany', 'touch', 'act', 'self'].includes(r.verb) && RQ.known('porfavor') && rnd() < 0.5;
     r.words = [r.num, r.thing, r.size, r.col].filter(Boolean);
     const s = RQ.sentence(r); if (!s) return null;
     Object.assign(r, s);
-    const shown = RQ.np(r.kind === 'howmany' ? { thing: r.thing, col: r.col, size: r.size, num: r.answerNum } : r); // ("¡Tres conchas azules!": the right one, said when it's shown)
-    r.np = '¡' + cap(shown.plain) + '!';
-    r.npText = '¡' + shown.text.replace(/^(\[[a-z0-9]+:)?(\S)/, (m, a, b) => (a || '') + b.toUpperCase()) + '!';
+    if (r.verb !== 'act' && r.verb !== 'self') { // (an action, her body: the sentence's own: "¡Salta dos veces!")
+      const shown = RQ.np(r.kind === 'howmany' ? { thing: r.thing, col: r.col, size: r.size, num: r.answerNum } : r); // ("¡Tres conchas azules!": the right one, said when it's shown)
+      r.np = '¡' + cap(shown.plain) + '!';
+      r.npText = '¡' + shown.text.replace(/^(\[[a-z0-9]+:)?(\S)/, (m, a, b) => (a || '') + b.toUpperCase()) + '!';
+    }
     r.dims = { thing: r.thing, col: r.col || null, size: r.size || null, num: r.num || null };
     r.words.forEach(w => { if (!RQ.known(w)) throw new Error('requests: ' + w + ' is not known'); });
     return r;
@@ -10236,7 +10505,7 @@ G.store = {
     dims.thing = all('thing', req.thing);
     if (req.col) dims.col = all('col', req.col);
     if (req.size) dims.size = all('size', req.size);
-    if (req.num) dims.num = L.length === req.n;
+    if (req.num) dims.num = req.kind === 'pick' ? L.length === 1 && (L[0].n || 1) === req.n : L.length === req.n; // (a pick: the action done that many times)
     else if (req.kind === 'count') dims.num = L.length >= 1;
     return { ok: Object.keys(dims).every(k => dims[k]), dims };
   };
@@ -10246,6 +10515,17 @@ G.store = {
     for (const k of ['num', 'thing', 'size', 'col']) { const w = req.dims[k]; if (!w) continue; (req.tested[k] ? tested : heard).push(w); }
     return { tested, heard };
   };
+
+  // the requests' own lines, by name (tools/test-spanish.js runs every word through each one): the plain requests and
+  // the park's (a word that isn't a noun or an action, where one is needed: just the word with its article)
+  const reqLine = (r, id) => { const s = (r.verb !== 'act' || !RQ.noun(id)) && RQ.sentence(r); return s ? s.text : RQ.the(id, { cap: 1 }) + (r.num ? ' ' + tok(r.num, RQ.numWord(r.num, 'f')) + (r.num === 'uno' ? ' vez' : ' veces') : '') + '.'; };
+  RQ.LINES['listen.give'] = id => reqLine({ verb: 'give', thing: id }, id);                // Dame la [concha].
+  RQ.LINES['listen.touch'] = id => reqLine({ verb: 'touch', thing: id }, id);              // Toca al [cangrejo].
+  RQ.LINES['listen.where'] = id => reqLine({ verb: 'where', thing: id }, id);              // ¿Dónde está la [tortuga]?
+  RQ.LINES['listen.self'] = id => reqLine({ verb: 'self', thing: id }, id);                // Tócate la [nariz]. Tócate los [ojos].
+  RQ.LINES['listen.act'] = id => reqLine({ verb: 'act', thing: id }, id);                  // [salta:Salta].
+  RQ.LINES['listen.veces'] = id => reqLine({ verb: 'act', thing: id, num: 'dos' }, id);    // [salta:Salta] [dos:dos] veces.
+  RQ.LINES['listen.vez'] = id => reqLine({ verb: 'act', thing: id, num: 'uno' }, id);      // [gira:Gira] [uno:una] vez.
 })();
 
 </script>
@@ -10260,7 +10540,9 @@ G.store = {
 //   once per word per C.GAP seconds of play, so they can't be farmed)
 // The plant always agrees with the word model (words.js, docs/LEARNING_DESIGN.md): it can't flower before the word is
 // remembered (stage 3, the gold card), a known word is at least a sprout, a remembered one at least a flower and a solid
-// one two flowers; the third flower (gold petals) only grows on a solid word.
+// one two flowers; the third flower (gold petals) only grows on a solid word. A card never shrinks: stages never go down,
+// growth points only add up, and a card grown before the stricter stages (the switch, words.js) keeps at least the
+// points it showed then (its record's gk), whatever FLOOR / CAP say for its stage.
 // Each use pops the card up near the action (where the child tapped, the mic, the thing on the map: C.at / o.x, o.y), the
 // plant grows before their eyes with a rising sound (speaking: bigger, slower, with sound waves and a brighter sound),
 // then the card flies into the deck in the top-right corner. On the map the deck IS the menu button (a little stack of
@@ -10300,9 +10582,13 @@ G.store = {
 
   // ---------- points and levels ----------
   C.raw = id => { const r = rec(id); return r ? +r.gp || 0 : 0; };
+  // the points shown for a stage and growth points (words.js keeps a card's points as shown at the switch to the stricter
+  // stages, AUDIT 2.3, in its record's gk: a floor, so a card she has grown never shrinks)
+  C.shownAt = (st, gp) => (st < 1 ? 0 : Math.max(FLOOR[st] || 0, Math.min(CAP(st), +gp || 0)));
   C.shown = function (id, gp) {
     const st = G.words ? G.words.stage(id) : 0; if (st < 1) return 0;
-    return Math.max(FLOOR[st] || 0, Math.min(CAP(st), gp == null ? C.raw(id) : gp));
+    const r = rec(id), keep = r && +r.gk > 0 ? +r.gk : 0;
+    return Math.max(keep, C.shownAt(st, gp == null ? C.raw(id) : gp));
   };
   C.pts = id => C.shown(id);
   C.levelOf = p => { let k = 0; while (k + 1 < C.LV.length && p >= C.LV[k + 1]) k++; return k; };
@@ -10879,7 +11165,69 @@ G.store = {
   // opts.micBig (with opts.show): a big mic right beside the picture held up, the first thing to try (the dog's warm-up,
   // warmup.js). opts.cancel: a way out (a back button; opts.cancelIcon 'skip': the big skip button, G.skipBtn), and
   // opts.onCancel() hears about it. opts.drawExtra(ctx, scene): more to draw over the question (the warm-up's cards).
+  // opts.sayFirst (with opts.show and a word answer; G.sayFirst below): first only the picture and the big mic, pulsing,
+  // for about 4 s (opts.sayEn: the English help meanwhile); said right: answered (scene.said1), else the cards appear.
+  // opts.reveal: the cards keep their pictures under the answer's own picture (a word not known well enough for word-only
+  // cards: picture + word, a matching reveal, so G.ask counts the tap as a cued use, never as a recall).
+  // No give-aways (docs/AUDIT_2026-10.md 2.7): every card of a question writes its word at the same size and, until it
+  // is answered, in the same colour (a short word drawn twice as big, or the one gold word among blue ones, would point
+  // at the answer).
   const GOLD = '#f8d860', BLUE = '#a8d8ff';
+
+  // ---------- "Say it first" (docs/AUDIT_2026-10.md 2.6): the picture and a big mic alone, then the cards ----------
+  // A review question for a word she knows (stage 2+) can start with only its picture and a big pulsing mic, the question
+  // spoken, for about 4 s (SF.WAIT): she taps the mic and says it (the recognizer starts inside that tap, mic.js). Heard
+  // right: a big celebration, and the answer is a recall said before any written cue (words.js answerRight {mode: 'say',
+  // recall, said}). Anything else (another word, nothing, an error), no tap on the mic, or a tap anywhere else: the cards
+  // simply appear (no "wrong", no sad sound, no miss) and she answers by tapping as always. The recognizer may reward,
+  // never judge (speech recognition is unreliable for a child's voice).
+  //   SF.on()          the mic can listen (G.mic.on: supported, "Speaking (mic)" on) and the grown-ups' "Speaking prompts"
+  //                    isn't "quiet" (G.prefs.sayFirst === false, per device; the other mic buttons stay)
+  //   SF.can(id)       a word it can be asked for: known (stage 2+), with its picture, not waiting to be met again
+  //   SF.want(id, o)   should this review question start with it? One in SF.EVERY eligible review questions (the third,
+  //                    the sixth...: a chain of questions isn't slowed at every step), never a word already asked this way
+  //                    today; o.always (the dog's warm-up, its say step): every time it can
+  //   SF.mark(key) SF.doneToday(key)  today's, in memory (a reload starts again); the album's "¿Quién es?" uses 'album:' + id
+  //   SF.n             eligible review questions since the last one (tests set it)   SF.reset()
+  const SF = G.sayFirst = { EVERY: 3, WAIT: 240, n: 0 };
+  let sfDay = { key: '', ids: {} };
+  const sfBook = () => { const k = G.today() + '|' + (G.st && G.st.slot); if (sfDay.key !== k) sfDay = { key: k, ids: {} }; return sfDay.ids; };
+  SF.quiet = () => !!(G.prefs && G.prefs.sayFirst === false);
+  SF.on = () => !SF.quiet() && !!(G.mic && G.mic.on());
+  SF.can = id => SF.on() && !!D().words[id] && S().stage(id) >= 2 && G.iconDrawn(id) && !(G.words.needsReintro && G.words.needsReintro(id));
+  SF.mark = key => { sfBook()[key] = 1; };
+  SF.doneToday = key => !!sfBook()[key];
+  SF.reset = () => { SF.n = 0; sfDay = { key: '', ids: {} }; };
+  SF.want = function (id, o = {}) {
+    if (!SF.can(id)) return false;
+    if (o.always) return true;
+    if (SF.doneToday(id)) return false;
+    if (++SF.n < SF.EVERY) return false;
+    SF.n = 0; return true;
+  };
+
+  // ---------- words that look or sound alike (abuela / abuelo, gato / pato, casa / cama): never side by side ----------
+  // Alike: the written forms (article, accents and ¿¡ aside) are within 2 edits, share a stem (their first 4 letters:
+  // abuel-, gall-, mari-), or sound alike to the mic (G.speech.score 0.6+: the mic hears every card). G.wordsApart(ids):
+  // no two of them alike. G.pickApart(answer, candidates, n): up to n of the candidates, in order, apart from the answer
+  // and from each other (then, if too few, the rest in order).
+  const plainForm = id => G.speech.norm(G.baseForm(id)).replace(/^(el|la|los|las|un|una) /, '');
+  G.wordsAlike = function (a, b) {
+    if (a === b) return true;
+    const x = plainForm(a), y = plainForm(b); if (!x || !y) return false;
+    if (x === y || G.speech.lev(x, y) <= 2) return true;
+    let p = 0; while (p < x.length && p < y.length && x[p] === y[p]) p++;
+    if (p >= 4) return true;
+    const A = G.baseForm(a), B = G.baseForm(b);
+    return Math.max(G.speech.score(A, B), G.speech.score(B, A)) >= 0.6;
+  };
+  G.wordsApart = ids => ids.every((a, i) => ids.every((b, j) => j <= i || !G.wordsAlike(a, b)));
+  G.pickApart = function (answerId, cands, n) {
+    const out = [];
+    for (const id of cands) { if (out.length >= n) break; if (id !== answerId && !out.includes(id) && G.wordsApart([answerId].concat(out, [id]))) out.push(id); }
+    for (const id of cands) { if (out.length >= n) break; if (id !== answerId && !out.includes(id)) out.push(id); }
+    return out;
+  };
   function view(c, disp, isAns) {
     const W = D().words[c.word] && c.img ? c.img : D().words[c.word]; // (c.img: a picture of its own, e.g. the red ball for rojo)
     if (!W) return { label: c.label, icon: c.icon, col: '#ffffff' };
@@ -10900,7 +11248,11 @@ G.store = {
       this.ch = opts.choices; this.cards = opts.layout === 'cards'; this.disp = opts.display || null;
       // (opts.mic: a free choice, no right answer, like the shops in errands.js: saying any choice picks it, with a star)
       const word = (opts.answer != null && opts.onWrong && !opts.noMic && this.ch[opts.answer] && this.ch[opts.answer].word) || (opts.mic && opts.answer == null && this.ch.some(c => c.word));
-      this.mic = word && G.mic && G.mic.on() ? new G.MicBtn(this, { rect: () => this.micRect(), ready: () => !this.won && this.t > 8 && (!this.miss || this.miss.t > 8), heard: a => this.heard(a) }) : null;
+      this.mic = word && G.mic && G.mic.on() ? new G.MicBtn(this, { rect: () => this.micRect(), ready: () => !this.won && this.t > 8 && (!this.miss || this.miss.t > 8), heard: a => this.heard(a), nohear: () => { if (!this.say) return false; this.reveal('nohear'); return true; } }) : null;
+      // say it first: only the picture and the big mic for now (G.sayFirst); the cards come after
+      const aw = opts.answer != null && this.ch[opts.answer] && this.ch[opts.answer].word;
+      this.say = opts.sayFirst && aw && opts.show && this.mic && SF.on() ? { t: 0 } : null;
+      if (this.say) SF.mark(aw);
       while (this.ch[this.i] && this.ch[this.i].off) this.i++;
       if (G.vocabLog) this.vlog(); // (the dev-only log, vocablog.js)
       G.richIds(opts.prompt || '').forEach(id => S().see(id)); // (met words met again; unmet ones stay unmet)
@@ -10936,7 +11288,7 @@ G.store = {
         // the answer's own picture above the prompt (or drawn in it): picture cards would be a matching game
         const sh = this.o.show, pic = w => w && (w === aw || w === a.word || (typeof w === 'string' && (D().words[w] === aw || w === (aw && aw.icon))));
         const shown = !!aw && (pic(sh) || (sh && typeof sh === 'object' && pic(sh.icon)) || (this.lines || []).some(L => L.items.some(it => it.id === a.word && G.lookHasPic(it.look))));
-        this.textOnly = this.o.answer != null && (shown || (vs.some((v, i) => this.ch[i].word && v.label && !v.icon) && vs.some((v, i) => this.ch[i].word && v.icon)));
+        this.textOnly = this.o.answer != null && !this.o.reveal && (shown || (vs.some((v, i) => this.ch[i].word && v.label && !v.icon) && vs.some((v, i) => this.ch[i].word && v.icon))); // (o.reveal: a cued matching reveal, G.ask)
       }
       const v = view(this.ch[k], this.disp, k === this.o.answer), c = this.ch[k];
       return this.textOnly && c.word ? Object.assign({}, v, { icon: null, label: v.label || c.label || G.baseForm(c.word) }) : v;
@@ -10952,13 +11304,42 @@ G.store = {
     onEnter() { if (this.mic) this.mic.arm(); }
     onExit() { if (this.mic) this.mic.off(); }
     big() { return !!(this.o.micBig && this.o.show); } // (the big mic sits beside the picture held up)
-    micRect() { return this.big() ? { x: G.W / 2 + 40, y: 14, w: 46, h: 46 } : { x: G.W - 42, y: G.H - 62, w: 36, h: 36 }; } // the cards and the list keep clear of it (rects)
+    micRect() { return this.big() || this.say || (this.won && this.won.said1) ? { x: G.W / 2 + 40, y: 14, w: 46, h: 46 } : { x: G.W - 42, y: G.H - 62, w: 36, h: 36 }; } // the cards and the list keep clear of it (rects)
     skip() { return this.o.cancelIcon === 'skip'; }
     cancelHit() { return this.skip() ? G.skipHit(...this.backXY()) : G.btnHit(...this.backXY()); }
     cancel() { G.audio.sfx('cancel'); G.pop(); if (this.o.onCancel) this.o.onCancel(); this.w.resolve(-1); }
     heard(alts) { // what the mic heard, against every choice
       const k = G.mic.best(this.ch.map(G.mic.target), alts, this.o.answer);
+      if (this.say) { if (k === this.o.answer) this.sayWin(); else this.reveal('heard'); return; } // (say it first: anything but the word just shows the cards)
       if (k < 0 || this.ch[k].off) this.mic.miss(); else this.pick(k, true);
+    }
+    // say it first: the cards appear (why: 'time' 'tap' 'key' 'heard' 'nohear'); never a miss, never a sad sound
+    reveal(why) { if (!this.say) return; this.say = null; this.revealed = why; this.rv = 0; if (this.mic) this.mic.sad = 0; }
+    // said before any card was shown: the question is answered, with a party (G.ask records a recall said aloud)
+    sayWin() {
+      const o = this.o, k = o.answer, c = this.ch[k], m = this.micRect(), cx = G.W / 2;
+      this.say = null; this.said1 = true; this.i = k;
+      if (G.vocabLog) G.vlog('said-first', c.word, { who: o.who || null });
+      this.mic.win();
+      this.won = { k, t: 0, spoken: true, said1: true }; this.w.resolve(k);
+      G.audio.sfx('chime'); G.fx.burst(cx, 40);
+      G.fx.confetti(cx - 70, 70, -1, 18); G.fx.confetti(cx + 70, 70, 1, 18);
+      G.mic.award(c.word, m.x + m.w / 2, m.y + m.h / 2); // (said: its card grows the most, cards.js)
+      if (o.onRight) o.onRight({ x: cx - 24, y: 16, w: 48, h: 48 }, cx, 150, true); // (the praise under its word)
+    }
+    // the say step, every frame: the mic, the speaker, a way out; any other tap or key, or the time, shows the cards
+    sayStep() {
+      if (this.mic && this.mic.update()) return;
+      const lis = !!this.mic && (this.mic.listening() || !!this.mic.started), demo = !!(G.demo && G.demo.cur && G.demo.cur.top === this);
+      if (!lis && !demo) this.say.t++; // (the time waits while she talks, and while the ghost hand shows the mic)
+      if (G.input.p('C') || (G.speakerHit(...this.spk()) && G.input.eat())) { G.speak(this.o.prompt || ''); return; }
+      if (G.input.tap() && this.t > 8) {
+        if (this.o.cancel && this.cancelHit()) { this.cancel(); return; }
+        G.input.eat(); this.reveal('tap'); return;
+      }
+      if (G.input.p('B') && this.o.cancel) { this.cancel(); return; }
+      if (this.t > 8 && (G.input.p('A') || G.input.repDir(14, 6))) { this.reveal('key'); return; }
+      if (this.say.t >= SF.WAIT) this.reveal('time');
     }
     move(d) {
       const n = this.ch.length; let k = this.i;
@@ -11005,8 +11386,9 @@ G.store = {
       for (let s = 1; s < n; s++) if (!this.ch[(k + s) % n].off) { this.i = (k + s) % n; break; }
     }
     update() {
-      this.t++; if (this.miss) this.miss.t++;
-      if (this.won) { if (this.mic) { this.mic.t++; if (this.mic.pop) this.mic.pop--; } if (++this.won.t >= (this.won.spoken ? 40 : 24)) G.pop(); return; } // the right card's moment; already answered
+      this.t++; if (this.miss) this.miss.t++; if (this.rv != null) this.rv++;
+      if (this.won) { if (this.mic) { this.mic.t++; if (this.mic.pop) this.mic.pop--; } if (++this.won.t >= (this.won.said1 ? 64 : this.won.spoken ? 40 : 24)) G.pop(); return; } // the right card's moment; already answered
+      if (this.say) { this.sayStep(); return; }
       if (this.mic && this.mic.update()) return;
       const calm = !this.miss || this.miss.t > 8; // no answering again mid-wobble
       const d = G.input.repDir(14, 6);
@@ -11032,14 +11414,22 @@ G.store = {
       if (o.show) G.drawIcon16(ctx, o.show, G.W / 2 - 24, top + 8, 3, 'card');
       if (o.drawExtra) { try { o.drawExtra(ctx, this); } catch (e) { console.error(e); } }
       G.richDraw(ctx, this.lines, G.W / 2, top + 5 + (o.show ? 58 : 0), { center: true });
-      if (o.en && G.enVisible()) G.enBox(ctx, o.en, top + ph + 1, true);
+      const en = this.say ? o.sayEn || o.en : o.en;
+      if (en && G.enVisible()) G.enBox(ctx, en, top + ph + 1, true);
+      if (this.say || (this.won && this.won.said1)) { this.drawSay(ctx, top + ph); return; }
       const R = this.rects(), won = this.won, wt = won ? won.t : 0;
       // the right card, once picked, shows its picture AND its word (they're seen together: docs/PLAYTEST_NOTES.md)
       const vs = this.ch.map((c, k) => { const v = this.view(k), wd = c.word && D().words[c.word]; return won && won.k === k && wd ? Object.assign({}, v, { label: v.label || c.label || G.baseForm(c.word), icon: v.icon || wd, col: S().stage(c.word) >= 3 ? GOLD : BLUE }) : v; });
       const wob = k => { const m = this.miss; return m && m.k === k && m.t < 16 ? Math.round(Math.sin(m.t * 1.7) * 3 * (1 - m.t / 16)) : 0; }; // a wrong pick wobbles
       const grey = k => { const m = this.miss; return m && m.k === k && m.t < 8 ? m.t / 8 : 1; }; // ...and greys out quickly (0..1)
       const back = k => won && won.k !== k ? Math.min(0.6, wt / 10) : 0; // when the right one pops, the rest step back
+      // one colour for every word of a question until it's answered (a gold word among blue ones would point at it)
+      const colOf = k => (o.answer != null && this.ch[k].word && !(won && won.k === k) ? BLUE : vs[k].col);
+      // one size: the words are drawn twice as big only when every word-only card's word fits that big
+      if (this.bigAll == null) this.bigAll = this.ch.every((c, k) => { const v = this.view(k); return !v.label || !!v.icon || !c.word || G.textWidth(v.label) * 2 <= 52; });
+      const slide = this.rv != null && this.rv < 8 ? Math.round((1 - this.rv / 8) * 30) : 0; // (after "say it first": the cards slide in)
       ctx.globalAlpha = 1;
+      if (slide) { ctx.save(); ctx.translate(0, slide); }
       if (this.cards) {
         const cw = 58, y0 = R[0].y;
         this.ch.forEach((c, k) => {
@@ -11054,9 +11444,9 @@ G.store = {
           const ic = v.icon || (!v.label || !c.word ? D().words[c.word] || c.icon : null); // (a word-only card has no picture: read it, or say it)
           if (ic) {
             G.drawIcon16(ctx, ic, x + cw / 2 - 16, y0 + 12 - bob, 2, sel && !c.off ? 'sel' : 'card');
-            if (v.label) { const L = fit(v.label, cw - 4); L.forEach((l, j) => G.textC(ctx, l, x + cw / 2, y0 + Math.min(56, h - 9) - (L.length - 1 - j) * 9 + (L.length > 1 ? 2 : 0) - bob, c.off ? '#a8acb8' : v.col)); }
+            if (v.label) { const L = fit(v.label, cw - 4); L.forEach((l, j) => G.textC(ctx, l, x + cw / 2, y0 + Math.min(56, h - 9) - (L.length - 1 - j) * 9 + (L.length > 1 ? 2 : 0) - bob, c.off ? '#a8acb8' : colOf(k))); }
           } else if (v.label) {
-            const big = G.textWidth(v.label) * 2 <= cw - 6, col = c.off ? '#a8acb8' : v.col;
+            const big = this.bigAll && G.textWidth(v.label) * 2 <= cw - 6, col = c.off ? '#a8acb8' : colOf(k);
             if (big) G.bigText(ctx, v.label, x + cw / 2, y0 + 30 - bob, 2, col); else { const L = fit(v.label, cw - 4); L.forEach((l, j) => G.textC(ctx, l, x + cw / 2, y0 + 34 - (L.length - 1) * 5 + j * 10 - bob, col)); }
           }
           const d = back(k); if (d) { ctx.globalAlpha = d; ctx.fillStyle = '#080c28'; ctx.fillRect(x + 1, y0 - bob + 1, cw - 2, h - 2); }
@@ -11073,30 +11463,53 @@ G.store = {
           ctx.globalAlpha = (c.off ? 1 - 0.7 * grey(k) : 1) * (1 - back(k));
           let tx = x + 18 + dx;
           if (v.icon) { G.drawIcon16(ctx, v.icon, tx, yy - hop); tx += 20; }
-          if (v.label) G.text(ctx, v.label, tx, yy + 5 - hop, sel && v.col === '#ffffff' ? '#f8e060' : v.col);
+          if (v.label) G.text(ctx, v.label, tx, yy + 5 - hop, sel && v.col === '#ffffff' ? '#f8e060' : colOf(k));
           ctx.globalAlpha = 1;
           if (sel && !won && (this.t >> 3) % 4 !== 3) G.text(ctx, '\u0002', x + 8, yy + 5, '#f8e060');
         });
       }
+      if (slide) ctx.restore();
       if (this.mic && (!won || won.spoken)) this.mic.draw(ctx);
+    }
+    // say it first: no cards yet, the big mic pulsing beside the picture; said right: the picture pops and its word shows
+    drawSay(ctx, bottom) {
+      const won = this.won, r = this.micRect(), cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+      if (this.say && this.mic && !this.mic.listening()) for (let i = 0; i < 2; i++) { // "say it!": rings going out from the mic
+        const p = ((this.t + i * 22) % 44) / 44;
+        ctx.globalAlpha = (1 - p) * 0.7; ctx.strokeStyle = '#ffb0c8'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(cx, cy, r.w / 2 + 2 + p * 14, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      if (won) {
+        const c = this.ch[won.k], wd = D().words[c.word], s = won.t < 6 ? 1 + 0.25 * won.t / 6 : 1.25 - 0.25 * Math.min(1, (won.t - 6) / 8);
+        ctx.save(); ctx.translate(G.W / 2, 40); ctx.scale(s, s); ctx.translate(-G.W / 2, -40);
+        G.drawIcon16(ctx, this.o.show, G.W / 2 - 24, 16, 3, 'sel'); ctx.restore(); // (the picture, popping)
+        if (wd && won.t > 4) { const lab = c.label || G.baseForm(c.word), bw = Math.max(64, G.textWidth(lab) * 2 + 16); G.win(ctx, (G.W - bw) / 2, bottom + 4, bw, 26); G.bigText(ctx, lab, G.W / 2, bottom + 10, 2, S().stage(c.word) >= 3 ? GOLD : BLUE); } // its word, now (picture and word together)
+      }
+      if (this.mic) this.mic.draw(ctx);
     }
   }
   G.choose = function (opts) { const a = opts.choices && opts.choices[opts.answer]; G.saidNote(opts.who || '', '? ' + (opts.prompt || '') + ' ' + ((a && a.word) || '')); const w = new G.Wait(); const s = new Choice(opts, w); w.scene = s; G.push(s); return w; };
 
   // ---------- Ask until right ----------
-  // q: {prompt, en, show, choices, answer: index, layout, learn, who, display, mask, intro, review, credit, reintro}
+  // q: {prompt, en, show, choices, answer: index, layout, learn, who, display, mask, intro, review, credit, reintro,
+  //     sayFirst, sayEn}
   // Wrong picks wobble and grey out with a soft boop (no lecture) while the question stays up, so every
   // question can be finished. The right pick pops with praise; a first-try answer earns a star (one per word a day).
   // Saying the right answer out loud (the mic, mic.js) answers too, and earns a speaking star on top.
   // The answer word (when it is a {word}) is what the question practises (words.js): an unmet answer is MET by the
   // right pick (the small notebook celebration), a met one is an active retrieval, cued when it could be found by
   // matching the prompt. q.learn lists other words: they are only met (no credit). q.credit: false leaves the model alone.
-  // How the cards look comes from the answer's stage unless q.display or a choice's own text / pic / look says:
-  //   unmet, met     'both' (picture + word); a met answer in the prompt's words is heard, not shown (q.mask)
-  //   known          'text' (the word only: recall from the prompt's picture or the context), or 'pic' when the
-  //                  prompt says the word (read it -> pick the picture)
+  // How the cards look comes from the answer's stage unless q.display or a choice's own text / pic / look says
+  // (no give-aways, docs/AUDIT_2026-10.md 2.7: word-only cards only for a word well known, stage 3+):
+  //   unmet          'both' (picture + word: it is met by picking it)
+  //   met, known     'pic' when the prompt says the word: heard, not shown (listen -> pick its picture; the first review
+  //                  of a word is picture-only); 'both' with q.reveal when its picture is held up (the cards keep their
+  //                  pictures: a matching reveal, counted as a cued use, never as a recall); else 'both' (the context)
   //   remembered+    'text' when the prompt's picture is the answer (say it / pick its word), else 'pic' with the
   //                  answer heard, not shown (listen -> pick the picture)
+  // q.sayFirst (G.review.ask, the warm-up: G.sayFirst): only the picture and the big mic first; said right, it's a recall
+  // said aloud before any written cue: answerRight {mode: 'say', recall: true, said: true}; else the cards (as above).
   // q.noMic: no mic on this question (say, when saying the answer would only be reading it out).
   // q.wrongAct(k, word): called on a wrong pick (the story reacting to it: Canelo barks instead of coming).
   // Returns true if right on the first try.
@@ -11104,11 +11517,10 @@ G.store = {
   const showOf = sh => (!sh ? null : typeof sh === 'string' ? (D().words[sh] ? sh : null) : Object.keys(D().words).find(id => D().words[id] === sh) || null);
   G.askDisplay = function (q) {
     const a = q.choices[q.answer], aid = a && a.word && D().words[a.word] ? a.word : null;
-    if (!aid || q.display || q.choices.some(c => c.text || c.pic || c.look)) return { aid, display: q.display || null, mask: q.mask || null };
+    if (!aid || q.display || q.choices.some(c => c.text || c.pic || c.look)) return { aid, display: q.display || null, mask: q.mask || null, reveal: !!q.reveal };
     const st = S().stage(aid), inPrompt = G.richIds(G.fill(q.prompt || '')).indexOf(aid) >= 0, shown = showOf(q.show) === aid;
     if (st <= 0) return { aid, display: 'both', mask: q.mask || null };
-    if (st === 1) return { aid, display: 'both', mask: inPrompt ? [aid] : q.mask || null };
-    if (st === 2) return { aid, display: shown ? 'text' : inPrompt ? 'pic' : 'text', mask: q.mask || null };
+    if (st <= 2) return shown ? { aid, display: 'both', mask: q.mask || null, reveal: true } : { aid, display: inPrompt ? 'pic' : 'both', mask: inPrompt ? [aid] : q.mask || null };
     return { aid, display: shown ? 'text' : 'pic', mask: inPrompt ? [aid] : q.mask || null };
   };
   G.ask = function* (q) {
@@ -11118,7 +11530,7 @@ G.store = {
     const ids = (q.learn ? (Array.isArray(q.learn) ? q.learn : [q.learn]) : []).filter(id => id !== aid && D().words[id]);
     let tries = 0, spoken = false, scene = null;
     const wq = G.choose(Object.assign({}, q, {
-      choices: ch, display: ad.display, mask: ad.mask,
+      choices: ch, display: ad.display, mask: ad.mask, reveal: !!ad.reveal,
       onWrong(k) { if (!tries && aid) G.words.answerWrong(aid); tries++; G.fx.shake = 4; if (q.wrongAct) q.wrongAct(k, ch[k] && ch[k].word); }, // (q.wrongAct: what a wrong pick does in the story, chapters.js)
       onRight(rect, x, y, sp) {
         spoken = sp;
@@ -11126,16 +11538,23 @@ G.store = {
       },
     }));
     scene = wq.scene;
-    if (G.vocabLog && aid) { const v = scene.view(q.answer); G.vlog('prompt', aid, { kind, st: st0, mode: v.icon && v.label ? 'both' : v.label ? 'text' : 'pic', cued: scene.cue(q.answer).cued || null, who: q.who || null }); }
+    if (G.vocabLog && aid) { const v = scene.view(q.answer); G.vlog('prompt', aid, { kind, st: st0, mode: scene.say ? 'sayfirst' : v.icon && v.label ? 'both' : v.label ? 'text' : 'pic', cued: scene.cue(q.answer).cued || null, who: q.who || null }); }
     const heard = !!aid && (scene.o.mask || []).indexOf(aid) >= 0; // (the prompt says the answer: saying it back is an echo, for the history)
     const r = yield wq;
     if (r.result !== q.answer) return false; // closed without answering (a question with a way out)
     const first = tries === 0;
     let res = null;
-    if (aid) {
+    if (aid && scene.said1) { // said first, before any card: a recall, said aloud (docs/AUDIT_2026-10.md 2.6)
+      res = G.words.answerRight(aid, { mode: 'say', recall: true, said: true, firstTry: true, review: kind === 'review', how: 'answer' });
+    } else if (aid) {
       const v = scene.view(q.answer), mode = spoken && !v.label ? 'say' : v.icon && v.label ? 'both' : v.label ? 'text' : 'pic';
-      // (q.reintro: a slipping word met again, intro.js G.intro.again: a cued use, it doesn't move the word on)
-      res = G.words.answerRight(aid, { cued: !!q.reintro || !!scene.cue(q.answer).cued, said: spoken, echo: spoken && heard, firstTry: first, mode, review: kind === 'review', how: q.intro ? q.how || 'show' : 'answer' });
+      // (q.reintro: a slipping word met again, intro.js G.intro.again: a cued use, it doesn't move the word on; a reveal,
+      // its own picture held up over picture cards: a cued use too)
+      // nothing written to read (picture-only cards, the answer not written in the prompt): a recall from memory when
+      // it's a later day (words.js answerRight {mode: 'pic', recall: true}: the engine decides the day)
+      const written = G.richIds(G.fill(q.prompt || '')).indexOf(aid) >= 0 && !heard;
+      const recall = mode === 'pic' && !written && ch.every((c, k) => !c.word || !scene.view(k).label);
+      res = G.words.answerRight(aid, { cued: !!q.reintro || !!ad.reveal || !!scene.cue(q.answer).cued, said: spoken, echo: spoken && heard, firstTry: first, mode, recall, review: kind === 'review', how: q.intro ? q.how || 'show' : 'answer' });
     }
     yield 10;
     // a word met just now: its small celebration (it goes in the notebook); co-listed words are only met
@@ -11148,11 +11567,15 @@ G.store = {
   };
   // Choices for a word question from a pool of word ids (distractors shuffled in). opts are copied onto each choice.
   // The distractors are words the child has met when the pool has enough of them; otherwise unmet words of another
-  // topic (shown as their pictures only: clearly different, and they stay unmet), then the rest.
+  // topic (shown as their pictures only: clearly different, and they stay unmet), then the rest; never a word that looks
+  // or sounds like another card (G.wordsAlike: abuela / abuelo, gato / pato) while there are others to take.
+  // opts.ordered: the pool is already in the order to take them (G.review.ask: its topic first).
   G.wordChoices = function (answerId, pool, n = 3, opts = {}) {
-    const top = D().words[answerId] ? D().words[answerId].topic : null;
+    const top = D().words[answerId] ? D().words[answerId].topic : null, ordered = !!opts.ordered;
+    if (ordered) { opts = Object.assign({}, opts); delete opts.ordered; }
     const rank = id => (S().seen(id) ? 0 : D().words[id] && D().words[id].topic !== top ? 1 : 2);
-    const others = pool.filter((id, i) => id !== answerId && pool.indexOf(id) === i).map(id => ({ id, k: rank(id) + G.rand() * 0.9 })).sort((a, b) => a.k - b.k).slice(0, n - 1).map(o => o.id);
+    const cands = pool.filter((id, i) => id !== answerId && pool.indexOf(id) === i).map((id, i) => ({ id, k: ordered ? i : rank(id) + G.rand() * 0.9 })).sort((a, b) => a.k - b.k).map(o => o.id);
+    const others = G.pickApart(answerId, cands, n - 1);
     const ids = others.concat([answerId]).sort(() => G.rand() - 0.5);
     return { choices: ids.map(id => Object.assign({ word: id }, opts, opts.label ? { label: opts.label(id) } : {})), answer: ids.indexOf(answerId) };
   };
@@ -11255,18 +11678,29 @@ G.store = {
 //   meet(id, how, o)  meet a word from a puzzle of your own (not a generator): the model and the small celebration
 //   note(ids, o) -> Wait  the small celebration for words just met: the word's new card pops up (cards.js: its picture,
 //        its blue word, a seed), says the word and flies into the deck; yield it to let the word be heard (~0.6 s)
-//   known(id, n) n met words to go with id in a one-unknown puzzle (another topic, stronger first)
+//   known(id, n) n met words to go with id in a one-unknown puzzle (another topic, stronger first; none alike)
+//   form(id, choices, o) a review question's form for the word's stage (below)
 //   again(id, {who, prompt, en, extra})  a SLIPPING word (words.js: missed 3 times) met again instead of the same
 //        question: it is held up and named like the first time, then a one-unknown puzzle (hear it, pick its picture
 //        among 2 known ones; a cued use: the next questions move it on). G.review.ask does it by itself for a
 //        slipping word not re-introduced yet (W.needsReintro), and so does the dog's warm-up (warmup.js).
-// Content checks G.budget.canIntro(n) before introducing (words.js) and defers when it's false ("¡Mañana!").
-// G.review.ask(id, {who, prompt, en, pool, layout}) one question for a met word, fit for its stage: met -> hear it
-//   (a speaker in the prompt) and pick among picture + word cards; known -> its picture, pick its word; remembered+
-//   -> its picture, say it or pick its word (the mic is on), or hear it and pick its picture. Counted as review.
+// Pacing (words.js G.budget, AUDIT 2.9): show / watch / listen ask G.budget.canIntro themselves. A chapter's beat always
+// introduces (the story). In the open world, on a day with no room for a new word, the moment still happens, without a
+// card or a puzzle: the thing is held up and its name said (show), it happens (watch), it's heard (listen); then a word
+// she knows that is due is asked instead (G.review.ask: a review; once per word in I.DEFER_GAP play seconds), and the new
+// word waits in the queue (G.budget.defer) to be introduced first when there's room: the dog's warm-up brings it after
+// its cards (queued(o), src/warmup.js), or the next time she meets the thing. They return false then (nothing met).
+// note() never shows a card for a word not met.
+//   queued(o)  the first word waiting in the queue, introduced now if pacing allows (a show-and-name, o.who): true if met
+// G.review.ask(id, {who, prompt, en, pool, layout}) one question for a met word, fit for its stage (I.form): met or
+//   known -> hear it (a speaker in the prompt) and pick its picture among picture-only cards; remembered+ -> that, or its
+//   picture with the question for its kind of word (G.qform: ¿Quién es?, ¿Qué hace?, ¿De qué color es?, ¿Cuántas hay?...)
+//   and its word among word-only cards (none alike). One in three of them (stage 2+, the mic on, not "quiet") starts with
+//   "say it first" (G.sayFirst, learn.js): the picture and the big mic alone, then the cards. Counted as review.
 // Page puzzles (G.pages): a notebook page's sparkle on the map (maps.js `pages`) is a puzzle: 4 pictures of words from
 //   that page you've met, and their 4 words, shuffled; tap a picture and then its word (or drag the word onto it).
-//   Right: they join and the word is said; wrong: a wobble and "¡Casi!". All four: a star. (A page of three words, La huerta: three.) ready(page) (4+ met words,
+//   Right: they join and the word is said; wrong: a wobble and "¡Casi!". The last pair isn't asked (nothing left to
+//   choose): it joins by itself with a sparkle (a forced pair for the model). All four: a star. (A page of three words, La huerta: three.) ready(page) (4+ met words,
 //   not solved, or solved on an earlier day with 2+ of them due again), words(page), run(page) (yieldable), visible()
 //   (the notebook's pages: those with a met word).
 'use strict';
@@ -11288,7 +11722,7 @@ G.store = {
   // it flies into the deck in the corner. (It used to be a notebook page; the notebook comes later, docs/PLAYTEST_NOTES.md.)
   let noteUntil = 0;
   I.note = function (ids, o = {}) {
-    ids = (Array.isArray(ids) ? ids : [ids]).filter(id => (G.words.item ? G.words.item(id) : D().words[id])); // (a word or a phrase: phrases.js)
+    ids = (Array.isArray(ids) ? ids : [ids]).filter(id => (G.words.item ? G.words.item(id) : D().words[id]) && Wd().met(id)); // (a word or a phrase: phrases.js; never one not met: pacing)
     const w = new G.Wait();
     if (!ids.length) { w.resolve(); return w; }
     ids.forEach((id, k) => { if (G.cards) G.cards.show(id, Object.assign({ fresh: true, delay: k * 36 }, o)); });
@@ -11303,20 +11737,52 @@ G.store = {
   I.meet = function (id, how, o = {}) { const fresh = Wd().meet(id, how || 'meet', o); if (fresh) I.note([id]); return fresh; };
 
   // ---------- picking the known words for a one-unknown puzzle ----------
+  // (never one that looks or sounds like it, or like another of them, while there are others: G.wordsAlike, learn.js)
   I.known = function (id, n = 2, o = {}) {
     const top = D().words[id] && D().words[id].topic, ex = o.exclude || [];
     const c = Wd().list(1).filter(k => k !== id && ex.indexOf(k) < 0 && G.iconDrawn(k) && G.baseForm(k) !== G.baseForm(id));
     const score = k => (D().words[k].topic === top ? 2 : 0) + (Wd().stage(k) >= 2 ? 0 : 1) + G.rand();
-    return c.sort((a, b) => score(a) - score(b)).slice(0, n);
+    return G.pickApart(id, c.sort((a, b) => score(a) - score(b)), n);
   };
   const ask = (id, o, choices, extra) => {
     const ch = shuffle(choices.slice());
     return Object.assign({ prompt: o.ask || '¿Qué es?', en: o.askEn || 'Which one is it?', choices: ch, answer: ch.findIndex(c => c.word === (o.answer || id)), layout: 'cards', who: o.who || null, intro: id, how: o.how }, extra || {});
   };
 
+  // ---------- pacing: no room for a new word today (words.js G.budget) ----------
+  const later = id => !Wd().met(id) && !!G.budget && !G.budget.canIntro(1, { id });
+  // a due word she knows to ask instead: the same topic first, then any (with a picture, and 2 other met words to choose from)
+  I.reviewFor = function (id) {
+    if (Wd().count(1) < 3) return null;
+    const ok = k => k !== id && G.iconDrawn(k) && G.baseForm(k) !== G.baseForm(id), top = D().words[id] && D().words[id].topic;
+    return G.review.next({ topic: top, filter: ok }) || G.review.next({ filter: ok });
+  };
+  // the moment without the new word: what she sees and hears (see()), then a review (once per word in I.DEFER_GAP play
+  // seconds: the same swing ridden again and again isn't a question every time); the word waits in the queue
+  I.DEFER_GAP = 120;
+  const deferAt = {};
+  function* deferred(id, o, see) {
+    G.budget.defer(id, o.how || 'show');
+    if (G.vocabLog) G.vlog('shown', id, { via: 'deferred', who: o.who || null });
+    yield* see();
+    const now = Wd().now(), again = deferAt[id] != null && now >= deferAt[id] && now - deferAt[id] < I.DEFER_GAP;
+    deferAt[id] = now;
+    const k = !again && I.reviewFor(id);
+    if (k) yield* G.review.ask(k, { who: o.who || null });
+    return false;
+  }
+  I.queued = function* (o = {}) {
+    if (!G.budget) return false;
+    const id = G.budget.queue().find(k => G.iconDrawn(k));
+    if (!id || !G.budget.canIntro(1, { id })) return false;
+    yield* I.show(id, { who: o.who || null, prompt: L.mira(id), en: o.en || 'Look! Something you saw before: here is its name.', how: 'queue' });
+    return Wd().met(id);
+  };
+
   // ---------- show and name ----------
   I.show = function* (id, o = {}) {
     if (!D().words[id]) return false;
+    if (later(id)) return yield* deferred(id, o, function* () { yield sayAs(o.who, [TT(o.prompt || L.mira(id), o.en || 'Look!')], { show: id }); });
     yield sayAs(o.who, [TT(o.prompt || L.mira(id), o.en || 'Look!')], { show: id });
     if (Wd().met(id)) return true;
     const known = o.known || I.known(id, 2);
@@ -11329,6 +11795,7 @@ G.store = {
   // ---------- watch and do ----------
   I.watch = function* (id, o = {}) {
     if (!D().words[id]) return false;
+    if (later(id)) return yield* deferred(id, Object.assign({ how: 'watch' }, o), function* () { yield sayAs(o.who, [TT(o.prompt || L.mira(id), o.en || 'Watch!')]); if (o.act) yield* o.act(); });
     yield sayAs(o.who, [TT(o.prompt || L.mira(id), o.en || 'Watch!')]);
     if (o.act) yield* o.act();
     const known = o.known || I.known(id, 2);
@@ -11342,6 +11809,7 @@ G.store = {
   // ---------- listen and point ----------
   I.listen = function* (id, o = {}) {
     if (!D().words[id]) return false;
+    if (later(id)) return yield* deferred(id, Object.assign({ how: 'listen' }, o), function* () { if (o.sound) o.sound(); yield sayAs(o.who, [TT(o.prompt || '¡[' + id + ']!', o.en || 'Listen!')]); });
     const right = o.answer || id;
     const known = o.known || I.known(right, 2, { exclude: [id] });
     if (o.sound) o.sound();
@@ -11420,17 +11888,92 @@ G.store = {
     return out;
   };
 
+  // ---------- the right question for each kind of word (docs/AUDIT_2026-10.md 2.11) ----------
+  // Not "¿Qué es?" for everything: G.qform.of(id, o) -> {kind, t (the question), en (English help), show (the picture held
+  // up), thing (numbers: what is counted)}. By the word's topic (content/es/words.js) and its grammar:
+  //   thing     ¿Qué es?            things, food, places, the body, clothes, the weather's things
+  //   things    ¿Qué son?           a plural-only word (los ojos, los zapatos, las burbujas)
+  //   animal    ¿Quién es?          animals (as the album asks: src/album.js); person: ¿Quién es? (la abuela, el bebé);
+  //   people    ¿Quiénes son?       la familia
+  //   action    ¿Qué hace?          actions shown being done (corre, salta, busca: the command is also "he runs")
+  //   command   ¿Qué le dices?      the dog's commands that aren't "he does" (ven, siéntate, dame la pata)
+  //   like      ¿Qué le gusta hacer?  nadar (a verb as it is: "Le gusta nadar")
+  //   how       ¿Cómo va?           rápido, despacio;  quality: ¿Cómo es? (grande, pequeño, caliente: never "está caliente"
+  //                                 about a person);  weather: ¿Qué tiempo hace? (frío)
+  //   color     ¿De qué color es?   feel: ¿Cómo está? (bien, cansado, feliz, triste);  say: ¿Qué dice? (greetings,
+  //                                 phrases, animal sounds)
+  //   number    ¿Cuántos hay? / ¿Cuántas hay?  with a heap of a met thing to count (its gender: G.requests.o)
+  // Templates built from a word are in G.requests.LINES (tools/test-spanish.js runs every word through them): 'q.howmany'
+  // (the counted thing -> "¿Cuántas hay?") and 'q.ask' (a word -> its question).
+  const Q = G.qform = {};
+  Q.KINDS = {
+    thing: ['¿Qué es?', 'What is it?'], things: ['¿Qué son?', 'What are they?'], animal: ['¿Quién es?', 'Who is it?'],
+    person: ['¿Quién es?', 'Who is it?'], people: ['¿Quiénes son?', 'Who are they?'], action: ['¿Qué hace?', 'What are they doing?'],
+    command: ['¿Qué le dices?', 'What do you tell him?'], like: ['¿Qué le gusta hacer?', 'What do they like to do?'],
+    how: ['¿Cómo va?', 'How does it go?'], quality: ['¿Cómo es?', 'What is it like?'], weather: ['¿Qué tiempo hace?', 'What is the weather like?'],
+    color: ['¿De qué color es?', 'What colour is it?'], feel: ['¿Cómo está?', 'How do they feel?'], say: ['¿Qué dice?', 'What do they say?'],
+    number: [null, 'How many are there?'],
+  };
+  Q.OWN = { ven: 'command', sientate: 'command', pata: 'command', nadar: 'like', rapido: 'how', despacio: 'how', grande: 'quality', pequeno: 'quality', caliente: 'quality', frio: 'weather', familia: 'people' };
+  Q.kind = function (id) {
+    const w = D().words[id]; if (!w) return 'thing';
+    if (Q.OWN[id]) return Q.OWN[id];
+    const t = w.topic, n = G.requests.noun(id);
+    if (t === 'numeros' || w.n) return 'number';
+    if (t === 'colores') return 'color';
+    if (t === 'sentir') return 'feel';
+    if (t === 'saludos' || t === 'sonidos') return 'say';
+    if (!n) return 'action'; // (the park's actions and the dog's tricks: corre, salta, busca, gira)
+    if (t === 'familia') return 'person';
+    if (G.requests.animate(id)) return 'animal';
+    return n.plOnly ? 'things' : 'thing';
+  };
+  // what a number question counts: a met thing with its own picture that can be counted (uno: a masculine one, "uno"
+  // not "una"); none yet: stars
+  Q.thing = function (id) {
+    const ok = k => { const n = G.requests.noun(k); return !!n && !n.plOnly && !(D().mass || []).includes(k) && !G.requests.ONLY.includes(k) && G.iconDrawn(k) && ['thing', 'animal'].includes(Q.kind(k)) && (id !== 'uno' || n.g === 'm'); };
+    const L = Wd().list(1).filter(ok);
+    return L.length ? L[G.r(L.length)] : 'estrella';
+  };
+  Q.of = function (id, o = {}) {
+    const kind = Q.kind(id), K = Q.KINDS[kind];
+    if (kind === 'number') {
+      const thing = o.thing || Q.thing(id), w = D().words[thing], n = G.requests.numOf(id);
+      return { kind, t: L['q.howmany'](thing), en: K[1], show: { icon: w ? w.icon : thing, col: w && w.col, count: n }, thing };
+    }
+    return { kind, t: K[0], en: K[1], show: id };
+  };
+  L['q.howmany'] = id => '¿Cuánt' + G.requests.o(id, true) + ' hay?'; // ¿Cuántas hay? (manzanas) / ¿Cuántos hay? (huevos)
+  L['q.ask'] = id => Q.of(id).t;
+
+  // ---------- a review question's form, fit for the word's stage (G.review.ask, the dog's warm-up) ----------
+  // c: its choices (G.wordChoices); o.say: say it first (G.sayFirst.want); o.recall: a known-well word (stage 3+) asked
+  // from its picture (word-only cards) rather than heard (the warm-up without a mic). -> {prompt, en, show, display,
+  // sayFirst, sayEn, reveal}. No give-aways (docs/AUDIT_2026-10.md 2.7):
+  //   met, known (1-2)   heard (a speaker), picked among picture-only cards: the first review is picture-only
+  //   remembered+ (3+)   heard -> its picture, or (every other time) its picture held up with its question
+  //                      (¿Quién es?, ¿Qué hace?...) -> its word among word-only cards, none alike (else heard)
+  //   say it first       its picture held up with its question and the big mic alone; if it isn't said, the cards:
+  //                      word-only at 3+ (none alike), else picture + word (a reveal: a cued use)
+  I.form = function (id, c, o = {}) {
+    const st = Wd().stage(id), r = Wd().rec(id), K = Q.of(id), apart = G.wordsApart(c.choices.map(x => x.word));
+    const recall = st >= 3 && apart;
+    if (o.say) return { prompt: K.t, en: K.en, show: K.show, sayFirst: true, sayEn: K.en + ' Say it! (the mic)', display: recall ? 'text' : 'both', reveal: !recall };
+    if (recall && (o.recall || r.n % 2 === 0)) return { prompt: K.t, en: K.en, show: K.show, display: 'text' };
+    return { prompt: '¿[' + id + ']?', en: 'Which one? (listen)', display: 'pic' };
+  };
+
   // ---------- a review question for a word, fit for its stage ----------
+  // (its distractors: words of its topic first, then any met word; none looking or sounding like another card)
   G.review.ask = function* (id, o = {}) {
     const st = Wd().stage(id); if (st < 1) return false;
     if (Wd().needsReintro(id)) return yield* I.again(id, { who: o.who || null }); // (slipping: met again, not the same question)
     const top = D().words[id].topic, met = Wd().list(1).filter(k => k !== id && G.baseForm(k) !== G.baseForm(id));
-    let pool = o.pool || met.filter(k => D().words[k].topic === top);
-    if (pool.length < 2) pool = pool.concat(shuffle(met.filter(k => pool.indexOf(k) < 0)).slice(0, 2 - pool.length));
-    const c = G.wordChoices(id, [id].concat(pool), Math.min(3, pool.length + 1));
-    const r = Wd().rec(id), hear = st === 1 || (st >= 3 && (r.n % 2 === 1 || !(G.mic && G.mic.on())));
-    const q = hear ? { prompt: o.prompt || '¿[' + id + ']?', en: o.en || 'Which one? (listen)' } : { prompt: o.prompt || '¿Qué es?', en: o.en || 'What is it?', show: id };
-    return yield* G.ask(Object.assign(q, { choices: c.choices, answer: c.answer, layout: o.layout || 'cards', who: o.who || null, review: Wd().isOld(id) }));  // (a word met a minute ago, Canelo's "?": its first use, not a review)
+    const pool = o.pool || shuffle(met.filter(k => D().words[k].topic === top)).concat(shuffle(met.filter(k => D().words[k].topic !== top)));
+    const c = G.wordChoices(id, [id].concat(pool), Math.min(3, pool.length + 1), o.pool ? {} : { ordered: true });
+    const f = I.form(id, c, { say: G.sayFirst.want(id) });
+    if (o.prompt) Object.assign(f, { prompt: o.prompt, en: o.en || f.en });
+    return yield* G.ask(Object.assign(f, { choices: c.choices, answer: c.answer, layout: o.layout || 'cards', who: o.who || null, review: Wd().isOld(id) }));  // (a word met a minute ago, Canelo's "?": its first use, not a review)
   };
 
   // ---------- page puzzles ----------
@@ -11443,6 +11986,7 @@ G.store = {
   const ripe = w => { const r = Wd().rec(w); return !!r && r.st >= 2 && (r.ms < Wd().sess() || r.how === 'old' || r.how === 'learn'); };
   const need = id => Math.min(4, pageWords(id).length); // (a page of three words, La huerta: three to match)
   P.need = need;
+  P.AUTO = 22; // frames before the last pair joins by itself (P.lastForced: its word, for the tests)
   P.ready = function (id) {
     if (!G.state || !D().pages[id]) return false;
     const met = pageWords(id).filter(ripe); if (met.length < need(id)) return false;
@@ -11486,19 +12030,34 @@ G.store = {
     hintXY() { return null; } // never point at an answer
     tryPair(k, j) {
       const pid = this.pics[k], wid = this.words[j];
-      if (this.match[k]) return;
+      if (this.match[k] || this.auto) return;
       if (pid === wid) {
         this.match[k] = true; this.sel = null;
         const r = this.picRect(k); G.audio.sfx('chime'); G.fx.burst(r.x + r.w / 2, r.y + r.h / 2); G.speak(G.baseForm(pid));
         const first = !this.tried[pid];
         Wd().answerRight(pid, { mode: 'match', firstTry: first, review: true, noStar: true });
-        if (Object.keys(this.match).length === this.pics.length) { this.done = 1; G.audio.jingle('item'); G.fx.confetti(40, 200, 1, 20); G.fx.confetti(G.W - 40, 200, -1, 20); }
+        // one pair left: nothing to choose any more, so it isn't "answered": it joins by itself a moment later, with a
+        // little sparkle (docs/AUDIT_2026-10.md 2.7: no forced last pair)
+        const left = this.pics.map((p, i) => i).filter(i => !this.match[i]);
+        if (left.length === 1) this.auto = { k: left[0], t: 0 };
+        else if (!left.length) this.finish();
         return;
       }
       if (!this.tried[pid]) { this.tried[pid] = true; Wd().answerWrong(pid); }
       if (G.vocabLog) G.vlog('wrong', wid, { ans: pid, via: 'page' });
       this.miss = { pk: k, wj: j, t: 0 }; this.sel = null;
       G.audio.sfx('boop'); const r = this.picRect(k); G.fx.say('¡Casi!', r.x + r.w / 2, r.y - 6, '#ffd8a8');
+    }
+    finish() { this.done = 1; G.audio.jingle('item'); G.fx.confetti(40, 200, 1, 20); G.fx.confetti(G.W - 40, 200, -1, 20); }
+    // the last pair joining by itself: its word card glides up to its picture, sparkles, and the word is said. The model
+    // hears it as forced (words.js answerRight {forced}: it proves nothing, so it doesn't count as a recall)
+    autoJoin() {
+      const k = this.auto.k, pid = this.pics[k], r = this.picRect(k);
+      this.match[k] = true; this.auto = null; P.lastForced = pid;
+      G.audio.sfx('note'); G.speak(G.baseForm(pid));
+      for (let i = 0; i < 6; i++) G.fx.twinkle(r.x + 4 + Math.random() * (r.w - 8), r.y + 4 + Math.random() * (r.h + 20));
+      Wd().answerRight(pid, { mode: 'match', forced: true, firstTry: !this.tried[pid], review: true, noStar: true });
+      this.finish();
     }
     tapPic(k) {
       if (this.match[k]) return;
@@ -11519,6 +12078,7 @@ G.store = {
         return;
       }
       if (G.input.p('B') || G.closeHit(...this.closeXY())) { G.audio.sfx('cancel'); G.pop(); this.w.resolve(false); return; }
+      if (this.auto) { if (++this.auto.t >= P.AUTO) this.autoJoin(); return; } // (the last pair joins by itself)
       const ptr = G.input.ptr;
       // dragging a word card onto a picture
       if (ptr.down && this.drag == null && ptr.held > 6) {
@@ -11568,6 +12128,7 @@ G.store = {
       this.words.forEach((id, j) => {
         let r = this.wordRect(j); const pk = this.pics.indexOf(id), ok = this.match[pk], sel = this.sel && this.sel.kind === 'word' && this.sel.k === j;
         if (this.drag === j) { const p = G.input.ptr; r = { x: p.x - r.w / 2, y: p.y - r.h / 2, w: r.w, h: r.h }; }
+        if (this.auto && this.auto.k === pk) { const p = this.picRect(pk), u = Math.min(1, this.auto.t / P.AUTO), e = u * u * (3 - 2 * u); r = { x: r.x + (p.x - 2 - r.x) * e, y: r.y + (p.y + 64 - r.y) * e, w: 64, h: r.h + (24 - r.h) * e }; } // (the last word gliding up to its picture)
         const dx = wob(this.miss, this.miss && this.miss.wj === j), bob = sel ? Math.round(Math.sin(this.t / 6) * 1.5) : 0;
         ctx.fillStyle = ok ? '#e8b830' : sel ? '#3a56c8' : '#5a3810'; ctx.fillRect(r.x - 1 + dx, r.y - 1 - bob, r.w + 2, r.h + 2);
         ctx.fillStyle = ok ? '#fff4c8' : sel ? '#dce4ff' : '#ffffff'; ctx.fillRect(r.x + dx, r.y - bob, r.w, r.h);
@@ -11596,7 +12157,8 @@ G.store = {
 //   G.mic.award(id, x, y)       said it: words[id].said++ (still counted as a speaking star, for the grown-ups and the
 //                               diploma), its card pops up at x, y and grows the most (cards.js)
 //   new G.MicBtn(scene, o)      the button. o: {rect() (its tap area, game px), ready() (may listen now),
-//                               heard(alternatives) (the scene decides: right, wrong or G.MicBtn#miss())}.
+//                               heard(alternatives) (the scene decides: right, wrong or G.MicBtn#miss()), nohear(res)
+//                               (optional: nothing heard or an error; return true to take it quietly, no "¡Otra vez!")}.
 //                               Scene calls: onEnter -> arm(), onExit -> off(), update -> if (mic.update()) return,
 //                               draw -> mic.draw(ctx). The V key (and a tap on it) listens; a tap on it again stops.
 // Listening starts INSIDE the tap or key press (G.speech.gestureTap: iOS Safari only lets a gesture start the mic),
@@ -11702,7 +12264,7 @@ G.store = {
         if (l.done()) {
           this.l = null; const res = l.result;
           if (res.ok && res.alternatives.length) this.o.heard(res.alternatives);
-          else if (res.error !== 'aborted') { if (res.error && res.error !== 'no-speech' && res.error !== 'no-match') M.logError(res); this.miss(); }
+          else if (res.error !== 'aborted') { if (res.error && res.error !== 'no-speech' && res.error !== 'no-match') M.logError(res); if (!(this.o.nohear && this.o.nohear(res))) this.miss(); } // (o.nohear: the scene takes it quietly, e.g. "say it first": the cards just appear)
           return true;
         }
         // push-to-talk: letting go of Space finishes with what was heard (a quick press just starts it, like a tap)
@@ -12341,7 +12903,9 @@ G.store = {
   // game caught and got past), back to title. Nothing to save by hand: volumes, the voice, English help, the D-pad and
   // speaking are kept per device (G.prefs), and the game saves itself.
   // Up/down picks a row, left/right moves a volume, A changes the others; tap a row, tap or drag along a volume bar.
-  // More than 12 rows (in a game) are 13 px tall from y 22, so all of them fit above the help line.
+  // More than 12 rows (in a game) are 13 px tall from y 22 (more than 14: 12 px), so all of them fit above the help line.
+  // Speaking prompts: "on" (a review question can start with "say it first": the picture and the big mic alone, then the
+  // cards; learn.js G.sayFirst) or "quiet" (never; the mic buttons stay): G.prefs.sayFirst (false = quiet), per device.
   const ROW_H = 15, ROW_Y = 24, BAR = 168, CELL = 12; // volume bars: 10 cells from x = BAR; the speaker just left of it = 0
   class GrownUps {
     constructor(w, o) { this.transparent = true; this.w = w; this.o = o || {}; this.t = 0; this.i = 0; this.drag = null; this.tick = 0; this.n = this.rows().length; }
@@ -12356,6 +12920,9 @@ G.store = {
         { id: 'dpad', label: 'On-screen buttons', on: !!G.prefs.dpad, help: 'Arrows and A B C on the screen. Taps work without.' },
         G.speech.supported() ? { id: 'speak', label: 'Speaking (mic)', on: G.prefs.mic !== false, help: (G.mic.errors.length ? 'Last mic problem: ' + G.mic.errors[G.mic.errors.length - 1].error + '. ' : '') + 'Saying a word out loud grows its card the most. Taps always work.' }
           : { id: 'speak', label: 'Speaking (mic)', right: 'not available', off: true, help: 'No speech recognition here. iPad: Safari + Dictation on.' },
+        // "say it first" (learn.js G.sayFirst): on, or quiet (no say-it-first step anywhere; the mic buttons stay)
+        G.speech.supported() && G.prefs.mic !== false ? { id: 'prompts', label: 'Speaking prompts', right: G.prefs.sayFirst === false ? 'quiet' : 'on', help: G.prefs.sayFirst === false ? 'Quiet: no say-it-first step. Mic buttons stay.' : 'Say it first: picture + mic (4 s), then cards.' }
+          : { id: 'prompts', label: 'Speaking prompts', right: G.speech.supported() ? 'mic off' : 'not available', off: true, help: 'Needs Speaking (mic) on.' },
         { id: 'mic', label: 'Microphone test', right: mic ? '>' : 'not available', off: !mic, help: mic ? 'Does speech recognition hear Spanish words?' : 'The microphone test is not in this version.' },
         { id: 'help', label: 'Controls and tips', right: '>', help: 'The keys, and how the game teaches.' },
       ];
@@ -12369,7 +12936,7 @@ G.store = {
       return R;
     }
     // tap areas (shared with draw): row k, its volume bar (with the speaker = 0 and the number), close
-    rowRect(k) { const big = this.n <= 12, h = big ? ROW_H : 13; return { x: 10, y: (big ? ROW_Y : 22) + k * h, w: G.W - 20, h }; }
+    rowRect(k) { const big = this.n <= 12, h = big ? ROW_H : this.n <= 14 ? 13 : 12; return { x: 10, y: (big ? ROW_Y : 22) + k * h, w: G.W - 20, h }; }
     barRect(k) { const r = this.rowRect(k); return { x: BAR - 18, y: r.y, w: r.x + r.w - (BAR - 18), h: r.h }; }
     level(x) { return x < BAR ? 0 : Math.min(10, Math.floor((x - BAR) / CELL) + 1); }
     closeXY() { return [G.W - 30, this.n > 12 ? 4 : 8]; } // (more than 12 rows: the window starts higher, clear of the first row)
@@ -12414,6 +12981,10 @@ G.store = {
       else if (r.id === 'speak') {
         if (r.off) { G.audio.sfx('error'); return; }
         G.audio.setPref('mic', !r.on); G.audio.sfx('ok');
+      }
+      else if (r.id === 'prompts') {
+        if (r.off) { G.audio.sfx('error'); return; }
+        G.audio.setPref('sayFirst', G.prefs.sayFirst === false); G.audio.sfx('ok'); // (on <-> quiet, per device)
       }
       else if (r.id === 'mic') {
         if (r.off) { G.audio.sfx('error'); return; }
@@ -14954,7 +15525,8 @@ G.store = {
   WD.TILES = { T: 'arbol', f: 'arbol', o: 'flor', l: 'fuente', w: 'agua', J: 'banco', N: null, D: null, j: 'cama' }; // (windows and doors have no word)
   // A tap on an unmet thing never meets its word: unmet things stay mysterious (a "?" bubble with its picture and its
   // cry, no word and no voice) until the story introduces them (docs/CURRICULUM.md 7.3). A find-it puzzle's thing (intro.js)
-  // wins over this, and set this to true to let taps meet words again (budget permitting).
+  // wins over this, and set this to true to let taps meet words again (pacing permitting: otherwise the word is queued,
+  // words.js G.budget.defer).
   WD.introOnTap = false;
   const LIFE = 170, SAY_LIFE = 330, WALK_AGAIN = 20 * 60;
   WD.bubble = null; WD.sayBack = null;
@@ -14984,8 +15556,9 @@ G.store = {
     if (o.walkOn) walked[id] = G.frame;
     if (G.vocabLog) G.vlog('tapped-object', id, { via: o.animal ? 'animal' : o.walkOn ? 'walk-on' : 'tap' }); // (the dev-only log, vocablog.js)
     let fresh = false;
-    if (!G.st.seen(id) && WD.introOnTap && !o.walkOn && !o.noIntro && G.budget.canIntro(1)) fresh = G.words.meet(id, 'tap'); // asked "what's this?": met
-    else G.st.see(id);
+    const ask = !G.st.seen(id) && WD.introOnTap && !o.walkOn && !o.noIntro; // asked "what's this?"
+    if (ask && G.budget.canIntro(1, { id })) fresh = G.words.meet(id, 'tap'); // met
+    else { if (ask) G.budget.defer(id, 'tap'); G.st.see(id); } // (no room today, words.js pacing: it waits in the queue)
     const unk = !G.st.seen(id); // not met yet: its picture and "?", and no voice
     const b = WD.bubble = { id, x: wx, y: wy, t: 0, cry: o.cry || null, f, unk, pic: o.pic || null }; // (pic: its own look, e.g. the blue ball: carry.js)
     if (o.tile) f.wig = { x: o.tile[0], y: o.tile[1], t: 18 };
@@ -15151,7 +15724,8 @@ G.store = {
 // Everyone in town (and Canelo) has 0-5 hearts, saved in G.state.hearts[npc]. Hearts go up:
 //   - a greeting answered (by voice or by tap): once a day per person, +1. From chapter 3 on, the first talk of the
 //     day with someone starts with their greeting as a G.ask question (a sun, a moon or a wave: buenos días, buenas
-//     noches or hola), so the kids' mic is there, then one due word from their pool (H.POOLS);
+//     noches or hola), so the kids' mic is there, then one due word from any place (their pool, H.POOLS, when none
+//     is due: polish plan 2.5);
 //   - a gift they like (G.hearts.gift(npc, word), once a day per person): +1 (LIKES below; Canelo likes el hueso);
 //   - finishing their errand (maps.js finishQuest -> giver): +2, not counted in the daily cap;
 //   - Canelo: care (food, water, the ball, petting, a trick shown) +1 each, and +1 for every trick learned (not capped).
@@ -15304,7 +15878,9 @@ G.store = {
 
   // ---------- 1 heart: they call you by name as you pass ----------
   const waved = {};
+  H.talkGreeted = null; // (whose greeting just asked a word, in the talk going on: cleared once the map is free)
   H.update = function (f) {
+    if (!f.locked && G.top() === f) H.talkGreeted = null;
     if (f.locked || G.top() !== f || !f.amb || !G.state) return;
     const p = f.player;
     for (const n of f.npcs) {
@@ -15325,8 +15901,8 @@ G.store = {
   // The person waves under a sun (the morning: the first minutes of a session), a moon (the evening, once buenas noches
   // is met) or neither, and you answer: [buenos días / buenas noches / hola] when both time-of-day greetings are met,
   // else the right greeting among known words that aren't greetings (hola is never a card beside buenos días before
-  // buenas noches exists: it would be right too). Then one word that is due from their pool (POOLS: what their trade
-  // shows), asked for its stage (G.review.ask). Once a day each; a heart.
+  // buenas noches exists: it would be right too). Then one word that is due, wherever it was met, else one from their
+  // pool (POOLS: what their trade shows), asked for its stage (G.review.ask). Once a day each; a heart.
   H.POOLS = {
     mama: ['buenosdias', 'buenasnoches', 'perro', 'ven', 'sientate', 'hueso', 'agua', 'cama', 'pelota', 'galleta', 'casa', 'comoestas', 'bien', 'feliz', 'cansado'],
     pepe: ['hola', 'buenosdias', 'manzana', 'platano', 'naranja', 'queso', 'porfavor', 'gracias', 'si', 'no', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'rojo', 'amarillo', 'verde'],
@@ -15385,10 +15961,16 @@ G.store = {
     // a friend you haven't swapped names with says theirs ("Me llamo Pepe. ¿Y tú?"), or some days asks what you like
     // ("¿Qué te gusta?"): that's the day's question with them (src/phrases.js, docs/LEARNING_PLAN_2.md Phase 2)
     if (G.phrase && ((yield* G.phrase.meetName(npc)) || (yield* G.phrase.likeAsk(npc)))) { yield* H.milestones(npc); return true; }
-    // one word that's due, from what they know about
-    const pool = H.POOLS[npc] || [];
-    const due = G.review.next({ filter: id => pool.includes(id) && !GREET.includes(id) });
-    if (due) { if (G.vocabLog) G.vlog.greet = npc; try { yield* G.review.ask(due, { who: npc }); } finally { if (G.vlog) G.vlog.greet = null; } }
+    // one word that's due, wherever she met it (AUDIT C6: a beach word is reviewed in the forest too), asked as picture
+    // cards (G.review.ask: a form that fits any place); when nothing is due, one of their own words she hasn't used
+    // today (G.favores.dueWord: the place's words are the fallback)
+    // (their favour of the day comes next in this talk: that's the review, a moment and not a quiz chain)
+    const pool = H.POOLS[npc] || [], fav = !!(G.favores && G.favores.alert && G.favores.alert(npc));
+    const due = fav ? null : G.favores && G.favores.dueWord ? G.favores.dueWord({ pool, filter: id => !GREET.includes(id) }) : G.review.next({ filter: id => pool.includes(id) && !GREET.includes(id) });
+    if (due) {
+      if (G.vocabLog) G.vlog.greet = npc; try { yield* G.review.ask(due, { who: npc }); } finally { if (G.vlog) G.vlog.greet = null; }
+      H.talkGreeted = npc; // (two questions in this talk: their own word or drawing waits for another time, zones.js Lola, connect.js)
+    }
     yield* H.milestones(npc);
     return true;
   };
@@ -16129,7 +16711,10 @@ G.store = {
 // in its corner. Seen (tapped) but its word not met yet: its picture and "?". Met: its picture, its name ("el gato") and
 // its sound ("¡Miau!"); a little mic once its name was said out loud, a gold star once counted (Luna's count). Entries a
 // zone hasn't built yet (G.zones def.planned) are numbered "?" cards. Tap a met card (or A on it): it hops and you
-// hear its name and its sound. A zone page complete: confetti and "¡Completo!" the first time you open it; the whole
+// hear its name and its sound; the first such tap each time the album opens (an animal not asked today, its name met,
+// the mic on, not "quiet") asks "¿Quién es?" first: its silhouette and the big mic, then the reveal (never a fail:
+// Album#qAsk below). A zone page complete:
+// confetti and "¡Completo!" the first time you open it; the whole
 // album complete: the party and "¡Amig{o/a} de los animales!" as before.
 // The first time an animal is met anywhere (G.animals.meet), "¡Nuevo animal!" pops in over the game (never blocking
 // it): its number, its picture big, its cry, its name (or "?" while its word isn't met), then the card flips and flies
@@ -16164,8 +16749,74 @@ G.store = {
       this.page = start === 'amigos' ? 'amigos' : 'animales';
       this.zone = start && start !== 'amigos' && G.zones && G.zones.def(start) ? start : here && ZS().some(z => z.id === here) ? here : 'villa';
       this.ftab = this.zone; // (the Amigos page opens on the friends of the place you're in)
+      this.quien = null; // "¿Quién es?": {k, id, t, w, ph: 'ask' | 'show', said}
+      this.mic = G.mic && G.mic.on() ? new G.MicBtn(this, { rect: () => this.qMicRect(), ready: () => !!this.quien && this.quien.ph === 'ask' && this.quien.t > 10, heard: a => this.qHeard(a), nohear: () => { this.qReveal(false); return true; } }) : null;
+    }
+    onExit() { if (this.mic) this.mic.off(); }
+    // ---------- "¿Quién es?" (docs/AUDIT_2026-10.md 2.6): the first tap on a found animal (one a day each, one each time
+    // the album opens), its name met, the mic on and not "quiet" (G.sayFirst, learn.js): its silhouette big and the big
+    // mic, "¿Quién es?" said. Said: a party, its
+    // name, a little mic on its card; nothing said, another word, an error, a tap, or about 4 s: the reveal all the same
+    // (its colours, its name and its cry). Never "wrong". (Its name was on the page a moment ago: a cued say, mic.js award.)
+    quienOK(id) { return !!this.mic && !this.asked && !!G.sayFirst && G.sayFirst.on() && !G.sayFirst.doneToday('album:' + id); } // (one per opening of the album: a moment, not a toll on every tap)
+    qCard() { return { x: 70, y: 40, w: 132, h: 112 }; }
+    qMicRect() { const c = this.qCard(); return { x: c.x + c.w + 10, y: c.y + 36, w: 46, h: 46 }; }
+    qAsk(k, id) {
+      this.quien = { k, id, t: 0, w: 0, ph: 'ask', said: false }; this.asked = true; G.sayFirst.mark('album:' + id);
+      this.mic.reset(); G.audio.sfx('cursor'); G.speak('¿Quién es?');
+    }
+    qHeard(alts) { const q = this.quien; if (!q || q.ph !== 'ask') return; this.qReveal(G.speech.match(G.mic.target({ word: AN().KINDS[q.id].word }), alts).pass); }
+    qReveal(said) {
+      const q = this.quien; if (!q || q.ph !== 'ask') return;
+      const id = q.id, wid = AN().KINDS[id].word, w = G.data.words[wid], c = this.qCard();
+      q.ph = 'show'; q.t = 0; q.said = !!said;
+      AN().cry(id); G.speak(w.es.split(' / ')[0] + (cry(id) ? '. ' + cry(id) : ''));
+      for (let i = 0; i < 4; i++) G.fx.twinkle(c.x + 30 + Math.random() * 72, c.y + 20 + Math.random() * 48);
+      if (!said) return;
+      const m = this.qMicRect(), R = rec(id);
+      this.mic.win(); G.audio.sfx('chime');
+      G.mic.award(wid, m.x + m.w / 2, m.y + m.h / 2, { cued: true }); // (said: its word card grows the most)
+      if (R) R.said = true;
+      G.fx.confetti(c.x + 10, c.y + c.h, -1, 16); G.fx.confetti(c.x + c.w - 10, c.y + c.h, 1, 16);
+      G.fx.say('¡Bien dicho!', c.x + c.w / 2, c.y - 6, '#a8f0ff', true);
+      G.st.autosave();
+    }
+    quienStep() {
+      const q = this.quien; q.t++;
+      if (q.ph === 'ask') {
+        if (this.mic && this.mic.update()) return;
+        if (!(this.mic && (this.mic.listening() || this.mic.started))) q.w++; // (the time waits while she talks)
+        if ((G.input.tap() && q.t > 8) || G.input.p('A') || G.input.p('B') || G.input.p('C') || q.w >= G.sayFirst.WAIT) { G.input.eat(); this.qReveal(false); }
+        return;
+      }
+      if ((q.t > 24 && (G.input.tap() || G.input.p('A') || G.input.p('B'))) || q.t > 200) { G.input.eat(); this.quien = null; }
+    }
+    drawQuien(ctx) {
+      const q = this.quien, K = AN().KINDS[q.id], w = G.data.words[K.word], c = this.qCard(), ask = q.ph === 'ask';
+      ctx.globalAlpha = 0.55; ctx.fillStyle = '#080c28'; ctx.fillRect(0, 0, G.W, G.H); ctx.globalAlpha = 1;
+      ctx.fillStyle = '#10102a'; ctx.fillRect(c.x - 2, c.y - 2, c.w + 4, c.h + 4);
+      ctx.fillStyle = '#fffaf0'; ctx.fillRect(c.x, c.y, c.w, c.h);
+      ctx.fillStyle = '#e8a020'; ctx.fillRect(c.x, c.y, c.w, 13); ctx.fillStyle = '#f8d870'; ctx.fillRect(c.x, c.y, c.w, 2);
+      G.textC(ctx, '¿Quién es?', c.x + c.w / 2, c.y + 3, '#ffffff', '#7a3a08');
+      { const ns = String(number(q.id) || '?'), nw = G.textWidth(ns) + 8; ctx.fillStyle = '#a07040'; ctx.fillRect(c.x + 4, c.y + 17, nw, 11); G.text(ctx, ns, c.x + 8, c.y + 19, '#ffffff', null); }
+      const s = ask ? 1 : q.t < 6 ? 1 + 0.2 * q.t / 6 : 1.2 - 0.2 * Math.min(1, (q.t - 6) / 8), px = c.x + c.w / 2, py = c.y + 44; // (the reveal pops)
+      ctx.save(); ctx.translate(px, py); ctx.scale(s, s); ctx.translate(-px, -py); ctx.imageSmoothingEnabled = false;
+      if (ask) ctx.drawImage(G.tinted(G.icon(w), '#3a3048', 'albsil' + q.id), px - 24, py - 24, 48, 48); else G.drawIcon16(ctx, w, px - 24, py - 24, 3);
+      ctx.restore();
+      if (!ask) {
+        const nm = w.es.split(' / ')[0];
+        if (G.textWidth(nm) * 2 <= c.w - 8) G.bigText(ctx, nm, px, c.y + 76, 2, q.said ? '#2890c0' : '#2860a8', '#e8dcc0'); else G.textC(ctx, nm, px, c.y + 80, '#2860a8', null); // (a long name: one size smaller, on the card)
+        if (cry(q.id)) G.textC(ctx, cry(q.id), px, c.y + 97, '#e06010', null);
+      }
+      if (this.mic) {
+        const r = this.qMicRect(), cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+        if (ask && !this.mic.listening()) for (let i = 0; i < 2; i++) { const p = ((this.t + i * 22) % 44) / 44; ctx.globalAlpha = (1 - p) * 0.7; ctx.strokeStyle = '#ffb0c8'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, r.w / 2 + 2 + p * 14, 0, Math.PI * 2); ctx.stroke(); }
+        ctx.globalAlpha = 1;
+        if (ask || q.said) this.mic.draw(ctx);
+      }
     }
     onEnter() {
+      if (this.mic) this.mic.arm();
       if (G.album.full() && !G.state.flags.albumFull) { // the last animal: a party, once
         G.state.flags.albumFull = true; G.st.autosave(); this.party = 1;
         G.audio.jingle('promote');
@@ -16198,6 +16849,7 @@ G.store = {
       if (k === 11) { G.audio.sfx('ok'); this.page = 'amigos'; this.fi = 0; this.ftab = this.zone; return; }
       const id = this.ids()[k]; if (id === undefined) return;
       if (!id || !rec(id)) { G.audio.sfx('boop'); this.hop[k] = { t: 0, no: true }; return; }
+      if (G.st.seen(AN().KINDS[id].word) && this.quienOK(id)) { this.qAsk(k, id); return; } // "¿Quién es?" first (once a day each)
       const w = G.data.words[AN().KINDS[id].word];
       this.hop[k] = { t: 0 }; AN().cry(id);
       if (G.st.seen(AN().KINDS[id].word)) G.speak(w.es.split(' / ')[0] + (cry(id) ? '. ' + cry(id) : '')); // (unnamed yet: only its cry)
@@ -16213,6 +16865,7 @@ G.store = {
         if (this.party === 2) G.speak(G.fill('¡Amig{o/a} de los animales!'));
       }
       if (this.done && this.done < 120) { this.done++; if (this.done % 40 === 2) { G.fx.confetti(40, 200, -1, 14); G.fx.confetti(G.W - 40, 200, 1, 14); } if (this.done === 2) G.speak('¡Completo!'); }
+      if (this.quien) { this.quienStep(); return; }
       const tap = G.input.tap(), d = G.input.repDir(14, 6);
       if (this.page === 'amigos') {
         if (!this.ftab) this.ftab = 'villa';
@@ -16301,6 +16954,7 @@ G.store = {
           if (hint) { ctx.globalAlpha = 0.9; G.drawIcon16(ctx, hint, x + r.w - 18, y + r.h - 18); ctx.globalAlpha = 1; }
         }
       }
+      if (this.quien) this.drawQuien(ctx);
     }
     drawFriends(ctx) {
       const H = G.hearts, Z = G.zones;
@@ -17161,8 +17815,8 @@ G.MAPDATA = {
 
 </script>
 <script>/* src/chapters.js */
-// ===== The story in chapters: one path of 21 chapters (docs/CURRICULUM.md), each opening when the last is done and
-// today's new-word budget allows =====
+// ===== The story in chapters: one path of 21 chapters (docs/CURRICULUM.md), each opening when the last is done (and a
+// morning one only on a new morning) =====
 // The chapter table (title, giver, new words, badge) is content/es/words.js (G.data.chapters); each chapter's script is
 // registered by a content file (content/es/story-*.js) with G.chapters.script(id, beats, opts). A chapter is also a
 // quest (G.state.quests[id] = 'active' | 'done'), so Misiones, badges and S.done(id) work as for the older errands.
@@ -17188,9 +17842,11 @@ G.MAPDATA = {
 //
 // Opening (gate(id) -> null when it may start, else why not):
 //   'prev'      the chapter before isn't done          'unwritten'  no script yet
-//   (there is no word budget any more (2026-10-17, the open world: docs/WORLD_PLAN.md): 'budget', 'soon' and 'busy'
-//    are gone; a review day is only an offer now: with 10+ words only met, Luna or Mamá has a notebook bubble and
-//    asks 5 of them (.needsReview(), .review(who)), but nothing waits for it)
+//   (there is no word budget for the story (2026-10-17, the open world: docs/WORLD_PLAN.md): 'budget', 'soon' and
+//    'busy' are gone; a review day is only an offer now: with 10+ words only met, Luna or Mamá has a notebook bubble and
+//    asks 5 of them (.needsReview(), .review(who)), but nothing waits for it. Review-first pacing (2026-10, words.js
+//    G.budget) holds back only the open world's new words: a beat's introductions always happen (G.budget.story() is
+//    true while a beat plays: .running()), in every line, Villa Sol's and the zones', and count toward the day)
 //   'morning'   a morning chapter opens only as the first chapter of a session (a new day, a night at home)
 //   'evening'   an evening chapter opens only in the evening at home (after C8 the sunset comes ~5 minutes later)
 //   (a chapter done whose line then waits for the morning, or has no more, is the day's story: after 6 minutes of
@@ -19665,7 +20321,9 @@ G.MAPDATA = {
 //   colour Lucía / Sofía: a flower or a ribbon: "¿De qué color?"
 //   sound  Nico: an animal: "¿Qué dice?" (its sound word)
 //   feel   Mamá / Lucía: a face: "¿Cómo está?"
-//   thing  Pepe / Marta / Rosa / Mamá: they hold up one of their things: "¿Qué es?"
+//   thing  Pepe / Marta / Rosa / Mamá: they hold up one of their things: "¿Qué es?"; or a word that's due from
+//          anywhere (another place's word, polish plan 2.5): they show a photo of it, asked as picture cards (G.review.ask)
+//          (FV.dueWord below: the word a moment reviews, used by the greetings, Lola, the letters and the dog too)
 // Done: a star and a heart (one favour per person a day). Favours are never needed to go on: the story never waits.
 // Palabra del día (from chapter 8): once a day Profesora Luna holds up a picture of a word the child knows that is due:
 // say it (the mic) or pick its word from four. A star.
@@ -19728,6 +20386,31 @@ G.MAPDATA = {
   // most that many of a group a day: not spammy).
   Object.assign(FV, { OFFERS, PLACES, ANIMALS, THINGS, COUNT_OF });
   Object.assign(FV, { BUBBLE: {}, ON: {}, REMIND: {}, TARGETS: {}, PICK: {}, OFF: {}, GROUP: {}, CAP: {} });
+
+  // ---------- the word a moment reviews: any met word that's due, wherever she met it (AUDIT C6, polish plan 2.5) ----------
+  // Once she leaves a place its words used to be hardly reviewed (a design rule kept each place to its own words). Now
+  // the greetings, the favours, Lola, Tomás's letters and the dog's cards ask about any word she has met that is due
+  // (G.review.due's order: just-met follow-ups, then misses, then the most overdue), always in a form that fits where
+  // she is: its picture held up and picture cards (G.review.ask), never "bring me" a thing that isn't here. Only when
+  // nothing is due, the place's own words (o.pool): the one used longest ago, never one already used today.
+  //   FV.dueWord(o) -> a word id or null. o: {pool (the person's / the place's words: the fallback), filter(id),
+  //   minStage (1), exclude ([ids]), prefer(id) (first among the first few due: another place's words), onlyPool (the
+  //   pool only, due ones first), noFallback (nothing when nothing is due)}
+  FV.dueWord = function (o = {}) {
+    if (!G.state || !G.review || !G.words) return null;
+    const pool = o.pool || [], ex = o.exclude || [], min = o.minStage || 1;
+    const ok = id => !!W(id) && G.iconDrawn(id) && !ex.includes(id) && (!o.onlyPool || pool.includes(id)) && (!o.filter || o.filter(id));
+    const due = G.review.due(1e9, { minStage: min, filter: ok });
+    if (due.length) { const p = o.prefer ? due.slice(0, 6).find(o.prefer) : null; return p || due[0]; }
+    if (o.noFallback) return null;
+    const today = G.words.dayNum(), last = id => { const d = G.words.lastDay(id); return d == null ? -1e9 : d; };
+    const L = pool.filter(id => G.words.stage(id) >= min && ok(id) && last(id) < today).sort((a, b) => last(a) - last(b));
+    return L[0] || null;
+  };
+  // a word that isn't one of this person's things (a word from another place, a thing that isn't here): it's asked
+  // with its picture, never as the thing in their hands
+  const NOT_THINGS = ['saludos', 'numeros', 'colores', 'sentir', 'sonidos']; // (those have favours of their own: count, colour, feel, sound)
+  FV.PICK.thing = (who, pool, ok) => FV.dueWord({ pool, minStage: 2, filter: id => ok(id) && (pool.includes(id) || !NOT_THINGS.includes(W(id).topic)) });
   const st = () => { const s = G.state; if (!s.fav || typeof s.fav !== 'object') s.fav = { day: -1, list: [], pal: -1 }; if (!Array.isArray(s.fav.list)) s.fav.list = []; return s.fav; };
   // today's favours: made the first time they're asked for on a new day
   FV.today = function () {
@@ -19785,6 +20468,9 @@ G.MAPDATA = {
     if (G.hearts) G.hearts.add(v.who, 1, 'care');
     G.st.autosave();
   }
+  // (a word from another place: they show a photo, and it's asked with its picture: lines that vary, never the same talk)
+  const PHOTO = ['¡{name}! ¡Mira mi foto!', '¡Mira, {name}! ¡Una foto!', '¡{name}! ¿Y en esta foto?'];
+  const PHOTO_EN = ['{name}! Look at my photo! (what is it?)', 'Look, {name}! A photo! (what is it?)', '{name}! And in this photo? (what is it?)'];
   const ask = (who, prompt, en, answer, others, o = {}) => G.chapters.ask(who, prompt, en, answer, others.filter(k => k !== answer && G.words.met(k)).slice(0, 2), Object.assign({ review: true }, o));
   const others = (id, pool) => pool.filter(k => k !== id && G.words.met(k) && G.baseForm(k) !== G.baseForm(id)).sort(() => G.rand() - 0.5);
   const KIND = FV.KIND = {
@@ -19823,6 +20509,13 @@ G.MAPDATA = {
       reward(v); yield say(v.who, TT('¡Muy bien!', 'Very good!'));
     },
     *thing(v) {
+      if (!(THINGS[v.who] || []).includes(v.word)) { // a word from anywhere (not one of their things here): a photo of it
+        const k = G.r(PHOTO.length);
+        yield sayShow(v.who, { icon: 'foto' }, TT(PHOTO[k], PHOTO_EN[k]));
+        yield* G.review.ask(v.word, { who: v.who });
+        reward(v); yield say(v.who, TT(['¡[gracias], {name}!', '¡Muy bien!', '¡Eso es! ¡[gracias]!'][G.r(3)], 'Thank you, {name}!'));
+        return;
+      }
       yield say(v.who, TT('¡{name}! ¿Y esto?', '{name}! And this?'));
       yield* ask(v.who, '¿Qué es?', 'What is it?', v.word, others(v.word, THINGS[v.who] || []).concat(others(v.word, G.words.list(2).filter(k => W(k).topic === W(v.word).topic))), { show: v.word, display: 'text' });
       reward(v);
@@ -20372,7 +21065,7 @@ G.MAPDATA = {
     Object.assign(f.player, { x: BED[0], y: BED[1], dir: 'left', ox: 0, oy: 0 }); f.snapCam();
     if (G.pet) G.pet.night(f); // Canelo curls up on his cushion (pet.js)
     yield DY.night(); // the night sky, then the sunrise (it fades itself in and out)
-    newDay(true); if (G.words) G.words.newSession('night'); // a new day for the word model too: yesterday's words come back
+    newDay(true); if (G.words) G.words.newSession('night'); // a new game day and session (favours, chapters...); the memory keeps to calendar days, so no word falls due because of the night (words.js)
     G.audio.play(f.def.music || 'town', true);
     yield G.fadeTo(0, 0.04, '#fff2d0'); // out of the morning light (the night left the fade there)
     if (G.pet) G.pet.morning(f); // and Canelo hops up
@@ -21488,10 +22181,27 @@ G.MAPDATA = {
       yield sayP('lola', null, intro ? TT(met('hola') ? '¡[hola], {name}! ¡Soy Lola!' : '¡Hola, {name}! ¡Soy Lola!', 'Hi, {name}! I\'m Lola. I explore everywhere!') : TT(met('hola') ? '¡[hola], {name}!' : '¡Hola, {name}!', 'Hi, {name}!'));
       if (z) yield sayP('lola', { icon: z.icon }, TT('¡' + z.name + '!', 'This is ' + (z.en || z.name) + '!'));
       w.lola[f.mapId] = day(); G.st.autosave();
+      if (!(G.hearts && G.hearts.talkGreeted === 'lola')) yield* Z.lolaPhoto(zone); // (her greeting asked one already: not now)
       if (z && z.lola) { yield* z.lola(f); return; }
       const sp = dogHere(f) && (f.def.dogSpots || []).find(Z.dogReady);
       if (sp) { G.chapters.point(sp.at[0] * T + 12, sp.at[1] * T); try { yield sayP('lola', { icon: 'huella' }, TT('¡Mira, {dog}!', 'Look! {dog} can play over there: tap the paw prints!')); } finally { G.chapters.point(null); } }
     } });
+  // Lola travels everywhere, so she remembers everywhere (polish plan 2.5): the first time she says hello in a place each
+  // day, a photo from her album of something from ANOTHER place that is due (an animal first: the album's), asked as
+  // picture cards (G.review.ask); nothing when nothing from elsewhere is due. -> true when she asked
+  const LOLA_PHOTO = [['¡Mira mi foto! ¿Te acuerdas?', 'Look at my photo! Do you remember? (what is it?)'], ['¡{name}! ¡Una foto de mi viaje!', '{name}! A photo from my travels! (what is it?)'], ['¡Mira! ¿Te acuerdas de esto?', 'Look! Do you remember this? (what is it?)']];
+  let albumWords = null;
+  const albumWord = id => { if (!albumWords && G.animals) albumWords = new Set(G.animals.list().map(a => G.animals.KINDS[a] && G.animals.KINDS[a].word).filter(Boolean)); return !!albumWords && albumWords.has(id); };
+  Z.lolaPhoto = function* (zone) {
+    const FV = G.favores; if (!G.state || !FV || !FV.dueWord) return false;
+    const away = id => Z.ofWord(id) !== zone;
+    const id = FV.dueWord({ filter: id => away(id) && albumWord(id), noFallback: true }) || FV.dueWord({ filter: away, noFallback: true });
+    if (!id) return false;
+    const L = LOLA_PHOTO[G.r(LOLA_PHOTO.length)];
+    yield sayP('lola', { icon: 'foto' }, TT(L[0], L[1]));
+    yield* G.review.ask(id, { who: 'lola' });
+    return true;
+  };
   // Nico in a zone: his hide-and-seek with that zone's hiding places (seek.js, one game per zone)
   Z.nico = (x, y) => ({ id: 'nico', npc: 'nico', x, y, dir: 'down', wander: 1,
     alert: () => (G.chapters && G.chapters.alert('nico')) || (G.seek && G.seek.alert('nico')) || null,
@@ -23708,7 +24418,10 @@ G.MAPDATA = {
     if (daily('bub').done) return false;
     const first = !st().metChuy; st().metChuy = true;
     if (first) yield* say('chuy', T('¡Hola, {name}! Soy Don Chuy.', 'Hello, {name}! I\'m Don Chuy. I sell bubble wands!'));
-    yield* meetW('burbujas', { who: 'chuy', prompt: '¡Mira! ¡[burbujas:Burbujas]!', en: 'Look! Bubbles!', known: othersFor('burbujas', ['pelota', 'papalote', 'agua', 'flor']) });
+    // once she knows them, she asks for them: "¿Qué quieres?" "Quiero burbujas, por favor." (a daily routine with a
+    // phrase, polish plan 2.10: src/phrases.js; the old question when phrases are off or Quiero can't come yet)
+    const ph = G.phrase && G.words.stage('burbujas') >= 2 ? yield* G.phrase.quiero('chuy', ['burbujas'], { onGet: function* () { yield* sayShow('chuy', 'burbujas', T('¡[burbujas:Burbujas]! ¡Aquí tienes!', 'Bubbles! Here you are!')); } }) : null;
+    if (!ph || ph.cancel) yield* meetW('burbujas', { who: 'chuy', prompt: '¡Mira! ¡[burbujas:Burbujas]!', en: 'Look! Bubbles!', known: othersFor('burbujas', ['pelota', 'papalote', 'agua', 'flor']) });
     JG.bub = { list: [], n: 0, want: 6, made: 0 }; for (let k = 0; k < 4; k++) bubSpawn(f);
     G.audio.sfx('chime');
     yield* JG.tpr('atrapa', { who: 'chuy', prompt: '¡[atrapa:Atrápalas]!', en: 'Catch them!', ask: '¡Las [burbujas]! ¿Qué hago?', askEn: 'The bubbles! What do I do?',
@@ -24415,7 +25128,7 @@ G.MAPDATA = {
   const swingSeat = r => { const th = swingAng(r), px = SWING[0] * TL + 12, top = (SWING[1] - 2) * TL + 10, L = 34; return { x: px + Math.sin(th) * L, y: top + Math.cos(th) * L, th, px, top }; };
   // the people of this zone (you, Abuelo, Abuela, the baby) are drawn here while they do something (the baby: always, small)
   function drawAB(ctx, cx, cy) {
-    const e = this, f = G.field; if (!f || !inZone(f)) return false;
+    const e = this, f = G.field; if (!f || (!inZone(f) && !busyNow(e))) return false; // (a touch anywhere: "Tócate la nariz", src/listen.js)
     let o = null;
     if (busyNow(e)) o = Object.assign(pose(e, e.ab, G.frame - e.ab.f0), {});
     else if (e === f.player && e.swing) { const s = swingSeat(e.swing); o = { wx: s.x, wy: s.y + 10, z: 0, sx: 1, sy: 0.9, dir: 'down', fr: 0, arms: [[-4, -12, -6, -20], [3, -12, 5, -20]], noShadow: true }; }
@@ -26251,11 +26964,12 @@ G.MAPDATA = {
 //   their place. The letter goes in your hands (a story thing: it can't be dropped); the corner shows it with their
 //   face; the guide's arrow leads there (to the bus stop when it's another place: the world map shows the letter over
 //   that place, and the bus takes you), and their bubble shows it once you're near. Delivering: "¡Es de Mamá!" (the
-//   sender's face), a thank-you, a heart and a star. Every other letter they write back (to the town friend who wrote,
-//   or later between places), so letters go both ways and the child travels across the world.
+//   sender's face), a drawing inside of a word that's due (from the sender's place first: "¡Mira! ¡Un dibujo!", picture
+//   cards, polish plan 2.5), a thank-you, a heart and a star. Every other letter they write back (to the town friend who
+//   wrote, or later between places), so letters go both ways and the child travels across the world.
 // The zones' people (G.hearts.ZONE): Don Paco, Marina, Doña Nieves, Tere, Elena, Doña Lupe, Ana, Pablo, Don Chuy,
 //   Abuela, Abuelo, the baby, Don Lucho, Mateo and Lola have hearts like the town: a greeting a day (after their zone's
-//   first chapter: answer it, then one due word from their zone's words, G.review), a thing they like as a present
+//   first chapter: answer it, then one due word from any place, else their zone's, G.favores.dueWord), a thing they like as a present
 //   (G.hearts.LIKES), the 3-heart secret (a rare animal of their place, shown in pictures) and sticker, the 5-heart photo.
 //   Lola is special: the first time you meet her in each place she gets a heart, so exploring all five places makes her
 //   your best friend; the Amigos page shows where you've met her.
@@ -26360,6 +27074,11 @@ G.MAPDATA = {
     bag().take('carta', { q: 'post', to: who }); G.audio.jingle('item');
     if (G.cards && met('carta')) G.cards.grow('carta', 'give', { x: G.W / 2, y: G.H / 2 });
     if (it.from && it.from !== who) yield* CK.sayShow(who, { face: it.from }, TT('¡Es de ' + short(it.from) + '!', 'It\'s from ' + (it.from === 'canelo' ? G.dogName() : nm(it.from)) + '!'));
+    // inside, a drawing of something she knows that is due: from the sender's place first (letters span every place,
+    // polish plan 2.5), asked with its picture
+    const fz = it.from ? (H.zoneOf(it.from) === '*' ? null : H.zoneOf(it.from)) : null, FV = G.favores;
+    const pic = FV && FV.dueWord && H.talkGreeted !== who ? (fz && FV.dueWord({ filter: id => Z.ofWord(id) === fz, noFallback: true })) || FV.dueWord({ noFallback: true }) : null; // (not after their greeting's word: a moment, not a quiz)
+    if (pic) { yield* CK.sayShow(who, { icon: 'carta' }, TT('¡Mira! ¡Un dibujo!', 'Look! There\'s a drawing in the letter. What is it?')); yield* G.review.ask(pic, { who }); }
     const s = st(); s.n++; s.log[who] = (s.log[who] | 0) + 1;
     G.state.stars++; G.fx.flyStar(G.W / 2, 90, 0); G.audio.sfx('star'); CK.confetti();
     yield* CK.say(who, TT(met('gracias') ? '¡[gracias:Gracias], {name}!' : '¡Gracias, {name}!', 'Thank you, {name}!'));
@@ -27250,13 +27969,14 @@ G.MAPDATA = {
         start('warmup', [{ x: r.x + r.w / 2, y: r.y + r.h / 2 + 2, move: 22, act: 'tap', hold: 4 }, { x: r.x + r.w / 2, y: r.y + r.h / 2 + 2, move: 1, act: 'talk', hold: 70 }], { mic: r });
         return true;
       }
+      if (s.say) return false; // (say it first: no cards yet)
       const R = s.rects(), ks = R.map((r, k) => k).filter(k => k !== s.o.answer), k = ks.length ? ks[Math.floor(Math.random() * ks.length)] : 0;
       const steps = R.map(r => ({ x: r.x + r.w / 2, y: r.y + r.h * 0.55, move: 14, hold: 4 }));
       steps.push({ x: R[k].x + R[k].w / 2, y: R[k].y + R[k].h * 0.55, move: 12, act: 'tap', hold: 16 });
       book().answer = book().answer || G.frame || 1;
       start('warmup', steps); return true;
     }
-    if (n === 'Choice' && s.cards && s.o.answer != null && !s.won && s.t >= 14 && !DM.shown('answer')) {
+    if (n === 'Choice' && s.cards && s.o.answer != null && !s.won && !s.say && s.t >= 14 && !DM.shown('answer')) {
       const R = s.rects(), k = Math.floor(Math.random() * R.length), steps = R.map(r => ({ x: r.x + r.w / 2, y: r.y + r.h * 0.55, move: 14, hold: 4 }));
       steps.push({ x: R[k].x + R[k].w / 2, y: R[k].y + R[k].h * 0.55, move: 12, act: 'tap', hold: 16 });
       start('answer', steps); return true;
@@ -27365,40 +28085,60 @@ G.MAPDATA = {
 <script>/* src/warmup.js */
 // ===== The dog's warm-up: once a day, the first time the child is free to walk, the dog brings some words back =====
 // docs/LEARNING_PLAN_2.md, Phase 1 [decided with the parent]. The first time each day she is free to walk (on any map),
-// the dog trots off, noses about, finds a word card and drops it at her feet. Then 3-4 words that are due come back as
+// the dog trots off, noses about, finds a word card and drops it at her feet. Then the words that are due come back as
 // quick questions, the most overdue first, words from earlier days and from other places first (G.review.due): she says
 // the word (a big mic right beside its picture) or taps it. Each card grows (cards.js); the dog wags after each one, and
-// at the end he jumps for joy and gets a treat (and gives a heart). About a minute. A skip button (two arrows: "not
-// now", top left) ends it at any moment, without a word of Spanish. Nothing new is taught: only met words; a slipping
-// word (words.js) is met again instead (G.intro.again). The first time, a ghost hand shows the mic (demo.js 'warmup').
+// at the end he jumps for joy and gets a treat (and gives a heart). A skip button (two arrows: "not now", top left)
+// ends it at any moment, without a word of Spanish. The cards teach nothing new: only met words; a slipping word
+// (words.js) is met again instead (G.intro.again). After the cards, a word waiting in the pacing's queue (seen on a day
+// with no room for new words) is introduced if there's room now (G.intro.queued: the only new thing it ever brings).
+// The first time, a ghost hand shows the mic (demo.js 'warmup').
+// How many grows with the backlog (polish plan 2.5, AUDIT C6: a child who explores leaves words behind): 2-3 cards
+// when little is due, 4-8 when more is (WU.size: one more card for every 3 more words due); never more than 3
+// questions in a row: then he runs off and brings the next card (something happens on the map, WU.BATCH).
+// A second, short dog-card moment mid-session (WU.MID_AT, about 6-8 minutes into a sitting): once a sitting, after the
+// day's warm-up, only while words are due (1-3 cards), skippable the same way, never during a story beat.
 // It waits for the story: never during a beat (CH.running), a find-it puzzle, the opener, the bus, a dog lost in a
 // chapter, the evening at home; with fewer than 2 words due it doesn't come (that day). The guide carries on after.
-//   The form, from the word's stage (the answer-card rules: learn.js Choice.view never lets pictures give it away):
-//     met (1)        hear it, pick it (its picture and word among two others: recognition, as for any met word)
-//     known and up   its picture held up: say it (the big mic) or pick its word (word-only cards: recall)
+//   The form, from the word's stage (G.intro.form; the answer-card rules: learn.js Choice.view never lets pictures give
+//   it away, and word-only cards wait for a word well known, docs/AUDIT_2026-10.md 2.7):
+//     met (1)        hear it, pick its picture (picture-only cards: recognition, as for any met word)
+//     known and up   say it first (G.sayFirst, every time here): its picture held up with the question for its kind of
+//                    word (¿Quién es?, ¿Qué hace?, ¿Cuántas hay?...: G.qform) and the big mic beside it, alone; said: a
+//                    recall; else the cards: its word among word-only ones (remembered+) or picture + word (known: a
+//                    reveal, a cued use). Without the mic (off, or "quiet"): known -> hear it, pick its picture;
+//                    remembered+ -> its picture, pick its word (recall)
 //
 // API (G.warmup, short WU):
 //   WU.wait(f) why it can't start now ('done', 'story', 'find', 'busy'... or null: it can)   WU.pick(f, n) the words
+//   WU.size(d) the cards for d words due   WU.midWait(f) / WU.midPick(f) the mid-session moment's (why not; its words)
 //   WU.update(f) / WU.draw(f, ctx) (field.js, every frame)    WU.start(f, ids) start it now (tests, content)
-//   WU.cur() the one going on: {ids, i, phase: 'bring' | 'ask' | 'party', res: [1 | 0], skipped} or null
+//   WU.cur() the one going on: {ids, i, phase: 'bring' | 'ask' | 'party', res: [1 | 0], skipped, mid} or null
 //   WU.done() today's has come (done, skipped or too few words)   WU.skip() ends the one going on   WU.skipToday()
 //   WU.HOLDS.push(f => bool)   content holds it back while true (a zone's moment that mustn't be interrupted)
 //   WU.FORMS[topic] = function* (id, extra) { ... return true if right first try }   a topic's own way to ask a word
 //   WU.LD ('_ld') the card that is a listen-and-do request (src/listen.js G.listen.warm), before a due phrase
 //     (extra: options for its G.ask: the skip button, the cards; pass them on so the child can still skip)
-// Saved: G.state.hist.wu (history.js: {d: the day it last came, n: done, k: skipped, none, last: {d, ids, right, of}}).
+// Saved: G.state.hist.wu (history.js: {d: the day it last came, n: done, k: skipped, none, last: {d, ids, right, of},
+// m: the mid-session moments {d, n (today), right, of, skipped}}).
 // Off while G.debug.noWarmup (tools/harness.js keeps it off unless a test opens its page with {warmup: true}).
 'use strict';
 (function () {
   const WU = G.warmup = {}, T = G.TILE;
-  WU.MAX = 4;        // words it brings
+  WU.MAX = 8;        // cards it brings at most (a big backlog)
   WU.MIN = 2;        // fewer due than this: no warm-up that day
+  WU.SHORT = 3;      // this many due or fewer: a short one (2-3 cards)
+  WU.BATCH = 3;      // questions in a row at most; then he runs off and brings the next card
+  WU.MID_AT = 6.5 * 60; // the mid-session moment: seconds into the sitting (G.sessionTime, day.js)
+  WU.MID_GAP = 150;  // ...and at least this long after the day's warm-up ended (in this sitting)
+  WU.MID_MAX = 3;    // ...its cards: 1-3 due words
+  WU.MID_DAY = 2;    // ...at most this many a day (two sittings)
   WU.SETTLE = 40;    // frames free on the map before it starts (the map has faded in, the child has looked)
   WU.HOLDS = [];
   WU.FORMS = {};
   WU.LD = '_ld';     // the card that is a listen-and-do request (src/listen.js), not a word
   const SKIP = [4, 4]; // the skip button (G.skipBtn), the same place on the map and over the questions
-  let cur = null, freeT = 0;
+  let cur = null, freeT = 0, sitting = 0, lastST = 0, stRef = null, midSit = -1, endedAt = null;
   const wu = () => G.hist.state().wu;
   WU.off = () => !!((typeof window !== 'undefined' && window.__warmupOff) || (G.debug && G.debug.noWarmup));
   WU.done = () => !!G.state && wu().d === G.today();
@@ -27408,12 +28148,30 @@ G.MAPDATA = {
   WU.skip = () => { if (cur) cur.skipped = true; };
   const here = f => (G.zones ? G.zones.of(f.mapId) || G.zones.pathOf(f.mapId) || 'villa' : 'villa');
 
+  // how many cards for d words due: 2-3 when little is due, 4-8 with a backlog (one more for every 3 more due)
+  WU.size = d => (d < WU.MIN ? 0 : d <= WU.SHORT ? d : Math.min(WU.MAX, 4 + Math.floor((d - 4) / 3)));
   // ---------- when ----------
   WU.wait = function (f) {
     if (!G.state || !f) return 'none';
     if (WU.off()) return 'off';
     if (cur) return 'going';
     if (WU.done()) return 'done';
+    return blocked(f);
+  };
+  // the mid-session moment: once a sitting, after the day's warm-up, about 6-8 minutes in, while words are due
+  WU.midWait = function (f) {
+    if (!G.state || !f) return 'none';
+    if (WU.off()) return 'off';
+    if (cur) return 'going';
+    if (!WU.done()) return 'no warm-up yet';
+    const m = wu().m;
+    if (midSit === sitting || (m && m.d === G.today() && (m.n | 0) >= WU.MID_DAY)) return 'done';
+    if ((G.sessionTime || 0) < WU.MID_AT) return 'early';
+    if (endedAt != null && G.sessionTime - endedAt < WU.MID_GAP) return 'soon';
+    return blocked(f);
+  };
+  WU.midDone = () => midSit === sitting;
+  function blocked(f) {
     const CH = G.chapters, F = G.state.flags;
     if (!F.intro || !(CH && CH.openerDone && CH.openerDone())) return 'opener';
     if (!G.pet || !G.pet.mine()) return 'no dog';
@@ -27424,11 +28182,12 @@ G.MAPDATA = {
     if (G.day && G.day.over && G.day.over()) return 'evening';
     for (const h of WU.HOLDS) { try { if (h(f)) return 'held'; } catch (e) { console.error(e); } }
     return null;
-  };
+  }
   // the words it would bring now: due (G.review.due), met on an earlier day (today's too only when there are too few),
   // with a picture; the latest first (days since last met or used, past its box's interval), then words from other
-  // places, a slipping word; never two that look the same
-  WU.pick = function (f, n = WU.MAX) {
+  // places, a slipping word; never two that look the same. How many: WU.size (2-3, or 4-8 with a backlog); n: at most
+  // that many. o.mid: the mid-session moment's (1-3 words, nothing else)
+  WU.pick = function (f, n, o = {}) {
     if (!G.state) return [];
     const Wd = G.words, td = G.today(), zone = f ? here(f) : 'villa';
     const earlier = id => { const r = Wd.rec(id); return !!r && (r.how === 'old' || (r.mdate ? r.mdate !== td : r.ms < Wd.sess())); };
@@ -27439,37 +28198,57 @@ G.MAPDATA = {
     const score = id => late(id) + (G.zones && G.zones.ofWord(id) !== zone ? 2 : 0) + (Wd.slipping(id) ? 1 : 0) + (earlier(id) ? 5 : 0);
     const sc = {}; L.forEach(id => { sc[id] = score(id); });
     L.sort((a, b) => sc[b] - sc[a] || Wd.stage(a) - Wd.stage(b) || (Wd.rec(a).last || 0) - (Wd.rec(b).last || 0));
+    const words = [], forms = new Set();
+    for (const id of L) { const b = G.baseForm(id); if (forms.has(b)) continue; forms.add(b); words.push(id); }
+    if (o.mid) return words.slice(0, Math.min(n || WU.MID_MAX, WU.MID_MAX));
     // a phrase that's due comes too, as the last card (src/phrases.js: "Quiero..." to the dog; docs/LEARNING_PLAN_2.md Phase 2)
     const ph = G.phrase && G.phrase.on() ? G.phrase.due()[0] : null;
     // and a listen-and-do request once she knows enough words (src/listen.js: "Dame dos huesos."), before the phrase
     const ld = G.listen && G.listen.warmReady && G.listen.warmReady() ? WU.LD : null;
-    const out = [], forms = new Set();
-    for (const id of L) { const b = G.baseForm(id); if (forms.has(b)) continue; forms.add(b); out.push(id); if (out.length >= n - (ph ? 1 : 0) - (ld ? 1 : 0)) break; }
-    if (ld && out.length) out.push(ld);
-    if (ph) out.push(ph);
+    const d = words.length;
+    if (d < WU.MIN) return words.concat(ph ? [ph] : []); // (too few: the phrase alone never brings it, nor the request)
+    let T = WU.size(d); if (n != null) T = Math.max(1, Math.min(T, n));
+    // a short one: the words due and, room left (3 at most), the phrase or the request; a long one: T cards in all
+    const nW = Math.max(Math.min(d, WU.MIN, T), d <= WU.SHORT ? Math.min(d, T) : T - (ph ? 1 : 0) - (ld ? 1 : 0));
+    const room = Math.max(0, (d <= WU.SHORT ? Math.min(WU.SHORT, n != null ? n : WU.SHORT) : T) - nW), ex = [];
+    if (ph && ex.length < room) ex.push(ph); if (ld && ex.length < room) ex.push(ld);
+    const out = words.slice(0, nW);
+    if (ex.includes(ld)) out.push(ld);
+    if (ex.includes(ph)) out.push(ph);
     return out;
   };
+  // the mid-session moment's words: 1-3 due ones (WU.pick o.mid)
+  WU.midPick = f => WU.pick(f, WU.MID_MAX, { mid: true });
 
   // ---------- every frame (field.js, after the story's own: a beat that starts by itself goes first) ----------
   WU.update = function (f) {
     if (!G.state || !f) return;
+    if (G.state !== stRef || (G.sessionTime || 0) < lastST - 1) { sitting++; stRef = G.state; endedAt = null; } // (a new sitting: a game opened, a new game, a new morning)
+    lastST = G.sessionTime || 0;
     if (cur) {
       if (cur.f === f && cur.phase !== 'party' && cur.phase !== 'ask' && G.top() === f && G.skipHit(...SKIP)) { G.input.eat(); cur.skipped = true; G.audio.sfx('cancel'); }
       return;
     }
-    if (WU.wait(f)) { freeT = 0; return; }
+    const mid = WU.done();
+    if (mid ? WU.midWait(f) : WU.wait(f)) { freeT = 0; return; }
     if (++freeT < WU.SETTLE) return;
     freeT = 0;
+    if (mid) { // the mid-session moment: only while words are due (none now: it looks again in a moment)
+      const ids = WU.midPick(f);
+      if (ids.length) WU.start(f, ids, { mid: true });
+      return;
+    }
     const ids = WU.pick(f);
     if (ids.filter(id => id !== WU.LD).length < WU.MIN) { const w = wu(); w.d = G.today(); w.none = (w.none | 0) + 1; G.st.autosave(); return; } // (the request alone never brings it)
     WU.start(f, ids);
   };
-  WU.start = function (f, ids) {
+  // o.mid: the mid-session moment (the day's warm-up has come already)
+  WU.start = function (f, ids, o = {}) {
     f = f || G.field; if (!G.state || !f || cur) return false;
-    ids = (ids || WU.pick(f)).filter(id => id === WU.LD || G.words.met(id)); if (!ids.length) return false;
-    wu().d = G.today();
-    cur = { f, ids, i: -1, phase: 'bring', res: [], skipped: false, t0: G.frame, card: null };
-    if (G.vocabLog) G.vlog.ev({ ty: 'warmup', ids });
+    ids = (ids || (o.mid ? WU.midPick(f) : WU.pick(f))).filter(id => id === WU.LD || G.words.met(id)); if (!ids.length) return false;
+    if (o.mid) midSit = sitting; else wu().d = G.today();
+    cur = { f, ids, i: -1, phase: 'bring', res: [], skipped: false, t0: G.frame, card: null, mid: !!o.mid };
+    if (G.vocabLog) G.vlog.ev({ ty: o.mid ? 'warmup-mid' : 'warmup', ids });
     G.chapters.scene(f, run(f, cur));
     G.st.autosave();
     return true;
@@ -27494,15 +28273,14 @@ G.MAPDATA = {
       if (P.sleeping(f)) { f.petAwake = true; yield* anim(c, n, 'wake'); }
       if (!c.skipped) { P.place(f, n); yield* wait(c, 12); }
       // 1. he brings a word card and drops it at your feet
-      if (!c.skipped) {
-        yield* anim(c, n, 'bring', { item: { id: 'tarjeta' } });
-        const p = f.player; c.card = [n.x * T + 12 + (p.x - n.x) * T * 0.5, n.y * T + 19 + (p.y - n.y) * T * 0.5 + 3]; // (where it landed: pet.js 'bring')
-        yield* wait(c, 14);
-      }
-      // 2. the cards, one by one
+      if (!c.skipped) yield* fetchCard(f, c, n);
+      // 2. the cards, one by one; after every 3 questions he runs off and brings the next card (a moment on the map,
+      // never a quiz chain)
       for (let i = 0; i < c.ids.length && !c.skipped; i++) {
+        if (i > 0 && i % WU.BATCH === 0) yield* fetchCard(f, c, n);
+        if (c.skipped) break;
         c.i = i; c.phase = 'ask';
-        if (i === 0 && c.card) { const [x, y] = [c.card[0] - f.cam.x, c.card[1] - f.cam.y]; G.fx.burst(x, y - 4); G.audio.sfx('swing'); } // (the card jumps up into the question)
+        if (c.card) { const [x, y] = [c.card[0] - f.cam.x, c.card[1] - f.cam.y]; G.fx.burst(x, y - 4); G.audio.sfx('swing'); } // (the card jumps up into the question)
         c.card = null;
         const ok = yield* ask(c, c.ids[i]);
         if (c.skipped) break;
@@ -27512,6 +28290,9 @@ G.MAPDATA = {
       }
       c.card = null;
       if (c.skipped) { finish(c, false); return; }
+      // (pacing, words.js G.budget: a word she saw on a day with no room for new ones is introduced now, after the
+      // reviews, if there's room: intro.js G.intro.queued)
+      if (G.intro.queued) { c.phase = 'new'; yield* G.intro.queued({ who: 'canelo' }); }
       // 3. the dog jumps for joy and gets a treat
       c.phase = 'party';
       const [dx, dy] = dogXY(f, n);
@@ -27523,12 +28304,21 @@ G.MAPDATA = {
     } finally {
       n.busy = false; n.ghost = ghost; n.home = [n.x, n.y];
       if (n.pa && (n.pa.k === 'bring' || n.pa.k === 'wag')) n.pa = null;
-      cur = null; freeT = 0;
+      cur = null; freeT = 0; endedAt = G.sessionTime || 0;
       G.st.autosave();
     }
   }
+  // he trots off, noses about, and drops a word card at her feet
+  function* fetchCard(f, c, n) {
+    c.phase = 'bring';
+    yield* anim(c, n, 'bring', { item: { id: 'tarjeta' } });
+    if (c.skipped) return;
+    const p = f.player; c.card = [n.x * T + 12 + (p.x - n.x) * T * 0.5, n.y * T + 19 + (p.y - n.y) * T * 0.5 + 3]; // (where it landed: pet.js 'bring')
+    yield* wait(c, 14);
+  }
   function finish(c, completed) {
     const w = wu(), right = c.res.filter(Boolean).length;
+    if (c.mid) { const m = w.m && w.m.d === G.today() ? w.m : { d: G.today(), n: 0 }; w.m = Object.assign(m, { n: (m.n | 0) + 1, ids: c.ids.slice(), right, of: c.res.length, skipped: !completed || null }); return; } // (the mid-session moment: counted apart)
     if (completed) w.n = (w.n | 0) + 1; else w.k = (w.k | 0) + 1;
     w.last = { d: G.today(), ids: c.ids.slice(), right, of: c.res.length, skipped: !completed || null };
   }
@@ -27541,17 +28331,21 @@ G.MAPDATA = {
     if (Wd.isPhrase && Wd.isPhrase(id)) return !!(yield* G.phrase.warm(id, extra)); // (a phrase: say the whole thing to the dog)
     if (Wd.needsReintro(id)) return !!(yield* G.intro.again(id, { who: null, extra })); // (slipping: met again)
     if (WU.FORMS[wd.topic]) return !!(yield* WU.FORMS[wd.topic](id, extra));
-    // two other met words: the same topic first, never one that sounds like another card (the mic hears them all)
-    const alike = (a, b) => G.speech && G.speech.score ? Math.max(G.speech.score(G.baseForm(a), G.baseForm(b)), G.speech.score(G.baseForm(b), G.baseForm(a))) >= 0.6 : false;
+    // two other met words: the same topic first, never one that looks or sounds like another card (G.wordsAlike: the mic
+    // hears them all)
     const met = shuffle(Wd.list(1).filter(k => k !== id && G.iconDrawn(k) && G.baseForm(k) !== G.baseForm(id)));
     const pool = [];
     for (const k of met.filter(k => G.data.words[k].topic === wd.topic).concat(met.filter(k => G.data.words[k].topic !== wd.topic))) {
       if (pool.length >= 2) break;
-      if (![id].concat(pool).some(o => alike(o, k))) pool.push(k);
+      if (G.wordsApart([id].concat(pool, [k]))) pool.push(k);
     }
     const ch = G.wordChoices(id, [id].concat(pool), pool.length + 1);
-    const q = st <= 1 ? { prompt: '¿[' + id + ']?', en: 'Which one? (listen, then tap it)' }
-      : { prompt: '¿Qué es?', en: 'What is it? Say it (the big mic), or tap its word.', show: id, micBig: true };
+    // the form (G.intro.form: the question for its kind of word, no give-aways): known and up, with the mic -> say it
+    // first, every time (its picture, its question, the big mic beside it), then its cards; else heard -> its picture,
+    // or (remembered+, no mic) its picture -> its word
+    const q = G.intro.form(id, ch, { say: st >= 2 && G.sayFirst.want(id, { always: true }), recall: true });
+    if (q.show) q.micBig = true; else q.en = 'Which one? (listen, then tap it)';
+    if (q.sayFirst) q.sayEn = q.en + ' Say it (the big mic), or wait for the cards.';
     return !!(yield* G.ask(Object.assign({ choices: ch.choices, answer: ch.answer, layout: 'cards', review: true }, q, extra)));
   }
 
@@ -27600,6 +28394,8 @@ G.MAPDATA = {
 //   nothing heard      "¡Otra vez!"
 //   taps (the builder) tap the frame card and a word card: they go into her bubble, the sentence is read aloud, it
 //                      counts as a built phrase (productive, below saying: it can't make a phrase gold)
+// A gold phrase (stage 3) shows its written pattern faint, and at stage 4 not at all (her bubble's frame, the frame
+// card's words: P.patternShown, polish plan 2.10), so saying it is recall, not reading; the picture of the slot stays.
 // Matching: G.speech.matchPhrase (speech.js): lenient (articles, accents, ¿¡, word order, small mishearings, frame
 // synonyms: quisiera, mi nombre es, dónde están...). No colour for el / la: grammar is by ear (people say it right).
 //
@@ -27724,7 +28520,8 @@ G.MAPDATA = {
 
   // ---------- her speech bubble: the frame and the slot as a picture-sentence ----------
   // (x, y, w, h: the bubble; o: {tail: 'left' | 'down', frame: 'ghost' | 'on' | 'lit', slot: null (empty) | a slot,
-  //  pulse, t, glow (0..1), col (the frame's colour), small (scale-1 text)}) -> {frame: rect, slot: rect}
+  //  pulse, t, glow (0..1), col (the frame's colour), small (scale-1 text), frameAlpha (the frame's words: faint, or
+  //  0: not written at all, P.patternShown)}) -> {frame: rect, slot: rect}
   P.drawSentence = function (ctx, x, y, w, h, id, o = {}) {
     const R = (a, b, c, d, col) => { ctx.fillStyle = col; ctx.fillRect(Math.round(a), Math.round(b), Math.round(c), Math.round(d)); };
     const ink = '#10102a', paper = o.glow ? '#fff8c8' : '#ffffff';
@@ -27745,8 +28542,8 @@ G.MAPDATA = {
     const fcol = o.frame === 'ghost' ? '#b8bcd0' : o.frame === 'lit' ? '#20a040' : (o.col || '#2860a8');
     const out = {};
     const word = str => {
-      const ww = tw(str), bob = o.frame === 'lit' || (o.pulseFrame && (o.t >> 3) & 1) ? -1 : 0;
-      if (k === 2) G.bigText(ctx, str, cx + ww / 2, mid - 7 + bob, 2, fcol, null); else G.text(ctx, str, cx, mid - 4 + bob, fcol, null);
+      const ww = tw(str), bob = o.frame === 'lit' || (o.pulseFrame && (o.t >> 3) & 1) ? -1 : 0, fa = o.frameAlpha == null ? 1 : o.frameAlpha;
+      if (fa > 0) { ctx.globalAlpha *= fa; if (k === 2) G.bigText(ctx, str, cx + ww / 2, mid - 7 + bob, 2, fcol, null); else G.text(ctx, str, cx, mid - 4 + bob, fcol, null); ctx.globalAlpha /= fa; } // (a gold phrase: faint, then not written: saying it is recall)
       const r = { x: cx, y: mid - 9, w: ww, h: 18 }; cx += ww + gap; return r;
     };
     if (p.before) out.frame = word(p.before);
@@ -27925,9 +28722,15 @@ G.MAPDATA = {
     }
   }
   G.PhraseModel = PhraseModel;
-  // one pattern at a time: none introduced in the last P.GAP play seconds, and every word of the moment met a while ago
+  // a gold phrase's written pattern fades (polish plan 2.10, AUDIT L2): stage 3 (gold) faint, stage 4 not written at all,
+  // so saying it is recall, not reading. Its words come back the moment she builds or says it (her bubble lights up),
+  // and in the invitation after the key word (a model to echo). -> 1, 0.45 or 0
+  P.patternShown = id => { const st = Wd().stage(id); return st >= 4 ? 0 : st >= 3 ? 0.45 : 1; };
+  // one pattern at a time: none introduced in the last P.GAP play seconds, and every word of the moment met a while ago;
+  // and a phrase is a new item for the pacing (words.js G.budget: review first; a chapter's beat always may)
   P.canIntro = function (id, o = {}) {
     if (!P.on() || !P.def(id)) return false;
+    if (G.budget && !G.budget.canIntro(1, { id })) return false;
     const last = st().last; if (last != null && Wd().now() - last < P.GAP) return false;
     const fresh = (o.slots || []).some(s => { const w = typeof s === 'string' ? s : s && s.word; const r = w && Wd().rec(w); return !!r && r.st >= 1 && r.met != null && r.ms === Wd().sess() && Wd().now() - r.met < 60; });
     return !fresh;
@@ -28107,7 +28910,8 @@ G.MAPDATA = {
       const glow = won ? Math.max(0, 1 - wt / 40) : this.invite != null ? 0.3 + 0.3 * Math.sin(this.t / 8) : 0;
       ctx.save();
       if (won && wt < 12) { const s = 1 + 0.08 * Math.sin(wt / 12 * Math.PI), cx = u.x + u.w / 2, cy = u.y + u.h / 2; ctx.translate(cx, cy); ctx.scale(s, s); ctx.translate(-cx, -cy); }
-      this._parts = P.drawSentence(ctx, u.x, u.y, u.w, u.h, this.id, { slot: sOn, frame: frameState, col: Wd().stage(this.id) >= 3 ? '#b07000' : '#2860a8', pulse: true, t: this.t, glow, slotHint: this.ask > 0 || (demo && (demo >> 4) % 3 === 1), pulseFrame: this.invite != null });
+      const fa = frameState === 'ghost' && this.invite == null ? P.patternShown(this.id) : 1; // (not said or built yet: a gold phrase's pattern faint, or not written)
+      this._parts = P.drawSentence(ctx, u.x, u.y, u.w, u.h, this.id, { slot: sOn, frame: frameState, col: Wd().stage(this.id) >= 3 ? '#b07000' : '#2860a8', pulse: true, t: this.t, glow, slotHint: this.ask > 0 || (demo && (demo >> 4) % 3 === 1), pulseFrame: this.invite != null, frameAlpha: fa });
       ctx.restore();
       if (this.politeT > 0 && H()) for (let i = 0; i < 3; i++) { const k = (70 - this.politeT + i * 12) % 40; H().heart(ctx, f.x + 8 + i * 12, f.y - 4 - k, true, 1); }
       // the word cards (and the frame card) that fly into the bubble
@@ -28128,8 +28932,8 @@ G.MAPDATA = {
         if (frame) { // the frame card: a speech bubble and the frame's words
           G.win(ctx, x, y, r.w, r.h, sel ? { fill1: '#fff8d0', fill2: '#f8e8a0', alpha: 1 } : { fill1: '#ffffff', fill2: '#e8f0ff', alpha: 1 });
           G.cards.bubble(ctx, x + r.w / 2 - 13, y + 8, 2, '#ffffff');
-          const L = fit(P.label(this.id), r.w - 12), col = Wd().stage(this.id) >= 3 ? '#b07000' : '#2860a8'; // (a margin inside the card's rim: "por / favor")
-          L.forEach((l, i) => G.textC(ctx, l, x + r.w / 2, y + 44 + i * 10 - (L.length - 1) * 4, col, null));
+          const L = fit(P.label(this.id), r.w - 12), col = Wd().stage(this.id) >= 3 ? '#b07000' : '#2860a8', fa = P.patternShown(this.id); // (a margin inside the card's rim: "por / favor"; a gold phrase: faint, then only the bubble: a tap still says it)
+          if (fa > 0) { ctx.globalAlpha = fa; L.forEach((l, i) => G.textC(ctx, l, x + r.w / 2, y + 44 + i * 10 - (L.length - 1) * 4, col, null)); ctx.globalAlpha = 1; }
           return;
         }
         const v = this.slotView(j);
@@ -28397,9 +29201,10 @@ G.MAPDATA = {
     // a thing's place in its cell: [x, y, size] (the k-th of a pile; a single one on its own)
     thingAt(i, k) {
       const c = this.cells[i], r = this.cellRect(i);
-      if (this.req.kind === 'count') {
+      const act = this.req.tpl === 'actnum'; // (an action done n times: n of its pictures, every cell the same size)
+      if (this.req.kind === 'count' || act) { // (a pile; an action done twice: two of its pictures)
         const n = Math.max(1, c.n), cols = n <= 1 ? 1 : n <= 4 ? 2 : 3, rows = Math.ceil(n / cols), fit = Math.min(Math.floor((r.w - 6) / cols), Math.floor((r.h - 8) / rows) + 1);
-        const s = Math.min(PILE[c.size] || 16, fit, c.size === 'pequeno' ? Math.round(fit * 0.6) : 99), H2 = heap(r, n, s)[k] || [r.x + r.w / 2 - s / 2, r.y + r.h / 2];
+        const s = Math.min(act ? 22 : PILE[c.size] || 16, fit, c.size === 'pequeno' ? Math.round(fit * 0.6) : 99), H2 = heap(r, n, s)[k] || [r.x + r.w / 2 - s / 2, r.y + r.h / 2];
         return [H2[0], H2[1], s];
       }
       const big = Math.min(ONE.grande, r.w - 6), s = c.size === 'grande' ? big : c.size === 'pequeno' ? Math.round(big / 2) : Math.min(32, r.w - 10);
@@ -28575,7 +29380,7 @@ G.MAPDATA = {
         ctx.fillStyle = off ? '#7a8098' : '#bcd2ea'; ctx.fillRect(x + 1, r.y + r.h - 6, r.w - 2, 5); // (the ground they stand on)
         ctx.globalAlpha = off ? 0.45 : 1;
         if (req.kind === 'count') { for (let k = 0; k < c.left; k++) { const [px, py, s] = this.thingAt(i, k); G.drawIcon16(ctx, L.pic(c), px + wob, py, s / 16); } }
-        else if (!c.gone) { const [px, py, s] = this.thingAt(i, 0), hop = glow ? Math.round(Math.abs(Math.sin(t / 7)) * -3) : 0; G.drawIcon16(ctx, L.pic(c), px + wob, py + hop, s / 16); }
+        else if (!c.gone) { const hop = glow ? Math.round(Math.abs(Math.sin(t / 7)) * -3) : 0; for (let k = 0; k < Math.max(1, c.n | 0); k++) { const [px, py, s] = this.thingAt(i, k); G.drawIcon16(ctx, L.pic(c), px + wob, py + hop, s / 16); } } // (an action twice: its picture twice)
         ctx.globalAlpha = 1;
       });
     }
@@ -28644,7 +29449,9 @@ G.MAPDATA = {
       sp.heard.forEach(w => W.encounter(w, 'heard'));
       return { gold };
     }
-    for (const w of sp.tested) { if (res.dims[dimOf(w)]) W.answerRight(w, { mode: 'listen', firstTry: true, review: W.isOld(w), noGrow: !!o.quiet }); else W.answerWrong(w); } // (a wrong answer's right half: counted, quietly: the right one is being shown)
+    // a word is credited only on a fully right answer (AUDIT M2: a random tap used to credit a word half the time); a
+    // wrong answer is a miss for the word whose detail was wrong, and the half she got right is only heard
+    for (const w of sp.tested) { if (res.ok) W.answerRight(w, { mode: 'listen', firstTry: true, review: W.isOld(w), noGrow: !!o.quiet }); else if (!res.dims[dimOf(w)]) W.answerWrong(w); else W.encounter(w, 'heard'); }
     sp.heard.forEach(w => W.encounter(w, 'heard'));
     return { gold };
   };
@@ -28658,11 +29465,23 @@ G.MAPDATA = {
     G.push(sc);
     const r = yield w, res = r.result || {};
     if (res.cancel) return res;
+    if (req.verb === 'act' || req.verb === 'self') yield* L.doIt(req); // (listen, then DO: her character does it on the map)
     if (RQ()) RQ().result(req, !!res.first);
     if (G.hist && G.hist.listenDone) G.hist.listenDone(!!res.ok, !!res.first, req.say);
     if (G.vocabLog) G.vlog.ev({ ty: 'listen', say: req.say, tpl: req.tpl, ok: !!res.ok, first: !!res.first });
     if (sc.gold.length) yield G.learnWords(sc.gold);
     return res;
+  };
+  // an action or a part of her body, done on the map by her character once it's asked ("Salta dos veces": she jumps
+  // twice; "Tócate la nariz": she touches her nose), with the park's and the grandparents' moves (content/es/zone-
+  // juegos.js G.juegos.act, zone-abuelos.js G.abuelos.act), on any map (her own drawing is set aside meanwhile)
+  L.doIt = function* (req) {
+    const f = G.field, p = f && f.player; if (!p || G.scenes.indexOf(f) < 0) return;
+    const go = req.verb === 'act' ? G.juegos && G.juegos.act : G.abuelos && G.abuelos.act; if (!go) return;
+    const d0 = p.drawSelf;
+    try {
+      for (let i = 0; i < (req.verb === 'act' ? Math.max(1, req.n || 1) : 1); i++) { p.drawSelf = null; yield* go(f, p, req.thing); yield 8; }
+    } finally { p.drawSelf = d0 || p.drawSelf; }
   };
   // a due word this board can ask about (the review engine's order), or null
   L.focus = function (spec) {
@@ -28800,17 +29619,21 @@ G.MAPDATA = {
     FV.OFFERS.push(
       ['pepe', 'listen', null], ['nico', 'listen', null], ['lucia', 'carry', null, () => !!G.chapters && G.chapters.done('c15')],
       ['lola', 'carry', null], ['lupe', 'listen', null, zv('bosque')], ['elena', 'listen', null, zv('bosque')],
-      ['abuelo', 'listen', null, zv('abuelos')], ['mateo', 'listen', null, zv('montana')]);
+      ['abuelo', 'listen', null, zv('abuelos')], ['mateo', 'listen', null, zv('montana')],
+      ['paco', 'listen', null, zv('playa')], ['ana', 'listen', null, zv('juegos')], ['lucho', 'listen', null, zv('montana')]); // (a board in every place: polish plan 2.10)
     FV.GROUP.listen = FV.GROUP.carry = 'listen'; FV.CAP.listen = 2; // (two a day at most, in all: not spammy)
     FV.OFF.listen = FV.OFF.carry = () => !L.on();
     FV.BUBBLE.listen = FV.BUBBLE.carry = { icon: 'escucha' };
     FV.ON.carry = v => (v.req && !v.req.done ? { icon: 'escucha' } : null);
-    // the day's word: a due known word one of their boards can ask about
+    // the day's word: a due known word one of their boards can ask about (a number, a colour, a size from anywhere fits
+    // any board: a spoken request about something present, AUDIT C6); when none is due, the board's own word used
+    // longest ago (falling back to the place's own words)
     const pickFor = (who, ok) => {
       const s = RQ().SPECS[who]; if (!s) return null;
       const boards = s.places ? Object.keys(s.places).map(z => RQ().spec(who, z)) : [RQ().spec(who)];
       const words = new Set(); boards.forEach(b => RQ().words(b).forEach(w => words.add(w)));
-      return G.review.next({ minStage: 2, filter: id => words.has(id) && ok(id) && boards.some(b => RQ().feasible(b, id)) }) || null;
+      const fits = id => words.has(id) && ok(id) && boards.some(b => RQ().feasible(b, id));
+      return G.review.next({ minStage: 2, filter: fits }) || (G.favores.dueWord ? G.favores.dueWord({ pool: [...words], minStage: 2, filter: fits, onlyPool: true }) : null);
     };
     FV.PICK.listen = FV.PICK.carry = (who, pool, ok) => pickFor(who, ok);
     FV.KIND.listen = function* (v, f) {
