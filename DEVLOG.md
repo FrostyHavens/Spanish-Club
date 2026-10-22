@@ -2,6 +2,100 @@
 
 A running record of what changed in Club de Español and why. Newest first.
 
+## 2026-10-22 — Polish Sprint 2: a memory engine for three years, honest questions, reviews everywhere, an honest Learning page
+The second sprint of the polish plan (`docs/AUDIT_2026-10.md` section 5, items 2.1-2.12). It was built as four
+parallel jobs, then reviewed (22 confirmed findings, all fixed), measured with a new learning audit, tuned, and run
+through the full test suite.
+
+**The memory engine (2.1-2.4; `src/words.js`, `src/cards.js`, `src/history.js`).**
+- *Review gaps, in calendar days:* boxes of 1, 3, 7, 16, 35, 75 and 150 days, after the two same-session follow-ups.
+  A night at home in the same sitting no longer makes anything due: the memory has its own session counter, and
+  `W.day()` stays the game's day for favours, carry and chapters.
+- *Forgetting:* a miss sends a word back to box 1 or 2. The same day it can't climb above box 2 or turn gold.
+- *Honest stages, from a switch date (`wm.v2`):*
+  - Gold needs a recall-type answer on a later calendar day than the word was met.
+  - Solid needs recall from memory on 2 later days, at least 2 days apart. Recall from memory has new history
+    letters: **F** said before any written cue, **V** picked from pictures alone on a later day, **C** a grown-up's
+    check.
+  - An answer within a minute of seeing or hearing the word (`W.EXPOSE`) is never recall.
+  - Listen-and-do taps, cued picks and the forced last pair of a page puzzle never promote.
+  - Everything earned before the switch stays, and cards never shrink.
+- *Review order:* the most overdue for its gap first.
+- *Her save:* it upgrades on load. Old boxes 1-5 become 1, 2, 2, 3, 4, each word keeps its due date, and only words
+  already due come due.
+
+**Review-first pacing (2.9).**
+- *New words in the open world* wait while more than 5 reviews are due. The soft target is about 2.5 a play day in
+  year 1, 1.8 in year 2, 1.5 after; at least 2 a day always; never more than 8.
+- *A word held back is still met:* the thing is still shown, named and put in the album, and a due word is asked
+  instead. The word waits in a short queue that the dog's warm-up brings first.
+- *The story:* a chapter already started always finishes and teaches its words. A new chapter opens when 8 or fewer
+  reviews wait and today's new items are 4 or fewer, or, after the day's dog cards, as the day's first chapter with up
+  to 15 waiting. A zone's first chapter opens on the day she first gets there. Chapters 1-3 never wait.
+- *While a chapter waits:* its giver shows no bubble, and the arrow goes to greetings, the dog and free play.
+
+**The questions (2.6, 2.7, 2.11; `src/learn.js`, `src/intro.js`, `src/album.js`).**
+- *Say it first:* one review in three about a known word, and the dog's warm-up for remembered words, open with the
+  picture, its question and a big mic for about 4 s. Said right, it is recall from memory. Otherwise the cards slide
+  in: no wrong sound, no miss, and her tap still moves the word on. The recognizer never marks her wrong: hearing
+  another card's word gives "¡Otra vez!".
+- *Quiet mode:* a grown-ups row, "Speaking prompts: on / quiet".
+- *The album:* "¿Quién es?" with the animal's silhouette.
+- *No give-aways:*
+  - The first review is "hear it, pick the picture".
+  - Word-only cards only from gold, never with look-alike words (abuela/abuelo).
+  - One text size and one colour per question.
+  - The last page-puzzle pair joins by itself.
+- *The question for each kind of word:* ¿Qué hace?, ¿De qué color es?, ¿Cómo está?, ¿Cuántas/Cuántos hay?, ¿Qué
+  dice?, ¿Quién es?, ¿Qué le dices? (dog commands). Caliente is asked about the hot chocolate, never a person.
+
+**Reviews follow her everywhere (2.5, 2.10).**
+- *Due words from any place* come back as picture questions (`G.favores.dueWord`) in greetings, photo favours, Lola's
+  travel photos and the drawings in Tomás's letters.
+- *The dog's warm-up* grows with the backlog: 2-3 cards, or 4-8, with the dog fetching the next card after every 3.
+  A short mid-session dog moment comes once a sitting, only while words are due.
+- *A moment, not a quiz chain:*
+  - at most 3 questions in one talk;
+  - one review per person per place a day;
+  - no word re-asked within 3 minutes;
+  - a waiting favour runs before a side game, so Ana's bubble is no longer a dead end.
+- *New listen boards:* the beach (Don Paco), the park (Ana: "Salta dos veces", "Tócate la nariz") and the mountain (Don
+  Lucho), plus plain requests before any colour is known. Only a fully right pick earns credit.
+- *Phrases:* a gold phrase's written pattern fades, so saying it becomes recall. Don Chuy's bubbles are asked for with
+  "Quiero burbujas, por favor".
+
+**The Learning page (2.8; `src/dashboard.js`).**
+- *Seven tabs:* Overview, Memory, Pace, Words, Check, Tonight, Talk.
+- *Memory:* recognition with lucky taps taken out, recall from memory, and your check beside the game's number.
+- *Pace:* reviews done against due per day for 3 weeks, the backlog now, new items against the target, and the words
+  held back.
+- *Also tracked:*
+  - "said aloud" once a day per word, without echoes;
+  - forgotten and relearned words;
+  - words not seen in 30 or 60 days;
+  - a "Speaking: not working lately" notice with the iPad hint;
+  - a dated note for the stricter measure.
+- *"Words to try at Spanish club":* about 10 words she knows well, changed each Monday, for her real-life club.
+
+**The learning audit (2.12; `tools/learning-audit.js`).**
+- *What it does:* plays 6 days of 15 minutes with every feature on, at a child's pace, and reports against the plan's
+  targets. `tools/vocab-audit.js` now writes to a scratch folder unless `--write-docs` is passed.
+- *Measured on this code:*
+  - new items 2-8 a play day after the first;
+  - the backlog at session end steady at 8-11 (it grew 0 → 44 before story pacing);
+  - reviews done 70 of 110 due;
+  - practice moments 1.9 a minute (free play 1.5, about what she has today).
+- Raising free play to 3+ a minute is Sprint 3's first job.
+
+**Also:**
+- The warm-up carries on after a map change mid-way.
+- A chapter beat whose map was replaced no longer stays "running".
+- Abuelo's jacket comes back on a later night if its word was held back.
+- The guide's loop net counts one-line talks and favour states.
+
+**Tests:** new `test-memory`, `test-questions`, `test-everywhere` and `test-dashboard`. The Spanish lines are batch 2 in
+`docs/SPANISH_REVIEW.md`.
+
 ## 2026-10-21 — Polish Sprint 1: the arrow never loops, her save can be backed up, right Spanish, a day in 15 minutes
 The first sprint of the polish plan (`docs/AUDIT_2026-10.md` section 5, items 1.1-1.12). Built as four parallel jobs,
 merged, reviewed and run through the full test suite.
