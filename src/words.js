@@ -37,7 +37,9 @@
 // ft / mdate, W.lastDay), lapse (the calendar day number of its last miss), rd [calendar day numbers it was recalled
 // from memory, newest last, up to 4], mc (misses in a row), mw (play times of the last 3 misses), slip ({d: day number,
 // n: right first tries since, re: 1 once re-introduced}: a SLIPPING word, docs/LEARNING_PLAN_2.md Phase 1), gk (its
-// card's points as shown at the switch: a floor, cards.js), v (2: upgraded)}.
+// card's points as shown at the switch: a floor, cards.js), fg (FORGOTTEN: the day number a gold word (stage 3+) was
+// missed; cleared when it is relearned: a recall-type right answer on a later calendar day, the gold rule again), rl
+// (times relearned), rld (the day number of the last), v (2: upgraded)}. (fg / rl: the grown-ups' page, AUDIT 2.8)
 // Upgrading an older save (W.upgrade, on load; W.rec does it per record on demand): G.state.wm.v2 = today (the switch),
 // wm.ms = wm.sess, wm.d0 = the first day the save was played (from the history, else the earliest word met); each record:
 // old box 1-5 (gaps 0, 1, 2, 4, 8 days) -> box 1, 2, 2, 3, 4 (W.OLD_BOX: the next gap after a right answer is the
@@ -71,6 +73,8 @@
 //                            met or used; the same day it is a plain pick, P)
 //                        parent: a grown-up's check (mode 'parent': the history's C, recall from memory)
 //                        forced: the only answer left (the last pair of a page puzzle): a cued pick, nothing moves
+//                        n: how many choices the question had (G.ask): the history keeps it with the word's first
+//                          pick of the day, for the grown-ups' guess-adjusted recognition (history.js)
 //                      Who passes what (the engine can't see the screen): G.ask (learn.js) passes recall: true with
 //                      mode 'pic' when the answer's card is a picture only, no card in the question has a label, the
 //                      answer isn't written in the prompt (absent, or masked: a speaker) and it isn't cued (the review's
@@ -80,7 +84,7 @@
 //                      no word on it: it could pass recall: true too.) Without recall: true a picture-only pick is a P
 //                        how: 'answer' (G.ask: a question whose answer is a word not met yet meets it with the right
 //                          pick; in the open world on a day with no room for new words it doesn't: G.budget.defer)
-//   W.answerWrong(id, {parent})  a miss: back to box 2 or 1, due again soon (3 misses: slipping)
+//   W.answerWrong(id, {parent, n})  a miss: back to box 2 or 1, due again soon (3 misses: slipping; a gold word: forgotten)
 //   W.lastDay(id) the day number it was last met or used (or null)   W.gapDays(id) days since then (or null)
 //   W.slipping(id)  W.needsReintro(id) (slipping, not re-introduced yet)  W.reintroduced(id) (G.intro.again calls it)
 //   W.encounter(id, how) a passive meeting of a met word (heard, named, in the bag...): only `last` and `n`
@@ -326,7 +330,7 @@
     // understood (listen-and-do, src/listen.js: the word heard in a sentence, no picture), F recalled from memory and
     // said, V recalled from memory from pictures alone (capitals: right on the first try)
     const hk = st0 < 1 ? null : mem || (o.said ? (cued || o.echo ? 'E' : first ? 'S' : 's') : cued ? 'K' : mode === 'listen' ? (first ? 'L' : 'l') : mode === 'text' || mode === 'match' ? (first ? 'R' : 'r') : first ? 'P' : 'p');
-    if (hk && G.hist) G.hist.event(id, hk, { answer: true, said: !!o.said });
+    if (hk && G.hist) G.hist.event(id, hk, { answer: true, said: !!o.said, n: o.n });
     if (st0 < 1) W.meet(id, o.how || 'answer');
     r.last = W.now(); r.ru = r.last; r.n++; r.ret++; // (ru: the last retrieval, chapters.js nudge)
     r.ld = dn;
@@ -344,6 +348,7 @@
       const later = r.mdn == null || dn > r.mdn, lapsed = r.lapse === dn;
       const recallType = !!mem || (!o.echo && (mode === 'text' || mode === 'match' || mode === 'say' || mode === 'parent' || (o.said && mode !== 'both'))); // (an echo just repeats what was heard)
       if (mem && later && !lapsed) { const rd = Array.isArray(r.rd) ? r.rd : (r.rd = []); if (rd[rd.length - 1] !== dn) { rd.push(dn); if (rd.length > 4) rd.shift(); } }
+      if (r.fg != null && recallType && dn > r.fg && mode !== 'listen') { r.fg = null; r.rl = (r.rl | 0) + 1; r.rld = dn; } // (a forgotten gold word, gold again: relearned)
       if (mode !== 'listen') {
         if (r.st === 1) setStage(r, id, 2);
         else if (r.st === 2 && recallType && later && !lapsed) setStage(r, id, 3);
@@ -366,7 +371,8 @@
   W.answerWrong = function (id, o = {}) {
     const r = W.rec(id, true); if (!r) return;
     if (r.st < 1) return; // an unmet word can't be missed (it's still a puzzle)
-    if (G.hist) G.hist.event(id, o.parent ? 'c' : 'm'); // (the history, src/history.js: before the last day moves)
+    if (G.hist) G.hist.event(id, o.parent ? 'c' : 'm', { miss: true, n: o.n }); // (the history, src/history.js: before the last day moves)
+    if (r.st >= 3 && r.fg == null) r.fg = dayNum(); // (a gold word missed: forgotten, until it's relearned)
     r.wrong++; r.last = W.now(); r.ld = dayNum(); r.lapse = dayNum();
     r.box = (r.box | 0) >= 4 ? 2 : 1; if (r.fu === 2) r.fu = 1; // (forgotten: back to the bottom of the ladder, not one box down)
     schedule(r, W.MISS);

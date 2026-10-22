@@ -473,7 +473,7 @@
     let tries = 0, spoken = false, scene = null;
     const wq = G.choose(Object.assign({}, q, {
       choices: ch, display: ad.display, mask: ad.mask, reveal: !!ad.reveal,
-      onWrong(k) { if (!tries && aid) G.words.answerWrong(aid); tries++; G.fx.shake = 4; if (q.wrongAct) q.wrongAct(k, ch[k] && ch[k].word); }, // (q.wrongAct: what a wrong pick does in the story, chapters.js)
+      onWrong(k) { if (!tries && aid) G.words.answerWrong(aid, { n: ch.length }); tries++; G.fx.shake = 4; if (q.wrongAct) q.wrongAct(k, ch[k] && ch[k].word); }, // (q.wrongAct: what a wrong pick does in the story, chapters.js)
       onRight(rect, x, y, sp) {
         spoken = sp;
         G.fx.say(sp ? '¡Bien dicho!' : PRAISE[G.r(PRAISE.length)], x, y, sp ? '#a8f0ff' : '#f8e060', true);
@@ -496,7 +496,7 @@
       // it's a later day (words.js answerRight {mode: 'pic', recall: true}: the engine decides the day)
       const written = G.richIds(G.fill(q.prompt || '')).indexOf(aid) >= 0 && !heard;
       const recall = mode === 'pic' && !written && ch.every((c, k) => !c.word || !scene.view(k).label);
-      res = G.words.answerRight(aid, { cued: !!q.reintro || !!ad.reveal || !!scene.cue(q.answer).cued, said: spoken, echo: spoken && heard, firstTry: first, mode, recall, review: kind === 'review', how: q.intro ? q.how || 'show' : 'answer' });
+      res = G.words.answerRight(aid, { cued: !!q.reintro || !!ad.reveal || !!scene.cue(q.answer).cued, said: spoken, echo: spoken && heard, firstTry: first, mode, recall, review: kind === 'review', how: q.intro ? q.how || 'show' : 'answer', n: ch.length }); // (n: the cards, the grown-ups' guessing floor)
     }
     yield 10;
     // a word met just now: its small celebration (it goes in the notebook); co-listed words are only met
