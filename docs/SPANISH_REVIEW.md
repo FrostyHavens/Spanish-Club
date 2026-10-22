@@ -100,7 +100,8 @@ When a review holds up a word's picture, it now asks the question a Mexican adul
 | commands to the dog (ven, siéntate, dame la pata) | ¿Qué le dices? |
 | nadar | ¿Qué le gusta hacer? |
 | rápido, despacio | ¿Cómo va? |
-| grande, pequeño, caliente | ¿Cómo es? |
+| grande, pequeño | ¿Cómo es? |
+| caliente (shown with a cup of hot chocolate, never a person) | ¿Cómo está? / ¿Cómo está el chocolate? |
 | frío | ¿Qué tiempo hace? |
 
 ### Reviews in other places
