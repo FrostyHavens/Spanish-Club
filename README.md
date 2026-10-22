@@ -132,7 +132,7 @@ back by itself a minute later, Canelo shows a "?": tap him and say or pick it.
 1. **¡Un perro!** Mamá says *hola*; a puppy bursts through the door, hides under the table, barks *guau*, and comes when you say *¡ven!*: Canelo is yours.
 2. **El gato de la cerca.** Canelo chases a butterfly to the park; Nico, his cat (*gato*, *miau*) and a sound game.
 3. **¡Buenos días, Canelo!** *buenos días*, a bone (*hueso*) and Canelo learns *¡siéntate!*
-4. **El juego de Don Pepe.** *sí* and *no* about Canelo and the cat, and an apple (*manzana*) for Doña Rosa.
+4. **El juego de Don Pepe.** *sí* and *no* about Canelo, then out on the plaza: she opens his three crates one by one (a bone, the cat!, a new fruit: *manzana*), and carries the apple to Doña Rosa.
 5. **La pelota roja.** Sofía's ball (*pelota*); the red one (*rojo*) is lost in the bushes.
 6. **Pan para los patos.** Bread (*pan*), *gracias*, and feeding the ducks (*pato*, *cuac*) with Nico.
 7. **¿Dónde está Canelo?** He runs off; the neighbours point the way: the park, a bench, the fountain, the farm, and a goat.
@@ -148,8 +148,8 @@ back by itself a minute later, Canelo shows a "?": tap him and say or pick it.
 17. **¿Qué dicen?** Nico's sound game around town: a green frog (*rana*, *croac*, *verde*), a bird (*pájaro*), and Canelo learns *¡gira!*
 18. **¿Cuántos animales?** Count the town's animals with Luna: a fish (*pez*), *siete*, *ocho*.
 19. **¡Todos a la granja!** Call every animal with *¡ven!*: they follow you to the farm in a parade; the horse and the goat make *nueve* and *diez*.
-20. **Preparamos la fiesta.** Invitations, food, ribbons, flowers and a rehearsal all over town (no new words).
-21. **La fiesta de los animales.** The party at the barn: Canelo's show, the animals' song, a group photo and the diploma.
+20. **Preparamos la fiesta.** Invitations all over town (each friend says where the next one is), food, ribbons to pick up on the park's lawn, flowers and a rehearsal (no new words).
+21. **La fiesta de los animales.** The party at the barn, friend by friend: the animals' food at the paddock gate, Sofía's ribbons and Canelo's tricks, the animals' song, the late guests, a group photo and the diploma.
 
 ## Every day in town: review in the world
 - **Reviews follow her everywhere** (`G.favores.dueWord`): the greetings, the favours, Lola, Tomás's letters and the dog's cards ask about any word she has met that is due, wherever she met it (a beach word comes back in the forest), always as its picture held up or picture cards; only when nothing is due, the place's own words. Nothing ever asks her to bring a thing that isn't in the place she's in.
