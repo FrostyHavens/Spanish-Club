@@ -291,14 +291,14 @@
       const d = DY.today(); this.words = o && o.since ? d.words.filter(id => o.since.indexOf(id) < 0) : d.words; this.stars = d.stars; this.said = Math.min(d.said, d.stars); this.starsShown = 0; this.starT = [];
       // the words' cards (cards.js), as big as fit: up to 5 in a row full size, then 7, then 11
       const n = this.words.length, sc = n <= 5 ? 1 : n <= 14 ? 0.6 : 0.42, per = n <= 5 ? 5 : n <= 14 ? 7 : 11;
-      this.L = { sc, w: Math.round(40 * sc), s: Math.round(82 * sc), step: Math.round(40 * sc) + (n <= 5 ? 6 : 4), per, gap: 4, rows: Math.ceil(n / per) };
+      this.L = { sc, w: Math.round(G.cards.W * sc), s: Math.round(G.cards.H * sc), step: Math.round(G.cards.W * sc) + (n <= 5 ? 6 : 4), per, gap: 4, rows: Math.ceil(n / per) };
     }
     onEnter() { G.audio.sfx('buff'); }
     nStars() { return 0; } // (no stars for the child any more: today's cards show what grew; this.stars is still counted)
     // the card, sized to what it holds: the title, today's cards (or your face), the word said
     box() {
       const L = this.L, pics = this.words.length ? L.rows * (L.s + L.gap) : 58, h = 34 + pics + 22 + 6;
-      return { x: 32, y: Math.round((G.H - h) / 2), w: G.W - 64, h, pics };
+      return { x: 16, y: Math.round((G.H - h) / 2), w: G.W - 32, h, pics };
     }
     // tap areas (shared with draw): one per card
     cells() {

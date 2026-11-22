@@ -38,7 +38,8 @@
   C.GAP = 30;                       // play seconds between two passive growths of one word
   C.LV = [0, 2, 6, 12, 20, 32, 46]; // seed, sprout, leaves, bud, flower, two flowers, three
   C.BOOK_AT = 15;                   // met words before the book opens
-  C.W = 40; C.H = 82;               // a card at scale 1
+  C.LINES = 3;                      // the most lines a word card's label may use
+  C.W = 48; C.H = 94;               // a card at scale 1 (wide and tall enough for a label in two or three lines, docs/AUDIT_2026-10.md 3.3)
   const FLOOR = [0, 0, 2, 20, 32], CAP = st => (st < 3 ? 19 : st < 4 ? 45 : 1e9);
   const IN = 10, GROW = 30, GROW_SAY = 44, HOLD = 16, FLY = 22;
   const HUD = [G.W - 26, 6]; // the deck: the map's menu button (top right)
@@ -218,8 +219,7 @@
     ctx.globalAlpha *= isMet ? 1 : 0.5;
     G.drawIcon16(ctx, o.pic || wd, 4, 3, 2);
     ctx.globalAlpha /= isMet ? 1 : 0.5;
-    const lab = isMet ? (o.label || G.baseForm(id)) : '? ? ?', lw = G.textWidth(lab), sq = Math.min(1, (C.W - 6) / Math.max(1, lw));
-    ctx.save(); ctx.translate(C.W / 2, 0); ctx.scale(sq, 1); G.textC(ctx, lab, 0, 37, !isMet ? '#b0a080' : gold ? '#a06008' : '#2860a8', null); ctx.restore();
+    drawLabel(ctx, isMet ? (o.label || G.baseForm(id)) : '? ? ?', !isMet ? '#b0a080' : gold ? '#a06008' : '#2860a8', 35, C.LINES);
     if (isMet) C.drawPlant(ctx, pts, C.W / 2, C.H - 3, { gold: st >= 4, s: 2 });
     if (st >= 4 && ((G.frame >> 4) & 3) === 0) { R(ctx, 5, 5, 1, 3, '#ffffff'); R(ctx, 4, 6, 3, 1, '#ffffff'); }
     ctx.restore();
@@ -232,15 +232,19 @@
     R(ctx, 3, 4, 1, 1, ink); R(ctx, 6, 4, 1, 1, ink); R(ctx, 9, 4, 1, 1, ink);                                 // ...
     ctx.restore();
   };
+  // a label under the picture (top: the first row it may use), in one line, or two or three (a space first; a long word
+  // only at a syllable, with a hyphen: G.fitLabel) so it is never squeezed. The plant's top is C.H - 35 down; three lines
+  // end just above it, a last resort for a very long name.
+  function drawLabel(ctx, lab, col, top, maxLines) {
+    const f = G.fitLabel(lab, C.W - 6, maxLines), n = f.lines.length, step = 9, y0 = top + (n === 1 ? 5 : n === 2 ? 1 : 0); // (9 apart: a clear pixel between a descender and the next line)
+    f.lines.forEach((ln, k) => {
+      if (f.sq >= 1) { G.textC(ctx, ln, C.W / 2, y0 + k * step, col, null); return; }
+      ctx.save(); ctx.translate(C.W / 2, 0); ctx.scale(f.sq, 1); G.textC(ctx, ln, 0, y0 + k * step, col, null); ctx.restore(); // (nothing fits: a last resort, never below 90%, tools/test-labels.js)
+    });
+    return f;
+  }
   // a phrase's card: the word it was last said with as its picture (its speech bubble in the corner), the frame as its
   // label, the same rim (blue, gold once remembered) and plant as a word's card
-  // a label in one line, or two (split at the space that balances them best) when one doesn't fit
-  function labelLines(s, w) {
-    if (G.textWidth(s) <= w || s.indexOf(' ') < 0) return [s];
-    let best = null;
-    for (let i = s.indexOf(' '); i >= 0; i = s.indexOf(' ', i + 1)) { const d = Math.max(G.textWidth(s.slice(0, i)), G.textWidth(s.slice(i + 1))); if (!best || d < best.d) best = { d, i }; }
-    return [s.slice(0, best.i), s.slice(best.i + 1)];
-  }
   function drawPhraseCard(ctx, id, x, y, o) {
     const ph = G.phrase, st = o.st != null ? o.st : (G.words ? G.words.stage(id) : 1), s = o.s || 1, gold = st >= 3, isMet = st >= 1;
     const pts = o.pts != null ? o.pts : C.pts(id);
@@ -255,11 +259,7 @@
     if (ph) ph.drawPic(ctx, ph.cardPic(id), (C.W - 24) / 2, 5, 1.5, o.t);
     ctx.globalAlpha /= isMet ? 1 : 0.5;
     C.bubble(ctx, C.W - 16, 1, 1, gold ? '#fff8d0' : '#ffffff'); // the phrase's mark: a speech bubble
-    const lab = isMet ? (ph ? ph.label(id) : id) : '? ? ?', lines = labelLines(lab, C.W - 6), col = !isMet ? '#b0a080' : gold ? '#a06008' : '#2860a8';
-    lines.forEach((ln, k) => {
-      const sq = Math.min(1, (C.W - 6) / Math.max(1, G.textWidth(ln))), y = lines.length > 1 ? 31 + k * 8 : 34;
-      ctx.save(); ctx.translate(C.W / 2, 0); ctx.scale(sq, 1); G.textC(ctx, ln, 0, y, col, null); ctx.restore();
-    });
+    drawLabel(ctx, isMet ? (ph ? ph.label(id) : id) : '? ? ?', !isMet ? '#b0a080' : gold ? '#a06008' : '#2860a8', 31, 2);
     if (isMet) C.drawPlant(ctx, pts, C.W / 2, C.H - 3, { gold: st >= 4, s: 2 });
     ctx.restore();
   }
@@ -340,11 +340,11 @@
       this.setGroup(o && o.group === 'frases' && this.phrases.length ? 'frases' : 'words');
     }
     setGroup(g) { this.group = g; this.ids = g === 'frases' ? this.phrases : this.words; this.pg = 0; this.sel = 0; }
-    wordsXY() { return [44, 8]; }
-    frasesXY() { return [70, 8]; }
+    wordsXY() { return [44, 6]; }
+    frasesXY() { return [70, 6]; }
     pages() { return Math.max(1, Math.ceil(this.ids.length / PER)); }
     onPage() { return this.ids.slice(this.pg * PER, this.pg * PER + PER); }
-    cardRect(k) { return { x: 12 + (k % COLS) * 50, y: 31 + Math.floor(k / COLS) * 91, w: C.W, h: C.H }; }
+    cardRect(k) { return { x: 10 + (k % COLS) * 50, y: 29 + Math.floor(k / COLS) * 95, w: C.W, h: C.H }; }
     prevXY() { return [G.W / 2 - 62, 4]; }
     nextXY() { return [G.W / 2 + 42, 4]; }
     closeXY() { return [G.W - 30, 8]; }
@@ -370,7 +370,7 @@
     draw(ctx) {
       const u = Math.min(1, this.t / 8);
       ctx.fillStyle = 'rgba(4,6,24,' + (0.5 * u) + ')'; ctx.fillRect(0, 0, G.W, G.H);
-      G.win(ctx, 6, 6, G.W - 12, G.H - 12, { fill1: '#2c7a4a', fill2: '#14502a', alpha: 1 }); // a green table to lay the cards on
+      G.win(ctx, 6, 6, G.W - 12, G.H - 7, { fill1: '#2c7a4a', fill2: '#14502a', alpha: 1 }); // a green table to lay the cards on
       if (this.phrases.length) { // the two groups: the word cards and the phrases (a speech bubble); the one showing is lit
         const lit = (xy, on) => { R(ctx, xy[0] - 3, xy[1] - 3, 26, 26, on ? '#f8e060' : '#1c5a34'); R(ctx, xy[0] - 2, xy[1] - 2, 24, 24, on ? '#fff6b0' : '#246a40'); };
         lit(this.wordsXY(), this.group === 'words'); lit(this.frasesXY(), this.group === 'frases');
@@ -382,7 +382,9 @@
       G.closeBtn(ctx, ...this.closeXY());
       if (this.pages() > 1) {
         G.iconBtn(ctx, 'back', ...this.prevXY()); G.iconBtn(ctx, 'next', ...this.nextXY());
-        for (let k = 0; k < this.pages(); k++) R(ctx, G.W / 2 - this.pages() * 5 + k * 10 + 1, 13, 6, 6, k === this.pg ? '#f8e060' : '#5a8a6a');
+        // the page dots, between the two arrows (x 122 to 198): 10 px apart, closer (and thinner) when there are many pages
+        const n = this.pages(), p = Math.min(10, 76 / n), gap = p >= 8 ? 4 : p >= 4 ? 2 : p >= 2 ? 1 : 0, dw = Math.max(1, Math.floor(p) - gap), x0 = G.W / 2 - n * p / 2 + (p - dw) / 2;
+        for (let k = 0; k < n; k++) { const on = k === this.pg, tall = dw >= 3 ? 6 : on ? 6 : 4; R(ctx, Math.round(x0 + k * p), on ? 13 : dw >= 3 ? 13 : 14, dw, tall, on ? '#f8e060' : '#5a8a6a'); }
       }
       const ids = this.onPage();
       if (!ids.length) { ctx.globalAlpha = 0.5; R(ctx, G.W / 2 - 20, 70, C.W, C.H, '#fffaf0'); ctx.globalAlpha = 1; G.bigText(ctx, '?', G.W / 2, 96, 3, '#2c7a4a', null); return; }

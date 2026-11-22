@@ -2,7 +2,7 @@
 'use strict';
 (function () {
   const D = () => G.data, S = () => G.st;
-  const C_W = 40, C_H = 82; // a word card (cards.js)
+  const C_W = 48, C_H = 94; // a word card (cards.js)
 
   // ---------- Press-and-hold buttons for grown-ups (the gear, the slot screen's trash can) ----------
   // A finger held on the button, or A held while it has the keyboard focus, fills a ring; a full ring fires once,
@@ -94,7 +94,7 @@
           if (!ids.length) { ctx.globalAlpha = 0.4; ctx.fillStyle = '#fffaf0'; ctx.fillRect(r.x + r.w / 2 - 13, r.y + 12 - bob, 26, 44); ctx.globalAlpha = 1; }
           ids.forEach((id, i) => {
             const a = (i - (ids.length - 1) / 2) * 0.22, cx = r.x + r.w / 2 + (i - (ids.length - 1) / 2) * 12, cy = r.y + 38 - bob;
-            ctx.save(); ctx.translate(cx, cy); ctx.rotate(a); G.cards.drawCard(ctx, id, -C_W * 0.33, -C_H * 0.33, { s: 0.66 }); ctx.restore();
+            ctx.save(); ctx.translate(cx, cy); ctx.rotate(a); G.cards.drawCard(ctx, id, -C_W * 0.275, -C_H * 0.275, { s: 0.55 }); ctx.restore();
           });
           G.textC(ctx, String(G.cards.count()), r.x + r.w / 2, r.y + 72 - bob, '#a8d8ff');
         } else if (k === 'book' && G.cards) G.cards.drawBook(ctx, r.x + r.w / 2, r.y + 40 - bob, r.w < 70 ? 0.68 : 0.85, sel ? this.t : null); // the notebook, open

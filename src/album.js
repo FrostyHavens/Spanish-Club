@@ -129,7 +129,7 @@
     ids() { return entries(this.zone); }
     tabs() { return ZS().map(z => z.id).concat(['amigos']); }
     tabRect(k) { const n = this.tabs().length, w = Math.min(44, Math.floor((G.W - 60) / n)); return { x: 12 + k * w, y: 6, w: w - 2, h: 24 }; }
-    cell(k) { return { x: 14 + (k % 4) * 74, y: 46 + Math.floor(k / 4) * 56, w: 70, h: 52 }; }
+    cell(k) { return { x: 14 + (k % 4) * 74, y: 42 + Math.floor(k / 4) * 62, w: 70, h: k === 11 ? 50 : 61 }; }
     // Amigos: a tab per place (Villa Sol's friends and Canelo, then each zone's people), Lola's own card on every zone's tab
     ftabs() { return G.zones ? G.zones.ids() : ['villa']; }
     ftabRect(k) { const n = this.ftabs().length, w = Math.min(42, Math.floor((G.W - 68) / n)); return { x: 34 + k * w, y: 4, w: w - 2, h: 24 }; }
@@ -238,8 +238,12 @@
         if (R) {
           G.drawIcon16(ctx, w, x + r.w / 2 - 16, y + 2 + hop, 2);
           const named = G.st.seen(AN().KINDS[id].word); // seen but its word not met yet: "?" (the story names it)
-          G.textC(ctx, named ? w.es.split(' / ')[0] : '?', x + r.w / 2, y + 34, !named ? '#a08868' : G.st.knows(AN().KINDS[id].word) ? '#a06008' : '#2860a8', null);
-          if (cry(id)) G.textC(ctx, cry(id), x + r.w / 2, y + 43, '#e06010', null);
+          const nf = G.fitLabel(named ? w.es.split(' / ')[0] : '?', r.w - 4), two = nf.lines.length > 1; // (a long name: two lines, never squeezed)
+          nf.lines.forEach((ln, j) => G.textC(ctx, ln, x + r.w / 2, y + 34 + j * 9, !named ? '#a08868' : G.st.knows(AN().KINDS[id].word) ? '#a06008' : '#2860a8', null));
+          if (cry(id)) { // (a cry wider than its cell is squeezed, to 90% at the most: tools/test-labels.js)
+            const sq = Math.min(1, (r.w - 4) / G.textWidth(cry(id)));
+            ctx.save(); ctx.translate(x + r.w / 2, 0); ctx.scale(sq, 1); G.textC(ctx, cry(id), 0, y + (two ? 52 : 43), '#e06010', null); ctx.restore();
+          }
           if (R.said) G.mic.glyph(ctx, x + r.w - 10, y + 14, '#2a8a9a');
           if (R.counted) G.text(ctx, '\u0005', x + 3, y + 14, '#e0a010', '#5a2c04');
           const fav = G.phrase && G.phrase.fav(); // her favourite animal (Lola asked: "Me gusta el oso", src/phrases.js): a heart pinned on it
@@ -331,8 +335,9 @@
     const b = t > 14 && t < 40 ? Math.round(Math.sin((t - 14) / 26 * Math.PI) * -4) : 0;
     G.drawIcon16(ctx, w, 6, 18 + b, 3);
     { const ns = String(number(id) || '?'), nw = G.textWidth(ns) + 8; ctx.fillStyle = '#a07040'; ctx.fillRect(60, 18, nw, 11); G.text(ctx, ns, 64, 20, '#ffffff', null); }
-    G.text(ctx, named ? w.es.split(' / ')[0] : '?', 60, 34, named ? '#2860a8' : '#a08868', null);
-    if (K.cry) G.text(ctx, K.cry, 60, 48, '#e06010', null);
+    const nf = G.fitLabel(named ? w.es.split(' / ')[0] : '?', cw - 64); // (a long name: two lines, never squeezed, never off the card)
+    nf.lines.forEach((ln, j) => G.text(ctx, ln, 60, 33 + j * 9, named ? '#2860a8' : '#a08868', null));
+    if (K.cry) G.text(ctx, K.cry, 60, nf.lines.length > 1 ? 53 : 48, '#e06010', null);
     const z = G.zones && G.zones.def(zoneOf(id)); if (z) G.drawIcon16(ctx, z.icon, cw - 20, ch - 20);
     ctx.restore();
   };

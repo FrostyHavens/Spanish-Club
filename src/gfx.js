@@ -97,6 +97,58 @@
     return out;
   };
 
+  // ---- label fitting: a short label on a small card (docs/AUDIT_2026-10.md 3.3) ----
+  // Where a Spanish word may be broken: only between syllables, with a hyphen, never leaving fewer than 3 letters on
+  // either side, and never inside a vowel run (a diphthong or a hiatus: both are legal breaks to skip).
+  const VOW = 'aeiouáéíóúüAEIOUÁÉÍÓÚÜ';
+  const isV = (w, i) => VOW.indexOf(w[i]) >= 0 || (w[i] === 'y' && i > 0 && (i === w.length - 1 || VOW.indexOf(w[i + 1]) < 0));
+  const CLUSTER = /^(?:[pbfcgkt][lr]|dr)$/i;
+  // the places a word can be cut: indexes k, so that w.slice(0, k) + '-' and w.slice(k)
+  G.syllableBreaks = function (w) {
+    const out = [], n = w.length;
+    const unit = i => { const d = w.substr(i, 2).toLowerCase(); return d === 'ch' || d === 'll' || d === 'rr' ? 2 : 1; }; // a digraph is one consonant
+    let i = 0;
+    while (i < n) {
+      if (isV(w, i)) { i++; continue; }
+      const run = []; let j = i; // a run of consonants, i to j (the next vowel, or the end)
+      while (j < n && !isV(w, j)) { const u = unit(j); run.push([j, j + u]); j += u; }
+      if (j < n && i > 0) { // between two vowels: the last consonant goes with the next vowel, or the last two when they are a cluster (pl, br, tr...)
+        let at = run.length - 1;
+        if (run.length >= 2 && CLUSTER.test(w.slice(run[run.length - 2][0], run[run.length - 1][1]))) at = run.length - 2;
+        out.push(run[at][0]);
+      }
+      i = j;
+    }
+    return out.filter(k => k >= 3 && n - k >= 3);
+  };
+  // s in at most maxLines lines (2, or 3) of at most maxW pixels each: the fewest lines that fit, breaking at a space first
+  // and only if that can't fit inside a word at a syllable boundary (with a hyphen). Returns { lines, sq, hy }: sq < 1 only
+  // when nothing fits (the widest line is then squeezed to maxW, a last resort the tests count), hy true when a word was broken.
+  G.fitLabel = function (s, maxW, maxLines = 2) {
+    s = String(s); const tw = G.textWidth;
+    if (tw(s) <= maxW) return { lines: [s], sq: 1, hy: false };
+    const cuts = []; // every place a line may end: at a space (dropped) or inside a word (a hyphen added)
+    for (let i = s.indexOf(' '); i >= 0; i = s.indexOf(' ', i + 1)) cuts.push({ i, hy: false });
+    let off = 0;
+    s.split(' ').forEach(w => { G.syllableBreaks(w).forEach(k => cuts.push({ i: off + k, hy: true })); off += w.length + 1; });
+    cuts.sort((p, q) => p.i - q.i);
+    const make = set => {
+      const out = []; let from = 0;
+      set.forEach(c => { out.push(s.slice(from, c.i) + (c.hy ? '-' : '')); from = c.hy ? c.i : c.i + 1; });
+      out.push(s.slice(from)); return out;
+    };
+    const sets = cuts.map(c => [c]);
+    if (maxLines >= 3) cuts.forEach((c, a) => cuts.forEach((d, b) => { if (b > a && d.i - c.i >= 3) sets.push([c, d]); }));
+    let best = null;
+    sets.forEach(set => {
+      const lines = make(set), wid = Math.max(...lines.map(tw)), hy = set.filter(c => c.hy).length;
+      const key = wid <= maxW ? lines.length * 10 + hy : 1000; // fewer lines first, then fewer hyphens; nothing fits: the narrowest
+      if (!best || key < best.key || (key === best.key && wid < best.wid)) best = { key, wid, lines, hy };
+    });
+    if (!best) return { lines: [s], sq: Math.max(0.01, maxW / tw(s)), hy: false };
+    return { lines: best.lines, sq: Math.min(1, maxW / best.wid), hy: best.hy > 0 };
+  };
+
   // ---- Windows (deep blue, beveled light frame) ----
   const WIN = { fill1: '#1c2c8c', fill2: '#0c1450', edge: '#f0f0ff', edge2: '#8898e0', dark: '#000010' };
   G.win = function (ctx, x, y, w, h, opts = {}) {
