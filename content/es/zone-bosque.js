@@ -415,6 +415,15 @@
       const tr = (f.def.dogSpots || []).find(s => s.id === 'bosque_rastro');
       if (tr && Z.dogReady(tr)) for (const [x, y] of [tr.at, ...tr.path]) { ctx.globalAlpha = 0.6; G.drawIcon16(ctx, 'huella', x * TL - cx + 6, y * TL - cy + 8, 0.75); ctx.globalAlpha = 1; }
     }
+    const bear = f.mapId === 'bosque_cueva' && f.zoo && f.zoo.list.find(b => b.kind === 'oso');
+    if (bear) { // mama bear asleep: she breathes (a pixel up and down, slowly) and a light rim round her shows her against the floor
+      bear.z = Math.sin(G.frame / 36) > 0.1 ? 1 : 0;
+      const img = AN.frame(bear), w = img.width * 2, h = img.height * 2, sil = G.tinted(img, '#d8e4ff', 'osorim' + (bear.st === 'alt' ? 'a' : 's') + (bear.flip ? 'f' : ''));
+      const x = Math.round(bear.x - w / 2 - cx), y = Math.round(bear.y - h - bear.z - cy);
+      const gl = G.cached('bear_glow', 96, 56, c => { const g = c.createRadialGradient(48, 48, 2, 48, 48, 46); g.addColorStop(0, 'rgba(170,190,255,0.8)'); g.addColorStop(1, 'rgba(170,190,255,0)'); c.save(); c.scale(1, 56 / 96); c.fillStyle = g; c.fillRect(0, 0, 96, 96); c.restore(); });
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.8 + 0.2 * Math.sin(G.frame / 36); ctx.drawImage(gl, Math.round(bear.x - 48 - cx), Math.round(bear.y - 40 - cy)); ctx.restore();
+      for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) ctx.drawImage(sil, x + dx, y + dy, w, h);
+    }
     if (f.mapId === 'bosque_cueva' && CH.done('bosque1')) { // the cub asleep beside its mother
       const [ox, oy] = P('bosque_cueva', 'osa'), img = spr('cubsit', CUB.sit, CUB_PAL);
       ctx.drawImage(img, ox * TL + 60 - cx, oy * TL + 34 - cy);
@@ -426,15 +435,23 @@
     if (!G.state) return;
     const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
     // night in the forest: a deep blue dusk over everything (the fireflies glow through it); the cave is always dark
-    const dark = f.mapId === 'bosque_cueva' ? 0.62 : f.mapId === 'bosque' ? (G.day ? G.day.glow() : 0) * 0.68 : 0;
+    const dark = f.mapId === 'bosque_cueva' ? 0.62 : (G.day ? G.day.wash(ctx, f) : 0);
     if (dark > 0) {
-      ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = dark; ctx.fillStyle = f.mapId === 'bosque_cueva' ? '#302848' : '#283868'; ctx.fillRect(0, 0, G.W, G.H); ctx.restore();
+      if (f.mapId === 'bosque_cueva') { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = dark; ctx.fillStyle = '#302848'; ctx.fillRect(0, 0, G.W, G.H); ctx.restore(); }
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
       const lights = (f.zoo ? f.zoo.list : []).filter(a => (AN.KINDS[a.kind] || {}).glow).map(a => [a.x - cx, a.y - a.z - 3 - cy, 24]);
       lights.push([f.player.x * TL + 12 + (f.player.ox || 0) - cx, f.player.y * TL + 12 + (f.player.oy || 0) - cy, 34]);
       if (f.mapId === 'bosque_cueva') for (let y = 0; y < f.map.h; y++) for (let x = 0; x < f.map.w; x++) if (f.map.get(x, y) === '%') lights.push([x * TL + 12 - cx, y * TL + 14 - cy, 22]);
       for (const [x, y, r] of lights) { const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(255,240,170,' + (0.45 * dark) + ')'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(x - r, y - r, 2 * r, 2 * r); }
       ctx.restore();
+    }
+    if (f.mapId === 'bosque_cueva') { // mama bear's soft glow and her "z z" drifting up (over the dark)
+      const bear = f.zoo && f.zoo.list.find(b => b.kind === 'oso');
+      if (bear) {
+        const hx = bear.x + (bear.flip ? 12 : -12) - cx, hy = bear.y - 34 - cy;
+        for (let k = 0; k < 3; k++) { const u = ((G.frame + k * 50) % 150) / 150; ctx.globalAlpha = Math.min(1, (1 - u) * 2); G.text(ctx, 'z', Math.round(hx + (bear.flip ? 1 : -1) * u * 14 + Math.sin(u * 6 + k) * 2), Math.round(hy - u * 26), '#e8ecff', '#283078'); }
+        ctx.globalAlpha = 1;
+      }
     }
     if (f.mapId === 'bosque') {
       // a firefly flying into Lola's jar; the jar's lights let go
@@ -735,7 +752,7 @@
   const bus = P('bosque', 'bus'), busIn = P('bosque', 'busIn');
   Z.add({
     id: 'bosque', name: 'El bosque', en: 'the forest', icon: 'bosque', music: 'castle', pos: [160, 34],
-    maps: ['bosque', 'bosque_cueva', 'bosque_cabana'], path: 'camino_bosque',
+    maps: ['bosque', 'bosque_cueva', 'bosque_cabana'], path: 'camino_bosque', night: { col: '#283868', k: 0.68 },
     bus: { map: 'bosque', at: bus }, entry: { map: 'bosque', x: busIn[0], y: busIn[1], dir: 'down' },
     animals: KINDS, // the album page, in order
     habitat: { ardilla: 'arbol', venado: 'flor', zorro: 'tronco', mapache: 'agua', erizo: 'hoja', oso: 'mora', buho: 'arbol', luciernaga: 'cueva' },

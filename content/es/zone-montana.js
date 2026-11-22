@@ -724,9 +724,8 @@
       drawWx(ctx, MT.weather(), u, f);
       if (MT.rainbowOn()) drawRainbow(ctx, Math.min(1, (G.frame - MT.rainbow) / 90), G.W / 2, G.H + 30, 214, 8);
       // night: a deep blue, the refuge's windows glow, the station's lamp
-      const dark = (G.day ? G.day.glow() : 0) * 0.65;
+      const dark = G.day ? G.day.wash(ctx, f) : 0;
       if (dark > 0) {
-        ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = dark; ctx.fillStyle = '#28346a'; ctx.fillRect(0, 0, G.W, G.H); ctx.restore();
         ctx.save(); ctx.globalCompositeOperation = 'lighter';
         const lights = [[f.player.x * TL + 12 + (f.player.ox || 0) - cx, f.player.y * TL + 12 + (f.player.oy || 0) - cy, 32], [STATION[0] * TL + 12 - cx, STATION[1] * TL - 10 - cy, 22]];
         for (let x = 22; x <= 28; x++) if (f.map.get(x, 17) === '[' && x !== 25) lights.push([x * TL + 12 - cx, 17 * TL + 10 - cy, 24]);
@@ -996,7 +995,7 @@
   const bus = P('montana', 'bus'), busIn = P('montana', 'busIn');
   Z.add({
     id: 'montana', name: 'La montaña', en: 'the mountain', icon: 'montana', music: 'field', pos: [264, 90],
-    maps: ['montana', 'montana_refugio'], path: 'camino_montana',
+    maps: ['montana', 'montana_refugio'], path: 'camino_montana', night: { col: '#28346a', k: 0.65 },
     bus: { map: 'montana', at: bus }, entry: { map: 'montana', x: busIn[0], y: busIn[1], dir: 'down' },
     animals: KINDS, // the album page, in order
     habitat: { llama: 'montana', marmota: 'nieve', zorrillo: 'flor', carpintero: 'arbol', monarca: 'arbol', puma: 'nieve', aguila: 'montana', lobo: 'nieve' },

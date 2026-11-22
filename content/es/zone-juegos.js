@@ -744,9 +744,8 @@
     if (JG.bub) for (const o of JG.bub.list) { if (o.pop) { const k = o.pop / 14; ctx.fillStyle = '#e0f6ff'; for (let i = 0; i < 6; i++) { const a = i * 1.05; ctx.fillRect(Math.round(o.x + Math.cos(a) * (o.r + k * 6) - cx), Math.round(o.y - 14 + Math.sin(a) * (o.r + k * 6) - cy), 1, 1); } } else bubble(ctx, o.x - cx, o.y - 14 - cy, o.r); }
     if (JG.bub && G.top() === f) { const n = npcAt(f, 'chuy'); G.drawIcon16(ctx, 'burbujas', 8, G.H - 28); G.text(ctx, JG.bub.n + '/' + JG.bub.want, 28, G.H - 24, '#ffffff', '#203048'); void n; }
     // night in the park: a blue dusk, the lamps glow
-    const dark = (G.day ? G.day.glow() : 0) * 0.55;
+    const dark = G.day ? G.day.wash(ctx, f) : 0; // (the wash: day.js; this zone's tint is its night)
     if (dark > 0) {
-      ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = dark; ctx.fillStyle = '#304070'; ctx.fillRect(0, 0, G.W, G.H); ctx.restore();
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
       const lights = [[f.player.x * TL + 12 + (f.player.ox || 0) - cx, f.player.y * TL + 12 + (f.player.oy || 0) - cy, 30]];
       const x0 = Math.floor(cx / TL) - 2, y0 = Math.floor(cy / TL) - 2;
@@ -1027,7 +1026,7 @@
   const bus = P('juegos', 'bus'), busIn = P('juegos', 'busIn');
   Z.add({
     id: 'juegos', name: 'El parque de juegos', en: 'the playground', icon: 'juegos', music: 'title', pos: [54, 100],
-    maps: ['juegos'], path: 'camino_juegos',
+    maps: ['juegos'], path: 'camino_juegos', night: { col: '#304070', k: 0.55 },
     bus: { map: 'juegos', at: bus }, entry: { map: 'juegos', x: busIn[0], y: busIn[1], dir: 'down' },
     animals: KINDS, // the album page, in order
     habitat: { paloma: 'fuente', catarina: 'hoja', hormiga: 'banco', abeja: 'flor', lagartija: 'rocas', lombriz: 'arena', grillo: 'papalote', colibri: 'flor' },

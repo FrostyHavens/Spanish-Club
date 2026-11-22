@@ -710,9 +710,8 @@
     if (outside(f)) {
       if (AB.tug && AB.tug.dog) { const n = AB.tug.dog; G.drawIcon16(ctx, { icon: 'calcetines', col: '#f8c830' }, n.x * TL + 10 + (n.ox || 0) - cx, n.y * TL + 6 + (n.oy || 0) - cy, 0.6); }
       // night: a blue dusk, the cottage's windows glow
-      const dark = (G.day ? G.day.glow() : 0) * 0.6;
+      const dark = G.day ? G.day.wash(ctx, f) : 0;
       if (dark > 0) {
-        ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = dark; ctx.fillStyle = '#2c3868'; ctx.fillRect(0, 0, G.W, G.H); ctx.restore();
         ctx.save(); ctx.globalCompositeOperation = 'lighter';
         const lights = [[f.player.x * TL + 12 + (f.player.ox || 0) - cx, f.player.y * TL + 12 + (f.player.oy || 0) - cy, 30]];
         for (let x = 13; x <= 25; x++) if (f.map.get(x, 9) === 'N') lights.push([x * TL + 12 - cx, 9 * TL + 10 - cy, 26]);
@@ -1063,7 +1062,7 @@
   const bus = P('abuelos', 'bus'), busIn = P('abuelos', 'busIn');
   Z.add({
     id: 'abuelos', name: 'La casa de los abuelos', en: 'the grandparents\' house', icon: 'abuelos', music: 'rancho', pos: [78, 176],
-    maps: ['abuelos', 'abuelos_casa'], path: 'camino_abuelos',
+    maps: ['abuelos', 'abuelos_casa'], path: 'camino_abuelos', night: { col: '#2c3868', k: 0.6 },
     bus: { map: 'abuelos', at: bus }, entry: { map: 'abuelos', x: busIn[0], y: busIn[1], dir: 'down' },
     animals: KINDS, // the album page, in order
     habitat: { vaca: 'hoja', cerdo: 'agua', oveja: 'flor', burro: 'manzana', pavo: 'huevo', raton: 'queso', gallo: 'huevo', tlacuache: 'arbol' },

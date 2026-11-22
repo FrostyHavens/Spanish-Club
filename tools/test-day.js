@@ -116,6 +116,54 @@ async function sunset(browser) {
   } finally { await ctx.close(); }
 }
 
+// ---------- night on every outdoor map (docs/AUDIT_2026-10.md 3.7): the shared wash, the beach, the paths, the bear ----------
+// the screen's average brightness and warmth (red minus blue), sampled on a grid of the game canvas
+const lum = g => g.ev(() => { const c = G.canvas, d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0, l = 0, w = 0; for (let y = 0; y < c.height; y += 16) for (let x = 0; x < c.width; x += 16) { const i = (y * c.width + x) * 4; l += d[i] + d[i + 1] + d[i + 2]; w += d[i] - d[i + 2]; n++; } return { l: l / n / 3, w: w / n }; });
+async function nightWash(browser) {
+  const { ctx, g } = await open(browser, 'day-wash', true);
+  try {
+    await playing(g, 'villa', 15, 20, { visit: ['villa', 'playa', 'bosque', 'juegos', 'abuelos', 'montana'] });
+    const outdoor = [['villa', 15, 20], ['bosque', 18, 22], ['juegos', 20, 12], ['abuelos', 12, 12], ['montana', 20, 12], ['playa', 14, 10], ['playa', 22, 13], ['camino_playa', 6, 12], ['camino_bosque', 6, 12], ['camino_juegos', 6, 12], ['camino_montana', 14, 6], ['camino_abuelos', 6, 12]];
+    const indoor = [['escuela', 6, 6], ['abuelos_casa', 6, 6], ['montana_refugio', 6, 6], ['bosque_cabana', 4, 4]];
+    check('wash: the maps know if they are outdoors (a flag on the map def, no list of names)', await g.ev(([o, i]) => o.every(m => G.day.outdoor({ def: G.maps[m[0]] })) && i.every(m => !G.day.outdoor({ def: G.maps[m[0]] })), [outdoor, indoor]));
+    const look = async (m, x, y, dark) => {
+      await g.ev(([m, x, y, dark]) => { G.debug.sunsetAt = dark ? 0 : null; G.sessionTime = dark ? 0 : 0; G.goto(m, x, y, 'down'); }, [m, x, y, dark]);
+      await g.fieldIdle(m);
+      if (dark) await g.until(() => G.day.glow() >= 0.99, null, 'dark', 60000); else await g.until(() => G.day.glow() <= 0.01, null, 'day', 20000);
+      await g.frames(40);
+      return lum(g);
+    };
+    for (const [m, x, y] of outdoor) {
+      const d = await look(m, x, y, false), n = await look(m, x, y, true);
+      check('wash: ' + m + (m === 'playa' ? '@' + x : '') + ' after sunset is clearly darker than by day (' + Math.round(d.l) + ' to ' + Math.round(n.l) + ')', n.l < d.l * 0.8, JSON.stringify([d, n]));
+      if (m === 'villa') check('wash: the town keeps its own warm sunset (warmer than by day, as before)', n.w > d.w, JSON.stringify([d, n]));
+      else check('wash: ' + m + ' gets a blue dusk (less red against blue than by day)', n.w < d.w, JSON.stringify([d, n]));
+      const lab = m + (m === 'playa' ? '_' + x : '');
+      if (m !== 'playa' || x === 14 || x === 22) await g.shot('night_' + lab);
+    }
+    for (const [m, x, y] of indoor) {
+      const d = await look(m, x, y, false), n = await look(m, x, y, true);
+      check('wash: indoors (' + m + ') the night is not drawn (' + Math.round(d.l) + ' to ' + Math.round(n.l) + ')', n.l > d.l * 0.85, JSON.stringify([d, n]));
+    }
+    // the beach by night with its octopus, and the bear in the cave
+    await g.ev(() => { G.debug.sunsetAt = 0; G.goto('playa', 22, 10, 'down'); });
+    await g.fieldIdle('playa');
+    await g.until(() => G.day.glow() >= 0.99 && !!G.animals.find('pulpo'), null, 'the octopus out at night', 60000);
+    await g.frames(30); await g.shot('night_beach_octopus');
+    check('wash: the beach at night has its octopus out', await g.ev(() => !!G.animals.find('pulpo')));
+    await g.ev(() => { G.goto('bosque_cueva', 8, 6, 'down'); });
+    await g.fieldIdle('bosque_cueva');
+    await g.frames(20);
+    const bear = await g.ev(() => { const b = G.animals.find('oso'); return b ? { z: [] } : null; });
+    check('wash: the bear sleeps in the cave', !!bear);
+    const zs = [];
+    for (let i = 0; i < 6; i++) { await g.frames(30); zs.push(await g.ev(() => G.animals.find('oso').z)); }
+    check('wash: the bear breathes (she rises a pixel and sinks again)', zs.includes(0) && zs.includes(1), zs.join());
+    await g.shot('night_cave_bear');
+    check('wash: no console errors', !g.errors.length, g.errors.join('\n'));
+  } finally { await ctx.close(); }
+}
+
 // ---------- the Hoy card counts the calendar day ----------
 async function hoy(browser) {
   const { ctx, g } = await open(browser, 'day-hoy', true);
@@ -186,6 +234,10 @@ async function nightWalk(browser) {
     await playing(g, 'casa', 4, 4, { visit: ['villa', 'abuelos'], words: ['buenasnoches'], quests: { abuelos1: 'done', abuelos2: 'done', abuelos3: 'done' } });
     await g.fieldIdle('casa');
     check('walk: the place to go is the grandparents\', for the possum', await g.ev(() => G.day.walkTo() === 'abuelos' && G.day.nightOf('abuelos').map(n => n.kind + '@' + n.map).join() === 'tlacuache@abuelos'));
+    // the beach has its night now (no beach-last rule): it is the walk when it is the only place with an unmet night animal, and it comes in its turn among the places she's been to
+    check('walk: the beach and the grandparents\' both visited: the first place in the world\'s order, the beach not left last', await g.ev(() => { G.zones.visit('playa'); const first = G.zones.visitedIds().find(z => G.day.nightOf(z).some(n => !G.animals.met(n.kind))); return G.day.nightOf('playa').map(n => n.kind).join() === 'pulpo' && G.day.walkTo() === first && G.zones.ids().indexOf('playa') < G.zones.ids().indexOf('abuelos') === (first === 'playa'); }));
+    check('walk: the beach the only place with an unmet night animal (the octopus): the walk goes there', await g.ev(() => { const v = G.state.world.visited, keep = v.abuelos; delete v.abuelos; const r = G.day.walkTo() === 'playa'; v.abuelos = keep; return r; }));
+    await g.ev(() => { delete G.state.world.visited.playa; });
     const toChoice = async () => {
       await g.ev(() => { G.debug.sunsetAt = G.sessionTime + 1; });
       await g.until(() => G.day.over(), null, 'the sunset');
@@ -264,4 +316,4 @@ async function warmup(browser) {
   } finally { await ctx.close(); }
 }
 
-run('A day in a 15-minute sitting', [['music', music], ['the sunset', sunset], ['the Hoy card by date', hoy], ['the night walk', nightWalk], ['the warm-up and the greetings', warmup]]);
+run('A day in a 15-minute sitting', [['music', music], ['the sunset', sunset], ['the Hoy card by date', hoy], ['night on every map', nightWash], ['the night walk', nightWalk], ['the warm-up and the greetings', warmup]]);

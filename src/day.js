@@ -75,8 +75,23 @@
   DY.homeDoor = f => (f && f.mapId === TOWN && DY.over() ? G.MAPDATA.villa.pos.casaDoor : null);
 
   // ---------- drawing over Villa Sol (field.js, after the people, before their bubbles) ----------
+  // The night wash of every outdoor map (a map def without indoor: true) but the town's own sunset below: one solid
+  // multiply fill (no gradient), tinted and as strong as its place says (zone def night: {col, k}, else a blue dusk),
+  // deepening with the glow. A zone's drawTop calls it before its own lights (they glow over it) and gets the strength
+  // back (0: no night here); drawField calls it again for the rest, once a frame at most.
+  const NIGHT_LOOK = { col: '#2c3a6c', k: 0.6 };
+  DY.outdoor = f => !!f && !!f.def && !f.def.indoor;
+  DY.wash = function (ctx, f) {
+    if (glow <= 0 || f.mapId === TOWN || !DY.outdoor(f)) return 0;
+    if (f.__wash && f.__wash[0] === G.frame) return f.__wash[1];
+    const z = G.zones && G.zones.def(f.def.zone || f.def.path), look = Object.assign({}, NIGHT_LOOK, z && z.night), a = glow * look.k;
+    ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = a; ctx.fillStyle = look.col; ctx.fillRect(0, 0, G.W, G.H); ctx.restore();
+    f.__wash = [G.frame, a];
+    return a;
+  };
   DY.drawField = function (ctx, f, cx, cy) {
-    if (f.mapId !== TOWN || glow <= 0) return;
+    if (f.mapId !== TOWN) { DY.wash(ctx, f); return; }
+    if (glow <= 0) return;
     const TS = G.TILE;
     ctx.save();
     // a warm wash: orange light from the west at the top, a dusky violet below
@@ -189,12 +204,12 @@
     return out;
   };
   DY.nightOf = nightOf;
-  // where a walk would go: a place she's been to with a night animal not met yet (the beach last: its night isn't drawn
-  // yet, docs/AUDIT_2026-10.md 3.7), or null (then the evening goes straight on to bed, as before)
+  // where a walk would go: the first place she's been to with a night animal not met yet, or null (then the evening
+  // goes straight on to bed, as before)
   DY.walkTo = function () {
     if (!G.zones || !G.animals || !G.state) return null;
     const L = G.zones.visitedIds().filter(z => nightOf(z).some(n => !G.animals.met(n.kind)));
-    return L.find(z => z !== 'playa') || L[0] || null;
+    return L[0] || null;
   };
   function* walkOut(f, z) {
     const L = nightOf(z).filter(n => !G.animals.met(n.kind));

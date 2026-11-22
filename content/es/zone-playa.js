@@ -419,6 +419,24 @@
   };
   Z.drawTop = function (f, ctx) {
     zTop(f, ctx);
+    if (f.mapId === 'playa' && G.state && G.day) {
+      // night on the beach: the wash (day.js), moonlight glinting on the water, a soft light round you and the night animals
+      const dark = G.day.wash(ctx, f), cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
+      if (dark > 0) {
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        for (let ty = Math.max(0, Math.floor(cy / TL)); ty <= Math.floor((cy + G.H) / TL); ty++) for (let tx = Math.max(0, Math.floor(cx / TL)); tx <= Math.floor((cx + G.W) / TL); tx++) {
+          const c = f.map.get(tx, ty); if (c !== 'w' && c !== '-') continue;
+          const h = (tx * 7 + ty * 13) % 5; if (h > 1) continue;
+          const ph = (G.frame / 28 + tx * 1.7 + ty * 0.9) % 3, k = ph < 1 ? Math.sin(ph * Math.PI) : 0; if (k <= 0) continue;
+          ctx.fillStyle = 'rgba(190,215,255,' + (0.55 * k * dark).toFixed(2) + ')';
+          ctx.fillRect(tx * TL + 4 + h * 5 - cx, ty * TL + 8 + h * 3 - cy, 5 + h * 2, 1);
+        }
+        const lights = [[f.player.x * TL + 12 + (f.player.ox || 0) - cx, f.player.y * TL + 12 + (f.player.oy || 0) - cy, 30]];
+        for (const a of f.zoo ? f.zoo.list : []) if (a.kind === 'pulpo') lights.push([a.x - cx, a.y - 6 - cy, 24]);
+        for (const [x, y, r] of lights) { const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(200,215,255,' + (0.4 * dark) + ')'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(x - r, y - r, 2 * r, 2 * r); }
+        ctx.restore();
+      }
+    }
     if (f.mapId !== 'playa' || !G.state || f.locked || G.top() !== f) return;
     const cx = Math.round(f.cam.x), cy = Math.round(f.cam.y);
     for (const s of SIDE) { if (!s.on()) continue; const ic = s.icon(); if (ic) G.drawAlert(ctx, ic, s.at[0] * TL - cx, s.at[1] * TL - cy + 4, f.t); }
@@ -688,7 +706,7 @@
   const bus = P('playa', 'bus'), busIn = P('playa', 'busIn');
   Z.add({
     id: 'playa', name: 'La playa', en: 'the beach', icon: 'playa', music: 'story', pos: [214, 184],
-    maps: ['playa'], path: 'camino_playa',
+    maps: ['playa'], path: 'camino_playa', night: { col: '#2a3c78', k: 0.62 },
     bus: { map: 'playa', at: bus }, entry: { map: 'playa', x: busIn[0], y: busIn[1], dir: 'down' },
     animals: KINDS, // the album page, in order
     habitat: { cangrejo: 'rocas', gaviota: 'arena', estrellamar: 'ola', tortuga: 'nidoarena', medusa: 'mar', delfin: 'mar', pulpo: 'rocas' },
