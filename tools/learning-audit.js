@@ -19,10 +19,16 @@
 // end on most days, each place's words used every few days while she's away.
 //   NODE_PATH=$(npm root -g) node tools/learning-audit.js [--days 6] [--session 15] [--wrong 0.2] [--speak 0.35]
 //        [--nomic 3] [--speed 3] [--seed 11] [--places villa,playa,bosque,juegos,abuelos,montana] [--out dir] [--write-docs]
+//   [--gap D:N]  (a break: after play day D, N extra calendar days before the next play day)
 //   node tools/learning-audit.js --from dump.json [--write-docs]   (the report again from a saved run, no browser)
 // --nomic n: every n-th day the child doesn't talk (0: she talks every day); --speed: G.speedMul (the same frames, less
 // waiting; 1 = real time). Writes learning-audit.md and learning-audit.json to the scratch folder (the scratchpad when
 // there is one, else the OS temp dir; --out dir), never into docs/ unless --write-docs (then docs/LEARNING_AUDIT.md).
+// Also reported: stars, words met and the furthest chapter in each story line on every play day (and the play day the
+// stars pass 52, the child's own count); every practice moment split three ways (a word that was due, a new word, a word
+// not due: so the minutes target cannot be met by repeating words that were not due); free-play seconds and moments by
+// what the guide arrow was leading to (G.guide.at.why) or no arrow; "Coming back after a break" (with --gap); and each
+// measurable Sprint 2 and Sprint 3 target (docs/AUDIT_2026-10.md section 5 table) as one PASS or FAIL line.
 // The default run (6 days) takes about 15-20 minutes on a quiet machine.
 'use strict';
 const fs = require('fs'), path = require('path'), os = require('os');
@@ -35,6 +41,7 @@ const OUTDIR = path.resolve(arg('out', process.env.SPANISH_CLUB_OUT || os.tmpdir
 const WRITE_DOCS = ARGS.includes('--write-docs');
 const DAYS = +arg('days', 6), SESSION = +arg('session', 15) * 60, SPEED = +arg('speed', 3);
 const P_WRONG = +arg('wrong', 0.2), P_SPEAK = +arg('speak', 0.35), NOMIC = +arg('nomic', 3);
+const GAP = (() => { const g = arg('gap'); if (!g) return null; const [d, n] = g.split(':').map(Number); return d > 0 && n > 0 ? { d, n } : null; })();
 const PLACES = arg('places', 'villa,playa,bosque,juegos,abuelos,montana').split(',');
 const placeOf = day => PLACES[(day - 1) % PLACES.length];
 const TARGET = { freeMin: 3, newMax: 3, backlog: 5, awayEvery: 3 };
@@ -64,19 +71,28 @@ function rng(seed) { let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79
 // ---------- page side: the meters (story vs free play, practice scenes, every history event with its moment) ----------
 const METERS = () => {
   if (window.__LA) return;
-  const A = window.__LA = { ev: [], met: [], sec: { story: 0, free: 0, practice: 0 }, day: 1, place: null };
+  const A = window.__LA = { ev: [], met: [], sec: { story: 0, free: 0, practice: 0 }, by: {}, cat: 'no arrow', day: 1, place: null };
+  // what the guide arrow is leading to (G.guide.at.why, src/guide.js), in a few words; kept while a scene is on top
+  const catOf = at => {
+    const w = at && at.why; if (!w) return 'no arrow';
+    if (/^play:/.test(w)) return 'the day\'s play'; if (/^review /.test(w)) return 'a review talk'; if (/^find /.test(w)) return 'a story find';
+    if (/^favour/.test(w)) return 'a favour'; if (/^seek/.test(w)) return 'seek and find'; if (/^canelo/.test(w)) return 'the dog'; if (/^palabra/.test(w)) return 'the word of the day';
+    if (/^pages/.test(w)) return 'the page puzzles'; if (/^job/.test(w)) return 'a job'; if (/^bubble/.test(w)) return 'a bubble'; if (/^greet/.test(w)) return 'a greeting';
+    if (/^(home|bed)/.test(w)) return 'going home'; if (/^\S+:\S/.test(w)) return 'a story beat'; return 'other: ' + String(w).split(' ').slice(0, 2).join(' ');
+  };
+  const split = id => { try { const r = G.words.rec(id); if (!r || r.st < 1 || r.mdate === G.today()) return 'new'; return G.words.due(id) ? 'due' : 'off'; } catch (e) { return 'off'; } }; // (a word due, a new word, or one not due)
   const meet = G.words.meet; G.words.meet = function (id) { const r = meet.apply(this, arguments); if (r) A.met.push({ day: A.day, id, story: !!G.chapters.running(), phrase: G.words.isPhrase(id) }); return r; }; // (a new item: in a chapter's beat or not)
   const PRACTICE = s => { const n = s && s.constructor && s.constructor.name; return n === 'ListenDo' || n === 'PhraseAsk' || n === 'PagePuzzle' || (n === 'Choice' && s.o && s.o.answer != null && !!s.o.onWrong); };
-  const add = sec => { const st = !!(G.chapters && G.chapters.running && G.chapters.running()); A.sec[st ? 'story' : 'free'] += sec; if (PRACTICE(G.top())) A.sec.practice += sec; };
+  const add = sec => { const st = !!(G.chapters && G.chapters.running && G.chapters.running()); A.sec[st ? 'story' : 'free'] += sec; if (G.top() === G.field) A.cat = catOf(G.guide && G.guide.at); if (!st) A.by[A.cat] = (A.by[A.cat] || 0) + sec; if (PRACTICE(G.top())) A.sec.practice += sec; };
   const step = G.words.step; G.words.step = function () { if (G.state) add(1 / 60); return step.apply(this, arguments); };
   const pace = G.vlog.pace; G.vlog.pace = function (sec) { if (G.vocabLog && sec > 0) add(sec); return pace.apply(this, arguments); };
   const len = id => { const e = G.state && G.hist.day().w[id]; return e && typeof e[1] === 'string' ? e[1].length : 0; };
   const ev = G.hist.event; G.hist.event = function (id, k) {
-    const n0 = len(id), r = ev.apply(this, arguments);
+    const n0 = len(id), q = split(id), r = ev.apply(this, arguments);
     if (!r) return r;
     if (n0 && len(id) === n0) { for (let i = A.ev.length - 1; i >= 0; i--) if (A.ev[i].id === id) { A.ev[i].k = r; break; } return r; } // (the mic's word then its answer: one event, history.js)
     const m = G.field && G.field.mapId, here = m ? G.zones.of(m) || G.zones.pathOf(m) : null;
-    A.ev.push({ t: G.vlog.time(), day: A.day, k: r, id, phrase: G.words.isPhrase(id), zone: G.words.isPhrase(id) ? null : G.zones.ofWord(id) || 'villa', here, story: !!G.chapters.running(), map: m });
+    A.ev.push({ t: G.vlog.time(), day: A.day, k: r, id, phrase: G.words.isPhrase(id), zone: G.words.isPhrase(id) ? null : G.zones.ofWord(id) || 'villa', here, story: !!G.chapters.running(), map: m, q, c: A.cat });
     return r;
   };
 };
@@ -90,7 +106,7 @@ async function play() {
   const browser = await launch();
   const { ctx, g } = await open(browser, 'learnaudit', true, { warmup: true, phrases: true, listen: true });
   const t0 = Date.now(), days = [], stats = { spoken: 0, spokenFirst: 0, spokenPhrase: 0, wrong: 0, stuck: 0, helped: 0, cues: {} };
-  let speaking = true, sessT0 = 0, day = 1;
+  let speaking = true, sessT0 = 0, day = 1; const starts = {};
   try {
     await ctx.addInitScript(FAKE);
     await g.page.reload();
@@ -189,9 +205,14 @@ async function play() {
     // the end of a day's session: its numbers (from the game's history and the meters)
     const endOfDay = () => g.ev(day => {
       const H = G.hist, B = G.budget, d = H.day(), A = window.__LA;
-      return { day, date: G.today(), map: G.field && G.field.mapId, t: G.vlog.time(), sec: Object.assign({}, A.sec), backlog: B.backlog(), bd: d.bd, rv: d.rv | 0, met: d.met.slice(), newItems: B.today(), target: B.target(),
+      const CH = G.chapters, lines = CH.lines();
+      return { day, date: G.today(), map: G.field && G.field.mapId, t: G.vlog.time(), sec: Object.assign({}, A.sec), by: Object.assign({}, A.by), stars: G.state.stars | 0, wordsMet: G.words.count(1),
+        story: lines.map(l => { const ids = CH.ids().filter(id => CH.lineOf(id) === l); let last = -1; ids.forEach((id, k) => { if (CH.done(id)) last = k; }); return { line: l, done: ids.filter(CH.done).length, of: ids.length, last: last + 1 }; }),
+        chStarted: CH.startedToday(), chOpenEnd: lines.some(l => !!CH.current(l) || (!!CH.next(l) && CH.gate(CH.next(l)) === null)), backlog: B.backlog(), bd: d.bd, rv: d.rv | 0, met: d.met.slice(), newItems: B.today(), target: B.target(),
         queue: B.queue(), stages: [1, 2, 3, 4].map(k => G.words.count(k)), wu: JSON.parse(JSON.stringify(H.state().wu)), ld: Object.assign({}, H.state().ld), mic: G.mic.status().st };
     }, day);
+    // starts[day]: each day as it began (before the dog's warm-up): the backlog, and whether a story chapter could open
+    const atStart = d => g.ev(d => { const CH = G.chapters, lines = CH.lines(); return { day: d, backlog: G.budget.backlog(), chOpen: lines.some(l => !!CH.current(l) || (!!CH.next(l) && CH.gate(CH.next(l)) === null)), chWait: lines.some(l => !CH.current(l) && !!CH.next(l) && CH.gate(CH.next(l)) === 'room') }; }, d);
     speaking = !(NOMIC > 0 && day % NOMIC === 0);
     console.log('  day 1 (' + placeOf(1) + ')' + (speaking ? '' : ', no mic'));
     for (let step = 0; step < 20000; step++) {
@@ -199,19 +220,22 @@ async function play() {
         const rec = await endOfDay(); rec.place = placeOf(day); rec.speaking = speaking; days.push(rec);
         console.log(`  day ${day} (${rec.place}) ends: ${Math.round(rec.t - sessT0)} s, new ${rec.newItems}, due ${rec.bd} done ${rec.rv} left ${rec.backlog}; wall ${Math.round((Date.now() - t0) / 1000)} s`);
         if (day >= DAYS) break;
+        const gapDays = GAP && GAP.d === day ? GAP.n : 0; rec.gapAfter = gapDays;
+        if (gapDays) console.log('  ... ' + gapDays + ' days away');
         day++;
-        await g.ev(() => { G.st.saveNow(); G.vlog.mark('session-end'); G.debug.dayShift = (G.debug.dayShift || 0) + 1; G.toTitle(); });
+        await g.ev(n => { G.st.saveNow(); G.vlog.mark('session-end'); G.debug.dayShift = (G.debug.dayShift || 0) + n; G.toTitle(); }, 1 + gapDays);
         await g.until(() => G.top().constructor.name === 'Title' && G.top().t > 32, null, 'the title');
         await g.tap(160, 180);
         await g.until(() => G.top().constructor.name === 'Slots' && G.input.ready(), null, 'the slot screen');
         await g.tapRect(await g.ev(() => G.top().cardRect(0)));
         await g.until(() => G.field && G.top() === G.field && G.fade.a === 0, null, 'back in the game');
-        await g.ev(d => { const A = window.__LA; A.day = d; A.sec = { story: 0, free: 0, practice: 0 }; }, day);
+        await g.ev(d => { const A = window.__LA; A.day = d; A.sec = { story: 0, free: 0, practice: 0 }; A.by = {}; }, day);
         speaking = !(NOMIC > 0 && day % NOMIC === 0);
         console.log('  day ' + day + ' (' + placeOf(day) + ')' + (speaking ? '' : ', no mic'));
         await pace(5); // (getting going again)
         sessT0 = await now();
         await settle(g, 'arrival');
+        starts[day] = await atStart(day);
         await goPlace(placeOf(day));
         continue;
       }
@@ -233,13 +257,16 @@ async function play() {
         zoneOf: Object.fromEntries(ids.map(id => [id, G.zones.ofWord(id) || 'villa'])), stage: Object.fromEntries(ids.map(id => [id, G.words.stage(id)])), log: (G.vocabLog || []).filter(e => e.ty === 'warmup' || e.ty === 'warmup-mid' || e.ty === 'listen' || e.ty === 'defer') };
     });
   } catch (e) { console.log('final read failed: ' + e.message); }
-  const meta = { days: DAYS, session: SESSION, places: PLACES, wrong: P_WRONG, speak: P_SPEAK, nomic: NOMIC, speed: SPEED, seed: +arg('seed', 11), stats, wall: Math.round((Date.now() - t0) / 1000), errors: g.errors, date: new Date().toISOString() };
+  days.forEach(d => { d.start = starts[d.day] || null; });
+  const meta = { gap: GAP, days: DAYS, session: SESSION, places: PLACES, wrong: P_WRONG, speak: P_SPEAK, nomic: NOMIC, speed: SPEED, seed: +arg('seed', 11), stats, wall: Math.round((Date.now() - t0) / 1000), errors: g.errors, date: new Date().toISOString() };
   await ctx.close(); await browser.close();
   return { meta, days, final };
 }
 
 // ---------- the numbers ----------
 const PRACTICE = e => e.k !== 'C' && e.k !== 'c' && !(e.phrase && (e.k === 'P' || e.k === 'p')); // (every retrieval but the grown-ups' checks and the phrase builder's taps)
+// a day's free play by what the arrow led to: seconds and moments
+const freeBy = (d, free) => { const o = {}; for (const c in d.by || {}) o[c] = { sec: Math.round(d.by[c]), n: 0 }; for (const e of free) { const c = e.c || 'no arrow'; (o[c] || (o[c] = { sec: 0, n: 0 })).n++; } return o; };
 const r1 = x => Math.round(x * 10) / 10;
 const pctS = (a, b) => (b ? Math.round(100 * a / b) + '%' : '-');
 function analyse(D) {
@@ -252,9 +279,11 @@ function analyse(D) {
     const away = {}; // a place's words used today while she's somewhere else (places met on an earlier day)
     for (const z of Object.keys(firstDay)) if (firstDay[z] < d.day && z !== d.place) away[z] = E.filter(e => !e.phrase && e.zone === z && e.here !== z).length;
     out.days.push({ day: d.day, place: d.place, speaking: d.speaking, min: r1(min), moments: E.length, perMin: r1(E.length / Math.max(1, min)), freeMin: r1(d.sec.free / 60), freePerMin: r1(free.length / Math.max(0.1, d.sec.free / 60)), storyMin: r1(d.sec.story / 60), storyPerMin: d.sec.story > 30 ? r1(story.length / (d.sec.story / 60)) : null,
-      practiceShare: Math.round(100 * d.sec.practice / Math.max(1, d.sec.story + d.sec.free)), newItems: d.newItems, newStory: ((final && final.met) || []).filter(m => m.day === d.day && m.story).length, target: d.target, due: d.bd, done: d.rv, backlog: d.backlog, away, F: E.filter(e => e.k === 'F').length, listen: E.filter(e => e.k === 'L' || e.k === 'l').length, mid: d.wu && d.wu.m && d.wu.m.d === d.date ? d.wu.m.of | 0 : 0, warm: d.wu && d.wu.last && d.wu.last.d === d.date ? d.wu.last.of | 0 : 0, mic: d.mic });
+      practiceShare: Math.round(100 * d.sec.practice / Math.max(1, d.sec.story + d.sec.free)), newItems: d.newItems, newStory: ((final && final.met) || []).filter(m => m.day === d.day && m.story).length, target: d.target, due: d.bd, done: d.rv, backlog: d.backlog, away, stars: d.stars, wordsMet: d.wordsMet, story: d.story || [], chStarted: d.chStarted, chOpenEnd: d.chOpenEnd, start: d.start || null, gapAfter: d.gapAfter || 0,
+      split: { due: E.filter(e => e.q === 'due').length, new: E.filter(e => e.q === 'new').length, off: E.filter(e => e.q === 'off').length }, freeBy: freeBy(d, free), F: E.filter(e => e.k === 'F').length, listen: E.filter(e => e.k === 'L' || e.k === 'l').length, mid: d.wu && d.wu.m && d.wu.m.d === d.date ? d.wu.m.of | 0 : 0, warm: d.wu && d.wu.last && d.wu.last.d === d.date ? d.wu.last.of | 0 : 0, mic: d.mic });
   }
   const D2 = out.days, sum = f => D2.reduce((a, x) => a + (x[f] || 0), 0);
+  const sp3 = f => D2.reduce((a, x) => a + x.split[f], 0);
   const allE = ev.filter(e => PRACTICE(e) && D2.some(d => d.day === e.day)), min = sum('min'), freeMin = sum('freeMin'), storyMin = sum('storyMin');
   out.all = {
     min: r1(min), moments: allE.length, perMin: r1(allE.length / Math.max(1, min)), freePerMin: r1(allE.filter(e => !e.story).length / Math.max(0.1, freeMin)), storyPerMin: storyMin > 0.5 ? r1(allE.filter(e => e.story).length / storyMin) : null,
@@ -265,7 +294,26 @@ function analyse(D) {
     recog: final ? final.recog : null, retention: final ? final.retention : null, recall: final ? final.recall : null, said: final ? final.said : null,
     spokenRecall: allE.length ? Math.round(100 * allE.filter(e => e.k === 'F').length / allE.length) : 0, F: allE.filter(e => e.k === 'F').length,
     listen: final ? final.listen : null, listenDays: D2.filter(d => d.listen > 0).length,
+    split: { due: sp3('due'), new: sp3('new'), off: sp3('off') },
   };
+  const sp = out.all.split; for (const k of ['due', 'new', 'off']) sp[k + 'PerMin'] = r1(sp[k] / Math.max(1, min));
+  sp.dueNewPerMin = r1((sp.due + sp.new) / Math.max(1, min));
+  const freeE = allE.filter(e => !e.story); // (free play on its own, split the same way)
+  sp.free = { due: freeE.filter(e => e.q === 'due').length, new: freeE.filter(e => e.q === 'new').length, off: freeE.filter(e => e.q === 'off').length };
+  sp.freeDueNewPerMin = r1((sp.free.due + sp.free.new) / Math.max(0.1, freeMin));
+  // free play by what the arrow led to
+  const fb = {}; for (const d of D2) for (const c in d.freeBy) { const o = fb[c] || (fb[c] = { sec: 0, n: 0 }); o.sec += d.freeBy[c].sec; o.n += d.freeBy[c].n; }
+  out.freeBy = fb;
+  // where the child is: the play day the stars reach 52 (the child this game is for has 52 stars)
+  const k52 = D2.find(d => d.stars >= 52);
+  out.stars52 = k52 ? { day: k52.day } : null;
+  // after a break (--gap D:N)
+  const gp = D.meta.gap;
+  if (gp) {
+    const after = D2.filter(d => d.day > gp.d), back = after[0];
+    const clear = after.find(d => d.backlog <= 10);
+    out.brk = { gap: gp, before: D2.find(d => d.day === gp.d) || null, after, clearDays: clear ? clear.day - gp.d : null, clearDay: clear ? clear.day : null, firstDue: back ? (back.start ? back.start.backlog : back.due) : null };
+  }
   // each place's words while away: uses on the days she was elsewhere, after its first day
   const places = {};
   for (const d of D2) for (const z in d.away) { const p = places[z] || (places[z] = { awayDays: 0, uses: 0, daysUsed: 0 }); p.awayDays++; p.uses += d.away[z]; if (d.away[z] > 0) p.daysUsed++; }
@@ -284,15 +332,91 @@ function analyse(D) {
     ['Guess-adjusted recognition (lucky taps taken out)', A.recog && A.recog.pct != null ? A.recog.pct + '% (' + A.recog.right + ' of ' + A.recog.n + ' right first try, ' + A.recog.raw + '% raw; the older "retention": ' + (A.retention && A.retention.pct != null ? A.retention.pct + '%' : '-') + ')' : '-', 'reported', true],
     ['Spoken-recall share (said before any written cue, F, of all practice)', A.spokenRecall + '% (' + A.F + ' of ' + A.moments + ')', 'reported', true],
   ];
+  // every measurable Sprint 2 and Sprint 3 target of the table in docs/AUDIT_2026-10.md section 5, one line each: [text, ok (null: reported)]
+  const bd = out.brk, L = out.lines = [];
+  const L1 = (what, num, ok) => L.push([what + ': ' + num, ok]);
+  L1('Reviews done keep up with reviews due (Sprint 2)', A.done + ' of ' + A.due, A.done >= A.due);
+  L1('3 or fewer new items a play day on average (Sprint 2)', A.newPerDay, A.newPerDay <= 3);
+  L1('Never more than 8 new items in a day (Sprint 2)', 'most in a day ' + A.newMax, A.newMax <= 8);
+  L1('A backlog of 5 or fewer at session end on most days (Sprint 2)', A.backlogOk + ' of ' + D2.length + ' days', A.backlogOk * 2 > D2.length);
+  L1('Each place\'s words used every few days while she is away (Sprint 2)', P.length ? Object.entries(places).map(([z, p]) => z + ' ' + p.daysUsed + '/' + p.awayDays).join(', ') + ' days' : 'no place left yet', P.length > 0 && P.every(p => p.daysUsed * TARGET.awayEvery >= p.awayDays));
+  L1('Listen and do on day 1 (Sprint 2)', (D2[0] ? D2[0].listen : 0) + ' requests on day 1', !!D2[0] && D2[0].listen > 0);
+  L1('Guess-adjusted recognition reported (Sprint 2)', A.recog && A.recog.pct != null ? A.recog.pct + '%' : 'no number', null);
+  L1('Spoken-recall share reported (Sprint 2)', A.spokenRecall + '%', null);
+  L1('3 or more practice moments a minute, whole session (Sprint 3)', A.perMin, A.perMin >= TARGET.freeMin);
+  L1('About half the session is practice (Sprint 3)', A.practiceShare + '%', A.practiceShare >= 40);
+  L1('3 or more a minute counting only words that were due or new (so repeats do not count)', sp.dueNewPerMin, sp.dueNewPerMin >= TARGET.freeMin);
+  L1('3 or more a minute in free play', A.freePerMin, A.freePerMin >= TARGET.freeMin);
+  if (bd) L1('After a break the backlog is back to 10 or fewer within a few play days (Sprint 2)', bd.clearDays == null ? 'not in ' + bd.after.length + ' play days' : bd.clearDays + ' play day' + (bd.clearDays === 1 ? '' : 's'), bd.clearDays != null && bd.clearDays <= 3);
   return out;
 }
 
+const storyText = d => d.story.map(x => x.line + ' ' + x.last + '/' + x.of).join(', ');
+// "Coming back after a break": the days after a --gap, as markdown lines (also appended to the docs by hand for a break run)
+function breakSection(A, h) {
+  const L = [], b = A.brk;
+  if (!b) return L;
+  L.push(h + ' Coming back after a break');
+  L.push('');
+  L.push('The child played ' + b.gap.d + ' days, then was away ' + b.gap.n + ' more days, then played again.');
+  L.push('');
+  const pre = b.before, back = b.after[0];
+  L.push('- Reviews waiting on the first day back: ' + (b.firstDue == null ? '-' : b.firstDue) + (pre ? ' (the last day before the break ended with ' + pre.backlog + ' waiting)' : '') + '.');
+  L.push('- A story chapter could open on the first day back: ' + (back && back.start ? (back.start.chOpen ? 'yes' : 'no' + (back.start.chWait ? ' (it waited for the reviews)' : '')) : '-') + '.');
+  L.push('- Play days until the backlog at the end of a sitting is 10 or fewer: ' + (b.clearDays == null ? 'not within the ' + b.after.length + ' play days played' : b.clearDays + ' (play day ' + b.clearDay + ')') + '.');
+  L.push('');
+  L.push('| Play day back | Day | Reviews waiting at the start | Chapter could open at the start | Chapters started that day | Reviews done | Backlog at the end |');
+  L.push('| --- | --- | --- | --- | --- | --- | --- |');
+  b.after.forEach((d, i) => L.push('| ' + (i + 1) + ' | ' + d.day + ' | ' + (d.start ? d.start.backlog : '-') + ' | ' + (d.start ? (d.start.chOpen ? 'yes' : 'no') : '-') + ' | ' + (d.chStarted == null ? '-' : d.chStarted) + ' | ' + d.done + ' | ' + d.backlog + ' |'));
+  L.push('');
+  return L;
+}
+
 function report(D, A) {
-  const L = [], M = D.meta;
+  const L = [], M = D.meta, a0 = A.all, D2 = A.days, f0 = D2[0], fl = D2[D2.length - 1], ok = A.lines.filter(l => l[1] === true).length, judged = A.lines.filter(l => l[1] != null).length;
   L.push('# Open-world learning audit');
+  L.push('');
+  L.push('Summary: ' + D2.length + ' play days' + (M.gap ? ' (a ' + M.gap.n + '-day break after day ' + M.gap.d + ')' : '') + '. Stars went from ' + (f0 ? f0.stars : '-') + ' to ' + (fl ? fl.stars : '-') + ' and word cards from ' + (f0 ? f0.wordsMet : '-') + ' to ' + (fl ? fl.wordsMet : '-') + '. ' + (A.stars52 ? 'Stars pass 52 on play day ' + A.stars52.day + '.' : 'Stars do not reach 52 in this run.'));
+  L.push('Practice came to ' + a0.perMin + ' moments a minute (' + a0.freePerMin + ' in free play); counting only due and new words it is ' + a0.split.dueNewPerMin + '. ' + ok + ' of ' + judged + ' targets PASS.');
+  L.push('');
+  L.push('Date: ' + M.date.slice(0, 10) + '. This measures the game BEFORE the "welcome back" rule and the free-play work.');
   L.push('');
   L.push('Generated by `tools/learning-audit.js` on ' + M.date.slice(0, 10) + ': ' + M.days + ' days of ' + (M.session / 60) + ' minutes in the open world, a place a day (' + D.days.map(d => d.place).join(', ') + '), all live features on (warm-up, phrases, listen and do, review-first pacing), a child\'s pace, ' + Math.round(M.wrong * 100) + '% wrong first taps, speaking ' + Math.round(M.speak * 100) + '% of the time' + (M.nomic ? ' (no mic every ' + M.nomic + ' days)' : '') + '. Wall time ' + Math.round(M.wall / 60) + ' min' + (M.errors.length ? '; ' + M.errors.length + ' console errors' : '') + (M.stats.error ? '; the run stopped early: ' + M.stats.error : '') + '.');
   L.push('');
+  L.push('## Targets, pass or fail');
+  L.push('');
+  for (const [t, okk] of A.lines) L.push('- ' + t + (okk == null ? ' (reported)' : okk ? ', PASS' : ', FAIL'));
+  L.push('- Not measured by this bot: the 3-year simulation numbers (tools/sim-3year.js), a child who never speaks reaching gold and solid, cards grown before the switch, 3 questions between map actions, music on every map, the evening in 15 minutes.');
+  L.push('');
+  L.push('## Where she is, play day by play day');
+  L.push('');
+  L.push('The last column is the furthest chapter done in each story line (done of all in that line).');
+  L.push('');
+  L.push('| Day | Stars | Word cards (words met) | Furthest chapter done |');
+  L.push('| --- | --- | --- | --- |');
+  for (const d of D2) L.push('| ' + d.day + ' | ' + d.stars + ' | ' + d.wordsMet + ' | ' + storyText(d) + ' |');
+  L.push('');
+  L.push(A.stars52 ? 'Stars pass 52 on play day ' + A.stars52.day + '.' : 'Stars do not reach 52 in ' + D2.length + ' play days (' + (fl ? fl.stars : '-') + ' at the end).');
+  L.push('');
+  L.push('## Practice moments: due, new, or not due');
+  L.push('');
+  L.push('A moment counts as "due" if the word was due for review when she answered, "new" if she met it today, "not due" if it was neither (a word asked again too soon).');
+  L.push('');
+  L.push('| Day | Due | New | Not due | Total | Due + new a minute | Minutes |');
+  L.push('| --- | --- | --- | --- | --- | --- | --- |');
+  for (const d of D2) L.push('| ' + d.day + ' | ' + d.split.due + ' | ' + d.split.new + ' | ' + d.split.off + ' | ' + d.moments + ' | ' + r1((d.split.due + d.split.new) / Math.max(1, d.min)) + ' | ' + d.min + ' |');
+  const sp = a0.split;
+  L.push('| All | ' + sp.due + ' | ' + sp.new + ' | ' + sp.off + ' | ' + a0.moments + ' | ' + sp.dueNewPerMin + ' | ' + a0.min + ' |');
+  L.push('');
+  L.push('A minute, overall: ' + a0.perMin + ' moments (due ' + sp.duePerMin + ', new ' + sp.newPerMin + ', not due ' + sp.offPerMin + '). In free play: ' + a0.freePerMin + ' moments a minute (due ' + sp.free.due + ', new ' + sp.free.new + ', not due ' + sp.free.off + '; due and new together ' + sp.freeDueNewPerMin + ' a minute).');
+  L.push('');
+  L.push('## Free play, by what the arrow led to');
+  L.push('');
+  L.push('| The arrow led to | Seconds | Practice moments | Moments a minute |');
+  L.push('| --- | --- | --- | --- |');
+  for (const [c, o] of Object.entries(A.freeBy).sort((x, y) => y[1].sec - x[1].sec)) L.push('| ' + c + ' | ' + o.sec + ' | ' + o.n + ' | ' + (o.sec >= 20 ? r1(o.n / (o.sec / 60)) : '-') + ' |');
+  L.push('');
+  L.push(...breakSection(A, '##'));
   L.push('## Against the targets');
   L.push('');
   L.push('| What | Measured | Target | |');
@@ -307,6 +431,8 @@ function report(D, A) {
   L.push('');
   const a = A.all;
   L.push('In all: ' + a.moments + ' practice moments in ' + a.min + ' minutes (' + a.perMin + ' a minute; free play ' + a.freePerMin + ', story ' + (a.storyPerMin == null ? '-' : a.storyPerMin) + '; free play was ' + a.freeShare + '% of the time). Recall from memory: ' + (a.recall ? a.recall.n + ' word-days (' + a.recall.f + ' said first, ' + a.recall.v + ' from pictures alone)' : '-') + '. Said aloud: ' + (a.said ? a.said.said + ' of ' + a.said.of + ' word-days practised' : '-') + '. Bot: ' + JSON.stringify(M.stats) + '.');
+  L.push('');
+  L.push('Free play split three ways, per day, and the arrow table per day are in the JSON dump (`days[].split`, `days[].freeBy`).');
   L.push('');
   L.push('Practice moments are the learning history\'s retrievals (src/history.js: a pick, a recall, a said word, each word of a spoken request, a page puzzle\'s pairs), the grown-ups\' checks and the phrase builder\'s taps apart; "story" is time inside a chapter\'s beat (G.chapters.running), "free play" the rest. Minutes include a child\'s reading and thinking time.');
   return L.join('\n') + '\n';
