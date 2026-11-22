@@ -4,7 +4,8 @@
 // from recall on 2 later days 2+ apart; listen taps, cued picks and forced pairs never promote; cards never shrink),
 // the most overdue for its gap reviewed first, and review-first pacing (a busy day defers the open world's new words:
 // seen and heard, in the album, queued, a due word asked instead; the queue first when there's room; 8 a day at most;
-// the story always introduces its words).
+// the story always introduces its words). Back after a break (W.spread, W.BREAK): the reviews due at once are spread
+// over the next days, the strongest first; and a word held back by the pacing comes on the first free day (warmup.js).
 //   NODE_PATH=$(npm root -g) node tools/test-memory.js [screenshot dir]     (ONLY=pacing,upgrade to run some)
 'use strict';
 const { open, check, run } = require('./harness');
@@ -410,5 +411,309 @@ async function story(browser) {
   } finally { await ctx.close(); }
 }
 
-const SECTIONS = [['gaps: calendar days, a night at home', gaps], ['upgrade: an older save', upgrade], ['stages: misses, gold, solid, what never counts', stages], ['puzzle: the forced pair, cards', puzzle], ['order: most overdue for its gap', order], ['pacing: the rules', rules], ['pacing: the beach, the queue', beach], ['pacing: the story', story]];
+// ---------- back after a break: the reviews are spread over the next days (words.js W.spread, W.BREAK) ----------
+// a save in slot 1 as the game writes it now, last played o.away days ago: o.n words with a picture in mixed boxes, every
+// one due by calendar day (o.timers: two of them on the minutes' timers of the last sitting instead: a miss, a follow-up
+// never asked), a phrase due too (o.phrases: all six). o.old: the older record shape (boxes 1-5, no version; one with a
+// game-day date only, one from before the stages). A save that doesn't say when it was last played: o.nodate (no
+// wm.date; o.hist: a history day on the last day played; o.bare: the records carry nothing dated but their due day),
+// o.prestage (every record from before the stages and no session record: nothing dates it).
+// Kept as text in window.__save (put back before each load).
+const breakSave = (g, o) => g.ev(o => {
+  G.debug.dayShift = 0;
+  const W = G.words, dn = W.dayNum(), ds = n => { const d = new Date(n * 864e5); return d.getUTCFullYear() + '-' + (d.getUTCMonth() + 1) + '-' + d.getUTCDate(); };
+  const clock = 9000, sess = 20, day = 14, last = dn - (o.away || 0), mix = o.old ? [5, 4, 4, 3, 3, 2, 2, 1] : [5, 4, 4, 3, 3, 3, 2, 2, 2, 1];
+  const GAP = o.old ? [0, 0, 1, 2, 4, 8] : W.BOX_DAYS, ids = Object.keys(G.data.words).filter(id => G.iconDrawn(id)).slice(0, o.n), words = {}, album = {};
+  ids.forEach((id, i) => {
+    const box = mix[i % mix.length], st = box >= 4 ? 3 : box >= 2 ? 2 : 1, ld = last - (i % 4), dc = Math.min(ld + GAP[box], dn - 1); // (last used on the last day played, or a day or three before; due by yesterday at the latest)
+    if (G.animals && G.animals.KINDS[id]) album[id] = { first: 1, map: 'villa', n: 1 };
+    words[id] = { st, box, due: null, dd: day + (dc - last), dc, fu: 0, met: 100 + i, ms: 3, md: 2, mdate: ds(ld - 20), how: 'show', last: 8000 - i * 7, n: 9, right: 6, wrong: 1, said: 0, cue: 0, ret: 7, ft: {}, star: ds(ld), s3: st >= 3 ? 5 : null, gold: st >= 3, learned: st >= 3, ld, gp: st >= 3 ? 24 : 6 };
+    if (!o.old) Object.assign(words[id], { ds: null, mdn: ld - 20, v: 2 });
+  });
+  if (o.timers) { Object.assign(words[ids[8]], { st: 2, box: 2, due: clock + 50, ds: sess, dd: null, dc: null }); Object.assign(words[ids[9]], { st: 1, box: 1, fu: 1, due: clock - 10, ds: sess, dd: null, dc: null, learned: false, gold: false, s3: null }); }
+  if (o.old) { words[ids[2]].dc = null; words[ids[2]].dd = day - 3; words[ids[5]] = { learned: true, right: 3, wrong: 0 }; } // (a game-day date only; a record from before the stages)
+  if (o.bare) ids.forEach(id => { const r = words[id]; delete r.ld; delete r.mdate; delete r.mdn; r.star = ''; });
+  if (o.prestage) ids.forEach((id, i) => { words[id] = { learned: i % 3 === 0, right: i % 3 === 0 ? 3 : 1, wrong: 0 }; });
+  const wm = { clock, sess, day, date: ds(last) }; if (!o.old) Object.assign(wm, { ms: sess, sessAt: 8000, v2: dn - 40, d0: dn - 70 });
+  if (o.nodate) delete wm.date;
+  const hist = o.hist ? { v: 1, d: { [ds(last)]: { n: last, s: 600, met: [], w: {} } } } : undefined;
+  const phr = k => ({ st: 2, box: 2, due: null, dd: day - 5, dc: last - 5 - k, fu: 0, met: 300, ms: 3, md: 2, mdate: ds(last - 30), how: 'show', last: 7000, n: 5, right: 3, wrong: 0, said: 2, cue: 0, ret: 3, ft: {}, star: '', s3: null, gold: false, learned: false, ld: last - 6, gp: 9 });
+  const pr = {}, intro = {}; (o.phrases ? G.phrase.ids() : ['f_quiero']).forEach((id, k) => { pr[id] = phr(k); if (o.phrases) intro[id] = { d: 3, at: 100 }; });
+  const s = G.st.parse({ words, wm: o.prestage ? undefined : wm, hist, flags: { intro: true, canelo: true, petStart: true, opener: true, book: true }, quests: { c1: 'done', c2: 'done', c3: 'done' }, name: 'Luz', look: G.data.defaultLook('nina'), dogName: 'Bruno', stars: 77, album, phrases: o.prestage || o.bare ? undefined : { r: pr, intro } });
+  window.__save = JSON.stringify(s);
+  return { ids, dn };
+}, o);
+// load it and read every word. o.off: with the rule switched off (what she would have met); o.fresh false: the game as
+// it was left (saved, then opened again) instead of the save as made; o.day: on that day
+const breakLoad = (g, o = {}) => g.ev(o => {
+  const W = G.words, B = G.budget, CH = G.chapters;
+  if (o.fresh !== false) { if (G.st.slot) G.st.detach(); G.debug.dayShift = o.day || 0; G.st.erase(1); G.store.set(G.st.slotKey(1), JSON.parse(window.__save)); }
+  else { G.st.saveNow(); G.debug.dayShift = o.day || 0; }
+  const away = W.BREAK.away; if (o.off) W.BREAK.away = 1e9;
+  G.st.loadSlot(1); W.BREAK.away = away;
+  G.goto('villa', 22, 13, 'down'); B.flush();
+  if (!CH.def('zb1')) { CH.add({ id: 'zb1', line: 'zb', title: 'Prueba', en: 'Test', giver: 'pepe', words: ['queso'], icon: 'queso' }); CH.script('zb1', [{ who: 'pepe', run: function* () { yield 1; } }]); } // (a chapter not started yet, of its own line)
+  const dn = W.dayNum(), out = { dn, bl: B.backlog(), back: G.state.wm.back || null, v2: G.state.wm.v2, room: CH.room(), gate: CH.gate('zb1'), gateV: CH.next() ? CH.gate(CH.next()) : 'none', w: {}, note: G.dashboard.backNote() };
+  for (const id in G.state.words) {
+    const r = W.rec(id);
+    out.w[id] = { box: r.box, st: r.st, in: r.dc == null ? null : r.dc - dn, dd: r.dd == null ? null : r.dd - W.day(), timer: r.due != null, due: W.due(id), ld: W.lastDay(id), last: r.last || 0, pts: G.cards.pts(id),
+      rest: Object.keys(r).filter(k => k !== 'dc' && k !== 'dd').sort().map(k => k + '=' + JSON.stringify(r[k])).join('|') }; // (everything but the due day)
+  }
+  const p = W.rec('f_quiero'); out.phrase = p ? { in: p.dc - dn, due: W.due('f_quiero'), box: p.box, st: p.st } : null;
+  return out;
+}, o);
+// the reviews expected on each later day of a load: the words due on it, and the first return of every word that load
+// spread (ids) onto a day before it (answered right on its day, a word comes back after its next box's gap): what
+// W.spread counts as it fills a day
+function expected(a, BOX, ids) {
+  const on = {};
+  for (const id in a.w) { const w = a.w[id]; if (!w.timer && w.in > 0) on[w.in] = (on[w.in] | 0) + 1; }
+  for (const id of ids) { const w = a.w[id], k = w.in + BOX[Math.min(BOX.length - 1, Math.max(1, w.box) + 1)]; on[k] = (on[k] | 0) + 1; }
+  return on;
+}
+// what a spread must look like: at most keep due today, the strongest; the rest on the following days, the weakest last,
+// a day taking words only while fewer than perDay reviews are expected on it, and passed over only when it is full
+function spreadChecks(name, a, K, BOX) {
+  const keep = K.keep, perDay = K.perDay, ids = Object.keys(a.w), due = ids.filter(id => a.w[id].due), kept = due.filter(id => !a.w[id].timer), moved = ids.filter(id => !a.w[id].due && !a.w[id].timer);
+  const stronger = (x, y) => a.w[x].box > a.w[y].box || (a.w[x].box === a.w[y].box && ((a.w[x].ld || 0) > (a.w[y].ld || 0) || ((a.w[x].ld || 0) === (a.w[y].ld || 0) && a.w[x].last >= a.w[y].last)));
+  check(name + ': after loading, ' + a.bl + ' reviews are due (at most ' + keep + '), the others on later days', a.bl === due.length && a.bl <= keep && a.bl === Math.min(keep, ids.length) && moved.length === ids.length - a.bl, JSON.stringify([a.bl, due.length, moved.length]));
+  check(name + ': the ones left due today are the strongest (the highest box, then the most recently used)', kept.length > 0 && kept.every(k => moved.every(m => stronger(k, m))), JSON.stringify(kept.map(id => [id, a.w[id].box, a.w[id].ld])));
+  const days = {}; moved.forEach(id => { (days[a.w[id].in] = days[a.w[id].in] || []).push(id); });
+  const D = Object.keys(days).map(Number).sort((x, y) => x - y), last = D[D.length - 1], on = expected(a, BOX, moved), all = []; for (let d = 1; d <= last; d++) all.push(d);
+  const lay = all.map(d => { const n = (days[d] || []).length, r = (on[d] | 0) - n; return (n || '-') + (r ? '+' + r : ''); }).join(' '); // (words due + returns expected)
+  check(name + ': the rest fall due on the days that follow, ' + perDay + ' a day at most, a day taking words only while fewer than ' + perDay + ' reviews are expected on it (words + the returns expected: ' + lay + ')',
+    D[0] >= 1 && D.every(d => days[d].length <= perDay && (on[d] | 0) <= perDay) && moved.every(id => a.w[id].dd === a.w[id].in), JSON.stringify([D, lay]));
+  check(name + ': ...and no day is passed over unless it is full (' + perDay + ' or more expected on it already)', all.slice(0, -1).every(d => (on[d] | 0) >= perDay), lay);
+  check(name + ': ...in the same order: every day\'s words are stronger than the next day\'s, the weakest last (boxes ' + D.map(d => days[d].map(id => a.w[id].box).join('')).join(' ') + ')', D.every((d, i) => !i || days[D[i - 1]].every(x => days[d].every(y => stronger(x, y)))));
+  check(name + ': the save records it (wm.back: the day, days away, kept, moved, the days it runs: ' + last + ')', !!a.back && a.back.n === a.dn && a.back.kept === a.bl && a.back.moved === moved.length && a.back.days === last, JSON.stringify(a.back));
+  return { due, kept, moved, days: last, on, n: d => (days[d] || []).length };
+}
+const sameBut = (a, b, f) => Object.keys(a.w).filter(id => !b.w[id] || f(a.w[id], b.w[id]));
+// page side: what one frame writes on the main canvas: [text, x, y, width] (as tools/test-dashboard.js reads a tab)
+const strings = g => g.ev(() => { const seen = [], t = G.text; G.text = function (ctx, s, x, y) { if (ctx === G.ctx) seen.push([String(s), Math.round(x), Math.round(y), G.textWidth(String(s))]); return t.apply(this, arguments); }; try { G.drawFrame(); } finally { G.text = t; } return seen; });
+
+async function backAfter(browser) {
+  const { ctx, g } = await open(browser, 'mem-break', true);
+  try {
+    const K = await g.ev(() => Object.assign({}, G.words.BREAK)), BOX = await g.ev(() => G.words.BOX_DAYS);
+    check('break: the constants in one place (W.BREAK): a break is ' + K.away + '+ days away, ' + K.keep + ' reviews kept that day (the story\'s limit, CH.PACE.backlog), ' + K.perDay + ' expected a day after', K.away === 6 && K.keep === await g.ev(() => G.chapters.PACE.backlog) && K.perDay >= 4 && K.perDay <= 8, JSON.stringify(K));
+    // ---- 1. 50 words, all due, last played 24 days ago ----
+    const sv = await breakSave(g, { n: 50, away: 24, timers: true });
+    const off = await breakLoad(g, { off: true }); // (without the rule: what she met before)
+    await g.fieldIdle('villa');
+    check('break: without the rule: back after 24 days, all 50 words are due at once and the story is shut ("' + off.gate + '")', sv.ids.length === 50 && off.bl === 50 && off.gate === 'room' && !off.room && !off.back && off.note === '', JSON.stringify([off.bl, off.gate, off.room, off.back]));
+    const a = await breakLoad(g);
+    await g.fieldIdle('villa');
+    const sp = spreadChecks('break', a, K, BOX);
+    const tm = Object.keys(a.w).filter(id => a.w[id].timer);
+    check('break: the two words left on the last sitting\'s minutes (a miss, a follow-up) count toward the ' + K.keep + ' and are not moved', tm.length === 2 && tm.every(id => a.w[id].due && a.w[id].in === null) && sp.kept.length === K.keep - 2 && a.back.away === 24 && a.back.moved === 50 - K.keep && a.back.days >= Math.ceil((50 - K.keep) / K.perDay) && a.back.days <= 16, JSON.stringify([tm, sp.kept.length, a.back]));
+    check('break: a chapter can open that day: its gate is not "room" (' + JSON.stringify([a.gate, a.gateV]) + '), there is room for the story', a.gate === null && a.gateV !== 'room' && a.room, JSON.stringify([a.gate, a.gateV, a.room]));
+    const ch = sameBut(a, off, (x, y) => x.box !== y.box || x.st !== y.st || x.pts !== y.pts || x.rest !== y.rest);
+    check('break: no word changed its box, its stage, its card or its history: only the due day moved (dc, and dd to match)', !ch.length && Object.keys(a.w).length === 50, JSON.stringify(ch.map(id => [a.w[id].rest, off.w[id].rest])));
+    check('break: the phrase is no part of it (still due, untouched)', a.phrase.due && a.phrase.in === off.phrase.in && a.phrase.box === off.phrase.box, JSON.stringify([a.phrase, off.phrase]));
+    check('break: the history records the reviews due when the day began after the spread (' + await g.ev(() => G.hist.day().bd) + ')', await g.ev(() => G.hist.day().bd === G.budget.backlog() && G.hist.reviewDays(1)[0].due === G.words.BREAK.keep));
+    // the grown-ups' line, on the Learning page's Memory tab; nothing said to the child
+    check('break: for the grown-up: "' + a.note + '"', a.note === 'Back after 24 days: ' + (50 - K.keep) + ' reviews spread over ' + a.back.days + ' days.', a.note);
+    await g.ev(() => { G.dashboard.open({ tab: 'Memory' }); });
+    await g.until(() => G.top().constructor.name === 'LearningDash' && G.input.ready(), null, 'the Learning page');
+    await g.frames(4); await g.shot('break_memory_tab');
+    const S = await strings(g), cut = S.filter(([t]) => /\.\.$/.test(t)), out = S.filter(([t, x, y, w]) => x < 4 || x + w > 316 || y < 2 || y > 214), over = [];
+    S.forEach((p, i) => S.forEach((q, j) => { if (j > i && Math.abs(p[2] - q[2]) < 8 && p[1] < q[1] + q[3] && q[1] < p[1] + p[3]) over.push([p[0], q[0]]); }));
+    check('break: ...on the Memory tab, whole, the dated note still under it; every text fits (none cut, none on another)', S.some(([t]) => t === a.note) && S.some(([t]) => /^From [A-Z][a-z]{2} \d+ the game uses a stricter measure/.test(t)) && S.some(([t]) => /^Recognition: picking/.test(t)) && !cut.length && !out.length && !over.length, JSON.stringify({ cut, out, over, S: S.map(x => x[0]) }));
+    await g.ev(() => { G.pop(); });
+    await g.fieldIdle('villa');
+    check('break: nothing is said to the child about it (no line, no card: the map is free; the dog\'s cards are the welcome)', await g.ev(() => G.top() === G.field && !G.field.locked && !(G.toastT > 0)));
+    // ---- once: the same day again, and the next day ----
+    const again = await breakLoad(g); // (the same save opened a second time before anything was saved: the same spread)
+    check('break: the same save loaded again comes out the same (the order is fixed: box, last used, id)', !sameBut(a, again, (x, y) => x.in !== y.in || x.due !== y.due).length && JSON.stringify(again.back) === JSON.stringify(a.back));
+    const b = await breakLoad(g, { fresh: false }); // (saved, closed, opened again the same day)
+    await g.fieldIdle('villa');
+    check('break: loading again the same day changes nothing (no word moves, the record is the same)', !sameBut(a, b, (x, y) => x.in !== y.in || x.dd !== y.dd || x.due !== y.due || x.rest !== y.rest).length && b.bl === a.bl && JSON.stringify(b.back) === JSON.stringify(a.back), JSON.stringify([b.bl, b.back]));
+    const c = await breakLoad(g, { fresh: false, day: 1 });
+    await g.fieldIdle('villa');
+    const moved1 = sameBut(a, c, (x, y) => x.in !== (y.in == null ? null : y.in + 1) || x.rest !== y.rest);
+    check('break: the next day\'s load does not spread again: nothing reviewed, ' + c.bl + ' are due (' + K.keep + ' + the ' + sp.n(1) + ' put on that day), every due day as it was', !moved1.length && c.bl === K.keep + sp.n(1) && c.back.n === a.dn && c.note === a.note, JSON.stringify([c.bl, c.back, moved1]));
+    // ---- a spread still running, and days missed in it: levelled again (W.BREAK.skip) ----
+    const d = await breakLoad(g, { fresh: false, day: 4 }); // (not played on days 2 and 3: 3 days since the last play)
+    await g.fieldIdle('villa');
+    const would = K.keep + sp.n(1) + sp.n(2) + sp.n(3) + sp.n(4), perDay = {}; Object.keys(d.w).forEach(id => { const k = d.w[id].in; if (k != null && k > 0) perDay[k] = (perDay[k] | 0) + 1; });
+    const moved4 = sameBut(c, d, (x, y) => !x.timer && !y.timer && x.in !== y.in + 3), newDays = moved4.map(id => d.w[id].in), on4 = expected(d, BOX, moved4);
+    check('break: days missed while it runs (opened on day 4, nothing reviewed: ' + would + ' would be due): levelled again, ' + d.bl + ' due, the others on later days with room (' + newDays.sort((x, y) => x - y).join(' ') + ' days on), never more than ' + K.perDay + ' words a day',
+      d.bl === K.keep && d.back.n === a.dn + 4 && d.back.away === 3 && d.back.moved === would - K.keep && moved4.length === would - K.keep && newDays.every(k => k >= 1 && on4[k] <= K.perDay) && Object.keys(perDay).every(k => perDay[k] <= K.perDay) && d.back.days >= a.back.days - 4 && Object.keys(d.w).every(id => d.w[id].timer || d.w[id].box === a.w[id].box), JSON.stringify([d.bl, d.back, perDay, newDays]));
+    const d5 = await breakLoad(g, { fresh: false, day: 5 });
+    check('break: ...and the day after that, played or not, nothing moves again', !sameBut(d, d5, (x, y) => !x.timer && x.in !== y.in + 1).length && d5.back.n === d.back.n, JSON.stringify(d5.back));
+
+    // ---- 2. away 3 days: no spread ----
+    await breakSave(g, { n: 50, away: 3 });
+    const e = await breakLoad(g);
+    await g.fieldIdle('villa');
+    check('break: away 3 days is no break: nothing is spread (all 50 due, as before)', e.bl === 50 && !e.back && e.note === '' && Object.keys(e.w).every(id => e.w[id].due), JSON.stringify([e.bl, e.back]));
+    // ---- 3. a night at home in the same sitting: no spread (the same state on a load: spread) ----
+    const n = await g.ev(() => {
+      const W = G.words, B = G.budget, H = G.hist, o = { bd0: H.day().bd };
+      const ds = k => { const d = new Date(k * 864e5); return d.getUTCFullYear() + '-' + (d.getUTCMonth() + 1) + '-' + d.getUTCDate(); };
+      G.state.wm.date = ds(W.dayNum() - 24); // (as if the save had last been played 24 days ago)
+      W.newSession('night'); B.flush();
+      o.night = { bl: B.backlog(), back: G.state.wm.back || null, day: W.day() };
+      G.state.wm.date = ds(W.dayNum() - 24);
+      W.newSession('load');
+      o.load = { bl: B.backlog(), back: G.state.wm.back || null, bd: H.day().bd };
+      return o;
+    });
+    check('break: a night at home in the same sitting never spreads (the sun comes up: ' + n.night.bl + ' still due)', n.bd0 === 50 && n.night.bl === 50 && !n.night.back, JSON.stringify(n));
+    check('break: ...the same state on a load does; a history day already begun takes the moved ones off its "due when the day began"', n.load.bl === K.keep && n.load.back && n.load.back.moved === 50 - K.keep && n.load.bd === K.keep, JSON.stringify(n.load));
+
+    // ---- 4. a save in the older record shape (boxes 1-5, no version), away 24 days: it upgrades, then spreads ----
+    await breakSave(g, { n: 30, away: 24, old: true, timers: true });
+    const u0 = await breakLoad(g, { off: true });
+    const u = await breakLoad(g);
+    await g.fieldIdle('villa');
+    const OLD = await g.ev(() => G.words.OLD_BOX), raw = JSON.parse(await g.ev(() => window.__save)).words;
+    const upOk = Object.keys(u.w).filter(id => raw[id].st != null && !u.w[id].timer).every(id => u.w[id].box === OLD[raw[id].box] && u.w[id].st === raw[id].st);
+    check('break: an older save (boxes 1-5, a record from before the stages, a game-day date only): upgraded first (the switch day is today; boxes onto the new ladder; stages kept)', u.v2 === u.dn && u0.v2 === u.dn && upOk && u0.bl === 30, JSON.stringify([u.v2, u.dn, u0.bl, Object.keys(u.w).map(id => [raw[id].box, u.w[id].box])]));
+    spreadChecks('break (older save)', u, K, BOX);
+    const uch = sameBut(u, u0, (x, y) => x.box !== y.box || x.st !== y.st || x.pts !== y.pts || x.rest !== y.rest);
+    check('break: ...then spread by its new boxes; boxes, stages and cards exactly as the upgrade alone leaves them', !uch.length && u.back.away === 24 && u.back.moved === 30 - K.keep, JSON.stringify([u.back, uch]));
+
+    // ---- 5. a save that doesn't say when it was last played (no wm.date): the newest day found in it dates it ----
+    await breakSave(g, { n: 30, away: 24, nodate: true, hist: true });
+    const v1 = await breakLoad(g);
+    await g.fieldIdle('villa');
+    check('break: no date in the save: its history and its records date it (last used 24 days ago): spread, as after 24 days ("' + v1.note + '")', v1.bl === K.keep && !!v1.back && v1.back.away === 24 && v1.back.moved === 30 - K.keep && /^Back after 24 days: /.test(v1.note), JSON.stringify([v1.bl, v1.back, v1.note]));
+    await breakSave(g, { n: 30, away: 24, nodate: true, bare: true });
+    const v2 = await breakLoad(g);
+    await g.fieldIdle('villa');
+    check('break: ...records with nothing dated but their due day (less its box\'s gap: the day it was last answered): the same', v2.bl === K.keep && !!v2.back && v2.back.away === 24 && v2.back.moved === 30 - K.keep, JSON.stringify([v2.bl, v2.back]));
+    await breakSave(g, { n: 30, away: 3, nodate: true });
+    const v3 = await breakLoad(g);
+    await g.fieldIdle('villa');
+    check('break: ...dated 3 days ago: no break, nothing spread (all 30 due)', v3.bl === 30 && !v3.back && v3.note === '', JSON.stringify([v3.bl, v3.back]));
+    await breakSave(g, { n: 30, prestage: true });
+    const v4 = await breakLoad(g);
+    await g.fieldIdle('villa');
+    check('break: nothing dates it at all (every record from before the stages, no session record): taken for a long break ("' + v4.note + '")', v4.bl === K.keep && !!v4.back && v4.back.away === null && v4.back.moved === 30 - K.keep && new RegExp('^Back after a break: ' + (30 - K.keep) + ' reviews spread over \\d+ days\\.$').test(v4.note) && Object.keys(v4.w).every(id => v4.w[id].st >= 1), JSON.stringify([v4.bl, v4.back, v4.note]));
+    spreadChecks('break (undated save)', v4, K, BOX);
+    const v5 = await breakLoad(g, { fresh: false, day: 1 });
+    check('break: ...once: it has a date from then on, and the next day\'s load moves nothing', v5.back.n === v4.dn && !sameBut(v4, v5, (x, y) => x.in !== y.in + 1).length, JSON.stringify(v5.back));
+    await g.ev(() => { G.st.detach(); G.st.erase(1); G.debug.dayShift = 0; });
+    noErrors(g, 'break');
+  } finally { await ctx.close(); }
+}
+
+// ---------- the tuning: the days after (she does the dog's cards every day, all answered right) ----------
+// As she plays: the dog's cards are not all words (a listen-and-do request every day, a phrase when one is due: with six
+// phrases met, most days), so the page has both on. Two ways to play: his first cards only, and the mid-sitting cards too.
+async function breakDays(browser) {
+  const { ctx, g } = await open(browser, 'mem-break-days', true, { phrases: true, listen: true });
+  try {
+    const K = await g.ev(() => Object.assign({}, G.words.BREAK));
+    // page side: each day of the save: the reviews waiting as the day begins, may a chapter open, the dog's cards
+    const play = (g, o) => g.ev(o => {
+      const W = G.words, B = G.budget, CH = G.chapters, WU = G.warmup, rows = [], ids = Object.keys(G.state.words), spread = {};
+      const answer = id => { W.addTime(200); if (id === WU.LD) return; if (W.isPhrase(id)) W.answerRight(id, { mode: 'say', said: true }); else W.answerRight(id, { mode: 'pic', recall: true, n: 3 }); };
+      for (let k = 0; k < o.days; k++) {
+        if (k) { G.debug.dayShift = k; W.newSession('load'); }
+        B.flush();
+        if (!k) ids.forEach(id => { const r = W.rec(id); spread[id] = r.dc - W.dayNum(); });
+        const row = { start: B.backlog(), room0: CH.room(), fromSpread: ids.filter(id => spread[id] === k && W.due(id)).length };
+        const cards = WU.pick(G.field); cards.forEach(answer);
+        G.hist.state().wu.d = G.today(); B.flush(); // (the day's cards have come)
+        Object.assign(row, { cards: cards.length, words: cards.filter(id => !!G.data.words[id]).length, room1: CH.room() });
+        if (o.mid) { W.addTime(400); WU.midPick(G.field).forEach(answer); B.flush(); }
+        rows.push(row);
+      }
+      return { rows, last: Math.max(...ids.map(id => spread[id])), days: ids.map(id => spread[id]).filter(k => k > 0), back: Object.assign({}, G.state.wm.back), ready: G.listen.warmReady() };
+    }, o);
+    for (const n of [50, 60]) {
+      const R = {};
+      for (const mid of [false, true]) {
+        await breakSave(g, { n, away: 24, phrases: true });
+        await breakLoad(g);
+        await g.fieldIdle('villa');
+        R[mid ? 'mid' : 'wu'] = await play(g, { days: 21, mid });
+      }
+      const r = R.wu, A = r.rows, M = R.mid.rows, N = r.last, wk = x => x.slice(1, 8).map(d => d.start), tail = x => x.slice(8).map(d => d.start), early = r.days.filter(k => k <= 8).length;
+      check('tuning (' + n + ' words): the first day back ' + A[0].start + ' are due and a chapter can open at once; the dog brings ' + A[0].cards + ' cards, ' + A[0].words + ' of them words (a request and a phrase too)', r.ready && A[0].start === K.keep && A[0].room0 && A[0].cards >= 4 && A[0].cards <= 6 && A[0].words >= 3, JSON.stringify(A[0]));
+      check('tuning (' + n + ' words): ' + early + ' of the ' + r.days.length + ' spread words come up within 8 calendar days; the weakest ' + (r.days.length - early) + ' wait until the first returns have passed, the last on day ' + N, N === r.back.days && N <= 16 && early >= 0.75 * r.days.length, JSON.stringify([r.back, r.days.slice().sort((x, y) => x - y)]));
+      check('tuning (' + n + ' words): the dog\'s first cards done each day: about 12 reviews waiting each morning of the first week (' + wk(A).join(' ') + '), ' + K.perDay + ' of them new from the spread', wk(A).every(v => v <= 14) && A.slice(1, 8).every(d => d.fromSpread <= K.perDay && d.cards >= 4 && d.cards <= 8), JSON.stringify(A.map(d => [d.start, d.fromSpread, d.cards, d.words])));
+      check('tuning (' + n + ' words): ...with the mid-sitting cards too: ' + K.keep + ' or fewer each morning (' + wk(M).join(' ') + ')', wk(M).every(v => v <= K.keep), JSON.stringify(M.map(d => d.start)));
+      // The second week. The strong words went first and come back after long gaps, the weak ones later and after short
+      // gaps: they would all come back together from about day 8 (with 5 spread words a day whatever was expected: 29
+      // waiting and no chapter on 4 days for 50 words, 40 and 8 days for 60). Counting the returns as each day is filled
+      // (W.spread), those days take no spread words: no pile-up, and the story goes on
+      const pa = Math.max(...tail(A)), pm = Math.max(...tail(M)), shut = x => x.map((d, k) => (d.room1 ? null : k)).filter(k => k != null);
+      check('tuning (' + n + ' words): the second week and after, his first cards alone: mornings of ' + tail(A).join(' ') + ' (the most ' + pa + '); a chapter can open once his cards have come on ' + (A.length - shut(A).length) + ' of the ' + A.length + ' days' + (shut(A).length ? ' (not on day ' + shut(A).join(', ') + ')' : ''),
+        pa <= n / 2 && shut(A).length <= (n > 50 ? 1 : 0), JSON.stringify([A.map(d => d.start), shut(A)]));
+      check('tuning (' + n + ' words): ...with the mid-sitting cards too: mornings of ' + tail(M).join(' ') + ' (the most ' + pm + '); a chapter every day', pm <= pa && pm <= n / 3 && !shut(M).length, JSON.stringify([M.map(d => d.start), shut(M)]));
+    }
+    await g.ev(() => { G.st.detach(); G.st.erase(1); G.debug.dayShift = 0; });
+    noErrors(g, 'tuning');
+  } finally { await ctx.close(); }
+}
+
+// ---------- a word held back by the pacing comes on the first free day (warmup.js: the dog's "new card" moment) ----------
+async function held(browser) {
+  const { ctx, g } = await open(browser, 'mem-held', true);
+  try {
+    const free = () => g.until(() => !G.warmup.cur() && G.top() === G.field && !G.field.locked && G.fade.a === 0, null, 'the map free again');
+    // day 0: six words she knows, none due for days; a crab seen on a busy day waits in the queue (the dog's cards are
+    // off in a test's page until asked: window.__warmupOff)
+    await game(g, { old: ['casa', 'perro', 'gato', 'arbol', 'flor', 'pan'].map(id => [id, 2, 3, 6, 5]) });
+    await g.fieldIdle('villa');
+    await g.ev(() => { G.budget.defer('cangrejo', 'test'); });
+    // the next day: nothing is due at all
+    await g.ev(() => {
+      G.debug.dayShift = 1; G.words.newSession('load'); G.budget.flush();
+      window.__tl = []; const an = G.pet.anim; G.pet.anim = (n, k, a) => { window.__tl.push(k); return an(n, k, a); };
+      G.goto('villa', 22, 13, 'down');
+    });
+    await g.fieldIdle('villa');
+    const pre = await g.ev(() => ({ due: G.review.count(), bl: G.budget.backlog(), q: G.budget.queue(), can: G.budget.canIntro(1), pick: G.warmup.pick(G.field), nc: G.warmup.newCard() }));
+    check('held back: the next day 0 words are due (too few for the dog\'s cards), the crab still waits and there is room for it', pre.due === 0 && pre.bl === 0 && pre.q.join() === 'cangrejo' && pre.can && !pre.pick.length && pre.nc === 'cangrejo', JSON.stringify(pre));
+    await g.ev(() => { window.__warmupOff = false; });
+    await g.until(() => !!G.warmup.cur(), null, 'the dog\'s new-card moment', 12000);
+    const c = await g.ev(() => { const c = G.warmup.cur(); return { ids: c.ids.slice(), mid: c.mid, done: G.warmup.done() }; });
+    check('held back: the dog comes all the same, with no review card, and the day\'s warm-up is marked done', c.ids.length === 0 && !c.mid && c.done, JSON.stringify(c));
+    await g.until(() => (G.top().constructor.name === 'TextBox' && G.top().opts.show === 'cangrejo') || !G.warmup.cur(), null, 'the crab');
+    check('held back: he fetches a card, and it is the crab', await g.ev(() => !!G.warmup.cur() && G.warmup.cur().phase === 'new' && window.__tl.join() === 'bring'), await g.ev(() => JSON.stringify([G.warmup.cur() && G.warmup.cur().phase, window.__tl])));
+    await g.frames(20); await g.shot('held_new_card');
+    await g.drive(() => !G.warmup.cur() && G.top() === G.field && !G.field.locked, 'the introduction and the treat');
+    const w = await g.ev(() => { const wu = G.hist.state().wu; return { st: G.words.stage('cangrejo'), how: G.words.rec('cangrejo').how, q: G.budget.queue(), tl: window.__tl.join(), wu: { d: wu.d === G.today(), n: wu.n | 0, none: wu.none | 0, nw: wu.nw, last: wu.last || null }, text: G.dashboard.warmText(wu) }; });
+    check('held back: the crab is introduced (its puzzle, its card), the queue is empty, then his jump and his treat (' + w.tl + ')', w.st === 1 && w.how === 'queue' && !w.q.length && /^bring,.*jump,eat$/.test(w.tl), JSON.stringify(w));
+    check('held back: counted as a day with too few words due, the word it brought noted (the grown-ups\' page: "' + w.text + '")', w.wu.d && w.wu.none === 1 && w.wu.n === 0 && w.wu.nw && w.wu.nw.id === 'cangrejo' && !w.wu.last && /fewer than 2 words were due/.test(w.text), JSON.stringify(w.wu));
+    // the mid-sitting moment does the same: nothing due, another word waiting, room for it
+    await free();
+    await g.ev(() => { const W = G.words; Object.assign(W.rec('cangrejo'), { fu: 0, box: 2, due: null, ds: null, dc: W.dayNum() + 5 }); G.budget.flush(); G.budget.defer('gaviota', 'test'); window.__tl = [];
+      G.hist.state().hoy.d = G.today(); G.sessionTime = G.warmup.MID_AT + 200; }); // (well into the sitting; the Hoy card's day is today, or day.js would take the test's moved date for a game left open overnight and start the sitting's clock again)
+    await g.until(() => !!G.warmup.cur(), null, 'the mid-sitting new-card moment', 12000);
+    const m = await g.ev(() => { const c = G.warmup.cur(); return { ids: c.ids.slice(), mid: c.mid }; });
+    await g.drive(() => !G.warmup.cur() && G.top() === G.field && !G.field.locked, 'the mid-sitting introduction');
+    const m2 = await g.ev(() => { const wu = G.hist.state().wu; return { st: G.words.stage('gaviota'), how: G.words.rec('gaviota').how, q: G.budget.queue(), m: wu.m, nw: wu.nw, tl: window.__tl.join(), done: G.warmup.midDone() }; });
+    check('held back: mid-sitting too: nothing due, a gull waiting: the dog brings it (no review card), once a sitting', m.mid && !m.ids.length && m2.st === 1 && m2.how === 'queue' && !m2.q.length && m2.nw.id === 'gaviota' && m2.m && m2.m.n === 1 && m2.done && /^bring,.*jump,eat$/.test(m2.tl), JSON.stringify([m, m2]));
+    // one word due and one waiting: the due one is asked first (reviews before new words), then the new card
+    await free();
+    await g.ev(() => {
+      const W = G.words; G.debug.dayShift = 2; W.newSession('load');
+      for (const id of W.list(1)) Object.assign(W.rec(id), { fu: 0, box: Math.max(2, W.rec(id).box), due: null, ds: null, dc: W.dayNum() + 5 });
+      W.rec('casa').dc = W.dayNum(); G.budget.flush(); G.budget.defer('tortuga', 'test');
+      window.__asked = []; const ask = G.ask; G.ask = function (q) { const c = q.choices && q.choices[q.answer]; window.__asked.push((q.intro ? 'new:' : 'review:') + (q.intro || (c && c.word))); return ask.call(this, q); };
+      G.goto('villa', 22, 13, 'down');
+    });
+    await g.until(() => !!G.warmup.cur(), null, 'the dog, one word due and one waiting', 12000);
+    const o1 = await g.ev(() => G.warmup.cur().ids.slice());
+    await g.drive(() => !G.warmup.cur() && G.top() === G.field && !G.field.locked, 'the due word and the new card');
+    const o2 = await g.ev(() => { const wu = G.hist.state().wu; return { asked: window.__asked, casa: G.words.rec('casa').box, st: G.words.stage('tortuga'), last: wu.last, n: wu.n | 0, text: G.dashboard.warmText(wu) }; });
+    check('held back: one word due and one waiting: the due word first, then the new one (' + o2.asked.join(', ') + '); "' + o2.text + '"', o1.join() === 'casa' && o2.asked.join() === 'review:casa,new:tortuga' && o2.casa === 4 && o2.st === 1 && o2.last && o2.last.of === 1 && o2.n === 1 && /^1 card today/.test(o2.text), JSON.stringify([o1, o2]));
+    // nothing due and nothing waiting: no dog moment, as before
+    await free();
+    await g.ev(() => { const W = G.words; G.debug.dayShift = 3; W.newSession('load'); for (const id of W.list(1)) Object.assign(W.rec(id), { fu: 0, due: null, ds: null, dc: W.dayNum() + 5 }); G.budget.flush(); G.goto('villa', 22, 13, 'down'); });
+    await g.until(() => G.warmup.done(), null, 'the day\'s look for cards', 12000);
+    check('held back: nothing due and nothing waiting: he doesn\'t come that day (as before)', await g.ev(() => !G.warmup.cur() && !G.budget.queue().length && G.hist.state().wu.none === 2));
+    await g.ev(() => { G.debug.dayShift = 0; });
+    noErrors(g, 'held back');
+  } finally { await ctx.close(); }
+}
+
+const SECTIONS = [['gaps: calendar days, a night at home', gaps], ['upgrade: an older save', upgrade], ['stages: misses, gold, solid, what never counts', stages], ['puzzle: the forced pair, cards', puzzle], ['order: most overdue for its gap', order], ['pacing: the rules', rules], ['pacing: the beach, the queue', beach], ['pacing: the story', story],
+  ['break: back after weeks away, the reviews spread', backAfter], ['break: the tuning, the days after', breakDays], ['held back: a word waiting comes on the first free day', held]];
 run('The memory engine (words.js: gaps, stages, order, pacing)', SECTIONS.filter(([n]) => !ONLY.length || ONLY.some(o => n.includes(o))));

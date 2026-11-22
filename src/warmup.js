@@ -7,6 +7,10 @@
 // ends it at any moment, without a word of Spanish. The cards teach nothing new: only met words; a slipping word
 // (words.js) is met again instead (G.intro.again). After the cards, a word waiting in the pacing's queue (seen on a day
 // with no room for new words) is introduced if there's room now (G.intro.queued: the only new thing it ever brings).
+// On a day with fewer than 2 words due there are no cards to bring, but a word still waits in that queue: then he
+// brings just that one, a short "new card" moment (he fetches a card, the word is introduced, his treat; the one word
+// that is due, if there is one, is asked first: reviews come before new words). Without it a held-back word was never
+// taught on a free day, the very day it had been waiting for, and the queue quietly dropped its oldest past 6.
 // The first time, a ghost hand shows the mic (demo.js 'warmup').
 // How many grows with the backlog (polish plan 2.5, AUDIT C6: a child who explores leaves words behind): 2-3 cards
 // when little is due, 4-8 when more is (WU.size: one more card for every 3 more words due); never more than 3
@@ -14,7 +18,8 @@
 // A second, short dog-card moment mid-session (WU.MID_AT, about 6-8 minutes into a sitting): once a sitting, after the
 // day's warm-up, only while words are due (1-3 cards), skippable the same way, never during a story beat.
 // It waits for the story: never during a beat (CH.running), a find-it puzzle, the opener, the bus, a dog lost in a
-// chapter, the evening at home; with fewer than 2 words due it doesn't come (that day). The guide carries on after.
+// chapter, the evening at home; with fewer than 2 words due it doesn't come that day (unless a held-back word is
+// waiting: the "new card" moment above). The guide carries on after.
 //   The form, from the word's stage (G.intro.form; the answer-card rules: learn.js Choice.view never lets pictures give
 //   it away, and word-only cards wait for a word well known, docs/AUDIT_2026-10.md 2.7):
 //     met (1)        hear it, pick its picture (picture-only cards: recognition, as for any met word)
@@ -32,7 +37,8 @@
 //   WU.wait(f) why it can't start now ('done', 'story', 'find', 'busy'... or null: it can)   WU.pick(f, n) the words
 //   WU.size(d) the cards for d words due   WU.midWait(f) / WU.midPick(f) the mid-session moment's (why not; its words)
 //   WU.update(f) / WU.draw(f, ctx) (field.js, every frame)    WU.start(f, ids) start it now (tests, content)
-//   WU.cur() the one going on: {ids, i, phase: 'bring' | 'ask' | 'party', res: [1 | 0], skipped, mid} or null
+//   WU.newCard() the held-back word he could bring now (the pacing's queue, with a picture, room today), or null
+//   WU.cur() the one going on: {ids, i, phase: 'bring' | 'ask' | 'new' | 'party', res: [1 | 0], skipped, mid} or null
 //   WU.pending() one whose map changed in the middle (a bus ride) waits to go on, from its next card, on this map
 //   WU.done() today's has come (done, skipped or too few words)   WU.skip() ends the one going on   WU.skipToday()
 //   WU.HOLDS.push(f => bool)   content holds it back while true (a zone's moment that mustn't be interrupted)
@@ -40,7 +46,8 @@
 //   WU.LD ('_ld') the card that is a listen-and-do request (src/listen.js G.listen.warm), before a due phrase
 //     (extra: options for its G.ask: the skip button, the cards; pass them on so the child can still skip)
 // Saved: G.state.hist.wu (history.js: {d: the day it last came, n: done, k: skipped, none, last: {d, ids, right, of},
-// m: the mid-session moments {d, n (today), right, of, skipped}}).
+// m: the mid-session moments {d, n (today), right, of, skipped}, nw: {d, id} the last word a "new card" moment brought
+// (a moment with no review card at all counts as a day with too few words: none)}).
 // Off while G.debug.noWarmup (tools/harness.js keeps it off unless a test opens its page with {warmup: true}).
 'use strict';
 (function () {
@@ -161,14 +168,26 @@
     if (mid ? WU.midWait(f) : WU.wait(f)) { freeT = 0; return; }
     if (++freeT < WU.SETTLE) return;
     freeT = 0;
-    if (mid) { // the mid-session moment: only while words are due (none now: it looks again in a moment)
+    if (mid) { // the mid-session moment: only while words are due, or a held-back word can come (neither now: it looks again in a moment)
       const ids = WU.midPick(f);
       if (ids.length) WU.start(f, ids, { mid: true });
+      else if (WU.newCard()) WU.start(f, [], { mid: true, newCard: true });
       return;
     }
     const ids = WU.pick(f);
-    if (ids.filter(id => id !== WU.LD).length < WU.MIN) { const w = wu(); w.d = G.today(); w.none = (w.none | 0) + 1; G.st.autosave(); return; } // (the request alone never brings it)
+    if (ids.filter(id => id !== WU.LD).length < WU.MIN) { // (the request alone never brings it)
+      // too few words due for the cards; a word held back by the pacing still comes, on its own (after the one due word)
+      if (WU.newCard()) { WU.start(f, ids.filter(id => id !== WU.LD && !(G.words.isPhrase && G.words.isPhrase(id))), { newCard: true }); return; }
+      const w = wu(); w.d = G.today(); w.none = (w.none | 0) + 1; G.st.autosave(); return;
+    }
     WU.start(f, ids);
+  };
+  // the word held back by the pacing (words.js G.budget.queue: seen on a day with no room) that could be introduced
+  // now: the first with a picture, if today has room for a new word (what G.intro.queued itself asks), or null
+  WU.newCard = function () {
+    const B = G.budget; if (!G.state || !B || !G.intro || !G.intro.queued) return null;
+    const id = B.queue().find(k => G.iconDrawn(k));
+    return id && B.canIntro(1, { id }) ? id : null;
   };
   // a warm-up whose map went away in the middle (G.goto: the bus, a door): its scene went with it (no finally ran), so
   // it would hold every later one back ('going'); the cards left go on on the new map once it's free (pend), or, all
@@ -181,10 +200,11 @@
   }
   WU.pending = () => !!pend;
   // o.mid: the mid-session moment (the day's warm-up has come already); o.res: the answers so far (one that goes on
-  // after its map changed: it starts at the next card)
+  // after its map changed: it starts at the next card); o.newCard: a "new card" moment (a held-back word comes: it may
+  // have no review card at all)
   WU.start = function (f, ids, o = {}) {
     f = f || G.field; if (!G.state || !f || cur) return false;
-    ids = (ids || (o.mid ? WU.midPick(f) : WU.pick(f))).filter(id => id === WU.LD || G.words.met(id)); if (!ids.length) return false;
+    ids = (ids || (o.mid ? WU.midPick(f) : WU.pick(f))).filter(id => id === WU.LD || G.words.met(id)); if (!ids.length && !o.newCard) return false;
     if (o.mid) midSit = sitting; else wu().d = G.today();
     const res = Array.isArray(o.res) ? o.res.slice(0, ids.length) : [];
     cur = { f, ids, i: -1, i0: res.length, phase: 'bring', res, skipped: false, t0: G.frame, card: null, mid: !!o.mid, state: G.state };
@@ -228,11 +248,12 @@
         c.phase = 'wag';
         yield* anim(c, n, 'wag', { amp: ok ? 1 : 0.6 });
       }
-      c.card = null;
-      if (c.skipped) { finish(c, false); return; }
+      if (c.skipped) { c.card = null; finish(c, false); return; }
       // (pacing, words.js G.budget: a word she saw on a day with no room for new ones is introduced now, after the
-      // reviews, if there's room: intro.js G.intro.queued)
-      if (G.intro.queued) { c.phase = 'new'; yield* G.intro.queued({ who: 'canelo' }); }
+      // reviews, if there's room: intro.js G.intro.queued. A "new card" moment with no review: the card he just dropped
+      // is that word's)
+      if (c.card) { G.fx.burst(c.card[0] - f.cam.x, c.card[1] - f.cam.y - 4); G.audio.sfx('swing'); c.card = null; }
+      if (G.intro.queued) { c.phase = 'new'; const id = WU.newCard(); if ((yield* G.intro.queued({ who: 'canelo' })) && id && G.words.met(id)) wu().nw = { d: G.today(), id }; }
       // 3. the dog jumps for joy and gets a treat
       c.phase = 'party';
       const [dx, dy] = dogXY(f, n);
@@ -259,6 +280,7 @@
   function finish(c, completed) {
     const w = wu(), right = c.res.filter(Boolean).length;
     if (c.mid) { const m = w.m && w.m.d === G.today() ? w.m : { d: G.today(), n: 0 }; w.m = Object.assign(m, { n: (m.n | 0) + 1, ids: c.ids.slice(), right, of: c.res.length, skipped: !completed || null }); return; } // (the mid-session moment: counted apart)
+    if (!c.ids.length) { w.none = (w.none | 0) + 1; return; } // (a new card and no review: a day with too few words due, as before; the grown-ups' page says so)
     if (completed) w.n = (w.n | 0) + 1; else w.k = (w.k | 0) + 1;
     w.last = { d: G.today(), ids: c.ids.slice(), right, of: c.res.length, skipped: !completed || null };
   }

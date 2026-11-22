@@ -9,7 +9,9 @@
 //              lucky taps taken out: (p - 1/k) / (1 - 1/k), history.js H.recognition) and RECALL (words recalled from
 //              memory: said before seeing them written, picked from pictures alone on a later day, the grown-up's
 //              checks: H.recall); the last check beside the game's number for the same words; gold words forgotten and
-//              relearned; words not seen in 30 / 60 days; slipping; the dated note when the stricter measure began
+//              relearned; words not seen in 30 / 60 days; slipping; the dated note when the stricter measure began;
+//              and, the days after a break, one line: "Back after 24 days: 42 reviews spread over 13 days." (DB.backNote:
+//              words.js W.spread left the strongest due that day and gave the rest later days, a few a day)
 //   Pace       reviews done a day against reviews due (bars, the last 3 weeks: a growing backlog shows) and the backlog
 //              now; new words and phrases a day against the pacing's target (words.js G.budget); the words seen but
 //              not taught yet (the pacing's queue)
@@ -33,8 +35,8 @@
 // first.", and a Back up button that opens Back up / restore (src/backup.js). Only here, for grown-ups: never in her play.
 // Every text is measured with the game's font so nothing is squeezed (tools/test-dashboard.js checks each tab).
 // API: G.dashboard.open() -> Wait; .tonight(k) the k-th question of tonight's list ({id, es, en, ans: {es, en}, why,
-//   words}); .tonights() the whole list; .shareText(); .TABS; .lines() each tab's rows of text (tests). The screen is
-//   'LearningDash' (tests read .tab, .view()).
+//   words}); .tonights() the whole list; .shareText(); .TABS; .lines() each tab's rows of text (tests); .backNote() the
+//   line about a break ('' when there is none). The screen is 'LearningDash' (tests read .tab, .view()).
 'use strict';
 (function () {
   const DB = G.dashboard = {};
@@ -77,6 +79,9 @@
   const saidS = sa => (sa.of ? nOf(sa.said, 'word') + ' this week (once a day each)' : 'no practice this week yet');
   const MEM_NOTE = 'Recognition: picking the right card when a word comes back a day or more later. Recall: saying it before seeing it written, or picking it from pictures alone.';
   const switchS = n => 'From ' + dateN(n) + ' the game uses a stricter measure; earlier numbers counted guesses and same-day answers.';
+  // back after a break (words.js W.spread): one line on the Memory tab while the spread reviews are still coming
+  // (away null: a save that doesn't say when it was last played: "a break")
+  DB.backNote = function () { const b = G.state && Wd().back ? Wd().back() : null; return b ? 'Back after ' + (b.away == null ? 'a break' : nOf(b.away, 'day')) + ': ' + nOf(b.moved, 'review') + ' spread over ' + nOf(b.days, 'day') + '.' : ''; };
 
 
   // =====================================================================
@@ -431,7 +436,7 @@
       if (!p || !p.met) return 'none met yet (Me llamo, Quiero, Me gusta...)';
       return p.met + ' of ' + p.of + ' met; said ' + p.said + ' (' + p.today + ' today)' + (p.built ? '; ' + p.built + ' built' : ''); // (said: once a day each; the line under the rows says so)
     }
-    // ---------- Memory: recognition and recall, your check beside the game's, forgotten, not seen, the switch ----------
+    // ---------- Memory: recognition and recall, your check beside the game's, forgotten, not seen, a break, the switch ----------
     drawMemory(ctx) {
       const w = this.memo('w', () => DB.week()), o = w.o, r = w.recog, c = w.recall;
       const cols = [[80, 'Recognition', r.n < RECOG_MIN ? '--' : r.pct + '%', r.n < RECOG_MIN ? COL.dim : r.pct >= 60 ? COL.gold : COL.met, 'lucky taps taken out', r.n ? r.right + ' of ' + r.n + ' right first try' : 'none back after a day yet'],
@@ -441,8 +446,10 @@
         G.bigText(ctx, big, cx, 64, 3, col);
         G.textC(ctx, a, cx, 94, COL.dim); G.textC(ctx, b, cx, 104, COL.dim);
       }
-      this.rowsAt(ctx, DB.memoryRows(w), 118);
-      G.wrap(MEM_NOTE, G.W - 20).slice(0, 3).forEach((l, i) => G.text(ctx, l, 10, 170 + i * 10, '#8890c0'));
+      const bn = DB.backNote(), up = bn ? 4 : 0; // (back after a break: its line under the rows; they move up a little and the note down to make room)
+      this.rowsAt(ctx, DB.memoryRows(w), 118 - up);
+      if (bn) G.text(ctx, bn, 10, 164, COL.yel);
+      G.wrap(MEM_NOTE, G.W - 20).slice(0, 3).forEach((l, i) => G.text(ctx, l, 10, 170 + up + i * 10, '#8890c0'));
       const sn = o.switchNote; if (sn) G.wrap(switchS(sn.num), G.W - 20).slice(0, 2).forEach((l, i) => G.text(ctx, l, 10, 203 + i * 10, COL.yel));
     }
     // ---------- Pace: reviews done against due a day, the backlog; new items a day against the target; the queue ----------

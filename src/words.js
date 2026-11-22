@@ -102,6 +102,8 @@
 //   #6: no say-it-first, a picture-only pick is a plain P)   W.shownAgo(id)
 //   W.list(minStage) ids at that stage or more   W.count(minStage)
 //   W.newSession(reason) ('load', 'new', 'night')   W.step() every frame (the clock, a new calendar date)
+//   W.spread(last) back after a break (W.BREAK: W.newSession calls it on a load): the reviews due at once are spread
+//                      over the next days, the strongest first   W.back() that spread while it runs (dashboard.js)
 //   W.upgrade() an older save's records onto the new ladder (state.js on load; idempotent)   W.switchDay() wm.v2
 // G.review: due(n, {topic, filter, exclude, minStage, maxStage}) the words due now: just-met follow-ups first, then
 //   missed ones (due again in minutes), then the rest, the most overdue for its gap first (days late / the box's gap;
@@ -127,7 +129,7 @@
 //   for their follow-ups, left(o).
 // Saved: G.state.wm = {clock, sess, day, date, sessAt, ms (memory session), v2 (switch day), d0 (first day played),
 //   pace: {d (day number), t (today's target), fr (the fraction carried), q: [ids waiting]}, rq: {d (game day), k: {who@place: 1}}
-//   (today's reviews by person and place)}.
+//   (today's reviews by person and place), back: {n, away, kept, moved, days} (the last spread after a break: W.spread)}.
 'use strict';
 (function () {
   const D = () => G.data;
@@ -139,6 +141,31 @@
   W.MAXBOX = W.BOX_DAYS.length - 1;
   W.OLD_BOX = [0, 1, 2, 2, 3, 4];     // an older record's box (1-5: gaps 0, 1, 2, 4, 8 days) -> its box on this ladder
   W.SLIP = { n: 3, win: 600, rights: 2 }; // 3 misses (in a row, or within 10 min of play) -> slipping, until 2 right first tries
+  // Back after a break (W.spread, below): after weeks away every word she has met is due at once. Asked all together
+  // they would be a wall of reviews sitting after sitting, and the story would stay shut (a new chapter opens at 8 or
+  // fewer due, chapters.js CH.PACE). So the first load after `away` calendar days not played leaves the `keep`
+  // strongest due that day and spreads the rest over the following calendar days, the weakest last, each day taking
+  // words until `perDay` reviews are expected on it.
+  //   away 6     a week's holiday is a break; a long weekend isn't (the ordinary backlog rules do for that)
+  //   keep 8     the story's own limit (CH.PACE.backlog): a chapter can open the moment she is back, before any review
+  //   perDay 5   the reviews expected on a following day at most: the spread words put on it, the words already due
+  //              that day, and the FIRST RETURN of every spread word put before it (answered right on its day, a word
+  //              comes back after its next box's gap).
+  //              Why 5: it is what the dog's cards clear in a sitting. With 10-13 waiting he brings 6-7 cards, and two
+  //              of them are not words (a listen-and-do request, a phrase: warmup.js), so 4-5 words; 1-3 more
+  //              mid-sitting. With his first cards alone the reviews waiting each morning stay at 10-13 the first week
+  //              (6 a day: up to 17) and a chapter can open every day (CH.PACE.daily: 15).
+  //              Why the returns count: without them the strong words (first, long gaps) and the weak ones (last,
+  //              short gaps) all came back together in the second week: 29 waiting for a save of 50 words and no new
+  //              chapter on 4 days, 40 and 8 days for 60 words. Counting them, the days when the first returns land
+  //              take no spread words and the weakest few wait until those have passed: at most 20 waiting and a
+  //              chapter every day for 50 words (23, and one day without, for 60), and the last words of a 50-word
+  //              save come on day 13, of a 60-word save on day 16 (they are forgotten by then anyway: the order they
+  //              are relearned in matters little; the story going on every day matters more).
+  //              Measured in tools/test-memory.js ("tuning": the dog's cards done every day, all answered right)
+  //   skip 2     while an earlier spread is still running, a load 2 or more days after the last play (a day was
+  //              missed) levels again what piled up meanwhile; never the same day, never the next day (0: off)
+  W.BREAK = { away: 6, keep: 8, perDay: 5, skip: 2 };
   W.V = 2;                            // the record's version (r.v)
 
   // ---------- calendar ----------
@@ -163,11 +190,74 @@
   W.newSession = function (reason) {
     const m = wm();
     W.upgrade();
+    // (the calendar day the save was last played, before it becomes today; a save with no date: what its records say)
+    const last = W.numOf(m.date) != null ? W.numOf(m.date) : seen && seen.s === G.state ? seen.n : null;
     m.sess = (m.sess | 0) + 1;
     if (reason !== 'night') m.ms = W.msess() + 1; // (a night at home in the same sitting is the game's new day, not the memory's)
     if (reason === 'night' || !m.day || m.date !== G.today()) m.day = (m.day | 0) + 1;
     m.date = G.today(); m.sessAt = m.clock;
+    if (reason !== 'night') W.spread(last); // (back after a break: the reviews spread over the next days; once the memory's session has moved on, so the last sitting's follow-ups count)
+    seen = null;
     if (G.vocabLog) G.vlog.ev({ ty: 'session', sess: m.sess, day: m.day, date: m.date, why: reason || '' });
+  };
+  // ---------- back after a break: the reviews are spread over the next days (W.BREAK, above) ----------
+  // last: the day number the save was last played on (W.newSession: wm.date before it moved; null: nothing in the save
+  // dates it, which counts as a long break). When it is W.BREAK.away or more days ago and more words are in the backlog
+  // (G.budget.backlog: due by calendar day, and follow-ups or misses left from an earlier sitting) than W.BREAK.keep:
+  // the words due by day are put in order, the strongest first (the highest box, then the most recently met or used:
+  // her first cards back are the ones she is likeliest to still know); the first `keep` stay due today (the minutes'
+  // timers left from the last sitting count toward it and never move); the rest get a new due day each, in that order:
+  // the first following calendar day on which fewer than `perDay` reviews are expected. Expected on a day: the words due
+  // on it (the ones already due that day too, so a second spread never doubles a day) and the first return of every
+  // spread word put on a day before it (a right answer on its day brings it back after its next box's gap), so the
+  // days when the first days' words come back take few spread words or none, and the weakest wait until they have passed.
+  // Only the due day moves (dc, and dd to match): never a box, a stage, a card or the history. Phrases are no part of
+  // the backlog and are left alone.
+  // Once: the same day's later loads find the save played today (and wm.back.n says so); the next day's finds it played
+  // yesterday. A spread still running (not all its days have come) is levelled again after a missed day (W.BREAK.skip).
+  // No word to the child about it (no "we missed you"): the dog's ordinary cards are the welcome. The grown-ups' page
+  // says it in one line while it runs (W.back(), dashboard.js).
+  // Saved: G.state.wm.back = { n (the day number it ran), away (days since the last play; null: not known), kept (left
+  // due that day), moved, days (the last new due day is n + days) }. Returns it, or null when nothing was spread.
+  W.spread = function (last) {
+    if (!G.state) return null;
+    const m = wm(), C = W.BREAK, dn = dayNum(), b = isObj(m.back) ? m.back : null;
+    if (b && b.n === dn) return null; // (once a day)
+    const away = Number.isFinite(last) ? dn - last : null; // (null: nothing dates the save: a long break)
+    const running = !!b && dn > b.n && dn <= b.n + (b.days | 0);
+    if (!(away == null || away >= C.away || (running && C.skip > 0 && away >= C.skip))) return null;
+    // on[day]: the reviews expected on a later day: a word due on it, and the first return of a spread word put before it
+    const timers = [], L = [], on = {};
+    for (const id in G.state.words) {
+      const r = W.rec(id); if (!r || r.st < 1) continue;
+      if (backlogged(id, r)) (r.due != null ? timers : L).push(id);
+      else if (r.due == null && r.dc > dn) on[r.dc] = (on[r.dc] | 0) + 1;
+    }
+    if (timers.length + L.length <= C.keep) return null;
+    const ld = {}; for (const id of L) { const d = W.lastDay(id); ld[id] = d == null ? -1e9 : d; }
+    L.sort((x, y) => { const rx = W.rec(x), ry = W.rec(y); return (ry.box | 0) - (rx.box | 0) || ld[y] - ld[x] || (ry.last || 0) - (rx.last || 0) || (x < y ? -1 : x > y ? 1 : 0); });
+    const rest = L.slice(Math.max(0, C.keep - timers.length)), per = Math.max(1, C.perDay | 0);
+    let k = 1;
+    for (const id of rest) {
+      while ((on[dn + k] | 0) >= per) k++;
+      const r = W.rec(id), back = dn + k + W.BOX_DAYS[Math.min(W.MAXBOX, Math.max(1, r.box | 0) + 1)];
+      r.dc = dn + k; r.dd = m.day + k; on[dn + k] = (on[dn + k] | 0) + 1; on[back] = (on[back] | 0) + 1; // (its day, and the day it should come back)
+    }
+    ver++; if (G.budget && G.budget.flush) G.budget.flush(); // (the backlog has changed: G.budget's memo)
+    // (the history's "reviews due when the day began", history.js bd, is taken the first time the day's record is read:
+    // after this. A record of today made before it, a test's: the moved ones come off)
+    const h = G.state.hist, hd = isObj(h) && isObj(h.d) ? h.d[G.today()] : null;
+    if (isObj(hd) && hd.bd != null) hd.bd = Math.max(0, hd.bd - rest.length);
+    const days = Math.max(rest.length ? k : 0, running ? b.n + (b.days | 0) - dn : 0); // (levelled again: the earlier spread's last day still counts)
+    m.back = { n: dn, away, kept: timers.length + L.length - rest.length, moved: rest.length, days };
+    if (G.vocabLog) G.vlog.ev(Object.assign({ ty: 'spread' }, m.back));
+    save();
+    return m.back;
+  };
+  // the last spread while it still runs (its last day hasn't passed), for the grown-ups' page; else null
+  W.back = function () {
+    const b = G.state ? wm().back : null, dn = dayNum();
+    return isObj(b) && b.moved > 0 && dn >= b.n && dn <= b.n + (b.days | 0) ? Object.assign({}, b) : null;
   };
   let dateT = 0;
   W.step = function () { // day.js, every frame a game is on
@@ -217,9 +307,31 @@
     r.v = W.V;
     return r;
   }
+  // The calendar day a save was last played, for one that doesn't say (no wm.date: it is older than the session's
+  // record, or that record was lost): the newest day anything in it carries, never one after today. The history's days;
+  // a record's day met, last used, starred, answered right first try, missed, recalled or relearned; and the day it was
+  // last scheduled (its due day less its box's gap; not for a record from before the stages, whose due day is the day
+  // it was converted). null: nothing dates it (W.spread: a long break). Read before any record is upgraded (W.upgrade),
+  // because the upgrade gives the oldest records today's date.
+  const OLD_GAPS = [0, 0, 1, 2, 4, 8]; // (the older ladder's gaps, boxes 1-5: see W.OLD_BOX)
+  function lastPlayed() {
+    const dn = dayNum(); let best = null;
+    const see = n => { if (Number.isFinite(n) && n <= dn && (best == null || n > best)) best = n; };
+    const h = G.state.hist; if (isObj(h) && isObj(h.d)) for (const k in h.d) see(isObj(h.d[k]) && Number.isFinite(h.d[k].n) ? h.d[k].n : W.numOf(k));
+    for (const ws of [G.state.words, isObj(G.state.phrases) && G.state.phrases.r]) if (isObj(ws)) for (const id in ws) {
+      const r = ws[id]; if (!isObj(r)) continue;
+      see(r.mdn); see(W.numOf(r.mdate)); see(r.ld); see(W.numOf(r.star)); see(r.lapse); see(r.rld);
+      if (isObj(r.ft)) for (const k in r.ft) see(W.numOf(k));
+      if (Array.isArray(r.rd)) r.rd.forEach(see);
+      if (r.st >= 1 && r.how !== 'old' && r.due == null && Number.isFinite(r.dc)) see(r.dc - ((r.v === W.V ? W.BOX_DAYS : OLD_GAPS)[Math.max(1, r.box | 0)] || 0));
+    }
+    return best;
+  }
+  let seen = null; // ({s: the save, n: lastPlayed()} taken as its upgrade begins, for W.newSession)
   // every record of the save (state.js on load, W.newSession): idempotent
   W.upgrade = function () {
     if (!G.state) return;
+    if (W.numOf(wm().date) == null && (!seen || seen.s !== G.state)) seen = { s: G.state, n: lastPlayed() };
     upState();
     for (const id in G.state.words) W.rec(id);
     const p = G.state.phrases; if (isObj(p) && isObj(p.r)) for (const id in p.r) W.rec(id);

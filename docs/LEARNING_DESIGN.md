@@ -62,6 +62,47 @@ answer that same day can't lift it above box 2, so it climbs again from the next
 asks the words most overdue for their gap first (days late divided by the box's gap). Stars (at most one per word per
 day, from first-try answers) are only counted now, never shown.
 
+**Back after a break** (2026-11, `src/words.js` `W.spread`, the numbers in `W.BREAK`). After weeks away every word
+she has met is due on the same day. Asked all at once that is a wall of reviews for several sittings, and the story
+stays shut. So when a save is opened 6 or more calendar days after it was last played, the game puts the due words in
+order, the strongest first (the highest box, then the most recently used). The first 8 stay due that day, so her first
+cards back are ones she most likely still knows, and a story chapter can open at once. The rest get a new due day
+each, in the same order, the weakest last: each following day takes words until 5 reviews are expected on it.
+Only the due day moves: no word changes its box, its stage, its card or its history, and phrases are left alone.
+
+What is expected on a day: the words put on it, any word already due that day, and the words put on earlier days
+that should come back that day (a word answered right comes back after its next gap: 1, 3, 7, 16 days and so on).
+That last part matters. The strong words go first and come back after long gaps; the weak words go later and come
+back after short ones; so about a week in they would all come back together, a second wall. Counting them, the days
+when the first words come back take few new ones or none, and the weakest few wait until those days have passed.
+For 50 words, 37 of the 42 spread words come in the first 8 days and the last 5 on days 12 and 13. For 60 words the
+last come on day 16. Those words are forgotten by then anyway, so the order they are relearned in matters little;
+the story going on every day matters more.
+
+It happens once: the same day's later loads and the next day's load change nothing. If she then misses a day or more
+while those reviews are still arriving, the next load levels them again the same way (8 that day, the rest on later
+days with room). A save that does not say when it was last played is dated by the newest day found in it (its
+history, the days its words were met, used or last answered); if nothing in it is dated, it counts as a long break.
+Nothing is said to the child about being away: the dog's ordinary cards are the welcome. The Learning page's Memory
+tab tells the grown-up in one line while it runs ("Back after 24 days: 42 reviews spread over 13 days.").
+
+Why 5 a day: the dog brings 6 or 7 cards when 10 to 13 words wait, and two of them are not words (a listen-and-do
+request, a phrase). Measured on a save of 50 words, every card answered right (`tools/test-memory.js`, "tuning"):
+
+| | The dog's first cards only | With the mid-sitting cards too |
+| --- | --- | --- |
+| Reviews waiting each morning, first week | 10 to 13 | 6 or 7 |
+| The most waiting on any later morning | 20 | 13 |
+| Days a new chapter cannot open | none | none |
+
+For 60 words the most is 23 (one day without a new chapter) and 16 (none). Without the rule, 50 words waited on the
+first day back and no new chapter could open on any of the first 9 days.
+
+**A word held back comes on the first free day** (2026-11, `src/warmup.js`). A new word seen on a busy day waits in a
+small queue. The dog's cards used to be its only way in, and they do not come on a day with fewer than 2 words due, so
+on the very day there was room the word was never taught. Now, on such a day, the dog fetches just that one card (the
+one word that is due, if there is one, is asked first), and the mid-sitting dog moment does the same.
+
 **Cards that grow** (2026-10-11, `src/cards.js`): a 7-year-old doesn't care about stars, so the visible progress is
 on the word itself. Each word met is a card whose plant grows every time it's used (say 5, pick 2, find 2, page match
 2, carry / give / tap 1, the passive ones at most once per 30 s), popping up where it happened. The plant is capped and
