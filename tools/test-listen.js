@@ -106,7 +106,7 @@ async function node() {
   check('agreement: articles by gender (el / la / los / las / un / una), el águila (a feminine noun with "el")', RQ.art(RQ.noun('concha'), false, true) === 'la' && RQ.art(RQ.noun('oso'), true, true) === 'los' && RQ.art(RQ.noun('flor'), true, true) === 'las' && RQ.art(RQ.noun('platano'), false, false) === 'un' && RQ.art(RQ.noun('aguila'), false, true) === 'el' && RQ.art(RQ.noun('aguila'), true, true) === 'las' && RQ.noun('aguila').g === 'f');
   check('agreement: a noun\'s own plural wins (content/es/words.js pl), plural-only words stay plural (los guantes)', RQ.noun('colibri').pl === 'colibríes' && RQ.noun('guantes').plOnly && RQ.noun('guantes').pl === 'guantes' && RQ.noun('muneco').pl === 'muñecos de nieve');
   const s3 = RQ.sentence({ verb: 'give', thing: 'concha', num: 'tres', col: 'rosa' });
-  check('sentence: the rich text marks each word ([tres:tres] [concha:conchas] [rosa:rosa]) and reads as the plain sentence', s3.text === 'Dame [tres:tres] [concha:conchas] [rosa:rosa].' && s3.text.replace(/\[[a-z0-9]+:([^\]]+)\]/g, '$1') === s3.say, s3.text);
+  check('sentence: the rich text marks each word ([tres:tres] [concha:conchas] [rosa:rosas]) and reads as the plain sentence', s3.text === 'Dame [tres:tres] [concha:conchas] [rosa:rosas].' && s3.text.replace(/\[[a-z0-9]+:([^\]]+)\]/g, '$1') === s3.say, s3.text);
   check('sentence: the right one, as shown and said after a miss ("¡Tres conchas rosas!")', s3.np === '¡Tres conchas rosas!', s3.np);
   // every request on every board: only known words, the right answer right, each tested word needed
   let n = 0, bad = [], two = 0, one = 0;
