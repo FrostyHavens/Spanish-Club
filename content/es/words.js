@@ -140,7 +140,7 @@
     cubetaarena: { es: 'la cubeta', en: 'the pail', topic: 'playa', icon: 'cubetaplaya', alt: 'cubetita / balde / cubo' },
     castillo: { es: 'el castillo', en: 'the sandcastle', topic: 'playa', icon: 'castillo', alt: 'castillo de arena / castillito' },
     helado: { es: 'el helado', en: 'the ice cream', topic: 'playa', icon: 'helado', pl: 'helados', alt: 'heladito / helados' },
-    caliente: { es: 'caliente', en: 'hot', topic: 'playa', icon: 'caliente', alt: 'calor / hace calor / tengo calor / qué calor' },
+    caliente: { es: 'caliente', en: 'hot', topic: 'playa', icon: 'caliente', alt: 'está caliente / muy caliente / calientito / quema' }, // (a hot THING: the sand, the soup; the weather and feeling hot are calor)
     // ---- En el mar: the beach's animals (the album) and swimming ----
     cangrejo: { es: 'el cangrejo', en: 'the crab', topic: 'mar', icon: 'cangrejo', pl: 'cangrejos', alt: 'cangrejito' },
     estrellamar: { es: 'la estrella de mar', en: 'the starfish', topic: 'mar', icon: 'estrellamar', pl: 'estrellas de mar', alt: 'estrella / estrellita de mar / estrellita' },
@@ -231,8 +231,9 @@
     elote: { es: 'el elote', en: 'the corn (on the cob)', topic: 'huerta', icon: 'elote', pl: 'elotes', alt: 'elotes / elotito / mazorca / el maíz / maíz' },
     jitomate: { es: 'el jitomate', en: 'the tomato', topic: 'huerta', icon: 'jitomate', pl: 'jitomates', alt: 'jitomates / tomate / tomates / jitomatito / el tomate' },
     // ---- ¿Qué tiempo hace? (content/es/zone-montana.js): the weather, changed at Mateo's weather station; Mexican Spanish.
-    //      el sol (elsol) and caliente are the beach's words: the mountain meets them if they aren't met yet ----
+    //      el sol (elsol), calor and caliente are the beach's words: the mountain meets them if they aren't met yet ----
     nieve: { es: 'la nieve', en: 'the snow', topic: 'tiempo', icon: 'nieve', alt: 'nieve / nevando / está nevando / la nevada' },
+    calor: { es: 'el calor', en: 'the heat (it\'s hot)', topic: 'tiempo', icon: 'calor', alt: 'hace calor / mucho calor / tengo calor / qué calor / calor' }, // (the weather and feeling hot; caliente is for hot things)
     frio: { es: 'frío / fría', en: 'cold', topic: 'tiempo', icon: 'frio', alt: 'hace frío / tengo frío / qué frío / el frío / friolento' },
     nube: { es: 'la nube', en: 'the cloud', topic: 'tiempo', icon: 'nube', pl: 'nubes', alt: 'nubes / nubecita / nublado / las nubes' },
     viento: { es: 'el viento', en: 'the wind', topic: 'tiempo', icon: 'viento', alt: 'hace viento / ventarrón / el aire / vientito' },
@@ -311,7 +312,7 @@
     ropa: { topic: 'ropa', words: ['camisa', 'pantalon', 'calcetines', 'vestido', 'zapatos', 'sombrero', 'chamarra'] },
     rancho: { topic: 'rancho', words: ['vaca', 'cerdo', 'oveja', 'burro', 'pavo', 'raton', 'gallo', 'tlacuache'] },
     huerta: { topic: 'huerta', words: ['zanahoria', 'elote', 'jitomate'] }, // (three words: its puzzle matches three, src/intro.js)
-    tiempo: { topic: 'tiempo', words: ['nieve', 'frio', 'nube', 'viento', 'lluvia', 'arcoiris'] },
+    tiempo: { topic: 'tiempo', words: ['nieve', 'frio', 'calor', 'nube', 'viento', 'lluvia', 'arcoiris'] },
     montana: { topic: 'montana', words: ['lamontana', 'gorro', 'bufanda', 'guantes', 'muneco', 'chocolate', 'trineo', 'hielo'] },
     faunamontana: { topic: 'faunamontana', words: ['llama', 'marmota', 'zorrillo', 'carpintero', 'monarca', 'puma', 'aguila', 'lobo'] },
   };

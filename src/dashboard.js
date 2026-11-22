@@ -102,7 +102,7 @@
     mar: 'azul', nieve: 'blanco', nube: 'blanco', elsol: 'amarillo', oveja: 'blanco', cerdo: 'rosa', catarina: 'rojo', abeja: 'amarillo' };
   const ACT = { corre: ['correr', 'run'], baila: ['bailar', 'dance'], salta: ['saltar', 'jump'], nadar: ['nadar', 'swim'], sube: ['subir', 'climb'], lanza: ['lanzar', 'throw'] };
   const FOOD = ['comida', 'helado', 'chocolate', 'mora'];
-  const WEATHER = [['elsol', 'Hace sol.', 'Sunny.'], ['frio', 'Hace frío.', 'Cold.'], ['caliente', 'Hace calor.', 'Hot.'], ['lluvia', 'Llueve.', 'Raining.'], ['nieve', 'Nieva.', 'Snowing.'], ['viento', 'Hace viento.', 'Windy.'], ['nube', 'Hay nubes.', 'Cloudy.']];
+  const WEATHER = [['elsol', 'Hace sol.', 'Sunny.'], ['frio', 'Hace frío.', 'Cold.'], ['calor', 'Hace calor.', 'Hot.'], ['lluvia', 'Llueve.', 'Raining.'], ['nieve', 'Nieva.', 'Snowing.'], ['viento', 'Hace viento.', 'Windy.'], ['nube', 'Hay nubes.', 'Cloudy.']];
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const fem = id => /^(la|las) /.test(es(id)), plural = id => /^(los|las) /.test(es(id)), noun = id => /^(el|la|los|las) /.test(es(id));
   const bare = id => es(id).replace(/^(el|la|los|las) /, '');

@@ -126,7 +126,7 @@
   //   my ('tu' | 'mi': tu / tus, mi / mis), cap (a capital first letter: a sentence's start), bang (in ¡...!, unless the
   //   word has its own marks: ¿cómo estás?)
   RQ.PICS = { estrella: 'la estrella' };  // pictures that aren't words, for their gender (Luna's stars: "¿Cuántas?")
-  RQ.ONLY = ['elsol', 'mar', 'elbosque', 'viento', 'lluvia', 'familia']; // there's one: "the" even when "a" is asked
+  RQ.ONLY = ['elsol', 'mar', 'elbosque', 'viento', 'lluvia', 'calor', 'familia']; // there's one: "the" even when "a" is asked
   RQ.ANIMATE = ['animales', 'granja', 'mar', 'fauna', 'bichos', 'rancho', 'faunamontana', 'familia']; // animals and people
   RQ.animate = id => !!WD(id) && RQ.ANIMATE.includes(WD(id).topic) && !!RQ.noun(id); // (the personal a: Toca AL perro)
   const isMass = id => ((D() && D().mass) || []).includes(id);

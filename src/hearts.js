@@ -195,8 +195,8 @@
     ines: ['hola', 'biblioteca', 'adios', 'gracias'],
     // the zones' people: their zone's words (what their life there shows)
     paco: ['mar', 'concha', 'cangrejo', 'estrellamar', 'pulpo', 'ola', 'nadar', 'gaviota', 'pez'],
-    marina: ['ola', 'nadar', 'elsol', 'caliente', 'mar', 'arena', 'medusa', 'delfin'],
-    nieves: ['helado', 'caliente', 'elsol', 'concha', 'arena', 'rojo', 'rosa', 'amarillo'],
+    marina: ['ola', 'nadar', 'elsol', 'calor', 'caliente', 'mar', 'arena', 'medusa', 'delfin'],
+    nieves: ['helado', 'calor', 'caliente', 'elsol', 'concha', 'arena', 'rojo', 'rosa', 'amarillo'],
     tere: ['castillo', 'arena', 'cubetaarena', 'concha', 'cangrejo', 'tortuga', 'ola'],
     elena: ['elbosque', 'oso', 'venado', 'zorro', 'mapache', 'buho', 'tronco', 'grande', 'pequeno', 'cueva'],
     lupe: ['mora', 'hongo', 'hoja', 'bellota', 'ardilla', 'erizo', 'grande', 'pequeno', 'luciernaga'],

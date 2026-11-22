@@ -394,7 +394,7 @@
     const k = MT.weather(), others = WX.filter(w => w !== k && met(w));
     yield* sayShow('mateo', { icon: 'veleta' }, T('¡Mira el cielo!', 'Look at the sky! (look around you)'));
     if (met(k)) yield* quiz('mateo', '¿Qué tiempo hace?', 'What is the weather like? (look around, then say it!)', k, others);
-    if (met('frio') && met('caliente')) { const cold = snowAt(f, f.player.x, f.player.y) || k !== 'elsol'; yield* quiz('mateo', '¿Hace [frio:frío] o [caliente:calor]?', 'Is it cold or hot? (say it!)', cold ? 'frio' : 'caliente', [cold ? 'caliente' : 'frio']); }
+    if (met('frio') && met('calor')) { const cold = snowAt(f, f.player.x, f.player.y) || k !== 'elsol'; yield* quiz('mateo', '¿Hace [frio:frío] o [calor]?', 'Is it cold or hot? (say it!)', cold ? 'frio' : 'calor', [cold ? 'calor' : 'frio']); }
     daily('mateo').done = true; st().forecasts = (st().forecasts | 0) + 1; CK.confetti(); G.audio.jingle('promote'); G.st.autosave();
     yield* sayShow('mateo', 'veleta', T('¡Muy bien! ¡Cambia el tiempo en mi estación!', 'Well done! Change the weather at my weather station!'));
     return true;
@@ -841,7 +841,7 @@
       for (let i = 0; i < 10; i++) puff('flake', p.x * TL + 12 + (Math.random() - 0.5) * 20, p.y * TL + 18, { vy: -1.2 - Math.random(), vx: (Math.random() - 0.5) * 2, g: 0.1, life: 30 });
       yield* MT.act(p, 'shiver', 60);
       const dog = G.pet && G.pet.mine() ? CK.dog(f) : null; if (dog) { G.pet.place(f, dog); yield 6; yield* G.pet.play('huh'); }
-      yield* meetW('frio', { who: 'lucho', prompt: '¡Brrr! ¡Hace [frio:frío]!', en: 'Brrr! It\'s cold! (you\'re shivering)', show: 'frio', known: othersFor('frio', ['feliz', 'triste', 'cansado', 'bien', 'caliente']) });
+      yield* meetW('frio', { who: 'lucho', prompt: '¡Brrr! ¡Hace [frio:frío]!', en: 'Brrr! It\'s cold! (you\'re shivering)', show: 'frio', known: othersFor('frio', ['feliz', 'triste', 'cansado', 'bien', 'calor']) });
       CH.point(BASKET[0] * TL + 12, BASKET[1] * TL);
       try { yield* sayShow('lucho', { icon: 'gorro', col: AB.FIRST.gorro }, T('¡Ropa para el [frio:frío]! ¡Ven!', 'Warm clothes for the cold! Come to the refuge: there\'s a basket by the door.')); } finally { CH.point(null); }
       c.data.cold = 1;

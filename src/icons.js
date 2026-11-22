@@ -868,7 +868,13 @@
       p.put(4, 9, '#f8a0c0'); p.put(4, 10, '#e070a0'); p.put(11, 9, '#e070a0'); // a drip
       p.put(6, 3, '#ffe0ec'); p.put(5, 4, '#ffe0ec'); p.disc(8.5, 0.9, 1.3, '#e02838'); p.put(8, 0, '#ff9090');
     },
-    caliente(p) { // hot: a red face sweating under wavy heat lines, its tongue out
+    caliente(p) { // hot to touch: a steaming bowl of soup, wavy steam rising (the hot THING; the sweating face is calor)
+      [[4, 0, '#f86030'], [8, 2, '#e8e8f0'], [12, 0, '#f86030']].forEach(([x, ph, c]) => [0, 1, 1, 0, 0, 1].forEach((dx, y) => p.put(x + ((dx + ph) & 1), y + 1 + (x === 8 ? 1 : 0), c)));
+      p.ell(8, 9.5, 6.4, 1.8, '#3a78c8'); p.ell(8, 9.5, 5.2, 1.2, '#f08030'); p.rect(5, 9, 2, 1, '#ffc070');
+      for (let y = 10; y < 15; y++) { const w = Math.round(Math.sqrt(Math.max(0, 1 - ((y - 10) / 5) ** 2)) * 6.4 * (y < 13 ? 1 : 0.8) + 0.4); p.rect(8 - w, y, 2 * w, 1, '#3a78c8'); }
+      p.rect(5, 14, 6, 1, '#2858a0'); p.rect(3, 11, 10, 1, '#f8f0e0'); p.put(4, 10, '#6aa0e0');
+    },
+    calor(p) { // the heat: a red face sweating under wavy heat lines, its tongue out
       for (const x of [3, 8, 13]) [0, 1, 1, 0].forEach((dx, y) => p.put(x + dx, y, '#f86030'));
       p.disc(8, 10, 5.6, '#f87048'); p.shade(8, 10, 5.6, '#d84828');
       p.rect(5, 8, 2, 1, '#401010'); p.rect(9, 8, 2, 1, '#401010'); p.rect(6, 12, 4, 1, '#401010'); p.rect(7, 13, 2, 2, '#f890a0');

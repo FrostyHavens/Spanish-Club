@@ -197,3 +197,32 @@ Mexican usage.
     "conchas rosas"?
 11. **"¿Para la maestra Luna?" / "¿Para el señor Gómez?"** (asking who a present is for): natural?
 12. **"¡Los trucos de {dog}!"** (the dog's tricks at the party): natural?
+
+## Batch 4 (2026-11-22): "calor" and "caliente" are two cards
+
+Before, one card, "caliente" (a sweating face), was used for the heat in the weather ("¡Qué calor!") and for hot things.
+Now "el calor" (the sweating face) is the weather and feeling hot, and "caliente" (a steaming bowl) is for hot things.
+The card "caliente" keeps its old id, so a saved game still knows it.
+
+### The words
+- new card: "el calor", English "the heat (it's hot)". The microphone also accepts: hace calor, mucho calor, tengo calor, qué calor, calor.
+- "caliente" card: the microphone used to accept "calor / hace calor / tengo calor / qué calor". Now it accepts: está caliente, muy caliente, calientito, quema.
+- question for "calor": "¿Qué tiempo hace?" (like "frío"). Question for "caliente" is unchanged: "¿Cómo está el chocolate?"
+
+### Changed lines (the heat in the weather)
+- Doña Nieves, the ice cream for the one who is hot: "¡Tiene mucho [caliente:calor]!" -> "¡Tiene mucho [calor]!" (English "they are so hot!")
+- the one who is hot, with no ice cream yet: "¡Uf! ¡Qué [caliente:calor]!" -> "¡Uf! ¡Qué [calor]!". The first time, it is introduced as a new word (picture, then "which word is this?").
+- Mateo's weather question: "¿Hace [frio:frío] o [caliente:calor]?" -> "¿Hace [frio:frío] o [calor]?". Asked only when "calor" is met.
+- Lucho's "¡Brrr! ¡Hace frío!" puzzle: the other word offered may now be "calor" (not "caliente").
+
+### New lines
+- Marina, in story 2 (the sunny beach), after the hot sand: "¡Uf! ¡Qué [calor]!" (English "Phew! So hot! (she fans herself)"). Story 2 now teaches four words, one at a time: el sol, caliente, el calor, el helado.
+
+### Lines that keep "caliente" (hot things)
+- Marina on the hot sand: "¡Ay, ay! ¡[caliente]!", asked "¿Cómo está la arena?"
+- Marina after the ice cream: "¿Y el [elsol]? ¿Cómo está?" -> "caliente", and "¡El [elsol]! ¡[caliente]!" (English "The sun is hot!"). Unsure: "el sol está caliente" is said in Mexico, but "hace calor" is the more standard way to say the sun is hot. Kept because the sun is shown as a hot thing.
+- Don Lucho's chocolate: "¡Mmm! ¡Está [caliente]!" (English "Nice and hot!"), "¡Cuidado! ¡Está [caliente]!", and "¿Cómo está?" for the chocolate.
+
+### Questions for the reviewer
+13. **"¡El sol! ¡Caliente!"** / "¿Y el sol? ¿Cómo está?": natural for a child, or should it be "¡Hace calor!"?
+14. **"el calor" as the card name** (the card shows "el calor" but the lines say "¡Qué calor!" and "Hace calor"): fine?

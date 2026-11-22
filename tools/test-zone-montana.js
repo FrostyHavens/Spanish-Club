@@ -140,7 +140,7 @@ async function animals(browser) {
     await g.ev(() => { G.debug.sunsetAt = null; G.field.zoo = null; });
     check('album: the page has its 8 animals, numbered after the grandparents\'; rare ones and habitats marked', await g.ev(() => { const z = G.zones.def('montana'); return z.animals.length === 8 && z.planned === 0 && G.album.entries('montana').length === 8 && G.album.entries('montana').every(Boolean) && z.rare.aguila === 'elsol' && z.rare.lobo === 'noche' && Object.values(z.habitat).every(G.iconDrawn) && G.album.number('llama') === G.album.zoneStart('montana') + 1 && G.album.zoneStart('montana') > G.album.zoneStart('abuelos'); }));
     const ws = await g.ev(() => Object.keys(G.data.words).filter(k => ['tiempo', 'montana', 'faunamontana'].includes(G.data.words[k].topic)));
-    check('words: 22 new words, every one with its own picture (3 notebook pages)', ws.length === 22 && await g.ev(ws => ws.every(G.iconDrawn) && ['tiempo', 'montana', 'faunamontana'].every(p => G.data.pages[p]), ws), ws.join(','));
+    check('words: 23 new words, every one with its own picture (3 notebook pages)', ws.length === 23 && await g.ev(ws => ws.every(G.iconDrawn) && ['tiempo', 'montana', 'faunamontana'].every(p => G.data.pages[p]), ws), ws.join(','));
     check('words: no word id shadows an animal or another word; sound-alikes never share a picture', await g.ev(() => ['lamontana', 'nieve', 'frio', 'nube', 'viento', 'lluvia', 'arcoiris', 'gorro', 'bufanda', 'guantes', 'muneco', 'chocolate', 'trineo', 'hielo'].every(w => G.data.words[w].icon !== 'sombrero') && !/nieve/.test(G.data.words.helado.alt) && !/gorro/.test(G.data.words.sombrero.alt)));
     await g.ev(ws => {
       const extra = ['bolanieve', 'veleta', 'zanahoria', { icon: 'gorro', col: '#e04040' }, { icon: 'bufanda', col: '#3870d8' }, { icon: 'guantes', col: '#38a858' }];
@@ -233,7 +233,7 @@ async function story(browser) {
 async function weather(browser) {
   const { ctx, g } = await open(browser, 'montana-weather', true);
   try {
-    await fresh(g, { x: 10, y: 9, words: ['nieve', 'nube', 'lluvia', 'viento', 'elsol', 'frio', 'caliente'], done: ['montana1', 'montana2', 'montana3'] });
+    await fresh(g, { x: 10, y: 9, words: ['nieve', 'nube', 'lluvia', 'viento', 'elsol', 'frio', 'caliente', 'calor'], done: ['montana1', 'montana2', 'montana3'] });
     await idle(g);
     await g.until(() => G.field.player.mt && G.field.player.mt.k === 'shiver', null, 'shivering in the snow', 15000);
     check('cold: in the snow with nothing warm on, you shiver ("¡Brrr!")', await g.ev(() => G.montana.cold(G.field) && G.montana.state().shivers >= 1));

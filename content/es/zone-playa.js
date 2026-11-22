@@ -330,7 +330,7 @@
   sideAlert.nieves = () => (hotWho() && !hotDone() && !iceHeld() && !bag().has('helado') ? 'helado' : null);
   for (const w of HOT) {
     const a0 = sideAlert[w];
-    sideAlert[w] = () => (hotWho() === w && !hotDone() ? (iceHeld() ? 'helado' : { icon: 'caliente' }) : null) || (a0 ? a0() : null);
+    sideAlert[w] = () => (hotWho() === w && !hotDone() ? (iceHeld() ? 'helado' : { icon: 'calor' }) : null) || (a0 ? a0() : null);
   }
   function* nievesSide(f) {
     if (!hotWho() || hotDone()) return false;
@@ -338,13 +338,17 @@
     // Quiero un helado (src/phrases.js): say it to get it; else the question as before
     const ph = G.phrase ? yield* G.phrase.quiero('nieves', ['helado'], { onGet: function* () { bag().add('helado'); G.st.autosave(); yield* sayShow('nieves', 'helado', T('¡Un [helado]! ¡Aquí tienes!', 'An ice cream! Here you are!')); } }) : null;
     if (!ph) { yield* quiz('nieves', '¿Qué quieres?', 'What would you like? (an ice cream!)', 'helado', ['concha', 'elsol', 'arena', 'cubetaarena'], { show: 'helado' }); bag().add('helado'); G.st.autosave(); }
-    yield* sayShow('nieves', { face: hotWho() }, T('¡Para ' + G.nameOf(hotWho()).replace(/^(Don|Doña) /, '') + '! ¡Tiene mucho [caliente:calor]!', 'Take it to ' + G.nameOf(hotWho()) + ': they are so hot!'));
+    yield* sayShow('nieves', { face: hotWho() }, T('¡Para ' + G.nameOf(hotWho()).replace(/^(Don|Doña) /, '') + '! ¡Tiene mucho [calor]!', 'Take it to ' + G.nameOf(hotWho()) + ': they are so hot!'));
     return true;
   }
   function* hotSide(who) {
     if (hotWho() !== who || hotDone()) return false;
     const h = iceHeld();
-    if (!h) { yield* sayShow(who, { icon: 'caliente' }, T('¡Uf! ¡Qué [caliente:calor]!', 'Phew! So hot! (an ice cream from Doña Nieves would help)')); return true; }
+    if (!h) { // (the first time, the word is met the normal way: one unknown, with room for it; after that, just the line)
+      if (!met('calor')) yield* meetW('calor', { who, prompt: '¡Uf! ¡Qué [calor]!', en: 'Phew! So hot! (an ice cream from Doña Nieves would help)', known: othersFor('calor', ['elsol', 'caliente']) });
+      else yield* sayShow(who, { icon: 'calor' }, T('¡Uf! ¡Qué [calor]!', 'Phew! So hot! (an ice cream from Doña Nieves would help)'));
+      return true;
+    }
     bag().take('helado', { q: null }); st().hot.d = day(); G.audio.jingle('item'); G.st.autosave();
     const f = G.field, n = f && npcAt(f, who); if (n) for (let k = 0; k < 3; k++) CK.puff('heart', n.x * TL + 8 + k * 5, n.y * TL - 6, { life: 50, vy: -0.4 });
     G.state.stars++; G.audio.sfx('star');
@@ -513,7 +517,7 @@
   //  The story: the beach's quest line (G.chapters, line 'playa')
   // =====================================================================
   CH.add({ id: 'playa1', line: 'playa', title: 'La red de Don Paco', en: 'Don Paco\'s net: what is tangled in it?', giver: 'paco', words: ['mar', 'cangrejo', 'estrellamar', 'concha'], icon: 'redpesca', col: '#3878d0', goal: [['redpesca', 1]] });
-  CH.add({ id: 'playa2', line: 'playa', title: '¡Qué calor!', en: 'So hot! An ice cream for Marina the lifeguard', giver: 'marina', words: ['elsol', 'caliente', 'helado'], icon: 'helado', col: '#e870a8', goal: [['helado', 1]] });
+  CH.add({ id: 'playa2', line: 'playa', title: '¡Qué calor!', en: 'So hot! An ice cream for Marina the lifeguard', giver: 'marina', words: ['elsol', 'caliente', 'calor', 'helado'], icon: 'helado', col: '#e870a8', goal: [['helado', 1]] });
   CH.add({ id: 'playa3', line: 'playa', title: 'Las tortuguitas', en: 'The baby turtles: chase off the gulls, help them to the sea', giver: 'marina', words: ['arena', 'tortuga', 'gaviota', 'nadar'], icon: 'tortuga', col: '#3a9a50', goal: [['tortuga', 3]] });
 
   // ---------- 1 · La red de Don Paco (the pier): el mar, el cangrejo, la estrella de mar, la concha ----------
@@ -568,7 +572,7 @@
     },
   });
 
-  // ---------- 2 · ¡Qué calor! (Marina's tower, Doña Nieves's cart): el sol, caliente, el helado ----------
+  // ---------- 2 · ¡Qué calor! (Marina's tower, Doña Nieves's cart): el sol, caliente (hot sand), calor (the heat), el helado ----------
   function* hotHop(f) { // Marina hops on the hot sand, fanning herself; little steam puffs
     const n = npcAt(f, 'marina'); if (!n) return;
     for (let k = 0; k < 4; k++) { n.dir = k & 1 ? 'left' : 'right'; CK.puff('dust', n.x * TL + 12 + (k & 1 ? -6 : 6), n.y * TL + 20, { vy: -0.6, life: 30 }); G.audio.sfx('select'); yield 10; }
@@ -580,6 +584,7 @@
       c.data.hot = 1;
       yield* meetW('elsol', { who: 'marina', prompt: '¡Uf! ¡El [elsol]!', en: 'Phew! The sun!', known: othersFor('elsol', ['mar', 'ola', 'concha']) });
       yield* G.intro.watch('caliente', { who: 'marina', prompt: '¡Ay, ay! ¡[caliente]!', en: 'Ouch, ouch! The sand is hot!', act: () => hotHop(f), ask: '¡Ay! ¿Cómo está la arena?', askEn: 'Ouch! How is the sand? (say it, or tap it)', known: othersFor('caliente', ['elsol', 'mar']) });
+      yield* meetW('calor', { who: 'marina', prompt: '¡Uf! ¡Qué [calor]!', en: 'Phew! So hot! (she fans herself)', show: 'calor', known: othersFor('calor', ['elsol', 'caliente']) });
       const n = npcAt(f, 'nieves'); if (n) CH.pointNpc(n);
       try { yield* sayShow('marina', 'helado', T('¿Un [helado]? ¡[porfavor:Por favor]!', 'An ice cream? Please! (Doña Nieves has the ice-cream cart)')); } finally { CH.point(null); }
     } },
