@@ -51,7 +51,7 @@ Every new or changed Spanish line goes into `docs/SPANISH_REVIEW.md`. There is n
 prefer forms you can back with a dictionary of Mexican Spanish, and say so when unsure.
 
 **Writing.** Documents and DEVLOG entries are for the parent: plain words, short sentences, no jargon.
-Code comments say why. No model names or session links in code, docs or commit messages.
+Code comments say why. No model names in code or docs. Helpers write plain commit messages with no attribution lines.
 
 ## Releasing
 
