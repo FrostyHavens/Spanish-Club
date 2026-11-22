@@ -21,12 +21,14 @@
   DY.AFTER = 60;
   DY.WALK_MAX = 180;        // a night walk: back home to bed after this long (seconds), the animal found or not
   DY.HOY_MAX = 44;          // words the Hoy card holds (4 rows of 11)
+  DY.RESUME = 600;          // a game opened again within this many seconds of its last save: the day's clock goes on
   G.debug = G.debug || {};
   G.sessionTime = 0;
   const HOME = 'casa', TOWN = 'villa', BED = [6, 3], NIGHT = '#080a26'; // where you wake up: beside your bed at home
   const T = (t, en) => ({ t, en });
   const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
   let base = null, glow = 0, bringAt = null;
+  let carded = null; // the words the evening's Hoy card showed (the night walk's own come on a second, short card)
   DY.walk = null; // the night walk going on: {zone, map, kinds, t, found, calm, back}
 
   // ---------- the session: since the game was started or opened, or since this morning ----------
@@ -36,7 +38,11 @@
     const h = G.hist ? G.hist.state() : {}, td = G.today();
     if (night || !isObj(h.hoy) || h.hoy.d !== td || !Array.isArray(h.hoy.w)) h.hoy = { d: td, w: [], s: G.state.stars | 0, m: G.st.micStars() };
     base = { state: G.state, st, hoy: h.hoy };
-    G.sessionTime = 0; glow = 0; bringAt = null; DY.walk = null;
+    // iPad Safari reloads a tab left in the background: without this, a reload at minute 8 gave a 20-minute day that
+    // never reached its sunset. hoy.t: seconds since this morning; hoy.at: when that was saved (DY.sweep).
+    const ago = night ? NaN : G.now() - h.hoy.at;
+    G.sessionTime = Number.isFinite(h.hoy.t) && ago >= 0 && ago < DY.RESUME * 1000 ? Math.max(0, h.hoy.t) : 0;
+    glow = 0; bringAt = null; DY.walk = null; carded = null;
   }
   // an evening chapter is next (chapters.js: C9): the sun goes down sec seconds from now (or sooner, as it was)
   DY.bring = sec => { const at = G.sessionTime + sec; if (bringAt == null || at < bringAt) bringAt = at; };
@@ -47,7 +53,7 @@
   DY.over = () => !!(G.state && G.state.flags.intro) && !!base && base.state === G.state && G.sessionTime >= DY.sunsetAt(); // (a game just opened: its clock starts at its first frame)
   // words met or grown a stage today (in that order), stars earned today and how many of them were speaking stars
   const sweep = () => { const w = base.hoy.w; for (const id in G.state.words) if (w.length < DY.HOY_MAX && w.indexOf(id) < 0 && G.st.stage(id) > (base.st[id] | 0)) w.push(id); };
-  DY.sweep = () => { if (base && base.state === G.state) sweep(); }; // (state.js, before each save)
+  DY.sweep = () => { if (base && base.state === G.state) { sweep(); base.hoy.t = Math.round(G.sessionTime); base.hoy.at = G.now(); } }; // (state.js, before each save)
   DY.today = function () {
     if (!base || base.state !== G.state) return { words: [], stars: 0, said: 0 };
     sweep(); const r = base.hoy;
@@ -129,7 +135,11 @@
   DY.evening = function* (f) {
     if (!f || f.mapId !== HOME || f.evening || !DY.over()) return;
     f.evening = true; f.locked = true; f.banner = null; // this field's own guard: it can't start twice
-    if (DY.walk) { DY.walk = null; yield* sleep(f); return; } // home from the night walk (or on foot): good night was said, to bed
+    if (DY.walk) { // home from the night walk (or on foot): good night was said; the walk's own words on a short card, then bed
+      DY.walk = null;
+      if (carded && DY.today().words.some(id => carded.indexOf(id) < 0)) { yield G.fadeTo(0, 0.05, NIGHT); yield 12; yield DY.todayCard({ since: carded }); } // (she came home in the dark: the light back on for the card)
+      yield* sleep(f); return;
+    }
     while (G.fade.a > 0) yield 1;
     yield 12;
     f.player.dir = 'up';
@@ -140,6 +150,7 @@
       if (met('buenasnoches')) yield* G.chapters.ask('mama', '¡...!', 'The moon is out: Mom says good night. Say it back!', 'buenasnoches', met('buenosdias') ? ['buenosdias'].concat(met('cama') ? ['cama'] : met('hola') ? ['hola'] : []) : ['hola'], { show: { icon: 'noche' } });
       else yield G.say(T('¡[buenasnoches], {name}!', 'Good night, {name}!'), mama);
     }
+    carded = DY.today().words.slice();
     yield DY.todayCard();
     // a night animal she hasn't met lives in a place she's been to: to bed, or a little night walk there first?
     const z = !story && DY.walkTo();
@@ -275,9 +286,9 @@
     ctx.save(); ctx.clip(); ctx.fillStyle = '#fff090'; ctx.fillRect(x - r, y - r, r * 2, r * 0.9); ctx.restore();
   }
   class TodayCard {
-    constructor(w) {
+    constructor(w, o) {
       G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; this.sel = -1; this.shown = 0; this.wait = 0; this.popT = [];
-      const d = DY.today(); this.words = d.words; this.stars = d.stars; this.said = Math.min(d.said, d.stars); this.starsShown = 0; this.starT = [];
+      const d = DY.today(); this.words = o && o.since ? d.words.filter(id => o.since.indexOf(id) < 0) : d.words; this.stars = d.stars; this.said = Math.min(d.said, d.stars); this.starsShown = 0; this.starT = [];
       // the words' cards (cards.js), as big as fit: up to 5 in a row full size, then 7, then 11
       const n = this.words.length, sc = n <= 5 ? 1 : n <= 14 ? 0.6 : 0.42, per = n <= 5 ? 5 : n <= 14 ? 7 : 11;
       this.L = { sc, w: Math.round(40 * sc), s: Math.round(82 * sc), step: Math.round(40 * sc) + (n <= 5 ? 6 : 4), per, gap: 4, rows: Math.ceil(n / per) };
@@ -361,7 +372,8 @@
       if (this.revealed() && this.wait >= 20 && (this.t >> 4) % 2 === 0) G.text(ctx, '\u0001', b.x + b.w - 16, y + b.h - 13, '#f8e060');
     }
   }
-  DY.todayCard = function () { const w = new G.Wait(); G.push(new TodayCard(w)); return w; };
+  // o.since: only the words that are not in that list (the night walk's)
+  DY.todayCard = function (o) { const w = new G.Wait(); G.push(new TodayCard(w, o)); return w; };
 
   // ---------- the night: stars, the moon, lights out, "z z z", then the sun comes up ----------
   const mix = (a, b, t) => { const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)), A = p(a), B = p(b); return 'rgb(' + A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',') + ')'; };

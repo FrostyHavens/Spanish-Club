@@ -6,8 +6,15 @@
     song: null, songName: null, events: [], nextIdx: 0, startTime: 0, loopLen: 0, loopCount: 0,
     musicVol: 0.56, sfxVol: 0.6,
   };
+  // iPad Safari leaves the sound 'interrupted' (its own state, not 'suspended') after the screen was locked, the app
+  // left or the microphone used: wake it from anything but 'running'. Without a tap the browser may refuse: no harm.
+  A.wake = function () {
+    if (!A.ctx || A.ctx.state === 'running' || A.ctx.state === 'closed') return;
+    try { const p = A.ctx.resume(); if (p && p.catch) p.catch(() => { }); } catch (e) { }
+  };
+  if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => { if (!document.hidden) A.wake(); });
   A.unlock = function () {
-    if (A.ctx) { if (A.ctx.state === 'suspended') A.ctx.resume(); return; }
+    if (A.ctx) { A.wake(); return; }
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
     A.ctx = new AC();
     A.master = A.ctx.createGain(); A.master.gain.value = A.muted ? 0 : 0.8;

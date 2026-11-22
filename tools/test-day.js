@@ -132,7 +132,25 @@ async function hoy(browser) {
     await g.until(() => G.top().constructor.name === 'Slots' && G.input.ready(), null, 'the slot screen');
     await g.tapRect(await g.ev(() => G.top().cardRect(0)));
     await g.until(() => G.field && G.top() === G.field && G.fade.a === 0, null, 'back in the game');
-    check('hoy: opened again: the clock starts again, but today still has the morning\'s word and stars', await g.ev(() => { const d = G.day.today(); return G.sessionTime < 20 && d.words.join() === 'manzana' && d.stars === 2; }), JSON.stringify(await g.ev(() => G.day.today())));
+    check('hoy: opened again: today still has the morning\'s word and stars', await g.ev(() => { const d = G.day.today(); return G.sessionTime < 20 && d.words.join() === 'manzana' && d.stars === 2; }), JSON.stringify(await g.ev(() => G.day.today())));
+    // the day's clock goes on over a quick reload (iPad Safari reloads a tab left in the background: a reload at minute
+    // 8 used to give a 20-minute day), and starts again after a longer pause
+    const reopen = async later => { // later: minutes that have gone by when the game is opened again
+      await g.page.reload();
+      await g.until(() => window.G && G.top && G.top() && G.top().constructor.name === 'Title' && G.top().t > 32, null, 'the title after reload');
+      if (later) await g.ev(m => { G.debug.dayShift = m / 1440; }, later);
+      await g.tap(160, 180);
+      await g.until(() => G.top().constructor.name === 'Slots' && G.input.ready(), null, 'the slot screen');
+      await g.tapRect(await g.ev(() => G.top().cardRect(0)));
+      await g.until(() => G.field && G.top() === G.field && G.fade.a === 0, null, 'back in the game');
+    };
+    await g.ev(() => { G.sessionTime = 480; G.st.saveNow(); });
+    await reopen();
+    check('hoy: a reload a moment later: the day\'s clock goes on (8 minutes stay 8 minutes)', await g.ev(() => G.sessionTime >= 480 && G.sessionTime < 520 && !G.day.over()), String(await g.ev(() => G.sessionTime)));
+    const lateNight = await g.ev(() => { const d = new Date(); return d.getHours() === 23 && d.getMinutes() >= 45; }); // (11 minutes on would be tomorrow: a new day anyway)
+    await reopen(11);
+    check('hoy: opened again after a longer pause (11 minutes): the clock starts again, today\'s words stay', await g.ev(() => G.sessionTime < 20) && (lateNight || await g.ev(() => G.day.today().words.join() === 'manzana')), String(await g.ev(() => G.sessionTime)));
+    await g.ev(() => { G.debug.dayShift = 0; G.st.saveNow(); });
     await g.ev(() => { G.st.learn('tres'); G.st.practiced('tres', true); });
     await g.frames(32);
     check('hoy: and what grows now joins it', await g.ev(() => { const d = G.day.today(); return d.words.join() === 'manzana,tres' && d.stars === 3; }));
@@ -186,7 +204,7 @@ async function nightWalk(browser) {
     check('walk: "¡A dormir!": the night and the morning, as before (no walk)', await g.ev(() => !G.day.walk && G.field.player.x === 6 && G.field.player.y === 3));
     // 2. a walk, the possum not found: home to bed after a while all the same
     await toChoice();
-    await g.ev(() => { G.day.WALK_MAX = 4; });
+    await g.ev(() => { G.day.WALK_MAX = 4; window.__scenes = []; });
     await g.tapRect(await g.ev(() => G.top().rect(1)));
     await g.until(() => G.field.mapId === 'abuelos' && window.free(), null, 'the grandparents\' at night', 30000);
     check('walk: "¡A pasear!": the bus at night to the grandparents\', the moon up, the possum out in the orchard', await g.ev(() => G.day.over() && G.day.glow() > 0.9 && !!G.day.walk && !!G.animals.find('tlacuache')));
@@ -194,7 +212,7 @@ async function nightWalk(browser) {
     await g.frames(20); await g.shot('walk_arrival');
     await g.until(() => G.field.mapId === 'casa', null, 'home after a while', 30000);
     await evening(g, morning);
-    check('walk: not found after a few minutes: home to bed, the night and the morning all the same (no second Hoy card)', await g.ev(() => !G.day.walk && G.field.player.x === 6 && !G.animals.met('tlacuache')));
+    check('walk: not found after a few minutes: home to bed, the night and the morning all the same (no second Hoy card)', await g.ev(() => !G.day.walk && G.field.player.x === 6 && !G.animals.met('tlacuache') && !window.__scenes.includes('TodayCard')), JSON.stringify(await g.ev(() => window.__scenes)));
     await g.ev(() => { G.day.WALK_MAX = 180; });
     // 3. a walk, the possum found: Lola names it, then home to bed
     await toChoice();
@@ -207,8 +225,9 @@ async function nightWalk(browser) {
     await g.drive(() => G.words.met('tlacuache') && window.free(), 'Lola names the possum');
     check('walk: tapped, Lola names it: el tlacuache is met and in the album', await g.ev(() => G.words.met('tlacuache') && G.animals.met('tlacuache')));
     await g.until(() => G.field.mapId === 'casa', null, 'home to bed', 30000);
-    await evening(g, morning);
-    check('walk: then home to bed, the night and the morning (no second good night or Hoy card)', await g.ev(() => !G.day.walk && G.field.player.x === 6 && !window.__scenes.includes('TodayCard') && window.__scenes.includes('Night')), JSON.stringify(await g.ev(() => window.__scenes)));
+    let second = null; // the walk's own word on a short second card (it used to be on no card at all)
+    await evening(g, morning, { hoy: async () => { second = await g.ev(() => G.top().words.join()); } });
+    check('walk: then home: a short Hoy card with the walk\'s word only (el tlacuache), no second good night, the night and the morning', await g.ev(() => !G.day.walk && G.field.player.x === 6 && window.__scenes.filter(n => n === 'TodayCard').length === 1 && window.__scenes.includes('Night')) && second === 'tlacuache', JSON.stringify([second, await g.ev(() => window.__scenes)]));
     check('walk: with every night animal of her places met, the evening goes straight to bed again', await g.ev(() => G.day.walkTo() === null));
     check('walk: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
