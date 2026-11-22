@@ -158,7 +158,7 @@
   RQ.adj = function (id, g, plural) {
     const w = WD(id); if (!w) return id;
     const f = w.es.split(' / ').map(x => x.trim()), sg = g === 'f' && f[1] ? f[1] : f[0];
-    return plural && !w.inv ? RQ.pluralAdj(sg) : sg; // (w.inv: rosa stays rosa, las conchas rosa)
+    return plural && !w.inv ? RQ.pluralAdj(sg) : sg; // (w.inv: a word that never changes; none today: rosa has no -o / -a form but takes its plural s, las conchas rosas)
   };
   // a number word before its noun: uno -> un / una, the rest as they are
   RQ.numWord = (id, g) => (id === 'uno' ? (g === 'f' ? 'una' : 'un') : WD(id) ? WD(id).es.split(' / ')[0] : id);

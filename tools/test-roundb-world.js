@@ -115,18 +115,18 @@ async function ipad(browser) {
     await town(g, 22, 13, 'up', { met: ['banco'] }); // (met in chapter 7)
     await g.tapTile(22, 12);
     await g.until(() => G.world.bubble && G.world.bubble.id === 'banco', null, 'the bench to say its name');
-    check('things: tapping the bench beside you (met) names it "el banco" (a wiggle), no dialogue', await g.ev(() => G.st.seen('banco') && !!G.field.wig && G.top() === G.field && !!G.world.sayBack));
+    check('things: tapping the bench beside you (met) names it "la banca" (a wiggle), no dialogue', await g.ev(() => G.st.seen('banco') && !!G.field.wig && G.top() === G.field && !!G.world.sayBack));
     await g.frames(6); await g.shot('bench_named');
     const s1 = await g.ev(() => G.state.stars);
     await g.ev(() => window.__sr.queue.push({ results: ['manzana', 'mansana'] }));
     await g.tapRect(await g.ev(() => G.world.sayBack.mic.o.rect()));
     await g.until(() => G.world.sayBack && G.world.sayBack.mic.sad > 0, null, 'the miss');
     check('saying: a wrong word is a gentle miss (no star, the mic stays)', await g.ev(s1 => G.state.stars === s1 && !!G.world.sayBack && !G.st.knows('banco'), s1));
-    await g.ev(() => window.__sr.queue.push({ results: ['el banco'] }));
+    await g.ev(() => window.__sr.queue.push({ results: ['la banca'] }));
     await g.until(() => G.world.sayBack && !G.world.sayBack.mic.listening() && G.world.sayBack.mic.can(), null, 'the mic ready again');
     await g.press('v');
     await g.until(() => G.st.saidCount('banco') === 1, null, 'the speaking star by V');
-    check('saying: V listens too, "el banco" -> a speaking star', await g.ev(s1 => G.state.stars === s1 + 1, s1));
+    check('saying: V listens too, "la banca" -> a speaking star', await g.ev(s1 => G.state.stars === s1 + 1, s1));
     await g.drive(() => G.top() === G.field && !G.field.locked && G.st.saidCount('banco') === 1, 'the map');
 
     // a far object: walk up to the fountain, it names itself (its page was found already); the fish jumps

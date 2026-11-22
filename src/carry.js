@@ -217,7 +217,7 @@
       yield 10;
     } else { // not for dogs: he sniffs it (a flower makes him sneeze) and gives it back
       yield* G.pet.play('sniff', { amp: 0.5 });
-      if (h.id === 'flor') { G.pet.sound('woof'); G.pet.puff('txt', n.x * T + 12, n.y * T - 6, { s: '¡Achís!', life: 70 }); yield 30; }
+      if (h.id === 'flor') { G.pet.sound('woof'); G.pet.puff('txt', n.x * T + 12, n.y * T - 6, { s: '¡Achú!', life: 70 }); yield 30; }
       yield* G.pet.play('huh');
     }
     if (G.hearts) yield* G.hearts.milestones('canelo');

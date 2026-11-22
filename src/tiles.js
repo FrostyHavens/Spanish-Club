@@ -139,7 +139,7 @@
     'l': OBSTACLE('Well', 'town'), 'k': OBSTACLE('Barrels', 'town'), 'g': OBSTACLE('Grave', 'grass'),
     'P': OBSTACLE('Shrub', 'grass'), 'L': OBSTACLE('Lamp Post', 'town'), 'Y': OBSTACLE('Stall', 'town'),
     'Z': OBSTACLE('Statue', 'town'),
-    'J': OBSTACLE('Bench', 'town'), 'O': OBSTACLE('Hay', 'grass'), // Round B: el banco, a round hay bale at the farm
+    'J': OBSTACLE('Bench', 'town'), 'O': OBSTACLE('Hay', 'grass'), // Round B: the bench (la banca), a round hay bale at the farm
     'i': tt('Floor', 0, 1, 1, 1, 1, 'indoor'),
     'I': WALL('Wall', 'indoor'),
     'q': tt('Carpet', 0, 1, 1, 1, 1, 'indoor'),

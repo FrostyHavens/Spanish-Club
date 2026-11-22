@@ -94,7 +94,7 @@
     rojo: { es: 'rojo / roja', en: 'red', topic: 'colores', icon: 'color', col: '#e03028' },
     blanco: { es: 'blanco / blanca', en: 'white', topic: 'colores', icon: 'color', col: '#f8f8f4' },
     azul: { es: 'azul', en: 'blue', topic: 'colores', icon: 'color', col: '#3068e0' },
-    rosa: { es: 'rosa', en: 'pink', topic: 'colores', icon: 'color', col: '#f878b8', alt: 'rosado / rosada / rosas', inv: 1 }, // (Mexican: rosa, the same for every noun: la flor rosa, las conchas rosa; inv: it never changes, src/requests.js)
+    rosa: { es: 'rosa', en: 'pink', topic: 'colores', icon: 'color', col: '#f878b8', alt: 'rosado / rosada / rosas' }, // (Mexican: rosa, for el and la alike: el vestido rosa, la flor rosa; the plural takes its s like every colour: las conchas rosas. Both 'conchas rosa' and 'conchas rosas' are correct; one rule is kinder to a learner)
     amarillo: { es: 'amarillo / amarilla', en: 'yellow', topic: 'colores', icon: 'color', col: '#f8d030' },
     verde: { es: 'verde', en: 'green', topic: 'colores', icon: 'color', col: '#38b040' },
     // ---- La granja ----
@@ -111,7 +111,7 @@
     panaderia: { es: 'la panadería', en: 'the bakery', topic: 'pueblo', icon: 'panaderia' },
     biblioteca: { es: 'la biblioteca', en: 'the library', topic: 'pueblo', icon: 'biblioteca' },
     // ---- En la plaza y el parque ----
-    banco: { es: 'el banco', en: 'the bench', topic: 'cosas', icon: 'banco' },
+    banco: { es: 'la banca', en: 'the bench', topic: 'cosas', icon: 'banco', alt: 'banco / banquita' }, // (Mexican: the long seat in a park is la banca; el banco there is a stool, or the bank. The id stays 'banco': saves)
     fuente: { es: 'la fuente', en: 'the fountain', topic: 'cosas', icon: 'fuente' },
     flor: { es: 'la flor', en: 'the flower', topic: 'cosas', icon: 'flor', pl: 'flores' },
     arbol: { es: 'el árbol', en: 'the tree', topic: 'cosas', icon: 'arbol', pl: 'árboles' },
@@ -167,7 +167,7 @@
     venado: { es: 'el venado', en: 'the deer', topic: 'fauna', icon: 'venado', pl: 'venados', alt: 'venadito / ciervo' },
     zorro: { es: 'el zorro', en: 'the fox', topic: 'fauna', icon: 'zorro', pl: 'zorros', alt: 'zorrito' },
     erizo: { es: 'el erizo', en: 'the hedgehog', topic: 'fauna', icon: 'erizo', pl: 'erizos', alt: 'ericito' },
-    buho: { es: 'el búho', en: 'the owl', topic: 'fauna', icon: 'buho', pl: 'búhos', alt: 'tecolote / buhíto' },
+    buho: { es: 'el búho', en: 'the owl', topic: 'fauna', icon: 'buho', pl: 'búhos', alt: 'tecolote / buhito' },
     luciernaga: { es: 'la luciérnaga', en: 'the firefly', topic: 'fauna', icon: 'luciernaga', pl: 'luciérnagas', alt: 'luciernaguita' },
     // ---- ¡A jugar! (content/es/zone-juegos.js): action words, said to make someone DO it; Mexican Spanish ----
     // (salta and gira are the dog's tricks, met in Villa Sol or here: the park meets whichever isn't met yet)

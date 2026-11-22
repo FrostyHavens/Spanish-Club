@@ -584,7 +584,7 @@
     { who: 'nico', bubble: 'perro', part: 'banco', run: function* () {
       yield* ask('nico', 'Tú: ¿Y mi...?', 'Ask Nico: have you seen my...?', 'perro', ['pato', 'hueso'], { show: { icon: 'pregunta' } });
       yield* G.intro.find('banco', { who: 'nico', map: 'villa', at: [20, 18], wrong: [[12, 18], [20, 21]], pics: [[20, 18, 'banco'], [12, 18, 'arbol'], [20, 21, 'agua']],
-        prompt: '¡[si]! ¡El [banco]!', en: 'Yes! The bench! (which one? tap it)' });
+        prompt: '¡[si]! ¡La [banco]!', en: 'Yes! The bench! (which one? tap it)' });
     } },
     { auto: 'villa', when: found('banco'), run: function* (f, c) { // his bone on the bench
       yield* CH.banner('banco', ['pan', 'gato']);

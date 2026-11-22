@@ -65,7 +65,7 @@ now takes the article from the word. These are the lines it changed, plus a few 
 
 ### Other
 - Speech recognition: "zorra" (heard for *zorro*) and "salte" (for *salta*) are no longer accepted.
-- Spelling of accepted forms: pececito, ericito, buhíto.
+- Spelling of accepted forms: pececito, ericito, buhito.
 - About 147 lines started a sentence with a small letter ("¡hola, Ana!"); they now start with a capital.
 
 ### Questions for the reviewer
