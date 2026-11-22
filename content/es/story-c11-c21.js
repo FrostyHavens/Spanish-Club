@@ -593,7 +593,7 @@
     } },
     { who: 'gomez', bubble: { icon: 'pagina' }, part: 'busca', run: function* (f, c) { // ¡busca! (Gómez shows it, then you: try 1)
       yield* ask(null, '¿Dónde está Gómez?', 'Where is Señor Gómez sitting?', 'banco', ['fuente', 'granja'], { point: f.npc('gomez') || undefined });
-      yield* say('gomez', T('¿Tus cartas? {dog}... ¡[busca]!', 'Your cards? {dog}... find them!'));
+      yield* say('gomez', T('¿Tus tarjetas? {dog}... ¡[busca]!', 'Your cards? {dog}... find them!'));
       yield* busca(f, ...CARDS[0].slice(0, 2)); c.data.got = 1; S.autosave();
       for (const id of CARDS[0][2]) yield* named(id, id === 'manzana' ? ['pan', 'huevo'] : ['queso', 'manzana']);
       yield* say('gomez', T('¡Ahora tú!', 'Now you! Tell {dog} to find the next one.'));
@@ -615,11 +615,11 @@
       yield* busca(f, TREE[0], TREE[1] + 1); dog(f).dir = 'up'; bark(f); yield 16; bark(f);
       c.data.tree = 1; S.autosave();
       yield* G.intro.find('arbol', { who: 'gomez', map: 'villa', at: TREE, wrong: [[20, 18], [19, 21]], pics: [[TREE[0], TREE[1], 'arbol'], [20, 18, 'banco'], [19, 21, 'agua']],
-        prompt: 'Una carta... ¡en el [arbol]!', en: 'A card is stuck up in the tree! (which one? tap it)' });
+        prompt: 'Una tarjeta... ¡en el [arbol]!', en: 'A card is stuck up in the tree! (which one? tap it)' });
     } },
     { auto: 'villa', when: found('arbol'), part: 'arbol', run: function* (f, c) { // the card flutters down; a rabbit on the last one
       bark(f); c.data.tree = 2; G.audio.sfx('swing'); yield 30;
-      yield* tell(T('¡La carta! ...¿Y esta?', 'The card flutters down! ...And one more, on the lawn: someone is sitting on it!'));
+      yield* tell(T('¡La tarjeta! ...¿Y esta?', 'The card flutters down! ...And one more, on the lawn: someone is sitting on it!'));
       const r = animal(f, 'conejo'); if (r) { r.pin = at(...RABBIT_CARD); G.animals.react(f, r); }
       yield* G.intro.show('conejo', { who: 'gomez', prompt: '¡Mira! ¡Un [conejo]!', en: 'Look! A rabbit!', known: ['gato', 'perro'] });
       if (r) { r.pin = null; r.go = [...at(TREE[0] - 1, TREE[1] + 1), 1.8]; }
@@ -636,7 +636,7 @@
     } },
     { who: 'ines', bubble: { icon: 'pagina' }, part: 'pagina', run: function* (f, c) { // the Mi perro page, put back together; a bookmark
       c.data.cards = 0;
-      yield* say('ines', T('¡Tus cartas! A ver... ¡{dog}!', 'Your cards! Let\'s see... the page about {dog}!'));
+      yield* say('ines', T('¡Tus tarjetas! A ver... ¡{dog}!', 'Your cards! Let\'s see... the page about {dog}!'));
       const r = yield G.pages.open('mascota', G.pages.words('mascota').length >= 4 ? G.pages.words('mascota') : ['ven', 'sientate', 'pata', 'salta']);
       if (r.result) S.solvePage('mascota');
       yield* ask('ines', '¿Y esta?', 'And the last card: what is on it?', 'conejo', ['gato', 'cabra'], { show: 'conejo' });

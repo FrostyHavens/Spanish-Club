@@ -379,7 +379,7 @@
     if (met('tres')) yield* quiz('abuela', '¿Cuántos?', 'How many eggs did you bring?', 'tres', ['dos', 'cuatro', 'uno'], { show: { icon: 'huevo', count: 3 } });
     if (met('mano')) { // first, clean hands
       yield* sayShow('abuela', 'mano', T('¡Primero, las [mano:manos]!', 'First, wash your hands!'));
-      yield* quiz('abuela', '¿Qué lavo?', 'What do I wash before baking? (say it!)', 'mano', AB.bodyFor('mano'));
+      yield* quiz('abuela', '¿Qué me lavo?', 'What do I wash before baking? (say it!)', 'mano', AB.bodyFor('mano'));
       yield* AB.act(f, p, 'mano', { wash: true });
     }
     const n = npcAt(f, 'abuela');
@@ -940,7 +940,7 @@
           if (k < 2) yield* wash();
         } else {
           if (ab) yield* AB.act(f, ab, id, { wash: true });
-          yield* ask('abuelo', '¿Qué lavo?', 'What do I wash now? (say it!)', id, AB.bodyFor(id), { show: { icon: 'agua' } });
+          yield* ask('abuelo', '¿Qué me lavo?', 'What do I wash now? (say it!)', id, AB.bodyFor(id), { show: { icon: 'agua' } });
           yield* wash();
         }
       }
@@ -1001,7 +1001,7 @@
       yield AB.photo();
       c.data.flash = G.frame;
       CK.confetti(); G.audio.jingle('promote');
-      yield* quiz('abuela', '¿Qué es?', 'Who is in the photo?', 'familia', ['bebe', 'abuelo', 'abuela'], { show: { icon: 'foto' } });
+      yield* quiz('abuela', '¿Quiénes son?', 'Who is in the photo?', 'familia', ['bebe', 'abuelo', 'abuela'], { show: { icon: 'foto' } });
       yield* sayShow('abuela', { icon: 'foto' }, T('¡Mi [familia]! ¡La pongo en la pared!', 'My family! I\'ll hang it on the wall with the others. Come and see it inside!'));
       c.data.done = 1;
     } },

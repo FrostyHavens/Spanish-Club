@@ -419,7 +419,7 @@
     const m = AN.find('monarca', f);
     if (m && !met('monarca')) { CH.point(m.x, m.y - m.z - 12); try { yield* G.intro.show('monarca', { who: 'lola', prompt: '¡Mira! ¡Una [monarca:mariposa monarca]!', en: 'Look! A monarch butterfly! So many of them in the fir trees!', known: othersFor('monarca', ['perro', 'gato', 'pajaro', 'flor', 'arbol']) }); } finally { CH.point(null); } }
     const lu = npcAt(f, 'lucho');
-    if (lu && !CH.done('montana1')) { CH.pointNpc(lu); try { yield* sayShow('lola', { icon: 'montana' }, T('¡Don Lucho! ¡Ven!', 'That\'s Don Lucho, who looks after the refuge. Go and say hello!')); } finally { CH.point(null); } }
+    if (lu && !CH.done('montana1')) { CH.pointNpc(lu); try { yield* sayShow('lola', { icon: 'montana' }, T('¡Mira! ¡Don Lucho!', 'Look! That\'s Don Lucho, who looks after the refuge. Go and say hello!')); } finally { CH.point(null); } }
   }
 
   // =====================================================================

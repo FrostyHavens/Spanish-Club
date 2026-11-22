@@ -457,7 +457,7 @@
   // Pablo's swing: drawn as his ride while he idles there (JG.swingAng reads e.ride: give it his)
   const swingAng0 = JG.swingAng;
   JG.swingAng = function (f, i) { const pb = f && npcAt(f, 'pablo'); if (pb && !pb.ride && pb.ride0 && pb.ride0.i === i && home(pb, PABLO_AT)) return pb.ride0.amp * Math.sin((G.frame - pb.ride0.f0) / 19); return swingAng0(f, i); };
-  function* anaLine() { yield* sayShow('ana', met('corre') ? 'corre' : null, T(met('corre') ? '¡A [corre:correr]!' : '¡Hola, {name}!', 'Let\'s run!')); }
+  function* anaLine() { yield* sayShow('ana', met('corre') ? 'corre' : null, (met('corre') ? T('¡A [corre:correr]!', 'Let\'s run!') : T('¡Hola, {name}!', 'Hi, {name}!'))); }
   function* pabloLine() { if (CH.done('juegos2') && met('papalote')) yield* sayShow('pablo', 'papalote', T('¡Mi [papalote]!', 'My kite! Look how high!')); else yield* say('pablo', T('¡Hola, {name}!', 'Hi, {name}!')); }
   function* chuyLine() { if (met('burbujas')) yield* sayShow('chuy', 'burbujas', T('¡[burbujas:Burbujas]!', 'Bubbles! Come back tomorrow for more.')); else yield* say('chuy', T('¡Hola, {name}!', 'Hello, {name}!')); }
 

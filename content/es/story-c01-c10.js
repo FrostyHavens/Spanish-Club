@@ -384,10 +384,10 @@
       meow(f); K.puff('ex', CRATES[1][0] * TL + 12, CRATES[1][1] * TL - 8, { life: 40 });
       yield* siNo('pepe', '¿Un [gato]?', 'Meow! Something jumps out of the crate: a cat?', true, { show: 'gato' });
       G.pet.anim(n, 'jump'); bark(f);
-      yield* siNo('pepe', '¿[sientate]?', '{dog} jumps up at the cat! Is he sitting?', false, { point: n });
+      yield* siNo('pepe', '¿Está [sientate:sentado]?', '{dog} jumps up at the cat! Is he sitting?', false, { point: n });
       yield* ask('pepe', '¡Dile a {dog}!', 'Tell {dog}!', 'sientate', ['ven', 'hola'], { point: n, wrong: dogWrong(f) });
       yield* G.pet.play('sit');
-      yield* siNo('pepe', '¿Y ahora? ¿[sientate]?', 'And now? Is he sitting?', true, { point: n });
+      yield* siNo('pepe', '¿Y ahora? ¿Está [sientate:sentado]?', 'And now? Is he sitting?', true, { point: n });
       c.data.cat = 1; meow(f); // (off she goes, back to her fence)
     } }),
     crateBeat(2, { part: 'manzana', run: function* (f) { // una manzana; Doña Rosa walks up and wants one: Pepe puts it in your hands
@@ -579,7 +579,7 @@
     { auto: 'villa', when: found('parque'), run: function* (f, c) { // the park: its name; paw prints
       yield* CH.banner('parque', ['perro', 'gato']);
       c.data.paws = 1;
-      yield* tell(T('¡Mira! ¡[pata:Huellas]!', 'Look! Paw prints! Ask Nico.'));
+      yield* tell(T('¡Mira! ¡Huellas!', 'Look! Paw prints! Ask Nico.'));
     } },
     { who: 'nico', bubble: 'perro', part: 'banco', run: function* () {
       yield* ask('nico', 'Tú: ¿Y mi...?', 'Ask Nico: have you seen my...?', 'perro', ['pato', 'hueso'], { show: { icon: 'pregunta' } });
