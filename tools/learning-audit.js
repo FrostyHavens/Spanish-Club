@@ -30,8 +30,8 @@ const fs = require('fs'), path = require('path'), os = require('os');
 const ARGS = process.argv.slice(2);
 const arg = (k, d) => { const i = ARGS.indexOf('--' + k); return i >= 0 ? ARGS[i + 1] : d; };
 const ROOT = path.resolve(__dirname, '..');
-const SCRATCH = '/tmp/claude-0/-home-user-Spanish-Club/56c6d0c5-5673-5d69-87f4-ad0ff9c7afaf/scratchpad';
-const OUTDIR = path.resolve(arg('out', fs.existsSync(SCRATCH) ? SCRATCH : os.tmpdir()));
+// the report's folder: --out, or SPANISH_CLUB_OUT, or the system's temp folder (--write-docs also writes docs/)
+const OUTDIR = path.resolve(arg('out', process.env.SPANISH_CLUB_OUT || os.tmpdir()));
 const WRITE_DOCS = ARGS.includes('--write-docs');
 const DAYS = +arg('days', 6), SESSION = +arg('session', 15) * 60, SPEED = +arg('speed', 3);
 const P_WRONG = +arg('wrong', 0.2), P_SPEAK = +arg('speak', 0.35), NOMIC = +arg('nomic', 3);

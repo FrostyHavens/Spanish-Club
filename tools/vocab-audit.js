@@ -26,8 +26,7 @@ const fs = require('fs'), path = require('path'), os = require('os');
 const ARGS = process.argv.slice(2);
 const arg = (k, d) => { const i = ARGS.indexOf('--' + k); return i >= 0 ? ARGS[i + 1] : d; };
 const ROOT = path.resolve(__dirname, '..');
-const SCRATCH = '/tmp/claude-0/-home-user-Spanish-Club/56c6d0c5-5673-5d69-87f4-ad0ff9c7afaf/scratchpad';
-const OUTDIR = fs.existsSync(SCRATCH) ? SCRATCH : os.tmpdir();
+const OUTDIR = process.env.SPANISH_CLUB_OUT || os.tmpdir();
 const DUMP = path.resolve(arg('out', path.join(OUTDIR, 'vocab-audit.json')));
 const WRITE_DOCS = ARGS.includes('--write-docs'); // (else the report and the chart go to the scratch folder)
 const REPORT = WRITE_DOCS ? path.join(ROOT, 'docs', 'VOCAB_AUDIT.md') : path.join(OUTDIR, 'VOCAB_AUDIT.md'), SVG = WRITE_DOCS ? path.join(ROOT, 'docs', 'vocab-timeline.svg') : path.join(OUTDIR, 'vocab-timeline.svg');

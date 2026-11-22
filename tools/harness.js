@@ -37,8 +37,8 @@ const { chromium } = require('playwright');
 
 const ROOT = path.resolve(__dirname, '..');
 const URL = 'file://' + path.resolve(__dirname, '..', 'index.html');
-const SCRATCH = '/tmp/claude-0/-home-user-Spanish-Club/56c6d0c5-5673-5d69-87f4-ad0ff9c7afaf/scratchpad';
-const OUT = path.resolve(process.argv[2] || (fs.existsSync(SCRATCH) ? path.join(SCRATCH, 'shots') : path.join(os.tmpdir(), 'spanish-club-shots')));
+// screenshots: the folder given on the command line, or SPANISH_CLUB_OUT, or the system's temp folder
+const OUT = path.resolve(process.argv[2] || path.join(process.env.SPANISH_CLUB_OUT || os.tmpdir(), 'spanish-club-shots'));
 
 const G_W = 320; // game width in pixels
 const results = []; // {name, ok, msg}

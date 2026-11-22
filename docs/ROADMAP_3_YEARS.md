@@ -632,8 +632,16 @@ that needs a little structure:
 | 4 | **Yes, a native Mexican-Spanish speaker can check lines** | Every new unit's lines go through a monthly check before release. Sprint 1's Spanish fixes (audit 1.9) come with a before → after list for them to check first. |
 | 12 | **Finish at 10** | The end goal stays El Gran Viaje at 10, then a keep-it-alive mode (new festivals on real dates, the album, the club). Nothing is planned for 10-12. |
 
+**Added 2026-11-22:**
+
+| # | Answer | What it changes |
+| --- | --- | --- |
+| 4 | **Changed: the lines cannot go to the native speaker after all** | There is no outside check of the Spanish. Every doubtful line is settled from dictionaries of Mexican Spanish and written down in `docs/SPANISH_REVIEW.md` with its source. New content keeps to forms that can be backed that way. |
+| 14 | **The iPad stops at iPadOS 15** (it is installing 15.8.8) | It is an older, slower iPad (most likely an iPad Air 2 or iPad mini 4; the model itself is still to confirm). The speed work (audit 4.1) moves to the front, and nothing newer than Safari 15 may be used. |
+| - | **She has 52 stars and has not played for a few weeks** | She is early in the game, not at the end of it, so new content is not urgent. What matters first is that coming back is pleasant (no wall of reviews, the story carries on), that her save survives the update, and that the game runs smoothly on her iPad. |
+
 Still open: 5 (budget), 6 (AI conversation), 7 (family circle), 8 (Windows play), 9 (siblings), 10 (home-screen
-app), 11 (school topics), 13 (Mexican Spanish only), 14 (iPad model), 15 (sitting length). Sprint 1 goes ahead with
+app), 11 (school topics), 13 (Mexican Spanish only), 15 (sitting length). Sprint 1 goes ahead with
 sunset at about 12-13 minutes (15), Mexican Spanish only (13), and backup and restore that also moves a game between
 the iPad and Windows (8, 10).
 
