@@ -674,7 +674,7 @@
   // point (an npc or {x, y} to point at on the map while it's up), intro / how (it introduces the answer)
   CH.ask = function* (who, prompt, en, answer, others, o = {}) {
     const ids = [answer].concat(others.filter(k => k !== answer && G.data.words[k])).sort(() => G.rand() - 0.5);
-    const choices = ids.map(id => Object.assign({ word: id }, o.pic ? { pic: true } : {}, o.look && o.look[id] ? { look: o.look[id] } : {}, o.img && o.img[id] ? { img: o.img[id] } : {}));
+    const choices = ids.map(id => Object.assign({ word: id }, o.pic ? { pic: true } : {}, o.look && o.look[id] ? { look: o.look[id] } : {}, o.label && o.label[id] ? { label: o.label[id] } : {}, o.img && o.img[id] ? { img: o.img[id] } : {}));
     if (o.point) { if (o.point.x != null && o.point.n == null && o.point.id == null) CH.point(o.point.x, o.point.y); else CH.pointNpc(o.point); }
     try {
       return yield* G.ask(Object.assign({ prompt, en, choices, answer: ids.indexOf(answer), layout: 'cards', who }, o.show ? { show: o.show } : {}, o.mask ? { mask: o.mask } : {},

@@ -168,7 +168,7 @@
       const h = hens(f); if (h.white) G.animals.react(f, h.white); G.animals.cry('gallina');
       yield* sayShow('rosa', 'huevo', T('¡Un [huevo]! ¡Gracias, [gallina] [blanco:blanca]!', 'An egg! Thank you, white hen!'));
       yield* ask('rosa', '¿De qué color?', 'The new egg: what colour is it?', 'blanco', ['rojo', 'pan'], { show: { icon: 'huevo' } });
-      yield* ask('rosa', '¿Cuántas [gallina:gallinas] [blanco:blancas]?', 'How many WHITE hens?', 'uno', ['dos'], { show: many('gallina', 2) });
+      yield* ask('rosa', '¿Cuántas [gallina:gallinas] [blanco:blancas]?', 'How many WHITE hens?', 'uno', ['dos'], { show: many('gallina', 2), label: { uno: 'una' } }); // (one hen is una: the card reads as it is said here)
       // Canelo barks and the hens scatter
       c.data.pin = 0; unpinHens(f);
       const n = dog(f); dogAt(f, 3, 9, 'left'); bark(f); G.pet.anim(n, 'jump');
