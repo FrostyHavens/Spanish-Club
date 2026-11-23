@@ -346,4 +346,27 @@ async function keyboardRun(browser) {
   return g;
 }
 
-run('Club de Español smoke test', [['iPad (touch)', touchRun], ['iPad tap-to-walk details', walkRun], ['desktop (keyboard)', keyboardRun]]);
+// Canelo standing on the place a find-it puzzle or a chapter sends her to: a tap on it is the place, not the dog (the
+// long playthrough once tapped the bakery 149 times with him on it)
+async function dogOnPlaceRun(browser) {
+  const { ctx, g } = await open(browser, 'dogplace', true);
+  try {
+    await g.ev(() => { G.st.erase(1); G.st.newGame(); G.state.name = 'Luz'; G.state.look = G.data.defaultLook('nina'); G.st.begin(1); Object.assign(G.state.flags, { opener: true, intro: true, canelo: true, petStart: true }); G.demo.skip(); G.zones.visit('villa'); G.goto('villa', 15, 13, 'down'); });
+    await g.until(() => G.field && G.field.mapId === 'villa' && G.fade.a === 0, null, 'the town');
+    const r = await g.ev(() => {
+      const f = G.field, T = G.TILE, dog = f.npcs.find(n => n.id === 'canelo');
+      if (!dog) return { noDog: true };
+      const tap = (x, y) => { const t = f.tapTarget({ x: x * T + 12 - Math.round(f.cam.x), y: y * T + 12 - Math.round(f.cam.y) }); return !!t.npc; };
+      const x = 20, y = 14; dog.x = x; dog.y = y; dog.ox = 0; dog.oy = 0; dog.hidden = false;
+      const before = tap(x, y);
+      G.state.finds.test = { who: null, map: 'villa', at: x + ',' + y, wrong: [], found: false, how: 'find', pics: null };
+      const after = tap(x, y);
+      delete G.state.finds.test;
+      const t = f.tapTarget({ x: x * T + 12 - Math.round(f.cam.x), y: y * T + 12 - Math.round(f.cam.y) }); return { before, after };
+    });
+    check('dog on a find-it place: before the puzzle a tap is the dog, with it the place', !r.noDog && r.before === true && r.after === false, JSON.stringify(r));
+  } finally { await ctx.close(); }
+  return g;
+}
+
+run('Club de Español smoke test', [['iPad (touch)', touchRun], ['iPad tap-to-walk details', walkRun], ['dog on a find-it place', dogOnPlaceRun], ['desktop (keyboard)', keyboardRun]]);
