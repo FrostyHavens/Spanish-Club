@@ -95,7 +95,9 @@ async function settle(g, what) {
     const s = await g.ev(() => ({ n: G.top().constructor.name, free: G.top() === G.field && !G.field.locked && G.fade.a === 0 && !G.field.player.moving && !G.field.route, hint: !!G.top().hintXY, t: G.top().t }));
     if (s.free) return;
     if (s.n === 'TodayCard') { await hook('TodayCard'); if (!g.seen.has('TodayCard')) { await g.frames(150); await g.shot('hoy'); g.seen.add('TodayCard'); } // (the card's own corner: a tap on one of today's word cards only says the word, and with many words one lies at 160,200)
-      const hx = await g.ev(() => G.top().revealed() && G.top().wait >= 20 ? G.top().hintXY() || (() => { const b = G.top().box(); return [b.x + b.w - 13, b.y + b.h - 9]; })() : null);
+      // (a card of many words shows one picture every 50 frames: a tap shows them all at once, as a child would do; the
+      // bot used to wait the reveal out, 6 frames a try, and 400 tries ran out in the middle of a 44-word Hoy card)
+      const hx = await g.ev(() => { const c = G.top(); if (c.t < 20) return null; if (!c.revealed()) return [160, 200]; return c.wait >= 20 ? c.hintXY() || (() => { const b = c.box(); return [b.x + b.w - 13, b.y + b.h - 9]; })() : null; });
       if (!hx) { await g.frames(6); continue; }
       await g.tap(hx[0], hx[1]); continue; }
     if (s.n === 'Night') { await hook('Night'); if (!g.seen.has('Night')) { await g.frames(60); await g.shot('night'); g.seen.add('Night'); } await g.frames(10); continue; }
@@ -111,7 +113,7 @@ async function settle(g, what) {
     if (s.n === 'Diploma' && !g.seen.has('Diploma')) { await g.frames(80); await g.shot('diploma'); }
     await g.drive(() => { const t = G.top(); return t === G.field || ['TodayCard', 'Night', 'PetMenu'].includes(t.constructor.name); }, what);
   }
-  throw new Error('never settled: ' + what + ' (on ' + JSON.stringify(await g.ev(() => ({ top: G.top().constructor.name, map: G.field && G.field.mapId, locked: !!(G.field && G.field.locked), fade: G.fade.a, moving: !!(G.field && G.field.player.moving), route: !!(G.field && G.field.route), over: G.day.over() }))) + ')');
+  throw new Error('never settled: ' + what + ' (on ' + JSON.stringify(await g.ev(() => ({ top: G.top().constructor.name, map: G.field && G.field.mapId, locked: !!(G.field && G.field.locked), fade: G.fade.a, moving: !!(G.field && G.field.player.moving), route: !!(G.field && G.field.route), over: G.day.over(), evening: !!G.field.evening, st: G.sessionTime, sun: G.day.sunsetAt(), walk: !!G.day.walk, stack: G.scenes.map(s => s.constructor.name).join('>'), ask: G.top().o ? G.plain(G.top().o.prompt || '') : null, ans: G.top().o ? G.top().o.answer : null, ch: G.top().ch ? JSON.stringify({ t: G.top().t, i: G.top().i, off: G.top().ch.map(c => !!c.off), rects: G.top().rects(), say: !!G.top().say, kind: G.top().o.kind, spk: G.top().spk && G.top().spk() }) : null, day: G.words.day() }))) + ') errors: ' + (g.errors || []).join(' | ').slice(0, 800));
 }
 
 // title -> creator (girl, a few looks) -> name LUZ -> Mamá's intro, free at home
