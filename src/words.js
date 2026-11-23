@@ -238,6 +238,10 @@
       else if (r.due == null && r.dc > dn) on[r.dc] = (on[r.dc] | 0) + 1;
     }
     if (timers.length + L.length <= C.keep) return null;
+    // a spread still running is levelled again only for a real pile (more than a day's cards over): a child who plays
+    // every other day, or comes back after a weekend, would otherwise push the same weak words further off each time
+    const long = away == null || away >= C.away;
+    if (!long && timers.length + L.length <= C.keep + C.perDay) return null;
     const ld = {}; for (const id of L) { const d = W.lastDay(id); ld[id] = d == null ? -1e9 : d; }
     L.sort((x, y) => { const rx = W.rec(x), ry = W.rec(y); return (ry.box | 0) - (rx.box | 0) || ld[y] - ld[x] || (ry.last || 0) - (rx.last || 0) || (x < y ? -1 : x > y ? 1 : 0); });
     const rest = L.slice(Math.max(0, C.keep - timers.length)), per = Math.max(1, C.perDay | 0);

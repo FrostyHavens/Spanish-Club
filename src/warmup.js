@@ -150,7 +150,7 @@
   // ---------- every frame (field.js, after the story's own: a beat that starts by itself goes first) ----------
   WU.update = function (f) {
     if (!G.state || !f) return;
-    if (G.state !== stRef || (G.sessionTime || 0) < lastST - 1) { sitting++; stRef = G.state; endedAt = null; } // (a new sitting: a game opened, a new game, a new morning)
+    if (G.state !== stRef || (G.sessionTime || 0) < lastST - 1) { sitting++; stRef = G.state; endedAt = (G.sessionTime || 0) > 1 ? G.sessionTime : null; } // (a game reopened a moment later keeps the day's clock, day.js: the mid-sitting moment waits from now, not from a clock that is already past it) // (a new sitting: a game opened, a new game, a new morning)
     lastST = G.sessionTime || 0;
     if (cur && cur.f !== f && G.scenes.indexOf(cur.f) < 0) dropped(cur); // (its map was left in the middle: a bus ride)
     if (pend && pend.state !== G.state) pend = null;

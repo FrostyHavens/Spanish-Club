@@ -63,7 +63,7 @@
   S.knows = id => WM().stage(id) >= 3;
   S.stage = id => WM().stage(id);
   // (tests and tools) make a word gold at once; true if it wasn't
-  S.learn = function (id) { const r = WM().rec(id, true); if (!r || r.st >= 3) return false; if (r.st < 1) WM().meet(id, 'learn'); r.st = 3; r.learned = true; r.s3 = WM().day(); S.autosave(); if (G.vocabLog) G.vlog('learned', id); return true; };
+  S.learn = function (id) { const r = WM().rec(id, true); if (!r || r.st >= 3) return false; if (r.st < 1) WM().meet(id, 'learn'); r.st = 3; r.learned = true; r.s3 = WM().day(); if (G.budget && G.budget.flush) G.budget.flush(); S.autosave(); if (G.vocabLog) G.vlog('learned', id); return true; };
   S.practiced = (id, firstTry) => (firstTry ? WM().answerRight(id, { firstTry: true }) : WM().answerWrong(id));
   // said out loud with the mic (mic.js): its card grows the most (cards.js); still counted in stars (for the diploma); S.micStars() is the speaking stars so far
   // The learning history records it (history.js): o.cued = said right after hearing it (an echo: the gold card's mic);
