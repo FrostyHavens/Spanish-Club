@@ -870,6 +870,7 @@
       yield* sayShow('lucho', { icon: 'gorro', col: (AB.wear() || {}).gorro || AB.FIRST.gorro }, T('¡Calientit{o/a}! ¡Qué bonit{o/a}!', 'Nice and warm! You look lovely. (Mateo, the weather boy, has an idea... and there\'s a sled at the top of the slope!)'));
     } },
   ], {
+    rev: 2, steps: { 1: [0, 1, 2, 3] }, // (revision 2: the same steps; two questions moved from the basket to the snow)
     stage(f, c) { if (!outside(f) || !CH.active('montana1')) return; const lu = npcAt(f, 'lucho'); if (lu && !lu.busy && c.data.up && (lu.x !== BASKET[0] + 1 || lu.y !== BASKET[1] + 1)) CK.place(f, 'lucho', BASKET[0] + 1, BASKET[1] + 1, 'up'); },
     drawTop(f, ctx, c) { if (!outside(f) || !CH.active('montana1') || !c.data.cold || c.data.guantes) return; const x = BASKET[0] * TL + 4 - Math.round(f.cam.x), y = BASKET[1] * TL + 6 - Math.round(f.cam.y); G.drawIcon16(ctx, 'canasta', x, y); },
   });

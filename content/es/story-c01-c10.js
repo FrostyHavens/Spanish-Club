@@ -413,6 +413,10 @@
       if (r) Object.assign(r, { home: [7, 7], wander: 1 });
     } },
   ], {
+    // (revision 2: Don Pepe's game is three crates on the plaza, with their own data. No step table: a game saved in
+    // this chapter by the older release begins it again, its apple put away: src/chapters.js "a script whose beats
+    // changed", docs/CONTENT.md)
+    rev: 2,
     stage(f, c) { if (f.mapId === 'villa' && c.step === 4) hold(f, 'rosa', ...ROSA_STALL, 'up'); }, // (Rosa waits by the stall for her apple)
     draw(f, ctx, c) {
       if (f.mapId !== 'villa' || !c.data.crates) return;
@@ -547,6 +551,7 @@
       yield* say('marta', T('¡Para los [pato:patos]!', 'For the ducks! (feed them every day)'));
     } },
   ], {
+    rev: 2, steps: { 1: [0, 1, 2, 3, 4, 4, 5, 6] }, // (revision 2: the ducklings' beat waits for a tap on the duck, and the game's first round went into it)
     stage(f) { if (f.mapId === 'villa') hold(f, 'nico', ...NICO_POND, 'right'); },
     tap(kind, f) {
       const b = CH.beat('c6'); if (!b || (b.tap !== 'pato' && b.who !== 'canelo') || (kind !== 'pato' && kind !== 'canelo' && kind !== 'cat')) return false;
@@ -655,6 +660,7 @@
       K.heart(f, n);
     } },
   ], {
+    rev: 2, steps: { 1: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] }, // (revision 2: the same steps; the last beat asks in another order)
     lost: c => c.data.lost === 1,
     stage(f, c) {
       if (f.mapId !== 'villa') return;
@@ -714,6 +720,7 @@
       yield* say('luna', T('¡Hasta pronto!', 'See you soon!'));
     } },
   ], {
+    rev: 2, steps: { 1: [0, 1, 2, 3, 4, 5] }, // (revision 2: the same steps; Sofía's beat asks in another order)
     stage(f, c) {
       if (f.mapId !== 'villa') return;
       if (c.step === 2) hold(f, 'nico', 16, 20, 'up');
@@ -857,6 +864,7 @@
       if (nico) { Object.assign(nico, { home: [15, 15], wander: 2 }); K.npcSay(f, 'nico', '¡Adiós!', 90); }
     } },
   ], {
+    rev: 2, steps: { 1: [0, 1, 2, 3, 4, 5, 6] }, // (revision 2: the same steps; a question moved from Tomás to the fountain)
     stage(f, c) {
       if (f.mapId !== 'villa') return;
       if (c.step <= 6) { const t = hold(f, 'tomas', ...TOMAS_BENCH, 'down'); if (t) t._tired = true; }

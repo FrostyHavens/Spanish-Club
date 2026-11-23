@@ -196,6 +196,7 @@
       release(f, 'rosa');
     } },
   ], {
+    rev: 2, steps: { 1: [0, 1, 2, 3, 4, 5, 6] }, // (revision 2: the same steps; a question moved from the first nest to the second)
     stage(f, c) {
       if (f.mapId !== 'villa') return;
       if (c.step >= 1 && c.step <= 5) hold(f, 'rosa', ...ROSA_HENS, 'left');
@@ -270,6 +271,7 @@
       yield* G.pet.play('eat', { item: 'hueso' }); K.heart(f, n);
     } },
   ], {
+    rev: 2, steps: { 1: [0, 1, 2, 3] }, // (revision 2: the same steps; the oranges wait for a talk with Pepe at the other end of his stall)
     stage(f, c) { if (f.mapId === 'villa' && c.step === 2) hold(f, 'pepe', ...ORANGES, 'down'); }, // (at the oranges, the other end of his stall)
   });
 
@@ -377,6 +379,7 @@
       yield* K.fade(1); f.picnic = null; G.errands.unstage(f, back2); G.errands.unstage(f, back); c.data.picnic = null; f.snapCam(); yield* K.fade(0);
     } },
   ], {
+    rev: 2, steps: { 1: [0, 1, 2, 3, 4, 5, 6] }, // (revision 2: the picnic is a step of its own, after Rosa's count)
     stage(f, c) { if (f.mapId === 'villa' && f.npc('gomez') && c.step === 2) hold(f, 'gomez', 13, 10, 'up'); },
   });
 
@@ -475,6 +478,7 @@
       yield* K.walk(f, n, 7, 5, 3); n.dir = 'left'; G.pet.sound('snore');
     } },
   ], {
+    rev: 2, steps: { 1: [0, 1, 2, 3, 4, 5] }, // (revision 2: the same steps)
     stage(f, c) { if (f.mapId === 'villa') hold(f, 'sofia', ...V('sofia'), 'down'); },
     draw(f, ctx, c) { if (f.mapId === 'villa' && c.step >= 1 && c.step <= 2) bar(ctx, f, ...BAR); },
   });
@@ -548,6 +552,7 @@
       release(f, 'lucia');
     } },
   ], {
+    rev: 2, steps: { 1: [0, 1, 2, 3, 4] }, // (revision 2: the same steps)
     stage(f, c) { if (f.mapId === 'villa' && c.step <= 3) hold(f, 'lucia', ...LUCIA, 'down'); },
     draw(f, ctx, c) {
       if (f.mapId !== 'villa') return;
@@ -652,6 +657,7 @@
       yield* say('gomez', T('¡Muy bien, {name}! ¡Y {dog}!', 'Very good, {name}! And {dog} too!'));
     } },
   ], {
+    rev: 2, steps: { 1: [0, 1, 2, 3, 4, 5, 6] }, // (revision 2: the same steps)
     stage(f, c) { if (f.mapId === 'villa' && c.step >= 2 && c.step <= 6) hold(f, 'gomez', ...GOMEZ_BENCH, 'down'); },
     draw(f, ctx, c) {
       if (f.mapId !== 'villa' || !c.data.cards) return;
@@ -748,6 +754,7 @@
       release(f, 'nico');
     } },
   ], {
+    rev: 2, steps: { 1: [0, 1, 2, 3, 4, 5, 6] }, // (revision 2: the same steps; the bird is a place she walks to)
     follows: (who, c) => who === 'nico' && c.step >= 3 && c.step <= 5,
     stage(f, c) { if (f.mapId === 'villa' && c.step >= 1 && c.step <= 2) hold(f, 'nico', ...NICO_POND2, 'down'); if (f.mapId === 'villa' && c.step === 3) duckToEdge(f); },
     drawTop(f, ctx, c) {
@@ -849,6 +856,7 @@
       c.data.list = null;
     } },
   ], {
+    rev: 2, steps: { 1: [0, 1, 2, 3, 4, 5, 6, 7, 8] }, // (revision 2: the same steps; the last beat asks in another order)
     stage(f, c) { if (f.mapId === 'villa' && c.step >= 1 && c.step <= 7) guest(f, 'luna', ...LUNA_FOUNTAIN, 'down'); else if (f.mapId === 'villa') unguest(f, 'luna'); },
     draw(f, ctx, c) { if (f.mapId === 'villa' && c.step === 6) bigFlower(ctx, f, ...FLOWER_AT, PINK, 3); },
     drawTop(f, ctx, c) {
@@ -954,6 +962,7 @@
       yield* sayShow('luna', { icon: 'carta' }, T('¡Mañana... la fiesta!', 'Tomorrow... the party! Here is the party card.'));
     } },
   ], {
+    rev: 2, steps: { 1: [0, 1, 2, 3, 4, 5, 6] }, // (revision 2: the same steps; a question fewer)
     stage(f, c) {
       if (f.mapId !== 'villa') return;
       if (c.step >= 5 && c.step <= 6) guest(f, 'luna', ...LUNA_GATE, 'down'); else unguest(f, 'luna');
@@ -1064,6 +1073,7 @@
       yield* sayShow('luna', 'granja', T('¡Mañana, la fiesta en la [granja]!', 'Tomorrow: the party at the farm!'));
     } },
   ], {
+    rev: 2, steps: { 1: [0, 1, 2, 3, 4, 5, 8, 9, 10] }, // (revision 2: after Sofía's invitation come two new steps, her ribbons on the lawn and the rehearsal)
     draw(f, ctx, c) { // the ribbons on the lawn, until they're picked up
       if (f.mapId !== 'villa' || !c.data.ribbons || c.step !== 6) return;
       RIBBONS.forEach(([x, y, col], i) => { if (!c.data.ribbons[i]) G.drawIcon16(ctx, cinta(COL(col)), x * TL + 4 - Math.round(f.cam.x), y * TL + 6 - Math.round(f.cam.y)); });
@@ -1172,6 +1182,7 @@
       yield* unparty(f, c);
     } },
   ], {
+    rev: 2, steps: { 1: [0, 1] }, // (revision 2: the party goes on in four more steps after the welcome)
     after: function* () { G.audio.play('victory'); yield G.story.diploma(); G.audio.play('town', true); },
     stage(f, c) { // (everyone stays at the party while she walks about; the friend she goes to next has their bubble)
       if (f.mapId !== 'villa' || !c.data.party) return;

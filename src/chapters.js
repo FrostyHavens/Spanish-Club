@@ -20,7 +20,9 @@
 //         after(f, c) (a generator played once the chapter is done and its badge shown: the diploma),
 //         follows(who, c) (someone tags along with you now: Nico's sound game),
 //         draw(f, ctx, c) (under the people), drawTop(f, ctx, c), lost: (c) => Canelo is away (his map entries
-//         hide), tap(kind, f, c) (true: a tap on an animal / the cat / Canelo was handled, e.g. a wrong one) }
+//         hide), tap(kind, f, c) (true: a tap on an animal / the cat / Canelo was handled, e.g. a wrong one),
+//         rev, steps (the script's revision once its beats have changed, and where a save of an older revision goes
+//         on: "a script whose beats changed", below; docs/CONTENT.md) }
 // c (the chapter's context, also G.chapters.ctx(id)): { id, def, data (its own saved object), step }.
 //
 // Opening (gate(id) -> null when it may start, else why not):
@@ -47,9 +49,10 @@
 //   .alert(who) / .talk(who, f) (maps.js), .spotAt / .runSpot (field.js), .tapped(kind, f) (animals, the cat, Canelo),
 //   .nudge() / .nudgeRun(f, n) (Canelo's "?": a word just met comes back), .door(f) (an exit's run), .evening(phase, f) (day.js), .targets(f) (hint.js, tools/playflow.js), .waitsIn(map),
 //   .update(f) / .draw(f, ctx, layer) (field.js), .lost() (Canelo away), .tailGate() (the older errands after
-//   chapter 10), .migrate() (older saves), .say / .ask / .K (helpers for scripts: content/es/story-*.js).
+//   chapter 10), .migrate() (older saves; then .resplit(): a chapter going on whose script's beats changed, .revOf(id)),
+//   .say / .ask / .K (helpers for scripts: content/es/story-*.js).
 // Saved: G.state.ch = { v, step: {id: beat}, data: {id: {...}}, began: {id: {day, date}}, doneSess: {id: session},
-//   lastDoneSess, tailDay, placeAsk: {word: times} }.
+//   lastDoneSess, tailDay, placeAsk: {word: times}, rev: {id: the script's revision the chapter began on} }.
 'use strict';
 (function () {
   const CH = G.chapters = {};
@@ -88,7 +91,7 @@
   function st() {
     const s = G.state; if (!isObj(s.ch)) s.ch = {};
     const c = s.ch;
-    for (const k of ['step', 'data', 'began', 'doneSess', 'placeAsk']) if (!isObj(c[k])) c[k] = {};
+    for (const k of ['step', 'data', 'began', 'doneSess', 'placeAsk', 'rev']) if (!isObj(c[k])) c[k] = {};
     if (!c.v) c.v = CH.VERSION;
     return c;
   }
@@ -165,15 +168,29 @@
   CH.start = function (id) {
     if (!G.state || CH.done(id)) return;
     const s = st();
-    if (!CH.active(id)) { s.step[id] = 0; s.began[id] = { day: G.words.day(), date: G.today() }; S.startQuest(id); }
+    if (!CH.active(id)) { s.step[id] = 0; s.began[id] = { day: G.words.day(), date: G.today() }; s.rev[id] = CH.revOf(id); S.startQuest(id); }
   };
   function advance(id) {
     const s = st(); s.step[id] = (s.step[id] | 0) + 1; S.autosave();
     return s.step[id] >= scripts[id].beats.length;
   }
+  // A chapter going on whose step is past the end of its script (the last step of an older release's longer script, a
+  // step table that sends it there: CH.resplit, below) has no beat left to play: nothing would ever end it, and its
+  // line would stop for good. It ends by itself, as its last beat's end would have ended it (finish: done, the badge,
+  // the hearts, the next chapter free to open), at the next free moment on the map (CH.update). live1 (below) notes it
+  // (it has no beat to offer); nothing else is looked through for it.
+  let past = null;
+  const isPast = id => CH.active(id) && !!scripts[id] && (st().step[id] | 0) >= scripts[id].beats.length;
+  // a chapter's things in the bag ({q: its id}: Rosa's apple, the letters) never outlive it: none is left when it ends
+  // (a beat left half-way and played again had put a second one in), nor when it begins again (CH.resplit)
+  function putAway(gone) {
+    const b = G.state && G.state.bag, L = b && Array.isArray(b.items) ? b.items : [];
+    for (let i = L.length - 1; i >= 0; i--) if (L[i] && L[i].q && gone(L[i].q)) L.splice(i, 1);
+  }
   function* finish(id, f) {
     const s = st(), c = CH.def(id);
     S.finishQuest(id); s.doneSess[id] = G.words.sess(); s.lastDoneSess = G.words.sess();
+    putAway(q => q === id);
     yield G.badge(id);
     if (G.hearts && c.giver && G.hearts.WHO.includes(c.giver) && G.hearts.add(c.giver, 2, 'errand')) { yield 40; yield* G.hearts.milestones(c.giver); }
     const sc = scripts[id]; if (sc && sc.o.after) yield* sc.o.after(f, CH.ctx(id)); // (the last chapter: the diploma)
@@ -206,7 +223,7 @@
   // the chapter (and beat) a trigger could run now: the active one, or the next one when it may open
   function live1(o = {}, line = 'villa') {
     const cur = CH.current(line);
-    if (cur) { const sc = scripts[cur]; return sc ? { id: cur, k: st().step[cur] | 0, b: CH.beat(cur), started: true, line } : null; }
+    if (cur) { const sc = scripts[cur], b = sc && CH.beat(cur); if (sc && !b) past = cur; return b ? { id: cur, k: st().step[cur] | 0, b, started: true, line } : null; } // (past its end: it ends by itself, CH.update)
     const nx = CH.next(line); if (!nx || !scripts[nx] || CH.gate(nx, o)) return null;
     return { id: nx, k: 0, b: scripts[nx].beats[0], started: false, line };
   }
@@ -384,6 +401,7 @@
     if (!live({}, 'villa') && !CH.current()) { const nx = CH.next(); if (nx && CH.def(nx).when === 'evening' && !CH.gate(nx, { evening: true }) && G.day && G.day.bring && !G.day.brought()) G.day.bring(180); }
     if (f.locked || G.top() !== f || G.fade.a > 0 || f.player.moving || live0()) return;
     if (!CH.openerDone || !CH.openerDone()) { if (f.mapId === 'casa' && CH.opener && G.state.name) scene(f, CH.opener(f)); return; } // (a new game: the opener first)
+    if (past) { const id = past; past = null; if (isPast(id)) { scene(f, finish(id, f)); return; } } // (a chapter past its script's end ends by itself)
     const A = find(L => { const a = CH.autoOf(L); return !!a && (a === true || a === f.mapId) && when(L); });
     if (A) { scene(f, play(A.id, f, A.k)); return; }
     const au = L && CH.autoOf(L);
@@ -523,6 +541,50 @@
     }
     if (!v) c.lastDoneSess = null;
   };
+
+  // ---------- a script whose beats changed (a chapter re-split) ----------
+  // A save keeps her place in a chapter as a step number (ch.step[id]: the beat it is on). When a chapter's beats are
+  // added, taken out or put in another order, the same number means another beat: a save made in the middle of that
+  // chapter would go on in the wrong place, or past the end. So a script whose beats changed says so in its options:
+  //   rev: 2             the script's revision: one more each time its beats change (no rev: 1)
+  //   steps: {1: [...]}  for a save of revision 1: the new step for each old step, where the old beats map cleanly
+  //                      onto the new ones (the list is as long as the OLD script; null in it, or no list for that
+  //                      revision: no clean place to go on from)
+  // A chapter remembers the revision it began on (ch.rev[id], CH.start; none: 1, every release before revisions).
+  // CH.resplit() runs when a game is loaded (after CH.migrate: before anything reads a step). A chapter going on that
+  // began on another revision goes on at the step its table gives; with no clean place it begins again at its first
+  // beat with its own things put away (its data, its things in the bag, its find-it puzzles not found yet), so the
+  // map and the bag are as that beat expects: she plays a few steps again, and keeps what she learned (the words, the
+  // tricks, the hearts). An old step past the end of its table was past the old script's end: it ends by itself
+  // (isPast, above). The rule for builders: docs/CONTENT.md; tools/test-resplit.js loads real saves of the older
+  // release, one for every step of every chapter that changed, and plays each to its end.
+  CH.revOf = id => (scripts[id] && scripts[id].o.rev) | 0 || 1;
+  function restart(id) {
+    const s = st(), c = CH.def(id);
+    s.step[id] = 0; s.data[id] = {};
+    putAway(q => q === id);
+    const F = G.state.finds;
+    if (isObj(F) && c) for (const w of c.words || []) if (F[w] && !F[w].found) delete F[w];
+  }
+  CH.resplit = function () {
+    if (!G.state) return;
+    const s = st();
+    putAway(q => !!CH.def(q) && CH.done(q)); // (left over from a chapter long done: an older release never put them away)
+    for (const id of Object.keys(scripts)) {
+      if (!CH.active(id)) continue;
+      const have = s.rev[id] | 0 || 1, want = CH.revOf(id), n = scripts[id].beats.length;
+      let k = s.step[id] | 0; if (k < 0) k = 0;
+      if (have !== want) {
+        const T = (scripts[id].o.steps || {})[have], to = Array.isArray(T) ? (k < T.length ? T[k] : n) : null;
+        if (Number.isInteger(to) && to >= 0) k = to; else { restart(id); k = 0; }
+        s.rev[id] = want;
+      }
+      s.step[id] = k;
+    }
+  };
+  // (state.js calls CH.migrate for every game it loads; a game must open whatever happens here: an error goes to the
+  // problem log, and a step left past an end still ends by itself)
+  { const older = CH.migrate; CH.migrate = function () { older(); try { CH.resplit(); } catch (e) { if (G.oops) G.oops(e, 'resplit'); else console.error(e); } }; }
 
   // =====================================================================
   //  Helpers for the scripts (content/es/story-*.js)

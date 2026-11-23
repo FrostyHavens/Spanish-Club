@@ -558,6 +558,7 @@
       yield* quiz('paco', '¿Qué es?', 'He waves at the water: what is it?', 'mar', ['concha', 'cangrejo', 'ola'], { show: 'mar' });
     } },
   ], {
+    rev: 2, steps: { 1: [0, 1, 2] }, // (revision 2: the same steps: src/chapters.js "a script whose beats changed")
     stage(f) { if (f.mapId === 'playa') { const n = npcAt(f, 'paco'); if (n && !n.busy) CK.place(f, 'paco', ...P('playa', 'paco'), 'down'); } },
     draw(f, ctx, c) { // the net at the end of the pier: in the water, then up on the planks with its catch
       if (f.mapId !== 'playa' || !c.data.net || c.data.net > 2 || CH.done('playa1')) return;

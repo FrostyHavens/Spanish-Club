@@ -207,6 +207,38 @@ gets a small white arrow instead (when the hint gives one place, Canelo, the cat
 other choices), and the hand stays away. A find-it with `pics` is a choice too. Never send the child somewhere with
 words only ("¡Al parque!"): the next beat's trigger is what the arrow points at, so it must be where the line sends them.
 
+## Changing the beats of a chapter that is live (`rev`, `steps`, `tools/test-resplit.js`)
+Her save keeps her place in a chapter as a number: the beat she is on. When a chapter's beats are added, taken out, put
+in another order or given another trigger, or when something a beat puts in the bag or in `c.data` moves to another
+beat, that number means something else in the new game. A save made in the middle of that chapter would go on in the
+wrong place, or past the end. So whenever you change the beats of a chapter that has been released:
+1. **Give its script one revision more**, in the options of its `G.chapters.script(id, beats, opts)` call: `rev: 2` (a
+   script with no `rev` is revision 1), later 3, and so on.
+2. **Say where an older save goes on**, in the same options: `steps: { 1: [0, 1, 2, 3, 4, 4, 5, 6] }` reads "a save of
+   revision 1 on its step 5 goes on at step 4 of this script". The list is as long as the OLD script. Use it where the
+   old steps map cleanly onto the new ones: at the new step, the bag and `c.data` are what that beat expects. Between
+   two steps take the earlier one: playing a step again is fine (her words are met, it is practice); skipping one, or a
+   scene with something missing, is not. When the script later goes to revision 3 it needs a list for each older
+   revision, each straight to the new script: `steps: { 1: [...], 2: [...] }`.
+3. **Or accept a restart**: leave the list out (or write `null` for the old steps that have no clean place). The chapter
+   then begins again at its first beat with its own things put away: its `c.data`, its things in the bag (`{ q: id }`),
+   its find-it puzzles not found yet. She keeps all she has learned (words, tricks, hearts). Check first that the
+   chapter's beats change nothing else that a second play would trip over (a flag in `G.state.flags`).
+4. **Run the test**: `NODE_PATH=$(npm root -g) node tools/test-resplit.js` (slow: `ONLY=c6` for one chapter,
+   `PICK=ends` for three saves of each). It opens real saves of older releases (`tools/fixtures/saves-<date>.json`: one
+   for every step of every chapter) and plays each to the end of its chapter. It also fails when a script's beats are
+   not the ones written down for its revision (`tools/fixtures/chapter-shapes.json`; `RECORD=1` writes them down, once
+   the table is right). After every release, add the saves of the game that is now live (`tools/make-old-saves.js`:
+   its header says how) and keep the older files: her save may be several releases old.
+
+A change of wording inside a beat needs none of this. Two nets catch what slips through: a chapter going on whose step
+is past the end of its script ends by itself at the next free moment on the map (done, its badge, the hearts, the next
+chapter free to open), and a chapter's things never stay in the bag once it is done. The code is in `src/chapters.js`
+("a script whose beats changed").
+
+Going back to an older release after a newer one has been played has no code: it needs the backup made before the
+update (grown-ups menu, Back up / restore), because the older game does not know the newer steps.
+
 ## Review in the world (`src/favores.js`)
 - **Favores**: from chapter 7, up to three townsfolk a day have a "?" bubble and ask about one known word that is due
   (`G.review.next`), the way their life shows it: Tomás and Gómez send you to a place named by its word only (arriving

@@ -1,0 +1,374 @@
+{
+ "c1": {
+  "rev": 1,
+  "beats": [
+   "who:\"mama\" auto:fn when",
+   "auto:\"casa\" when",
+   "auto:\"casa\"",
+   "auto:\"casa\"",
+   "auto:\"casa\"",
+   "door:\"casa\""
+  ]
+ },
+ "c2": {
+  "rev": 1,
+  "beats": [
+   "auto:\"villa\"",
+   "who:\"nico\"",
+   "tap:\"cat\"",
+   "who:\"canelo\"",
+   "tap:\"cat\"",
+   "auto:\"villa\" when"
+  ]
+ },
+ "c3": {
+  "rev": 1,
+  "beats": [
+   "who:\"mama\"",
+   "who:\"canelo\"",
+   "auto:\"casa\"",
+   "auto:\"casa\"",
+   "auto:\"casa\"",
+   "door:\"casa\"",
+   "who:\"nico\""
+  ]
+ },
+ "c4": {
+  "rev": 2,
+  "beats": [
+   "who:\"pepe\"",
+   "spot:{\"map\":\"villa\",\"at\":[16,9],\"icon\":\"pregunta\"}",
+   "spot:{\"map\":\"villa\",\"at\":[18,9],\"icon\":\"pregunta\"}",
+   "spot:{\"map\":\"villa\",\"at\":[20,9],\"icon\":\"pregunta\"}",
+   "who:\"rosa\""
+  ]
+ },
+ "c5": {
+  "rev": 1,
+  "beats": [
+   "who:\"sofia\"",
+   "auto:\"villa\"",
+   "spots:[{\"map\":\"villa\",\"at\":[16,19],\"quiet\":true},{\"map\":\"villa\",\"at\":[13,22],\"quiet\":true},{\"map\":\"villa\",\"at\":[22,19],\"quiet\":true}]",
+   "who:\"sofia\""
+  ]
+ },
+ "c6": {
+  "rev": 2,
+  "beats": [
+   "who:\"marta\"",
+   "auto:\"panaderia\"",
+   "who:\"nico\"",
+   "tap:\"pato\"",
+   "who:\"canelo\"",
+   "tap:\"pato\"",
+   "who:\"marta\""
+  ]
+ },
+ "c7": {
+  "rev": 2,
+  "beats": [
+   "who:\"mama\"",
+   "who:\"gomez\"",
+   "auto:\"villa\" when",
+   "who:\"nico\"",
+   "auto:\"villa\" when",
+   "who:\"lucia\"",
+   "auto:\"villa\" when",
+   "who:\"tomas\"",
+   "auto:\"villa\" when",
+   "spot:{\"map\":\"villa\",\"at\":[41,12],\"icon\":\"cabra\"}",
+   "who:\"mama\""
+  ]
+ },
+ "c8": {
+  "rev": 2,
+  "beats": [
+   "who:\"mama\"",
+   "auto:\"escuela\"",
+   "who:\"nico\"",
+   "who:\"sofia\"",
+   "who:\"rosa\"",
+   "who:\"luna\""
+  ]
+ },
+ "c9": {
+  "rev": 1,
+  "beats": [
+   "evening:\"dusk\"",
+   "evening:\"dusk\"",
+   "evening:\"dusk\"",
+   "evening:\"dawn\""
+  ]
+ },
+ "c10": {
+  "rev": 2,
+  "beats": [
+   "who:\"tomas\"",
+   "spot:{\"map\":\"villa\",\"at\":[18,11],\"icon\":\"agua\"}",
+   "who:\"tomas\"",
+   "auto:\"villa\" when",
+   "auto:\"escuela\"",
+   "spot:{\"map\":\"villa\",\"at\":[41,12],\"quiet\":true}",
+   "who:\"tomas\""
+  ]
+ },
+ "c11": {
+  "rev": 2,
+  "beats": [
+   "who:\"rosa\"",
+   "spot:{\"map\":\"villa\",\"at\":[2,8],\"icon\":\"gallina\"}",
+   "auto:\"villa\" when",
+   "auto:\"villa\" when",
+   "auto:\"villa\" when",
+   "tap:\"gallina\"",
+   "who:\"rosa\""
+  ]
+ },
+ "c12": {
+  "rev": 2,
+  "beats": [
+   "who:\"mama\"",
+   "who:\"pepe\"",
+   "who:\"pepe\"",
+   "who:\"mama\""
+  ]
+ },
+ "c13": {
+  "rev": 2,
+  "beats": [
+   "who:\"rosa\"",
+   "auto:\"panaderia\"",
+   "who:\"pepe\"",
+   "spot:{\"map\":\"villa\",\"at\":[2,8],\"icon\":\"huevo\"}",
+   "spot:{\"map\":\"villa\",\"at\":[41,12],\"icon\":\"cubeta\"}",
+   "spot:{\"map\":\"villa\",\"at\":[18,11],\"icon\":\"agua\"}",
+   "who:\"rosa\"",
+   "spot:{\"map\":\"villa\",\"at\":[15,20],\"icon\":\"canasta\"}"
+  ]
+ },
+ "c14": {
+  "rev": 2,
+  "beats": [
+   "who:\"sofia\"",
+   "auto:\"villa\"",
+   "auto:\"villa\"",
+   "who:\"marta\"",
+   "who:\"sofia\"",
+   "who:\"mama\""
+  ]
+ },
+ "c15": {
+  "rev": 2,
+  "beats": [
+   "who:\"lucia\"",
+   "spots:[{\"map\":\"villa\",\"at\":[8,12],\"quiet\":true,\"off\":\"fn\"},{\"map\":\"villa\",\"at\":[31,9],\"quiet\":true,\"off\":\"fn\"},{\"map\":\"villa\",\"at\":[23,15],\"quiet\":true,\"off\":\"fn\"},{\"map\":\"villa\",\"at\":[12,15],\"quiet\":true,\"off\":\"fn\"}]",
+   "who:\"lucia\"",
+   "spot:{\"map\":\"villa\",\"at\":[39,7],\"icon\":\"fn\"}",
+   "who:\"lucia\""
+  ]
+ },
+ "c16": {
+  "rev": 2,
+  "beats": [
+   "who:\"gomez\"",
+   "auto:\"biblioteca\"",
+   "who:\"gomez\"",
+   "auto:\"villa\"",
+   "auto:\"villa\" when",
+   "who:\"ines\"",
+   "who:\"gomez\""
+  ]
+ },
+ "c17": {
+  "rev": 2,
+  "beats": [
+   "who:\"nico\"",
+   "tap:\"rana\"",
+   "spot:{\"map\":\"villa\",\"at\":[23,18],\"icon\":\"nota\"}",
+   "tap:\"pato\"",
+   "tap:\"cat\"",
+   "tap:\"rana\"",
+   "auto:\"villa\""
+  ]
+ },
+ "c18": {
+  "rev": 2,
+  "beats": [
+   "who:\"luna\"",
+   "spot:{\"map\":\"villa\",\"at\":[18,11],\"icon\":\"pagina\"}",
+   "tap:\"cat\"",
+   "tap:\"rana\"",
+   "tap:\"conejo\"",
+   "spot:{\"map\":\"villa\",\"at\":[23,18],\"icon\":\"nota\"}",
+   "spot:{\"map\":\"villa\",\"at\":[12,15],\"quiet\":true}",
+   "spot:{\"map\":\"villa\",\"at\":[2,8],\"icon\":\"gallina\"}",
+   "who:\"luna\""
+  ]
+ },
+ "c19": {
+  "rev": 2,
+  "beats": [
+   "who:\"luna\"",
+   "tap:\"cat\"",
+   "tap:\"conejo\"",
+   "spot:{\"map\":\"villa\",\"at\":[2,8],\"quiet\":true}",
+   "tap:\"pato\"",
+   "spot:{\"map\":\"villa\",\"at\":[41,12],\"icon\":\"estrella\"}",
+   "auto:\"villa\""
+  ]
+ },
+ "c20": {
+  "rev": 2,
+  "beats": [
+   "who:\"luna\"",
+   "who:\"marta\"",
+   "who:\"ines\"",
+   "who:\"rosa\"",
+   "who:\"pepe\"",
+   "who:\"sofia\"",
+   "spots:[{\"map\":\"villa\",\"at\":[14,20],\"icon\":\"fn\",\"off\":\"fn\"},{\"map\":\"villa\",\"at\":[16,22],\"icon\":\"fn\",\"off\":\"fn\"},{\"map\":\"villa\",\"at\":[22,20],\"icon\":\"fn\",\"off\":\"fn\"},{\"map\":\"villa\",\"at\":[17,23],\"icon\":\"fn\",\"off\":\"fn\"}]",
+   "who:\"sofia\"",
+   "who:\"nico\"",
+   "who:\"lucia\"",
+   "who:\"luna\""
+  ]
+ },
+ "c21": {
+  "rev": 2,
+  "beats": [
+   "who:\"luna\"",
+   "spot:{\"map\":\"villa\",\"at\":[41,7],\"icon\":\"estrella\"}",
+   "spot:{\"map\":\"villa\",\"at\":[41,12],\"icon\":\"manzana\"}",
+   "who:\"sofia\"",
+   "who:\"nico\"",
+   "who:\"lucia\""
+  ]
+ },
+ "playa1": {
+  "rev": 2,
+  "beats": [
+   "who:\"paco\"",
+   "spot:{\"map\":\"playa\",\"at\":[5,21],\"icon\":\"redpesca\"}",
+   "who:\"paco\""
+  ]
+ },
+ "playa2": {
+  "rev": 1,
+  "beats": [
+   "who:\"marina\"",
+   "who:\"nieves\"",
+   "who:\"marina\""
+  ]
+ },
+ "playa3": {
+  "rev": 1,
+  "beats": [
+   "who:\"marina\"",
+   "spot:{\"map\":\"playa\",\"at\":[22,13],\"icon\":\"nidoarena\"}",
+   "who:\"canelo\"",
+   "spots:[{\"map\":\"playa\",\"at\":[21,13],\"quiet\":true,\"off\":\"fn\"},{\"map\":\"playa\",\"at\":[22,14],\"quiet\":true,\"off\":\"fn\"},{\"map\":\"playa\",\"at\":[23,13],\"quiet\":true,\"off\":\"fn\"}]",
+   "auto:\"playa\" when"
+  ]
+ },
+ "bosque1": {
+  "rev": 2,
+  "beats": [
+   "who:\"elena\"",
+   "spot:{\"map\":\"bosque\",\"at\":[18,16],\"icon\":{\"icon\":\"oso\",\"n\":\"s\"}}",
+   "spot:{\"map\":\"bosque\",\"at\":[32,5],\"icon\":\"huella\"}"
+  ]
+ },
+ "bosque2": {
+  "rev": 1,
+  "beats": [
+   "who:\"lupe\"",
+   "spots:[{\"map\":\"bosque\",\"at\":[15,17],\"quiet\":true,\"off\":\"fn\"},{\"map\":\"bosque\",\"at\":[17,21],\"quiet\":true,\"off\":\"fn\"},{\"map\":\"bosque\",\"at\":[21,17],\"quiet\":true,\"off\":\"fn\"},{\"map\":\"bosque\",\"at\":[11,16],\"quiet\":true,\"off\":\"fn\"},{\"map\":\"bosque\",\"at\":[22,21],\"quiet\":true,\"off\":\"fn\"}]",
+   "auto:\"bosque\""
+  ]
+ },
+ "bosque3": {
+  "rev": 1,
+  "beats": [
+   "who:\"elena\"",
+   "spot:{\"map\":\"bosque\",\"at\":[30,19],\"icon\":{\"icon\":\"binoculares\"}}",
+   "who:\"elena\""
+  ]
+ },
+ "juegos1": {
+  "rev": 1,
+  "beats": [
+   "who:\"ana\"",
+   "who:\"pablo\"",
+   "who:\"ana\""
+  ]
+ },
+ "juegos2": {
+  "rev": 1,
+  "beats": [
+   "who:\"pablo\"",
+   "spot:{\"map\":\"juegos\",\"at\":[25,3],\"icon\":{\"icon\":\"papalote\"}}",
+   "who:\"pablo\"",
+   "spot:{\"map\":\"juegos\",\"at\":[6,4],\"icon\":{\"icon\":\"papalote\"}}"
+  ]
+ },
+ "juegos3": {
+  "rev": 1,
+  "beats": [
+   "who:\"ana\"",
+   "spot:{\"map\":\"juegos\",\"at\":[21,3],\"icon\":\"resbaladilla\"}",
+   "spot:{\"map\":\"juegos\",\"at\":[17,3],\"icon\":\"columpio\"}",
+   "spot:{\"map\":\"juegos\",\"at\":[16,7],\"icon\":\"subibaja\"}"
+  ]
+ },
+ "abuelos1": {
+  "rev": 1,
+  "beats": [
+   "who:\"abuela\"",
+   "spot:{\"map\":\"abuelos\",\"at\":[19,16],\"icon\":{\"icon\":\"camisa\",\"col\":\"#e04040\"}}",
+   "spot:{\"map\":\"abuelos\",\"at\":[21,19],\"icon\":{\"icon\":\"calcetines\",\"col\":\"#f8c830\"}}",
+   "spot:{\"map\":\"abuelos_casa\",\"at\":[14,1],\"icon\":{\"icon\":\"espejo\"}}"
+  ]
+ },
+ "abuelos2": {
+  "rev": 1,
+  "beats": [
+   "who:\"abuelo\"",
+   "spot:{\"map\":\"abuelos\",\"at\":[12,16],\"icon\":{\"icon\":\"agua\"}}"
+  ]
+ },
+ "abuelos3": {
+  "rev": 1,
+  "beats": [
+   "who:\"abuela\"",
+   "spot:{\"map\":\"abuelos_casa\",\"at\":[17,7],\"icon\":{\"icon\":\"zapatos\",\"col\":\"#c03030\"}}",
+   "spot:{\"map\":\"abuelos\",\"at\":[19,21],\"icon\":\"bebe\"}",
+   "spot:{\"map\":\"abuelos\",\"at\":[19,11],\"icon\":{\"icon\":\"camara\"}}"
+  ]
+ },
+ "montana1": {
+  "rev": 2,
+  "beats": [
+   "who:\"lucho\"",
+   "spot:{\"map\":\"montana\",\"at\":[9,11],\"icon\":\"nieve\"}",
+   "spot:{\"map\":\"montana\",\"at\":[24,18],\"icon\":{\"icon\":\"gorro\",\"col\":\"#3870d8\"}}",
+   "spot:{\"map\":\"montana\",\"at\":[10,9],\"icon\":\"nieve\"}"
+  ]
+ },
+ "montana2": {
+  "rev": 1,
+  "beats": [
+   "who:\"mateo\"",
+   "spots:[{\"map\":\"montana\",\"at\":[7,7],\"icon\":{\"icon\":\"bolanieve\"},\"off\":\"fn\"},{\"map\":\"montana\",\"at\":[13,8],\"icon\":{\"icon\":\"bolanieve\"},\"off\":\"fn\"},{\"map\":\"montana\",\"at\":[9,10],\"icon\":{\"icon\":\"bolanieve\"},\"off\":\"fn\"}]",
+   "who:\"lucho\"",
+   "spot:{\"map\":\"montana\",\"at\":[10,8],\"icon\":{\"icon\":\"zanahoria\"}}",
+   "spot:{\"map\":\"montana_refugio\",\"at\":[2,1],\"icon\":{\"icon\":\"chocolate\"}}"
+  ]
+ },
+ "montana3": {
+  "rev": 1,
+  "beats": [
+   "who:\"mateo\"",
+   "spot:{\"map\":\"montana\",\"at\":[12,17],\"icon\":\"elsol\"}"
+  ]
+ }
+}

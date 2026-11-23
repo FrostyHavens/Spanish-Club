@@ -599,6 +599,7 @@
       yield* sayShow('elena', 'cueva', T('¡A su [cueva]! ¡[gracias:Gracias], {name}!', 'Home to their cave! Thank you, {name}! (they sleep in there: tiptoe in and see)'));
     } },
   ], {
+    rev: 2, steps: { 1: [0, 1, 2] }, // (revision 2: the same steps: src/chapters.js "a script whose beats changed")
     stage(f, c) { if (f.mapId === 'bosque' && (c.data.cub | 0) < 3) { const n = npcAt(f, 'elena'); if (n && !n.busy) CK.place(f, 'elena', ...P('bosque', 'elena'), 'down'); } },
     draw(f, ctx, c) {
       if (f.mapId !== 'bosque' || CH.done('bosque1') || !c.data.cub) return;

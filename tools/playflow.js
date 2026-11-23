@@ -94,7 +94,10 @@ async function settle(g, what) {
   for (let i = 0; i < 400; i++) {
     const s = await g.ev(() => ({ n: G.top().constructor.name, free: G.top() === G.field && !G.field.locked && G.fade.a === 0 && !G.field.player.moving && !G.field.route, hint: !!G.top().hintXY, t: G.top().t }));
     if (s.free) return;
-    if (s.n === 'TodayCard') { await hook('TodayCard'); if (!g.seen.has('TodayCard')) { await g.frames(150); await g.shot('hoy'); g.seen.add('TodayCard'); } await g.tap(160, 200); continue; }
+    if (s.n === 'TodayCard') { await hook('TodayCard'); if (!g.seen.has('TodayCard')) { await g.frames(150); await g.shot('hoy'); g.seen.add('TodayCard'); } // (the card's own corner: a tap on one of today's word cards only says the word, and with many words one lies at 160,200)
+      const hx = await g.ev(() => G.top().revealed() && G.top().wait >= 20 ? G.top().hintXY() || (() => { const b = G.top().box(); return [b.x + b.w - 13, b.y + b.h - 9]; })() : null);
+      if (!hx) { await g.frames(6); continue; }
+      await g.tap(hx[0], hx[1]); continue; }
     if (s.n === 'Night') { await hook('Night'); if (!g.seen.has('Night')) { await g.frames(60); await g.shot('night'); g.seen.add('Night'); } await g.frames(10); continue; }
     if (s.n === 'Field') { await g.frames(4); continue; }
     if (s.n === 'PetMenu') { // Canelo's menu: practise the trick he's learning (the dog show needs it), else close it
@@ -108,7 +111,7 @@ async function settle(g, what) {
     if (s.n === 'Diploma' && !g.seen.has('Diploma')) { await g.frames(80); await g.shot('diploma'); }
     await g.drive(() => { const t = G.top(); return t === G.field || ['TodayCard', 'Night', 'PetMenu'].includes(t.constructor.name); }, what);
   }
-  throw new Error('never settled: ' + what);
+  throw new Error('never settled: ' + what + ' (on ' + JSON.stringify(await g.ev(() => ({ top: G.top().constructor.name, map: G.field && G.field.mapId, locked: !!(G.field && G.field.locked), fade: G.fade.a, moving: !!(G.field && G.field.player.moving), route: !!(G.field && G.field.route), over: G.day.over() }))) + ')');
 }
 
 // title -> creator (girl, a few looks) -> name LUZ -> Mamá's intro, free at home
