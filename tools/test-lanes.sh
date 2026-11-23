@@ -2,6 +2,7 @@
 # Runs the smoke test and every tools/test-*.js in LANES lanes side by side, and does not stop at a failure:
 # every file gets its own log and a line in the summary, so one run shows every failure and how long each file took.
 #   bash tools/test-lanes.sh [lanes: 2] [log dir] [only: a pattern, e.g. 'zone|day']
+# SKIP=<pattern> leaves files out (SKIP=resplit: the old-saves test takes about 2.5 hours; run it by itself beside the lanes).
 # The longest files start first, one at the head of each lane. Exit code: 0 when every file passed.
 # Several tests are timing-sensitive under load: keep to 2 lanes on a 4-core machine, and run a failed file again
 # by itself before treating the failure as real.
@@ -17,7 +18,7 @@ for t in $LONG; do [ -e "$t" ] && FILES="$FILES $t"; done
 for t in tools/smoke.js tools/test-*.js; do
   case " $LONG " in *" $t "*) ;; *) FILES="$FILES $t" ;; esac
 done
-FILES=$(for t in $FILES; do echo "$t"; done | grep -E "$ONLY")
+FILES=$(for t in $FILES; do echo "$t"; done | grep -E "$ONLY" | grep -vE "${SKIP:-^$}")
 lane() { # lane <k>: every LANES-th file, starting at the k-th
   local k=$1 i=0 t name t0 rc
   for t in $FILES; do
