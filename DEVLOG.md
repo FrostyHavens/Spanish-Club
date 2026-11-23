@@ -59,7 +59,7 @@ fail (`docs/LEARNING_AUDIT.md` holds the runs from before this release).
 moments a minute against a target of 3: both belong to the free-play work that comes next
 (`docs/NEXT_ACTIONS.md`).
 
-**Added on 24 November, before release: the dog on the spot.** The long tap playthrough stuck at the bakery in
+**Added on 23 November, before release: the dog on the spot.** The long tap playthrough stuck at the bakery in
 chapter 13. One cause was real and is fixed: when Canelo (or someone following her) stood on the very spot the story,
 a find-it puzzle or an errand sent her to, her tap went to the dog and the place never answered. Now the place gets
 the tap. A new quick check in `tools/smoke.js` covers it.
