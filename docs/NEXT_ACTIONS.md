@@ -14,7 +14,11 @@ read code and documents only: **no tests were run and nothing was measured on he
 
 ## Status on 23 November 2026
 
-**Built on the work branch and tested, ready to release** (see the DEVLOG entry of 22 November): her save survives
+**Released on 24 November 2026** (tag `release-2026-11-24`). One open question: the tap playthrough stuck at
+the bakery in chapter 13 twice; one cause (the dog standing on the spot) is fixed, the second stall is not explained
+and has not come back in eleven runs. Watch for a `STUCK` line in `test-playthrough` logs.
+
+**Built and tested in this release** (see the DEVLOG entry of 22 November): her save survives
 the re-split chapters; reviews are spread after a break; speed for the old iPad with a speed test; readable cards;
 night on every outdoor map; the day's clock over a reload; a full proofread of the Spanish with its fixes; and the
 two waiting Sprint 3 items (shorter chains, Mexican names).

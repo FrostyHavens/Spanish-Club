@@ -59,6 +59,20 @@ fail (`docs/LEARNING_AUDIT.md` holds the runs from before this release).
 moments a minute against a target of 3: both belong to the free-play work that comes next
 (`docs/NEXT_ACTIONS.md`).
 
+**Added on 24 November, before release: the dog on the spot.** The long tap playthrough stuck at the bakery in
+chapter 13. One cause was real and is fixed: when Canelo (or someone following her) stood on the very spot the story,
+a find-it puzzle or an errand sent her to, her tap went to the dog and the place never answered. Now the place gets
+the tap. A new quick check in `tools/smoke.js` covers it.
+
+To be honest about what is not known: the playthrough stuck at the bakery once more after that fix, and then passed
+eleven times in a row, including two complete test runs (43 files, all passing). I could not make it happen again, so
+the second stall is not explained. The test bot now writes down what is on a spot when it keeps tapping it (a line
+starting `STUCK` in the test log) and gives up after 40 tries, so the next stall will say why. If she ever taps a
+picture bubble and nothing happens, walking a few steps away and tapping again is the thing to try, and please tell me.
+
+The old-saves test was not run again after this fix (it takes two and a half hours and the fix does not touch saves);
+it passed on the build just before.
+
 ## 2026-10-22 — Polish Sprint 2: a memory engine for three years, honest questions, reviews everywhere, an honest Learning page
 The second sprint of the polish plan (`docs/AUDIT_2026-10.md` section 5, items 2.1-2.12). It was built as four
 parallel jobs, then reviewed (22 confirmed findings, all fixed), measured with a new learning audit, tuned, and run
