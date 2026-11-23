@@ -183,7 +183,13 @@ async function playToEnd(g, o = {}) {
     }
     idle = 0;
     if (step < 3 || step % 25 === 0) console.log('    tap', t.why, 'on', st.map);
-    if (process.env.DBG && t.direct && t.why === lastWhy && ++same > 4) { console.log('    DBG', t.why, JSON.stringify(t), await g.ev(() => JSON.stringify({ q: G.state.quests, p: [G.field.player.x, G.field.player.y], n: G.field.npcs.filter(n => !n.hidden).map(n => n.id + ':' + n.x + ',' + n.y + (n.ghost ? 'g' : '') + ':' + JSON.stringify(n.alert && n.alert())), learning: G.pet.learning(), tricks: G.state.pet.tricks }))); await g.shot('dbg_loop'); if (same > 6) throw new Error('loop'); }
+    // the same place tapped again and again: say what is there (once), and give up long before the step limit
+    if (t.direct && t.why === lastWhy) same++;
+    if (same === (process.env.DBG ? 5 : 12) || same === 40) {
+      console.log('    STUCK', t.why, JSON.stringify(t), await g.ev(tile => { const f = G.field, tt = f.tapTarget({ x: tile[0] * G.TILE + 12 - Math.round(f.cam.x), y: tile[1] * G.TILE + 12 - Math.round(f.cam.y) }); return JSON.stringify({ q: G.state.quests, p: [f.player.x, f.player.y, f.player.dir], target: { npc: tt.npc && tt.npc.id, search: tt.search, exit: tt.exit, special: tt.special, x: tt.x, y: tt.y }, locked: f.locked, top: G.top().constructor.name, tasks: f.tasks && f.tasks.list ? f.tasks.list.length : undefined, over: G.day.over(), time: Math.round(G.sessionTime), sunsetAt: G.day.sunsetAt(), finds: G.state.finds, n: f.npcs.filter(n => !n.hidden).map(n => n.id + ':' + n.x + ',' + n.y + (n.ghost ? 'g' : '') + ':' + JSON.stringify(n.alert && n.alert())), learning: G.pet.learning(), tricks: G.state.pet.tricks }); }, t.tile));
+      await g.shot('stuck_' + same);
+      if (same === 40 || process.env.DBG) throw new Error('loop: ' + t.why);
+    }
     if (t.why !== lastWhy) same = 0;
     lastWhy = t.why;
     await g.tap(t.sx, t.sy);
