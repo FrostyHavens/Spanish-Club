@@ -11,7 +11,7 @@ LOGS=${2:-${SPANISH_CLUB_OUT:-${TMPDIR:-/tmp}}/spanish-club-tests}
 ONLY=${3:-.}
 NODE_PATH=$(npm root -g); export NODE_PATH
 rm -rf "$LOGS"; mkdir -p "$LOGS"
-LONG="tools/test-playthrough.js tools/test-chains.js tools/test-chapters2.js tools/test-live.js"
+LONG="tools/test-resplit.js tools/test-playthrough.js tools/test-chains.js tools/test-chapters2.js tools/test-live.js"
 FILES=""
 for t in $LONG; do [ -e "$t" ] && FILES="$FILES $t"; done
 for t in tools/smoke.js tools/test-*.js; do
