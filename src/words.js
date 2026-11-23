@@ -171,8 +171,12 @@
   // ---------- calendar ----------
   G.debug = G.debug || {};
   G.now = () => Date.now() + (G.debug.dayShift || 0) * 864e5;
-  G.today = () => { const d = new Date(G.now()); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
-  const dayNum = () => { const d = new Date(G.now()); return Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5); };
+  // (the date is read off the clock once for each moment of a frame (G.pulse, core.js), not every time it is asked: a
+  // frame asks hundreds of times. Between frames, and when the test's day shift changes, always afresh)
+  let cal = { p: 0 };
+  const calNow = () => { const p = G.pulse, sh = G.debug.dayShift || 0; if (p && cal.p === p && cal.sh === sh) return cal; const d = new Date(G.now()); return (cal = { p, sh, s: d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(), n: Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5) }); };
+  G.today = () => calNow().s;
+  const dayNum = () => calNow().n;
   W.dayNum = dayNum;
 
   // ---------- session, day and clock (G.state.wm) ----------
@@ -350,19 +354,28 @@
   W.rec = function (id, make) {
     if (!G.state || !W.item(id)) return null;
     const ws = recsOf(id); let r = ws[id];
-    if (r && (!isObj(r) || r.st == null)) r = ws[id] = migrate(isObj(r) ? r : {});
-    if (r && r.v !== W.V) up(r);
-    if (r && r.st >= 1 && r.due == null && r.dc == null && r.dd != null) r.dc = dayNum() + ((r.dd | 0) - wm().day); // (a game-day due date only: its days to go, as calendar days)
+    if (!G.pulse) ver++; // (handed out between frames: a test or a tool may change it by hand, so what is remembered about the records starts again)
+    if (r && (!isObj(r) || r.st == null)) { r = ws[id] = migrate(isObj(r) ? r : {}); ver++; }
+    if (r && r.v !== W.V) { up(r); ver++; }
+    if (r && r.st >= 1 && r.due == null && r.dc == null && r.dd != null) { r.dc = dayNum() + ((r.dd | 0) - wm().day); ver++; } // (a game-day due date only: its days to go, as calendar days)
     if (!r && make) { upState(); r = ws[id] = { st: 0, box: 0, due: null, dd: null, dc: null, fu: 0, met: null, ms: 0, md: 0, how: null, last: null, n: 0, right: 0, wrong: 0, said: 0, cue: 0, ret: 0, ft: {}, star: '', s3: null, gold: false, learned: false, v: W.V }; }
     return r || null;
   };
   const save = () => { if (G.st && G.st.autosave) G.st.autosave(); };
-  let ver = 0; // (bumped by every change to a schedule or a stage: G.budget's memo)
+  let ver = 0; // (bumped by every change to a schedule or a stage: G.budget's memo, and G.budget.ver() for other files')
   const log = (ty, id, o) => { if (G.vocabLog) G.vlog(ty, id, o); };
   W.stage = id => { const r = W.rec(id); return r ? r.st | 0 : 0; };
   W.met = id => W.stage(id) >= 1;
   W.list = (min = 1) => Object.keys(D().words).filter(id => W.stage(id) >= min);
-  W.count = (min = 1) => W.list(min).length;
+  // (how many: counted again only when a stage has changed (ver) or the save, not each time it is asked: the deck in the
+  // map's corner asks every frame, docs/AUDIT_2026-10.md 4.1. Between frames (G.pulse 0, core.js) always afresh)
+  let counts = null;
+  W.count = (min = 1) => {
+    if (!G.pulse) return W.list(min).length;
+    if (!counts || counts.s !== G.state || counts.v !== ver || counts.d !== D().words) counts = { s: G.state, v: ver, d: D().words, n: {} };
+    if (counts.n[min] == null) { const c = counts, n = W.list(min).length; if (c.v !== ver) return n; c.n[min] = n; } // (an older save's record brought up to date while counting, a change: counted again next time)
+    return counts.n[min];
+  };
   W.stars = id => Math.max(0, Math.min(3, W.stage(id) - 1));
   function setStage(r, id, st) {
     if (st <= r.st) return false;
@@ -562,9 +575,22 @@
   // ---------- the review engine ----------
   const R = G.review = {};
   const asList = v => (v == null ? null : Array.isArray(v) ? v : [v]);
+  // (the words due now, in the dictionary's order: what R.due picks from. Listed again only when a schedule or a stage
+  // has changed (ver), the calendar day, the memory's session or the save, or when the next minutes' timer runs out
+  // (until); not by going through every word each time it is asked: Luna's bubble and the guide ask every frame, AUDIT
+  // 4.1. Between frames always afresh)
+  let dueMemo = null;
+  function dueNow() {
+    const s = G.state, d = D().words, dn = dayNum(), ms = W.msess(), now = W.now(), m = dueMemo, v = ver;
+    if (m && G.pulse && m.s === s && m.d === d && m.v === v && m.dn === dn && m.ms === ms && now < m.until) return m.L;
+    const L = []; let until = Infinity;
+    for (const id of Object.keys(d)) { const r = W.rec(id); if (!r || r.st < 1) continue; if (W.due(id)) L.push(id); else if (r.due != null && r.due < until) until = r.due; }
+    if (G.pulse && ver === v) dueMemo = { s, d, v, dn, ms, until, L };
+    return L;
+  }
   R.due = function (n = 1, o = {}) {
     const topics = asList(o.topic), ex = asList(o.exclude) || [];
-    const ids = Object.keys(D().words).filter(id => {
+    const ids = dueNow().filter(id => {
       const st = W.stage(id);
       if (st < Math.max(1, o.minStage || 1) || (o.maxStage != null && st > o.maxStage) || ex.includes(id) || !W.due(id)) return false;
       if (topics && !topics.includes(D().words[id].topic)) return false;
@@ -610,24 +636,35 @@
   B.session = () => metList().filter(r => r.ms === wm().sess).length;
   B.pending = () => metList().filter(r => r.fu > 0).length;
   B.left = (o = {}) => Math.max(0, Math.min(B.LIMITS.per5 - B.recent(), (o.hard ? B.LIMITS.hard : B.LIMITS.session) - B.session()));
-  // (worked out once a frame at most, the bubbles ask every frame; any change through this file starts again: ver.
-  // Changing a record by hand (tests): G.budget.flush())
-  let memo = {};
-  const fresh = () => { const k = G.frame + '|' + ver + '|' + dayNum() + '|' + W.msess() + '|' + wm().clock + '|' + G.today(); if (memo.k !== k || memo.s !== G.state) memo = { k, s: G.state, bl: null, td: null }; return memo; };
-  B.flush = () => { memo = {}; };
+  // (Counting means reading every record, and the bubbles ask every frame: the count is kept until something it counts
+  // changes (AUDIT 4.1: the scan cost more with every word she knew). That is: a record's schedule or stage (ver, bumped
+  // by every change made through this file), the calendar day, the memory's session, the save itself (G.state), and, for
+  // an older record still on a minutes' timer, the moment that timer runs out (until). Between frames (G.pulse 0,
+  // core.js) it is always counted afresh. Code that changes a schedule or a stage itself must call G.budget.flush().)
+  let memo = null;
+  const fresh = () => {
+    const dn = dayNum(), ms = W.msess();
+    if (!memo || !G.pulse || memo.s !== G.state || memo.v !== ver || memo.dn !== dn || memo.ms !== ms || W.now() >= memo.until) memo = { s: G.state, v: ver, dn, ms, until: Infinity, bl: null, td: null };
+    return memo;
+  };
+  B.flush = () => { ver++; memo = null; dueMemo = null; counts = null; }; // (everything this file remembers about the records, forgotten now)
+  B.ver = () => ver; // (what other files remember about the words is good while this stays the same: chapters.js, seek.js)
   // the backlog: words due by calendar day (and follow-ups or misses left from an earlier session), not this session's
   B.backlog = function () {
     if (!G.state) return 0;
     const m = fresh(); if (m.bl != null) return m.bl;
-    let n = 0;
-    for (const id in G.state.words) if (backlogged(id, W.rec(id))) n++;
-    return (m.bl = n);
+    let n = 0, until = Infinity; const now = W.now(), ms = W.msess();
+    for (const id in G.state.words) { const r = W.rec(id); if (backlogged(id, r)) n++; else if (r && r.st >= 1 && r.due != null && r.ds !== ms && r.due > now && r.due < until) until = r.due; }
+    if (m.v === ver) { m.until = until; m.bl = n; } // (reading an older save's record brings it up to date, a change: then counted again next time)
+    return n;
   };
   // new items (words and phrases) met today, by calendar date: the story's too
   B.today = function () {
     if (!G.state) return 0;
     const m = fresh(); if (m.td != null) return m.td;
-    const t = G.today(); return (m.td = allRecs().filter(r => r.st >= 1 && r.how !== 'old' && r.mdate === t).length);
+    const t = G.today(), n = allRecs().filter(r => r.st >= 1 && r.how !== 'old' && r.mdate === t).length;
+    if (m.v === ver) m.td = n;
+    return n;
   };
   // today's soft target: the rate of the save's year, a whole number a play day (the fraction carries to the next)
   B.rate = () => { const d = dayNum() - (wm().d0 != null ? wm().d0 : dayNum()), R = B.PACE.rate; return d < 365 ? R[0] : d < 730 ? R[1] : R[2]; };

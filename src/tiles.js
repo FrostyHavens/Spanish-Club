@@ -2342,6 +2342,13 @@
     const c = tbuf.canvas(); tileCache.set(key, c); return c;
   }
   G.tileCanvas = function (map, tx, ty, frame) {
+    // (docs/AUDIT_2026-10.md 4.1: a map's tiles never change, so the picture of a place on it, for each frame of its
+    // animation, is found once (its 8 neighbours, their ground, the long key below) and kept with the map (map.tc): the
+    // ~190 tiles on screen each cost one look-up a frame. G.clearTileCache() and a new G.Field start again.)
+    const at = tx >= 0 && ty >= 0 && tx < map.w && ty < map.h ? ty * map.w + tx : -1; // (a place on the map; off it, nothing is kept)
+    if (at >= 0 && (!map.tc || map.tc.n !== tcN)) map.tc = { n: tcN, at: [] };
+    const kept = at >= 0 ? map.tc.at : null, k0 = kept && kept[at];
+    if (k0) { const c0 = k0.c[k0.spec.anim ? (Math.floor((frame || 0) / k0.spec.spd) + (k0.v & 1)) % k0.spec.anim : 0]; if (c0) return c0; }
     const code = map.get(tx, ty);
     const spec = REG[code] || REG['.'];
     const v = Math.floor(hsh(tx, ty, 7) * 8);
@@ -2360,12 +2367,14 @@
     if (spec.uniq) key += '@' + tx + ',' + ty;
     let c = tileCache.get(key);
     if (!c) c = renderTile(key, spec, { c: code, n: nb.slice(), g: gb.slice(), v, af, sh, base, tx, ty });
+    if (kept) (k0 || (kept[at] = { spec, v, c: [] })).c[af] = c;
     return c;
   };
   G.drawTile = function (ctx, map, tx, ty, px, py, frame) {
     ctx.drawImage(G.tileCanvas(map, tx, ty, frame == null ? G.frame : frame), px | 0, py | 0);
   };
-  G.clearTileCache = () => tileCache.clear();
+  let tcN = 0; // (the maps' kept pictures are good while this stays the same: G.tileCanvas)
+  G.clearTileCache = () => { tileCache.clear(); tcN++; };
 
   // =====================================================================
   //  Mini-map

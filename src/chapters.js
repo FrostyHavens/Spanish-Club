@@ -67,21 +67,44 @@
   // played in order (def.line: a zone id; Villa Sol's 21 chapters are the line 'villa'). Lines never wait for each
   // other: each has its own chapter going on or next. A zone file adds its chapters with G.chapters.add(def) and
   // G.chapters.script(id, beats, opts), like Villa Sol's (content/es/words.js, content/es/story-*.js).
-  CH.lineOf = id => (CH.def(id) && CH.def(id).line) || 'villa';
-  CH.lines = () => { const L = []; for (const id of CH.ids()) { const l = CH.lineOf(id); if (!L.includes(l)) L.push(l); } return L.length ? L : ['villa']; };
+  // The table by id and by line (docs/AUDIT_2026-10.md 4.1: it was searched from the start thousands of times a frame):
+  // built the first time it is asked and again when a chapter is added (CH.add), or the table is another one or longer.
+  // ids: every id in order; def, line, at: a chapter's row, its line and its place in its line; lines: the lines in
+  // order; of: a line's ids. Its lists are shared and never changed (frozen: changing one is an error, not a quiet bug).
+  let ix = null;
+  const NONE = Object.freeze([]);
+  function index() {
+    const T = D().chapters, n = T ? T.length : 0;
+    if (ix && ix.T === T && ix.n === n) return ix;
+    const X = { T, n, ids: [], def: Object.create(null), line: Object.create(null), at: Object.create(null), lines: [], of: Object.create(null) };
+    for (const c of T || NONE) {
+      const l = c.line || 'villa';
+      X.ids.push(c.id);
+      if (c.id in X.def) continue; // (an id twice: the first one counts, as when the table was searched from the start)
+      X.def[c.id] = c; X.line[c.id] = l;
+      if (!X.of[l]) { X.of[l] = []; X.lines.push(l); }
+      X.at[c.id] = X.of[l].length; X.of[l].push(c.id);
+    }
+    if (!X.lines.length) X.lines.push('villa');
+    Object.freeze(X.ids); Object.freeze(X.lines); for (const l in X.of) Object.freeze(X.of[l]);
+    return (ix = X);
+  }
+  CH.lineOf = id => index().line[id] || 'villa';
+  CH.lines = () => index().lines; // (the shared list: read it, don't change it)
   CH.add = function (def) { // a zone's chapter: { id, line, title, en, giver, words, icon, col, goal, when }
     const T = D().chapters || (D().chapters = []);
     const k = T.findIndex(c => c.id === def.id); if (k >= 0) T[k] = def; else T.push(def);
     def.n = T.filter(c => (c.line || 'villa') === (def.line || 'villa')).indexOf(def) + 1;
     D().quests[def.id] = { name: def.title, en: def.en, giver: def.giver, goal: def.goal || [[def.icon, 1]], chapter: def.n, icon: def.icon, col: def.col };
+    ix = null; // (the table changed: its index is built again)
     return def;
   };
-  CH.ids = () => (D().chapters || []).map(c => c.id);
-  CH.def = id => (D().chapters || []).find(c => c.id === id) || null;
+  CH.ids = () => index().ids.slice();
+  CH.def = id => index().def[id] || null;
   CH.script = function (id, beats, opts) { scripts[id] = { beats, o: opts || {} }; };
   CH.written = id => !!scripts[id];
   CH.scriptOf = id => scripts[id] || null; // (tests: a chapter's beats, its places)
-  CH.writtenIds = () => CH.ids().filter(CH.written);
+  CH.writtenIds = () => index().ids.filter(CH.written);
   // the badge rows (Misiones, the diploma): the chapters (and any older errands still listed in tailOrder: none now)
   // (Villa Sol's line: the diploma's story; a zone's chapters show their badge when done but don't join these rows)
   Object.defineProperty(D(), 'badgeOrder', { configurable: true, get: () => CH.writtenIds().filter(id => CH.lineOf(id) === 'villa').concat(D().tailOrder || []) });
@@ -98,22 +121,57 @@
   CH.state = () => (G.state ? st() : null);
   CH.done = id => !!G.state && G.state.quests[id] === 'done';
   CH.active = id => !!G.state && G.state.quests[id] === 'active';
+  // A line's chapter going on (cur: the first one active) and its next (nx: the first not done, when none is going on)
+  // are remembered for the save in play, not looked for among all its chapters each time (AUDIT 4.1). The game only
+  // ever moves them one way: the next one starts, the one going on ends. So each time they are asked those two marks
+  // are read again, and any such change is seen at once, by whatever it was made. Once a frame one line, in turn, is
+  // worked out from all its marks again: a change the game never makes (a test un-doing an earlier chapter by hand) is
+  // put right within a few frames. Between frames (G.pulse 0, core.js: tests, tools) nothing remembered is used.
+  // G.chapters.flush(): forget it all now.
+  let qc = null;
+  function story(line) {
+    const X = index(), s = G.state, q = s.quests, on = !!G.pulse;
+    if (!on) qc = null;
+    else if (!qc || qc.s !== s || qc.q !== q || qc.X !== X) qc = { s, q, X, f: G.frame, i: 0, L: Object.create(null) };
+    else if (qc.f !== G.frame) { qc.f = G.frame; qc.i = (qc.i + 1) % X.lines.length; qc.L[X.lines[qc.i]] = null; }
+    let e = on ? qc.L[line] : null;
+    if (e && (e.cur ? q[e.cur] === 'active' : !e.nx || (q[e.nx] !== 'active' && q[e.nx] !== 'done'))) return e;
+    e = { cur: null, nx: null };
+    for (const id of X.of[line] || NONE) { const m = q[id]; if (m === 'active') { e.cur = id; e.nx = null; break; } if (m !== 'done' && !e.nx) e.nx = id; }
+    if (on) qc.L[line] = e;
+    return e;
+  }
+  CH.flush = () => { ix = null; qc = null; lv = null; wc = null; }; // (everything this file remembers, forgotten now: tests)
   // the chapter going on in a line (Villa Sol's by default: "a chapter is going on" for the town's systems)
-  CH.current = (line = 'villa') => (G.state ? CH.ids().find(id => CH.lineOf(id) === line && CH.active(id)) || null : null);
-  CH.next = function (line = 'villa') {
-    if (!G.state || CH.current(line)) return null;
-    return CH.ids().find(id => CH.lineOf(id) === line && !CH.done(id)) || null;
-  };
-  CH.allWrittenDone = (line = 'villa') => !!G.state && CH.writtenIds().filter(id => CH.lineOf(id) === line).every(CH.done); // (a line's story: Villa Sol's by default)
+  CH.current = (line = 'villa') => (G.state ? story(line).cur : null);
+  CH.next = (line = 'villa') => (G.state ? story(line).nx : null);
+  CH.allWrittenDone = (line = 'villa') => !!G.state && (index().of[line] || NONE).every(id => !scripts[id] || CH.done(id)); // (a line's story: Villa Sol's by default)
   CH.data = id => { const d = st().data; if (!isObj(d[id])) d[id] = {}; return d[id]; };
   CH.ctx = id => ({ id, def: CH.def(id), data: CH.data(id), step: st().step[id] | 0 });
   CH.beat = id => { id = id || CH.current(); const sc = id && scripts[id]; return sc ? sc.beats[st().step[id] | 0] || null : null; };
 
   // ---------- the budget ----------
-  const recs = () => Object.keys(G.state ? G.state.words : {}).map(G.words.rec).filter(r => r && r.st >= 1 && r.how !== 'old');
+  // (every record is read only when a word's stage or schedule has changed (G.budget.ver(), words.js), the session or
+  // the save: the bubbles ask "is it a review day?" and "has Canelo a word to bring back?" every frame, AUDIT 4.1.
+  // Kept: the words met (not an older save's), how many of them are only met, and those met this session, in order.
+  // Between frames (G.pulse 0) always read afresh.)
+  let wc = null;
+  function words() {
+    const s = G.state, v = G.budget.ver(), ss = G.words.sess();
+    if (wc && G.pulse && wc.s === s && wc.v === v && wc.ss === ss) return wc;
+    const o = { s, v, ss, L: [], n1: 0, sess: [] };
+    for (const id of Object.keys(s ? s.words : {})) {
+      const r = G.words.rec(id); if (!r || r.st < 1 || r.how === 'old') continue;
+      o.L.push(r); if (r.st === 1) o.n1++;
+      if (r.ms === ss && r.met != null) o.sess.push([id, r]);
+    }
+    if (G.pulse && G.budget.ver() === v) wc = o; // (reading an older save's record brings it up to date, a change: read again next time)
+    return o;
+  }
+  const recs = () => words().L;
   CH.newToday = () => { const d = G.words.day(); return recs().filter(r => r.md === d).length; };
   CH.newOnDate = () => { const t = G.today(); return recs().filter(r => r.mdate === t).length; };
-  CH.stage1 = () => recs().filter(r => r.st === 1).length;
+  CH.stage1 = () => words().n1;
   CH.newRecent = sec => { const now = G.words.now(), ss = G.words.sess(); return recs().filter(r => r.met != null && r.ms === ss && now - r.met < sec).length; }; // (this session only)
   CH.newWords = id => { const c = CH.def(id); return c ? c.words.filter(w => !G.words.met(w)) : []; };
   CH.gate = function (id, o = {}) {
@@ -121,7 +179,7 @@
     if (CH.done(id)) return 'done';
     if (CH.active(id)) return null;
     if (!scripts[id]) return 'unwritten';
-    const same = CH.ids().filter(x => CH.lineOf(x) === CH.lineOf(id)), k = same.indexOf(id);
+    const X = index(), same = X.of[X.line[id]], k = X.at[id]; // (its line, and its place in it)
     if (k > 0 && !CH.done(same[k - 1])) return 'prev';
     if (c.when === 'evening' && !o.evening) return 'evening';
     if (c.when === 'morning' && st().lastDoneSess === G.words.sess()) return 'morning';
@@ -221,17 +279,34 @@
     return true;
   }
   // the chapter (and beat) a trigger could run now: the active one, or the next one when it may open
-  function live1(o = {}, line = 'villa') {
+  function liveNow(o, line) {
     const cur = CH.current(line);
     if (cur) { const sc = scripts[cur], b = sc && CH.beat(cur); if (sc && !b) past = cur; return b ? { id: cur, k: st().step[cur] | 0, b, started: true, line } : null; } // (past its end: it ends by itself, CH.update)
     const nx = CH.next(line); if (!nx || !scripts[nx] || CH.gate(nx, o)) return null;
     return { id: nx, k: 0, b: scripts[nx].beats[0], started: false, line };
   }
+  // A line's live chapter is asked by every person's bubble, the guide, the map's taps and its drawing, every frame: it
+  // is worked out once for each moment of a frame (G.pulse, core.js: a new one around every step of a talk or a beat)
+  // and handed out again while what it rests on is as it was: the line's chapter going on or next (story(), above),
+  // the beat it is on, the last chapter done this session (a morning chapter), the words (G.budget.ver(): whether a new
+  // chapter has room). An evening's question (o.evening) and anything between frames are always worked out afresh.
+  // (the object handed out is shared: read it, don't change it)
+  let lv = null;
+  function live1(o = {}, line = 'villa') {
+    const p = G.pulse, s = G.state; if (!p || o.evening || !s) return liveNow(o, line);
+    const v = G.budget.ver();
+    if (!lv || lv.p !== p || lv.s !== s || lv.v !== v) lv = { p, s, v, R: Object.create(null) };
+    const e = story(line), c = st(), k = e.cur ? c.step[e.cur] | 0 : 0, r = lv.R[line];
+    if (r && r.e === e && r.k === k && r.lds === c.lastDoneSess) return r.L;
+    const L = liveNow(o, line);
+    lv.R[line] = { e, k, lds: c.lastDoneSess, L };
+    return L;
+  }
   // every line's live chapter (Villa Sol's first)
-  const lives = (o = {}) => CH.lines().map(l => live1(o, l)).filter(Boolean);
+  const lives = (o = {}) => { const out = []; for (const l of index().lines) { const L = live1(o, l); if (L) out.push(L); } return out; };
   CH.lives = lives;
   // the line of the zone you're in (its own story), or Villa Sol's
-  CH.lineHere = () => { const z = G.field && G.zones ? G.zones.of(G.field.mapId) : null; return z && CH.lines().includes(z) ? z : 'villa'; };
+  CH.lineHere = () => { const z = G.field && G.zones ? G.zones.of(G.field.mapId) : null; return z && index().of[z] ? z : 'villa'; };
   // live(o): the chapter of the line here (the guide, the hint hand); live(o, line) that line's
   function live(o = {}, line) { return live1(o, line || CH.lineHere()); }
   CH.live = live;
@@ -264,15 +339,14 @@
     if (!G.state || !G.pet || !G.pet.mine()) return false;
     if (G.errands && G.errands.lost()) return false;
     const now = G.words.now(), ss = G.words.sess(), s = st(), cool = s.nudgeAt != null && now >= s.nudgeAt && now - s.nudgeAt < 40;
-    return Object.keys(G.state.words).some(id => { const r = G.words.rec(id); return r && r.st >= 1 && r.how !== 'old' && r.ms === ss && r.met != null && (now - r.met < 60 || (cool && now - r.met <= 600)) && (r.ru == null || r.ru - r.met < 20); });
+    return words().sess.some(([id, r]) => r && r.st >= 1 && r.how !== 'old' && r.ms === ss && r.met != null && (now - r.met < 60 || (cool && now - r.met <= 600)) && (r.ru == null || r.ru - r.met < 20)); // (only the words met this session are looked at, not every record: words(), above)
   };
   CH.nudge = function () {
     if (!G.state || !G.pet || !G.pet.mine() || (G.errands && G.errands.lost())) return null;
     const now = G.words.now(), ss = G.words.sess(), s = st();
     if (s.nudgeAt != null && now - s.nudgeAt < 40 && now >= s.nudgeAt) return null;
     let best = null;
-    for (const id of Object.keys(G.state.words)) {
-      const r = G.words.rec(id);
+    for (const [id, r] of words().sess) { // (the words met this session, in the records' order)
       if (!r || r.st < 1 || r.how === 'old' || r.ms !== ss || r.met == null) continue;
       const age = now - r.met;
       if (age < 60 || age > 600 || (r.ru != null && r.ru - r.met >= 20)) continue;
@@ -300,7 +374,7 @@
     if (CH.needsReview() && who === CH.reviewer()) return 'pagina';
     for (const line of CH.lines()) {
       if (CH.current(line)) continue;
-      const nx = CH.next(line), c = nx && CH.def(nx), g = nx && CH.gate(nx);
+      const nx = CH.next(line), c = nx && CH.def(nx), g = c && c.giver === who && scripts[nx] && CH.gate(nx); // (only their own chapter's gate is asked)
       if (c && g && c.giver === who && scripts[nx] && g !== 'prev' && g !== 'soon' && g !== 'room') return g === 'evening' ? { icon: 'noche', wait: true, night: true } : { icon: 'dormir', wait: true, sleep: true }; // (waiting for room: no bubble at all, their own things show)
     }
     return null;
@@ -319,7 +393,7 @@
     if (who === 'canelo' && CH.nudge()) return yield* CH.nudgeRun(f || G.field, G.pet && G.pet.npc(f || G.field));
     for (const line of CH.lines()) {
       if (CH.current(line)) continue;
-      const nx = CH.next(line), c = nx && CH.def(nx), g = nx && CH.gate(nx);
+      const nx = CH.next(line), c = nx && CH.def(nx), g = c && c.giver === who && scripts[nx] && CH.gate(nx);
       if (c && g && c.giver === who && scripts[nx] && g !== 'prev' && g !== 'soon' && g !== 'room') { yield* tomorrow(who, g); return true; }
     }
     return false;

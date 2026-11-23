@@ -48,7 +48,22 @@
     { id: 'pila', map: 'granja', at: [1, 1], how: 'over', cut: 11, dx: 0, kinds: ['rana'], place: 'granja' },              // the horse's trough
     { id: 'barril', map: 'granja', at: [2, 7], how: 'over', cut: 4, dx: 0, kinds: ['gato', 'conejo', 'gallina'], place: 'granja' }, // the barn's barrel
   ];
-  const spot = id => SK.SPOTS.find(s => s.id === id);
+  // The hiding places by id and by zone (docs/AUDIT_2026-10.md 4.1: every animal on the map asks "is my kind hiding?"
+  // every frame, and each time every place was gone through for every kind): sorted once, and again when a place or a
+  // zone is added. Its lists are shared and never changed (frozen).
+  const NONE = Object.freeze([]);
+  let sx = null;
+  function sorted() {
+    const A = SK.SPOTS, zn = G.zones ? G.zones.LIST.length : 0;
+    if (sx && sx.A === A && sx.n === A.length && sx.zn === zn) return sx;
+    const o = { A, n: A.length, zn, id: Object.create(null), z: Object.create(null) };
+    for (const p of A) { if (!(p.id in o.id)) o.id[p.id] = p; const z = zoneOf(p.map); (o.z[z] || (o.z[z] = [])).push(p); }
+    for (const z in o.z) Object.freeze(o.z[z]);
+    return (sx = o);
+  }
+  const spot = id => sorted().id[id];
+  SK.spot = spot;
+  SK.flush = () => { sx = null; km = null; lf = null; }; // (everything this file remembers, forgotten now: tests)
   // how much shows: lo (an ear, a comb, horns), hi (up to the eyes) in px from the top of the picture
   const PEEK = SK.PEEK = { gato: [4, 8], conejo: [5, 9], gallina: [4, 7], cabra: [5, 8], pato: [4, 6], rana: [3, 4] };
 
@@ -67,8 +82,16 @@
     if (!b.z[z] || !Array.isArray(b.z[z].list)) b.z[z] = blank();
     return b.z[z];
   };
-  const spotsIn = z => SK.SPOTS.filter(p => zoneOf(p.map) === z);
-  const kindsMet = (z = curZone()) => SK.KINDS.filter(k => G.words.met(k) && spotsIn(z).some(p => p.kinds.includes(k)));
+  const spotsIn = z => sorted().z[z] || NONE;
+  // the kinds that can hide in a zone (their word met, a place for them there): kept zone by zone while the words
+  // (G.budget.ver(), words.js), the save, the kinds and the places are as they were; between frames (G.pulse 0, core.js)
+  // always worked out afresh. (a shared list, frozen: copy it before changing it)
+  let km = null;
+  const kindsMet = (z = curZone()) => {
+    const X = sorted(), s = G.state, v = G.budget.ver(), n = SK.KINDS.length;
+    if (!km || !G.pulse || km.s !== s || km.v !== v || km.X !== X || km.n !== n) km = { s, v, X, n, z: Object.create(null) };
+    return km.z[z] || (km.z[z] = Object.freeze(SK.KINDS.filter(k => G.words.met(k) && spotsIn(z).some(p => p.kinds.includes(k)))));
+  };
   SK.ready = (z = curZone()) => !!z && !!G.state && !!G.state.flags.intro && !!G.pet && G.pet.mine() && kindsMet(z).length >= 2;
   SK.list = (z) => (G.state ? st(z).list : []);
   const story = () => !!G.chapters && !!G.chapters.current(curZone() || 'villa'); // a chapter going on in this zone's line: the game waits
@@ -93,7 +116,16 @@
     return s.list.length >= 2 ? s : null;
   };
   SK.active = () => { const s = SK.ready() && SK.today(); return !!s && s.on && !s.done && !story(); };
-  const left = () => (SK.active() ? st().list.filter(h => !h.found) : []);
+  // (who is still hiding in the zone you're in: every animal on the map asks, three times a frame. Worked out once for
+  // each moment of a frame (G.pulse, core.js: a new one around every step of a talk or a find) and shared: read it,
+  // don't change it. Between frames always afresh)
+  let lf = null;
+  const leftNow = () => (SK.active() ? st().list.filter(h => !h.found) : []);
+  const left = () => {
+    const p = G.pulse, s = G.state, z = curZone(); if (!p) return leftNow();
+    if (!lf || lf.p !== p || lf.s !== s || lf.z !== z) lf = { p, s, z, L: leftNow() };
+    return lf.L;
+  };
   SK.hiding = kind => left().some(h => h.kind === kind);
   const here = f => left().filter(h => spot(h.spot).map === f.mapId);
   // is this animal of the map (animals.js) away hiding? (the brown hen, the last duckling, the others of their kind)
@@ -116,7 +148,7 @@
   SK.again = () => { if (!SK.ready() || story()) return false; const s = SK.today(); return !!s && s.done && (s.round | 0) + 1 < SK.ROUNDS; };
   function rematch(s) {
     const old = s.list.map(h => h.spot), used = new Set(old), list = [], ZS = spotsIn(curZone());
-    for (const k of shuffle(kindsMet()).slice(0, 3)) {
+    for (const k of shuffle(kindsMet().slice()).slice(0, 3)) {
       const p = shuffle(ZS.filter(p => p.kinds.includes(k) && !used.has(p.id)))[0] || shuffle(ZS.filter(p => p.kinds.includes(k) && !list.some(h => h.spot === p.id)))[0];
       if (!p) continue; used.add(p.id); list.push({ kind: k, spot: p.id, found: false });
     }

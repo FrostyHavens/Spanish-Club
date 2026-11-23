@@ -132,7 +132,7 @@
     const SK = G.seek; if (!SK || !G.state) return null;
     if (SK.alert && SK.alert(SK.HOST)) { const n = here(f, SK.HOST); return n ? { why: 'seek: Nico', pts: [person(n)] } : { why: 'seek: Nico', map: mapOfNpc(SK.HOST), badge: { who: SK.HOST } }; }
     if (!SK.active()) return null;
-    const p = f.player, L = SK.list().filter(h => !h.found).map(h => ({ h, sp: SK.SPOTS.find(s => s.id === h.spot) }));
+    const p = f.player, L = SK.list().filter(h => !h.found).map(h => ({ h, sp: SK.spot(h.spot) }));
     const mine = L.filter(o => o.sp.map === f.mapId).sort((a, b) => Math.abs(a.sp.at[0] - p.x) + Math.abs(a.sp.at[1] - p.y) - Math.abs(b.sp.at[0] - p.x) - Math.abs(b.sp.at[1] - p.y));
     if (mine.length) return { why: 'seek ' + mine[0].h.kind, soft: true, pts: [tileP(mine[0].sp.at[0], mine[0].sp.at[1], 26, { icon: mine[0].h.kind })] };
     if (L.length) return { why: 'seek ' + L[0].h.kind, soft: true, map: L[0].sp.map, badge: { icon: 'lupa' } };

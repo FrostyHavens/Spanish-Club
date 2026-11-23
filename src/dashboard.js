@@ -185,6 +185,7 @@
     const club = H().club(); if (club.length) L.push('Words to try at Spanish club: ' + club.map(itemEs).join(', ') + '.');
     const td = H().day().met; if (td.length) L.push('New today: ' + td.map(es).join(', ') + '.');
     const q = DB.tonight(0); if (q) L.push('Tonight\'s question: ' + q.es + ' (' + q.en + ') A good answer: ' + q.ans.es);
+    if (G.perf) L.push(G.perf.line()); // (how fast the game runs on this device: core.js)
     if (o.switchNote) L.push(switchS(o.switchNote.num));
     return L.join('\n');
   };
@@ -405,14 +406,14 @@
       let x = bx; for (const [n, col] of segs) { const ww = Math.round(bw * Math.max(0, n) / all); ctx.fillStyle = col; ctx.fillRect(x, by, ww, 5); x += ww; }
       G.textR(ctx, o.met + ' of ' + o.all + ' words met', G.W - 8, 100, COL.dim);
       G.text(ctx, 'Counts include the stronger words', 8, 100, '#8890c0');
-      this.rowsAt(ctx, DB.overviewRows(w), 110);
+      this.rowsAt(ctx, DB.overviewRows(w), 108, 9); // (9 rows: a little closer than the other tabs')
       this.drawBackup(ctx);
     }
-    // label / value rows from y (10 px apart): [label, value, colour]
-    rowsAt(ctx, rows, y) {
+    // label / value rows from y (10 px apart, or dy): [label, value, colour]
+    rowsAt(ctx, rows, y, dy = 10) {
       rows.forEach(([a, b, col], k) => {
-        G.text(ctx, a, 10, y + k * 10, COL.dim);
-        G.text(ctx, fit(b, G.W - 92), 82, y + k * 10, col || COL.white);
+        G.text(ctx, a, 10, y + k * dy, COL.dim);
+        G.text(ctx, fit(b, G.W - 92), 82, y + k * dy, col || COL.white);
       });
     }
     // is it saving, the last backup (asked for after 7 days), before a trip; a button to Back up / restore (backup.js)
@@ -616,6 +617,7 @@
       unav ? ['Speaking', 'not working lately: see Talk', COL.slip] : ['Said aloud', saidS(w.said)],
       ['Warm-up', DB.warmText(o.warmup)],
       ['Slipping', o.slipping.length ? listFit(o.slipping, ROW_W, o.slipping.length + ': ') : 'none', o.slipping.length ? COL.slip : null],
+      ['Speed', G.perf ? G.perf.short() : 'no reading', COL.dim], // (this device: a frame's work, core.js G.perf; the whole sentence is in the shared text)
     ];
   };
   DB.memoryRows = function (w) {

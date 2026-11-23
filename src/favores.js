@@ -274,7 +274,7 @@
   // ---------- Luna's palabra del día ----------
   FV.palabraDone = () => !!G.state && st().pal === G.words.day();
   FV.palabraWord = () => G.review.next({ minStage: 2 }) || G.words.list(2).sort((a, b) => (G.words.rec(a).last || 0) - (G.words.rec(b).last || 0))[0] || null;
-  FV.palabraReady = () => !!G.state && ch('c8') && !FV.palabraDone() && !storyHas('luna') && !!FV.palabraWord();
+  FV.palabraReady = () => !!G.state && ch('c8') && !FV.palabraDone() && !storyHas('luna') && G.words.count(2) > 0; // (there is a word for it exactly when she knows one: asked every frame, so no word is picked, sorted or looked for here, AUDIT 4.1)
   function* palabra() {
     const id = FV.palabraWord(); if (!id) return;
     yield sayShow('luna', { icon: 'estrella' }, TT('¡{name}! ¡La palabra del día!', '{name}! The word of the day! Look at the picture: say it out loud (or tap its word).'));

@@ -148,6 +148,17 @@ G.pop = () => { const s = G.scenes.pop(); G.input.sceneChanged(); s && s.onExit 
 G.replace = s => { while (G.scenes.length) G.pop(); return G.push(s); };
 G.top = () => G.scenes[G.scenes.length - 1];
 
+// ---------- "What is going on", worked out once (docs/AUDIT_2026-10.md 4.1: speed) ----------
+// Many parts of the map ask the same things every frame: which chapters are live, who is hiding, how many reviews are
+// due. They work the answer out once and remember it for a moment, and G.pulse is that moment's number: a new one as
+// every update begins, as every draw begins, and around every step of a task (a talk, a beat of the story, a door: the
+// things that change the answers). Between frames it is 0, and there nothing remembered is used: a test or a tool may
+// have changed the save by hand. (chapters.js, seek.js, words.js)
+G.pulse = 0;
+let pulses = 0;
+G.fresh = () => { if (G.pulse) G.pulse = ++pulses; }; // from here on, work it out again
+const pulsed = fn => () => { G.pulse = ++pulses; try { fn(); } finally { G.pulse = 0; } };
+
 // ---------- Coroutine-ish task runner (for cutscenes & battle flow) ----------
 // Generators yield: number (wait frames), a Promise-like {done()} object, or nothing (1 frame)
 // A task that throws (a talk, a cutscene: H7) is dropped and logged (G.oops), the screens it had just pushed close
@@ -165,6 +176,7 @@ G.Tasks = class {
       const back = t.obj; t.obj = null;
       const top0 = G.top();
       let r;
+      G.fresh(); // (what a task does changes what's going on: nothing remembered before its step is used in it, or after)
       try { r = t.gen.next(back); } catch (e) {
         this.list.splice(i, 1); G.oops(e, 'task'); G.dropAbove(top0); // (a text box it opened, half-said: closed)
         if (this.onError) try { this.onError(e, t.gen); } catch (e2) { G.oops(e2, 'task'); }
@@ -175,6 +187,7 @@ G.Tasks = class {
       if (typeof v === 'number') t.wait = v - 1;
       else if (v && typeof v.done === 'function') { t.obj = v; if (v.done()) { /* resolves next frame */ } }
     }
+    G.fresh();
   }
 };
 
@@ -252,17 +265,66 @@ function draw() {
   if (G.fade.a > 0) { ctx.globalAlpha = G.fade.a; ctx.fillStyle = G.fade.color; ctx.fillRect(0, 0, G.W, G.H); ctx.globalAlpha = 1; }
 }
 G.toast = (msg, t = 90) => { G.toastMsg = msg; G.toastT = t; };
-G.step = step; G.drawFrame = draw;
+const stepP = pulsed(step), drawP = pulsed(draw); // (each one its own moment: G.pulse, above)
+G.step = stepP; G.drawFrame = drawP;
+
+// ---------- How fast it runs on this device (AUDIT 4.1c: a reading a grown-up can take on the real iPad) ----------
+// Two clock reads a frame around the loop's work (its updates and its draw) and the time since the frame before (the
+// browser hands that over: it also holds the device's own painting, which the two reads can't see). Each goes into a
+// small table of counts by whole milliseconds, for the map on screen: nothing is kept per frame, nothing is saved.
+// Only frames of walking about count (the map on top: the title, a talk's text box and the grown-ups' pages are quick and
+// would hide a slow map). The counts are halved now and then, so the reading is about the last several minutes of play.
+// G.perf.line() -> "Speed: a typical frame takes 9 ms; 3% of frames are slow (over 33 ms); the screen shows about 58
+//   pictures a second. Slowest place: El parque de juegos (14 ms)."  (the Learning page's shared text, dashboard.js)
+// G.perf.short() -> "9 ms a frame, 3% slow, 58 a second" (the Learning page's Overview row)
+// G.perf.typical() / .slow() / .fps() the numbers (null before 2 seconds of play); .maps() per map; .reset()
+(function () {
+  const TOP = 100, SLOW = 33, HALVE = 30000, MIN = 120;
+  let work, gaps, byMap, wasMap = false;
+  const table = () => { const a = new Array(TOP + 1); for (let i = 0; i <= TOP; i++) a[i] = 0; a.n = 0; return a; };
+  const reset = () => { work = table(); gaps = table(); byMap = {}; wasMap = false; };
+  const add = (a, ms) => { a[ms >= TOP ? TOP : ms < 0 ? 0 : ms | 0]++; if (++a.n >= HALVE) { let n = 0; for (let i = 0; i <= TOP; i++) n += (a[i] >>= 1); a.n = n; } };
+  const mid = a => { if (a.n < MIN) return null; let k = 0; for (let i = 0; i <= TOP; i++) { k += a[i]; if (k * 2 >= a.n) return i; } return TOP; }; // the typical one (the median), in whole ms
+  const over = (a, ms) => { let k = 0; for (let i = ms + 1; i <= TOP; i++) k += a[i]; return a.n ? k / a.n : 0; };
+  const mean = a => { let t = 0; for (let i = 0; i <= TOP; i++) t += a[i] * (i + 0.5); return a.n ? t / a.n : 0; };
+  reset();
+  G.perf = {
+    add(ms, gap) { // (the loop, every frame)
+      const f = G.field, on = !!f && G.scenes[G.scenes.length - 1] === f;
+      if (on) { add(work, ms); add(byMap[f.mapId] || (byMap[f.mapId] = table()), ms); if (wasMap && gap < 250) add(gaps, gap); } // (a long gap: the tab was away)
+      wasMap = on;
+    },
+    typical: () => mid(work),
+    slow: () => (work.n < MIN ? null : over(work, SLOW)),
+    fps: () => (gaps.n < MIN ? null : Math.round(1000 / mean(gaps))),
+    maps: () => Object.keys(byMap).filter(m => byMap[m].n >= MIN).map(m => ({ map: m, typical: mid(byMap[m]), frames: byMap[m].n })).sort((a, b) => b.typical - a.typical),
+    frames: () => work.n,
+    reset,
+    line() {
+      const t = mid(work); if (t == null) return 'Speed: not measured yet (it needs a few seconds of walking about on a map).';
+      const fps = G.perf.fps(), M = G.perf.maps(), pc = Math.round(over(work, SLOW) * 100), nm = m => { const d = G.maps && G.maps[m]; return d && typeof d.name === 'string' && d.name ? d.name : m; };
+      return 'Speed: a typical frame takes ' + t + ' ms; ' + pc + '% of frames are slow (over ' + SLOW + ' ms)' + (fps ? '; the screen shows about ' + fps + ' pictures a second' : '') + '.'
+        + (M.length > 1 && M[0].typical > t ? ' Slowest place: ' + nm(M[0].map) + ' (' + M[0].typical + ' ms).' : '');
+    },
+    short() {
+      const t = mid(work); if (t == null) return 'not measured yet (walk about a little)';
+      const fps = G.perf.fps();
+      return t + ' ms a frame, ' + Math.round(over(work, SLOW) * 100) + '% slow' + (fps ? ', ' + fps + ' a second' : '');
+    },
+  };
+})();
 
 let last = performance.now(), acc = 0;
 G.speedMul = 1;
 function loop(now) {
   requestAnimationFrame(loop); // first: nothing below can stop the game
+  const gap = now - last, t0 = performance.now(); // (the speed reading, above)
   acc += Math.min(100, now - last); last = now;
   const dt = 1000 / 60;
   let n = 0;
-  try { while (acc >= dt && n < 5) { for (let k = 0; k < G.speedMul; k++) step(); acc -= dt; n++; } } catch (e) { acc = 0; G.oops(e, 'step'); }
-  try { draw(); } catch (e) { drawBad = true; G.oops(e, 'draw'); }
+  try { while (acc >= dt && n < 5) { for (let k = 0; k < G.speedMul; k++) stepP(); acc -= dt; n++; } } catch (e) { acc = 0; G.oops(e, 'step'); }
+  try { drawP(); } catch (e) { drawBad = true; G.oops(e, 'draw'); }
+  G.perf.add(performance.now() - t0, gap);
 }
 G.start = () => { if (location.hash === '#test') return; requestAnimationFrame(t => { last = t; loop(t); }); };
 
