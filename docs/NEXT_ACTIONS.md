@@ -12,6 +12,35 @@ read code and documents only: **no tests were run and nothing was measured on he
 
 ---
 
+## Status on 23 November 2026
+
+**Built on the work branch and tested, ready to release** (see the DEVLOG entry of 22 November): her save survives
+the re-split chapters; reviews are spread after a break; speed for the old iPad with a speed test; readable cards;
+night on every outdoor map; the day's clock over a reload; a full proofread of the Spanish with its fixes; and the
+two waiting Sprint 3 items (shorter chains, Mexican names).
+
+**What we learned from you:** she has about 52 stars, which is her second sitting; she has been away a few weeks;
+her iPad stops at iPadOS 15; no native speaker can check the Spanish.
+
+**Done from the list below:** all of Step 1; from Step 2 the small fixes (clock, night-walk card, night maps,
+sound), the "tarjetas" and "Huellas" lines and the welcome-back rule (2.6); from Step 3 speed (3.1), the save part
+of safe releases, and readable cards (3.5).
+
+**Next, in order:**
+1. Free play carries language, and the arrow leads to animals she has not met (Step 2, items 2.1-2.4).
+2. Favours and listen-and-do before Villa Sol chapter 7 (2.5).
+3. Reviews keep up with reviews due (3.7): the bot does 18-22 a day while more fall due.
+4. The rest of safe releases (a beta copy with its own save, held-back units), the missing tests, content rules as
+   tests (3.2-3.4), and the 21 error paths that still miss the Problem log.
+5. Then the road to new content (Step 4).
+
+**For you:** check her saved game is still on the iPad and make a backup; after she plays, read the speed line on
+her Learning page and share the page's text; and if you know why she stopped after two sittings, say so.
+
+The rest of this page is the list as written on 22 November, kept for its detail.
+
+---
+
 ## Where things stand
 
 - **Her game has not changed since 22 October.** The play link serves `main`, which holds Sprints 1 and 2.

@@ -2,6 +2,63 @@
 
 A running record of what changed in Club de Español and why. Newest first.
 
+## 2026-11-22 — A safe return: her save, a gentle welcome back, speed for the old iPad, readable cards
+She has about 52 stars (her second sitting) and has been away a few weeks; her iPad stops at iPadOS 15; and there is
+no native-speaker reviewer. So this release is about coming back: her save must survive, the first day back must not
+be a wall of reviews, and the game must run smoothly on an old iPad. It also carries the two Sprint 3 items that were
+waiting (3.1 shorter question chains, 3.10 Mexican names). Built by helpers in parallel, each in its own copy of the
+code, then read by two reviewers (their findings are fixed) and run through the full tests.
+
+**Her save (`src/chapters.js`, `tools/test-resplit.js`).**
+- Sprint 3 re-split 19 chapters, and a save keeps her place in a chapter as a step number. A chapter script whose
+  steps changed now carries a revision and a table from each old step to the matching new one; a chapter she is in
+  the middle of is moved to the right step, or restarts cleanly where there is no table (chapter 4).
+- A chapter whose saved step is past the end finishes by itself. Before, that story line stopped for good.
+- The test opens 217 real saves, made by the releases of 17 and 22 October at every step of every changed chapter,
+  and follows the arrow to the chapter's end.
+- Going back to the old release after this one needs the backup made before the update.
+
+**Back after a break (`src/words.js`, `src/warmup.js`).**
+- A save last played 6 or more days ago keeps its 8 strongest due words for today and spreads the rest over the
+  next days, about 5 a day, weakest last. Only the due day moves. Nothing is said to her about being away.
+- Measured on a 50-word save away 24 days: before, 50 reviews waited and no chapter could open for up to 9 days;
+  now 8 wait on the first day, a chapter can open every day, and the last spread word comes on day 13.
+- A word that pacing held back is taught by the dog on the first day with nothing due (it used to wait for ever).
+
+**Speed (`tools/test-speed.js`, audit 4.1).**
+- Nothing scans every word or chapter each frame any more: chapters are looked up from an index, and the counts
+  the arrow and the bubbles ask for are remembered until something changes.
+- With the browser slowed 4 times, a typical frame's work is about 4-6 ms on every outdoor map (the limit is 16),
+  also with a 1,000-word save and with three times today's content. The audit had measured 30-42 ms.
+- The test cannot see how fast the iPad itself draws. The Learning page now shows a speed line measured on the
+  device: read it on her iPad.
+
+**Readable cards (audit 3.3; `src/cards.js`, `src/album.js`, `tools/test-labels.js`).**
+- A word card is 48 x 94 (was 40 x 82). A long name wraps; a single long word breaks at a syllable with a hyphen.
+  Before, 53 of 180 labels were squeezed below 90% of their width (the worst at 35%); now none is.
+- The deck, the Hoy card, the album and the new-animal card are laid out for the new size.
+
+**Night (audit 3.7).** Every outdoor map darkens after sunset, the beach and the paths too; the bear asleep in the
+cave has a rim, a glow and drifting z's.
+
+**Small fixes.** The day's clock survives a page reload (a reload at minute 8 used to give a 20-minute day). Words
+met on the night walk get a short bedtime card. Sound is woken after the iPad was locked.
+
+**Spanish, without a native speaker (`docs/SPANISH_REVIEW.md`, batches 4 and 5).**
+- All 1,528 Spanish lines were read twice, the second time by a skeptic, and the open usage questions were settled
+  from grammar references and Mexican sources. Each decision is written down with its reason.
+- Changed: la banca (the park bench), conchas rosas, a card for calor beside caliente (now a steaming bowl),
+  tarjetas for the notebook's cards, ¿Está sentado?, ¿Quiénes son?, ¿Qué me lavo?, and a few smaller ones.
+- Kept on the evidence: tócate la nariz, pay, ¡Vamos con Rosa!, la maestra Luna, los trucos, ¿Quién es? for animals.
+
+**Tools.** `CLAUDE.md` (the rules of the house for builders); `tools/test-lanes.sh` (every test in lanes, every
+failure listed); the learning audit can skip days, says where she is day by day, and prints each target as pass or
+fail (`docs/LEARNING_AUDIT.md` holds the runs from before this release).
+
+**Not fixed, known.** In ordinary play reviews done (18-22 a day) still trail reviews due, and practice is 2.3
+moments a minute against a target of 3: both belong to the free-play work that comes next
+(`docs/NEXT_ACTIONS.md`).
+
 ## 2026-10-22 — Polish Sprint 2: a memory engine for three years, honest questions, reviews everywhere, an honest Learning page
 The second sprint of the polish plan (`docs/AUDIT_2026-10.md` section 5, items 2.1-2.12). It was built as four
 parallel jobs, then reviewed (22 confirmed findings, all fixed), measured with a new learning audit, tuned, and run
