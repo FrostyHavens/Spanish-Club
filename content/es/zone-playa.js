@@ -517,7 +517,7 @@
   //  The story: the beach's quest line (G.chapters, line 'playa')
   // =====================================================================
   CH.add({ id: 'playa1', line: 'playa', title: 'La red de Don Paco', en: 'Don Paco\'s net: what is tangled in it?', giver: 'paco', words: ['mar', 'cangrejo', 'estrellamar', 'concha'], icon: 'redpesca', col: '#3878d0', goal: [['redpesca', 1]] });
-  CH.add({ id: 'playa2', line: 'playa', title: '¡Qué calor!', en: 'So hot! An ice cream for Marina the lifeguard', giver: 'marina', words: ['elsol', 'caliente', 'calor', 'helado'], icon: 'helado', col: '#e870a8', goal: [['helado', 1]] });
+  CH.add({ id: 'playa2', line: 'playa', title: '¡Qué calor!', en: 'So hot! An ice cream for Marina the lifeguard', giver: 'marina', words: ['elsol', 'caliente', 'helado'], icon: 'helado', col: '#e870a8', goal: [['helado', 1]] });
   CH.add({ id: 'playa3', line: 'playa', title: 'Las tortuguitas', en: 'The baby turtles: chase off the gulls, help them to the sea', giver: 'marina', words: ['arena', 'tortuga', 'gaviota', 'nadar'], icon: 'tortuga', col: '#3a9a50', goal: [['tortuga', 3]] });
 
   // ---------- 1 · La red de Don Paco (the pier): el mar, el cangrejo, la estrella de mar, la concha ----------
@@ -573,7 +573,7 @@
     },
   });
 
-  // ---------- 2 · ¡Qué calor! (Marina's tower, Doña Nieves's cart): el sol, caliente (hot sand), calor (the heat), el helado ----------
+  // ---------- 2 · ¡Qué calor! (Marina's tower, Doña Nieves's cart): el sol, caliente (hot sand), el helado (calor, the heat, is met when someone is hot: hotSide) ----------
   function* hotHop(f) { // Marina hops on the hot sand, fanning herself; little steam puffs
     const n = npcAt(f, 'marina'); if (!n) return;
     for (let k = 0; k < 4; k++) { n.dir = k & 1 ? 'left' : 'right'; CK.puff('dust', n.x * TL + 12 + (k & 1 ? -6 : 6), n.y * TL + 20, { vy: -0.6, life: 30 }); G.audio.sfx('select'); yield 10; }
@@ -585,7 +585,7 @@
       c.data.hot = 1;
       yield* meetW('elsol', { who: 'marina', prompt: '¡Uf! ¡El [elsol]!', en: 'Phew! The sun!', known: othersFor('elsol', ['mar', 'ola', 'concha']) });
       yield* G.intro.watch('caliente', { who: 'marina', prompt: '¡Ay, ay! ¡[caliente]!', en: 'Ouch, ouch! The sand is hot!', act: () => hotHop(f), ask: '¡Ay! ¿Cómo está la arena?', askEn: 'Ouch! How is the sand? (say it, or tap it)', known: othersFor('caliente', ['elsol', 'mar']) });
-      yield* meetW('calor', { who: 'marina', prompt: '¡Uf! ¡Qué [calor]!', en: 'Phew! So hot! (she fans herself)', show: 'calor', known: othersFor('calor', ['elsol', 'caliente']) });
+      yield* say('marina', T('¡Uf!', 'Phew! (she fans herself)')); // (a plain line: calor is met the normal way, when someone is hot: hotSide; one new word at a time)
       const n = npcAt(f, 'nieves'); if (n) CH.pointNpc(n);
       try { yield* sayShow('marina', 'helado', T('¿Un [helado]? ¡[porfavor:Por favor]!', 'An ice cream? Please! (Doña Nieves has the ice-cream cart)')); } finally { CH.point(null); }
     } },

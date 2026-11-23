@@ -17,7 +17,7 @@ const num = (src, re, what) => { const m = re.exec(src); if (!m) { fail('cannot 
 // the boxes, read from the code so the test follows the layout
 const cards = read('src/cards.js'), album = read('src/album.js');
 const CW = num(cards, /C\.W = (\d+);/, 'C.W'), LINES = num(cards, /C\.LINES = (\d+);/, 'C.LINES');
-const cellW = num(album, /cell\(k\) \{ return \{[^}]*w: (\d+),/, 'the album cell width'), popW = num(album, /const cw = (\d+), ch = /, 'the album popup width');
+const cellW = num(album, /cell\(k\) \{ return \{[^}]*w: (\d+),/, 'the album cell width'), popW = num(album, /const cw = (\d+), nf = /, 'the album popup width');
 const PHRASE_LINES = 2;
 
 const baseForm = id => D.words[id].es.split(' / ')[0].replace(/^(el|la|los|las) /, '');
@@ -49,6 +49,15 @@ function check(name, list, inner, maxLines) {
   console.log(name.padEnd(28) + String(list.length).padStart(4) + ' labels in ' + inner + ' px: ' + two + ' in two lines, ' + three + ' in three, ' + hy + ' with a hyphen, ' + squeezed + ' squeezed (worst ' + Math.round(worst * 100) + '%)');
 }
 check('word cards', words, CW - 6, LINES);
+// a three-line label ends a clear pixel above the tallest plant (the plant's top is C.H - 35: src/cards.js)
+{
+  const CH = num(cards, /C\.H = (\d+);/, 'C.H'), step = num(cards, /C\.LABEL_STEP = (\d+);/, 'the label step'), y3 = num(cards, /C\.LABEL_Y = \{[^}]*3: (-?\d+)/, 'the three-line offset'), top = num(cards, /'\? \? \?', [^\n]*, (\d+), C\.LINES\)/, 'the word card label top');
+  const end = top + y3 + 2 * step + 7, plant = CH - 35, three = words.filter(l => G.fitLabel(l.s, CW - 6, LINES).lines.length === 3);
+  if (end >= plant) fail('a three-line label ends at y = ' + end + ' but the plant starts at y = ' + plant + ' (needs a clear pixel)');
+  console.log('three-line labels'.padEnd(28) + String(three.length).padStart(4) + ' words (' + three.map(l => l.s).join(', ') + '): the last line ends at y = ' + end + ', the plant starts at y = ' + plant);
+}
+// the label fitting is remembered per text, width and line count
+if (G.fitLabel('carpintero', 40, 2) !== G.fitLabel('carpintero', 40, 2)) fail('G.fitLabel does not remember its result');
 check('phrase cards', phrases, CW - 6, PHRASE_LINES);
 check('album cells', names, cellW - 4, 2);
 check('album "new animal" card', names, popW - 64, 2);

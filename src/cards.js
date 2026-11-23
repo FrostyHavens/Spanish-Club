@@ -38,6 +38,7 @@
   C.GAP = 30;                       // play seconds between two passive growths of one word
   C.LV = [0, 2, 6, 12, 20, 32, 46]; // seed, sprout, leaves, bud, flower, two flowers, three
   C.BOOK_AT = 15;                   // met words before the book opens
+  C.LABEL_STEP = 9; C.LABEL_Y = { 1: 5, 2: 1, 3: -2 }; // (a label's lines: 9 apart, the first this far below its top; three lines start 2 higher so the last one ends a clear pixel above the tallest plant, tools/test-labels.js)
   C.LINES = 3;                      // the most lines a word card's label may use
   C.W = 48; C.H = 94;               // a card at scale 1 (wide and tall enough for a label in two or three lines, docs/AUDIT_2026-10.md 3.3)
   const FLOOR = [0, 0, 2, 20, 32], CAP = st => (st < 3 ? 19 : st < 4 ? 45 : 1e9);
@@ -236,7 +237,7 @@
   // only at a syllable, with a hyphen: G.fitLabel) so it is never squeezed. The plant's top is C.H - 35 down; three lines
   // end just above it, a last resort for a very long name.
   function drawLabel(ctx, lab, col, top, maxLines) {
-    const f = G.fitLabel(lab, C.W - 6, maxLines), n = f.lines.length, step = 9, y0 = top + (n === 1 ? 5 : n === 2 ? 1 : 0); // (9 apart: a clear pixel between a descender and the next line)
+    const f = G.fitLabel(lab, C.W - 6, maxLines), n = f.lines.length, step = C.LABEL_STEP, y0 = top + C.LABEL_Y[n]; // (9 apart: a clear pixel between a descender and the next line)
     f.lines.forEach((ln, k) => {
       if (f.sq >= 1) { G.textC(ctx, ln, C.W / 2, y0 + k * step, col, null); return; }
       ctx.save(); ctx.translate(C.W / 2, 0); ctx.scale(f.sq, 1); G.textC(ctx, ln, 0, y0 + k * step, col, null); ctx.restore(); // (nothing fits: a last resort, never below 90%, tools/test-labels.js)

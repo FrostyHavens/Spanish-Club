@@ -157,8 +157,8 @@ async function story(browser) {
     check('story 1 done: its badge; chapter 2 opens right away (Marina\'s bubble)', await g.ev(() => G.chapters.done('playa1') && G.chapters.next('playa') === 'playa2' && !!G.field.npc('marina').alert()));
     // 2 · ¡Qué calor!
     await tapNpc(g, 'marina', 1, 0);
-    await drv(g, () => free() && G.chapters.state().step.playa2 === 1, 'Marina: el sol, caliente, calor');
-    check('story 2: el sol and caliente met; Doña Nieves has the ice cream in her bubble', await g.ev(() => G.words.met('elsol') && G.words.met('caliente') && G.words.met('calor') && !!G.field.npc('nieves').alert()));
+    await drv(g, () => free() && G.chapters.state().step.playa2 === 1, 'Marina: el sol, caliente');
+    check('story 2: el sol and caliente met (calor is not: it waits for someone who is hot); Doña Nieves has the ice cream in her bubble', await g.ev(() => G.words.met('elsol') && G.words.met('caliente') && !G.words.met('calor') && !!G.field.npc('nieves').alert()));
     await tapNpc(g, 'nieves', 0, 1);
     await drv(g, () => free() && G.chapters.state().step.playa2 === 2, 'Doña Nieves: el helado');
     check('story 2: el helado met, held up over your head for Marina', await g.ev(() => G.words.met('helado') && G.errands.bag.has('helado', { q: 'playa2' })));
@@ -188,7 +188,7 @@ async function story(browser) {
     await g.frames(30); await g.shot('babies_crawl');
     await drv(g, () => free() && G.chapters.done('playa3'), 'they swim away');
     check('story 3 done: nadar met; the turtle is in the album', await g.ev(() => G.chapters.done('playa3') && G.words.met('nadar') && G.animals.met('tortuga')));
-    check('story: every new word was met in its own puzzle (one unknown at a time)', await g.ev(() => ['mar', 'cangrejo', 'estrellamar', 'concha', 'elsol', 'caliente', 'calor', 'helado', 'arena', 'tortuga', 'gaviota', 'nadar'].every(id => G.words.met(id))));
+    check('story: every new word was met in its own puzzle (one unknown at a time); calor is not one of them', await g.ev(() => !G.words.met('calor') && ['mar', 'cangrejo', 'estrellamar', 'concha', 'elsol', 'caliente', 'helado', 'arena', 'tortuga', 'gaviota', 'nadar'].every(id => G.words.met(id))));
     check('story: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
 }

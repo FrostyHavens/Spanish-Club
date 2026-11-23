@@ -222,6 +222,23 @@ async function hoy(browser) {
     await g.tapRect(await g.ev(() => G.top().cardRect(0)));
     await g.until(() => G.field && G.top() === G.field && G.fade.a === 0, null, 'back in the game');
     check('hoy: the next day (a new date): a new card', await g.ev(() => !G.day.today().words.length && G.state.hist.hoy.d === G.today()));
+    // the card holds 1 to HOY_MAX words and always fits the screen (the title on top, the hint at the bottom, every card inside)
+    const fit = await g.ev(() => {
+      const ids = Object.keys(G.data.words), bad = []; let tallest = 0;
+      for (let n = 1; n <= G.day.HOY_MAX; n++) {
+        G.state.hist.hoy.w.splice(0, 1e9, ...ids.slice(0, n)); G.day.todayCard(); // (the day's own list, changed in place: the day clock holds it)
+        const c = G.top(), b = c.box(), cells = c.cells(); tallest = Math.max(tallest, b.h);
+        if (c.words.length !== n || b.y < 2 || b.y + b.h > G.H - 2 || cells.some(r => r.y < b.y + 30 || r.y + r.h > b.y + b.h - 20 || r.x < b.x + 2 || r.x + r.w > b.x + b.w - 2)) bad.push(n + ':' + c.words.length + ':' + b.y + '+' + b.h);
+        G.pop();
+      }
+      return { bad, tallest };
+    });
+    check('hoy: every count from 1 to ' + await g.ev(() => G.day.HOY_MAX) + ' words fits the screen (tallest ' + fit.tallest + ' px)', !fit.bad.length, JSON.stringify(fit.bad));
+    for (const n of [30, 44]) {
+      await g.ev(n => { const ids = Object.keys(G.data.words); G.state.hist.hoy.w.splice(0, 1e9, ...ids.slice(0, n)); G.day.todayCard(); }, n); // (the day's own list is changed in place: the day clock holds it)
+      await g.ev(() => { const c = G.top(); c.t = 20; while (c.shown < c.words.length) c.popT[c.shown++] = c.t; }); await g.frames(30); // (all the cards at once, as a tap would)
+      await g.shot('hoy_' + n + '_words'); await g.ev(() => G.pop());
+    }
     check('hoy: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
 }

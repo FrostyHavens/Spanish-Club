@@ -304,9 +304,9 @@
     constructor(w, o) {
       G.toastT = 0; this.transparent = true; this.w = w; this.t = 0; this.sel = -1; this.shown = 0; this.wait = 0; this.popT = [];
       const d = DY.today(); this.words = o && o.since ? d.words.filter(id => o.since.indexOf(id) < 0) : d.words; this.stars = d.stars; this.said = Math.min(d.said, d.stars); this.starsShown = 0; this.starT = [];
-      // the words' cards (cards.js), as big as fit: up to 5 in a row full size, then 7, then 11
-      const n = this.words.length, sc = n <= 5 ? 1 : n <= 14 ? 0.6 : 0.42, per = n <= 5 ? 5 : n <= 14 ? 7 : 11;
-      this.L = { sc, w: Math.round(G.cards.W * sc), s: Math.round(G.cards.H * sc), step: Math.round(G.cards.W * sc) + (n <= 5 ? 6 : 4), per, gap: 4, rows: Math.ceil(n / per) };
+      // the words' cards (cards.js), as big as fit: up to 5 in a row full size, then 7, then 11 (34 to 44 words are four rows: a little smaller, so the card stays inside the 224-high screen)
+      const n = this.words.length, sc = n <= 5 ? 1 : n <= 14 ? 0.6 : n <= 33 ? 0.42 : 0.38, per = n <= 5 ? 5 : n <= 14 ? 7 : 11;
+      this.L = { sc, w: Math.round(G.cards.W * sc), s: Math.round(G.cards.H * sc), step: Math.round(G.cards.W * sc) + (n <= 5 ? 6 : 4), per, gap: n > 33 ? 3 : 4, rows: Math.ceil(n / per) };
     }
     onEnter() { G.audio.sfx('buff'); }
     nStars() { return 0; } // (no stars for the child any more: today's cards show what grew; this.stars is still counted)

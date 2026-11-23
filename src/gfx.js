@@ -124,8 +124,15 @@
   // s in at most maxLines lines (2, or 3) of at most maxW pixels each: the fewest lines that fit, breaking at a space first
   // and only if that can't fit inside a word at a syllable boundary (with a hyphen). Returns { lines, sq, hy }: sq < 1 only
   // when nothing fits (the widest line is then squeezed to maxW, a last resort the tests count), hy true when a word was broken.
+  // (worked out once per text, width and line count: the set of labels is small and fixed, and a card's label is drawn every frame; callers only read the result)
+  const fitMemo = {}; let fitCount = 0;
   G.fitLabel = function (s, maxW, maxLines = 2) {
-    s = String(s); const tw = G.textWidth;
+    const key = maxW + '|' + maxLines + '|' + s; let r = fitMemo[key];
+    if (!r) { if (fitCount > 3000) { for (const k in fitMemo) delete fitMemo[k]; fitCount = 0; } r = fitMemo[key] = fitLabel(String(s), maxW, maxLines); fitCount++; } // (a safety cap, never reached in play)
+    return r;
+  };
+  function fitLabel(s, maxW, maxLines) {
+    const tw = G.textWidth;
     if (tw(s) <= maxW) return { lines: [s], sq: 1, hy: false };
     const cuts = []; // every place a line may end: at a space (dropped) or inside a word (a hyphen added)
     for (let i = s.indexOf(' '); i >= 0; i = s.indexOf(' ', i + 1)) cuts.push({ i, hy: false });
@@ -147,7 +154,7 @@
     });
     if (!best) return { lines: [s], sq: Math.max(0.01, maxW / tw(s)), hy: false };
     return { lines: best.lines, sq: Math.min(1, maxW / best.wid), hy: best.hy > 0 };
-  };
+  }
 
   // ---- Windows (deep blue, beveled light frame) ----
   const WIN = { fill1: '#1c2c8c', fill2: '#0c1450', edge: '#f0f0ff', edge2: '#8898e0', dark: '#000010' };

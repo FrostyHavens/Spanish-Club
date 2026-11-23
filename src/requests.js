@@ -33,7 +33,7 @@
 // apple test "roja"; a red apple and a red flower test "manzana"; a pile bigger than the number tests the number).
 // Only tested words get credit (src/listen.js: one 'listen' retrieval per word per request); the others are heard.
 // World requests (carry: true) are smaller (at most three: the hands hold three, src/carry.js) and their things are
-// scattered on the map to pick up ("Tráeme dos conchas rosa.").
+// scattered on the map to pick up ("Tráeme dos conchas rosas.").
 //
 // API (G.requests, short RQ):
 //   RQ.noun(id) {id, g: 'm'|'f', sg, pl, plOnly}   RQ.plural(s)   RQ.pluralAdj(s)   RQ.adj(id, g, plural)

@@ -1,7 +1,8 @@
 # Spanish review: lines for a native speaker to check
 
-The game is written in Mexican Spanish for a 7-year-old who is just starting. Its lines are written in AI coding
-sessions, so a native speaker checks them before they reach her. This file lists the lines that changed, in batches.
+The game is written in Mexican Spanish for a 7-year-old who is just starting. There is no native-speaker reviewer.
+Each line was settled from grammar references and dictionaries of Mexican Spanish and by a second, skeptical reading.
+The answers to the numbered questions are recorded under each batch. This file lists the lines that changed, in batches.
 
 **How to review:** for each line, mark it ✓ (fine), or write what a Mexican adult would say to a 7-year-old. Words in
 [brackets] are the word cards she is learning; they must stay. A word shown as [caliente:calor] means the card
@@ -216,7 +217,7 @@ The card "caliente" keeps its old id, so a saved game still knows it.
 - Lucho's "¡Brrr! ¡Hace frío!" puzzle: the other word offered may now be "calor" (not "caliente").
 
 ### New lines
-- Marina, in story 2 (the sunny beach), after the hot sand: "¡Uf! ¡Qué [calor]!" (English "Phew! So hot! (she fans herself)"). Story 2 now teaches four words, one at a time: el sol, caliente, el calor, el helado.
+- Marina, in story 2 (the sunny beach), after the hot sand: "¡Uf!" (English "Phew! (she fans herself)"). Changed later (2026-11-23): it is a plain line, it no longer teaches "calor". Story 2 teaches three words, one at a time: el sol, caliente, el helado. "Calor" is met when someone on the beach is hot.
 
 ### Lines that keep "caliente" (hot things)
 - Marina on the hot sand: "¡Ay, ay! ¡[caliente]!", asked "¿Cómo está la arena?"
@@ -226,3 +227,44 @@ The card "caliente" keeps its old id, so a saved game still knows it.
 ### Questions for the reviewer
 13. **"¡El sol! ¡Caliente!"** / "¿Y el sol? ¿Cómo está?": natural for a child, or should it be "¡Hace calor!"?
 14. **"el calor" as the card name** (the card shows "el calor" but the lines say "¡Qué calor!" and "Hace calor"): fine?
+
+### Answers to the numbered questions (recorded 2026-11-22)
+1. A separate "calor" card was added (batch 4).
+2. "Tócate la nariz" kept.
+3. "El bebé" / "¡Búscalo!" kept, matching the card.
+4. "Tarjetas" (not "cartas") for the notebook's cards.
+5. "Pay" kept.
+6. "¡Vamos con Rosa!" kept.
+7. "¿Quién es?" kept for animals; "¿Qué animal es?" is the neutral form.
+8. and 10. "Rosa", with the plural "rosas".
+9. "Gira una vez" kept.
+11. Kept.
+12. "Trucos" kept.
+
+---
+
+## Batch 5 (2026-11-22): from the proofread of every line
+Every line of the story and the world was read again. These are the ones that changed. Where a card word shows in
+[brackets], the card stays; only the line around it changed.
+
+### Words
+- "el banco" (the bench in the park) -> "la banca". In Mexico a long seat in a park is "la banca"; "el banco" there is a stool, or the bank. The word id stays "banco" (saves). The line "¡[si]! ¡El [banco]!" -> "¡[si]! ¡La [banco]!" (English "Yes! The bench! (which one? tap it)"). Also accepted by the microphone: banco, banquita.
+- "conchas rosa" -> "conchas rosas". "Rosa" as a colour has no "-o / -a" form, but it takes an "s" in the plural, like every other colour. Both are heard in Mexico; one rule is kinder to a child. The request line "Tráeme dos conchas rosas." The card still reads "rosa" (accepted also: rosado, rosada, rosas).
+- the owl (el búho), the microphone's accepted form "buhíto" -> "buhito" (the same spelling as "pececito" and "ericito": "buhito" has no written accent).
+
+### Changed lines
+- the dog sneezing at the flower: "¡Achís!" -> "¡Achú!" ("achú" is the usual way to write a sneeze in Spanish).
+- Doña Abuela and Don Abuelo washing: "¿Qué lavo?" -> "¿Qué me lavo?" (English "What do I wash before baking? (say it!)" / "What do I wash now? (say it!)"). Body parts are washed with "me": "me lavo las manos".
+- Don Pepe's yes/no game: "¿[sientate]?" -> "¿Está [sientate:sentado]?" and "¿Y ahora? ¿[sientate]?" -> "¿Y ahora? ¿Está [sientate:sentado]?" (English "Is he sitting?"). The card is still the dog's trick "siéntate".
+- paw prints: "¡Mira! ¡[pata:Huellas]!" -> "¡Mira! ¡Huellas!" (English "Look! Paw prints! Ask Nico."). It is a plain line now: the "pata" card was the wrong card for "huellas".
+- the notebook's cards, chapter 16 (four lines): "cartas" -> "tarjetas".
+  - Gómez: "¿Tus cartas? {dog}... ¡[busca]!" -> "¿Tus tarjetas? {dog}... ¡[busca]!"
+  - the tree: "Una carta... ¡en el [arbol]!" -> "Una tarjeta... ¡en el [arbol]!"
+  - the card on the lawn: new line "¡La tarjeta! ...¿Y esta?" (English "The card flutters down! ...And one more, on the lawn: someone is sitting on it!")
+  - Inés: "¡Tus cartas! A ver... ¡{dog}!" -> "¡Tus tarjetas! A ver... ¡{dog}!"
+- the family photo: "¿Qué es?" -> "¿Quiénes son?" (English "Who is in the photo?"). More than one person, so "quiénes".
+- Lola in the mountains: "¡Don Lucho! ¡Ven!" -> "¡Mira! ¡Don Lucho!" (English "Look! That's Don Lucho, who looks after the refuge. Go and say hello!"). She points him out; "¡Ven!" told the child to come to her.
+- the white hens: "¿Cuántas [gallina:gallinas] [blanco:blancas]?" is answered with the card "uno" shown as "una" (one hen is "una"). The card reads as it is said in the line.
+
+### Questions for the reviewer
+There are none new. Every line above was settled from dictionaries of Mexican Spanish. Least sure: "¡Achú!" (the other spelling is "¡Achís!", also said), and "la banca" for a bench in a park (certain in Mexico City and the north; "el banco" is also heard).
