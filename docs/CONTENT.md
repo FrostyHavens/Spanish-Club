@@ -436,6 +436,12 @@ Edit `tools/mapgen.py` and run `python3 tools/mapgen.py` to regenerate `src/mapd
   milk can), `A` (a basket of apples); fences (`F`) and barrels (`k`) work indoors too. A map's `poke(f, x, y)`
   (true = handled) answers A or a tap on a thing without a word (the hay rustles) instead of "...".
 
+### A map of its own story line, and a room added to a place (`content/es/hogar.js`)
+- A map def can say `line: 'hogar'`: while she is in it, `G.chapters.lineHere()` (and so the guide, the hint hand and the chapter beats that ask "the line here") means that line instead of Villa Sol's. The maps still belong to the zone of the list they are in. `hogar.js` wraps `lineHere` for this.
+- A room can be added to a place that already exists without touching its file: push an exit onto `G.maps.<map>.exits` after its definition (the new kitchen doorway in `casa`; the original front door stays `exits[0]`, chapters' `door:` beats read it). Add the new map to its zone's `maps:` (`content/es/zone-villa.js`) and, indoors, to its `indoor` loop. The file that defines the maps loads before the zone file.
+- `G.hearts.LIKES[npc]` is a word id or a list of them: ask `G.hearts.likes(npc, id)`, never compare. A carry source's `fruit: '#hex'` is the colour of the fruit drawn on its `tree` tile (red by default).
+- A friends tab with more than twelve people shows shorter rows (`src/album.js`).
+
 ## A living map (`src/ambient.js`)
 - `ambient: { birds: 8, butterflies: 5, cat: [x, y] }` in a map definition adds birds (on grass, paths and the plaza; they fly off when you come close or tap them, and come back later), butterflies over flower tiles (`o`) and a cat on a fence post.
 - Everyone turns to look at the player within 2 tiles, and holds still for a moment while you come over. Add `noLook: true` to a character to stop that.

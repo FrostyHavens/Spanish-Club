@@ -181,6 +181,11 @@
     'ü': tt('Snow', 15, 1, 1, 1, 1, 'grass'), 'ö': tt('Ice', 0, 1, 1, 1, 1, 'river'), 'ç': OBSTACLE('Snowy Pine', 'forest'),
     'ï': tt('Peaks', 30, INF, INF, 1, INF, 'hills', { block: true }), 'ò': OBSTACLE('Weather Station', 'grass'), 'ù': OBSTACLE('Lookout', 'grass'),
     'â': WALL('Roof', 'town'),
+    // El hogar (content/es/hogar.js): the kitchen (stove, shelf, fridge, sink, window, a chair) and the back yard (a
+    // lemon tree and an avocado tree, each a crown over a trunk, and the clothes line)
+    'à': WALL('Stove', 'indoor'), 'è': WALL('Kitchen Shelf', 'indoor'), 'ì': WALL('Fridge', 'indoor'), 'î': WALL('Sink', 'indoor'),
+    'ä': WALL('Kitchen Window', 'indoor'), 'ë': OBSTACLE('Chair', 'indoor'),
+    'ô': OBSTACLE('Lemon Tree', 'forest'), 'õ': OBSTACLE('Avocado Tree', 'forest'), 'ê': OBSTACLE('Fruit Tree', 'forest'), 'ã': OBSTACLE('Clothes Line', 'grass'),
     ' ': WALL('Void', 'grass'),
   };
 
@@ -190,14 +195,14 @@
   // n[] order: N NE E SE S SW W NW
   const DX = [0, 1, 1, 1, 0, -1, -1, -1], DY = [-1, -1, 0, 1, 1, 1, 0, -1];
   const BASEMAP = { '.': '.', 'o': '.', 'y': '.', 'f': '.', 'h': '.', ',': ',', '=': '=', 'p': 'p', 's': 's', 'x': 'x', 'i': 'i', 'c': 'c', 'z': 'z', '&': 's', '{': '{', 'ü': 'ü' };
-  const OBJ = new Set('rFlkgPLYZteaujJOHEUmA1236780()%*_!<>/?^;$áéúçòù'.split('')); // (çòù: the mountain's snowy pines, weather station, binoculars) // (áéú: the grandparents' henhouse, pump, trunk) // (!<>/?^;$: the playground's swings, slide, frame, seesaw, merry-go-round, goals, cart) // (()%*_: the forest's trees, mushrooms, bushes, log) // (1236780: the beach's palms, umbrellas, castle, tower, cart, rocks)
-  const INDOOR_OBJ = new Set('teaujHEUmAú'.split(''));
+  const OBJ = new Set('rFlkgPLYZteaujJOHEUmA1236780()%*_!<>/?^;$áéúçòùëôõêã'.split('')); // (çòù: the mountain's snowy pines, weather station, binoculars) // (áéú: the grandparents' henhouse, pump, trunk) // (!<>/?^;$: the playground's swings, slide, frame, seesaw, merry-go-round, goals, cart) // (()%*_: the forest's trees, mushrooms, bushes, log) // (1236780: the beach's palms, umbrellas, castle, tower, cart, rocks)
+  const INDOOR_OBJ = new Set('teaujHEUmAúë'.split(''));
   const BASE_PREF = ['=', 'p', 'x', 'c', 'z', 'i', '{', ',', 's', 'ü', '.'];
   const WATERISH = c => c === 'w' || c === '~' || c === 'b' || c === 'B' || c === '9' || c === 'd' || c === '4' || c === '5' || c === '-' || c === ':' || c === '|'; // (the beach's surf, pier, boat and clear shallows; the forest's stepping stones, waterfall)
   const ROOF = c => c === 'R' || c === 'Q' || c === '+' || c === 'â';
   const BWALL = c => c === 'W' || c === 'N' || c === 'D' || c === 'S' || c === 'G' || c === 'K';
-  const IWALL = c => c === 'I' || c === 'n' || c === 'v' || c === 'V' || c === 'C' || c === 'ó';
-  const TALL = new Set('WNDSGKRQ+XIvnTVC#[]}óâ'.split(''));
+  const IWALL = c => c === 'I' || c === 'n' || c === 'v' || c === 'V' || c === 'C' || c === 'ó' || c === 'à' || c === 'è' || c === 'ì' || c === 'î' || c === 'ä';
+  const TALL = new Set('WNDSGKRQ+XIvnTVC#[]}óâàèìîä'.split(''));
   const GRASSY = c => c === '.' || c === 'T' || c === 'M';
 
   function inferBase(map, x, y, code) {
@@ -2252,6 +2257,140 @@
   reg('R', { need: 'n', fn: (b, I) => roofTile(b, I, false) });
   reg('Q', { need: 'n', fn: (b, I) => roofTile(b, I, true) });
   reg('+', { need: 'n', fn: spireTile });
+  // ---------- El hogar (content/es/hogar.js): the kitchen (a stove with a pot, a shelf of plates, glasses and spoons, a
+  // fridge, a sink, a window, a chair) and the back yard (a lemon tree and an avocado tree, each a crown over a trunk,
+  // and the clothes line). The wall pieces sit on the kitchen's back wall like the bookshelf; the rest stand on the floor
+  // or the grass. ----------
+  const HG = { steel: U('#a8b0bc'), steel2: U('#7c8494'), steel3: U('#e0e6f0'), iron: U('#34343f'), iron2: U('#4c4c60'), iron3: U('#6e6e86'),
+    cream: U('#f6eedc'), cream2: U('#d8ccaa'), blue: U('#3a6ac0'), blue2: U('#2a4a90'), glass: U('#9ccce4'), glass2: U('#e4f6ff'),
+    red: U('#d03a30'), red2: U('#8c2018'), red3: U('#f07868'), sky: U('#7cc0f0'), sky2: U('#b8e0f8'), lemon: U('#f8e040'), lemon2: U('#c8a420'),
+    steam: U('#f4f8ff'), steam2: U('#c8d4e4') };
+  // the stove ('à'): a black iron range, a pot of soup bubbling on its left ring (steam drifts up), an oven door below
+  function stoveTile(b, I) {
+    iwallTile(b, I);
+    const f = I.af & 1;
+    b.rect(2, 10, 20, 13, HG.iron); b.hl(2, 21, 10, HG.iron3); b.vl(2, 10, 22, HG.iron2); b.vl(21, 10, 22, P.K0); b.hl(2, 21, 22, P.K0);
+    b.rect(1, 8, 22, 3, HG.iron2); b.hl(1, 22, 8, HG.iron3); b.hl(1, 22, 10, P.K0);
+    b.hl(14, 20, 8, P.K0); b.hl(15, 19, 9, P.K0); // the right ring
+    b.rect(3, 4, 10, 5, HG.steel); b.vl(3, 4, 8, HG.steel3); b.vl(4, 4, 8, HG.steel3); b.vl(12, 4, 8, HG.steel2); b.hl(3, 12, 8, HG.steel2); // the pot
+    b.hl(2, 13, 3, HG.steel3); b.hl(2, 13, 4, HG.steel2); b.hl(4, 11, 3, HG.red); b.set(f ? 6 : 8, 3, HG.red3); // its rim, the soup
+    b.rect(0, 5, 2, 2, HG.iron); b.rect(14, 5, 2, 2, HG.iron); // its handles
+    const s = f ? [[6, 1], [7, 0], [9, 1], [10, 0]] : [[7, 1], [6, 0], [10, 1], [9, 0]]; // steam
+    s.forEach(([x, y], i) => { b.set(x, y, i & 1 ? HG.steam2 : HG.steam); });
+    b.rect(4, 13, 16, 8, HG.iron2); b.hl(4, 19, 13, HG.iron3); b.rect(6, 15, 12, 4, P.K0); b.set(7, 16, P.K2); b.set(8, 16, P.K2); b.hl(6, 17, 18, P.K1); // the oven door and its window
+    b.hl(5, 18, 12, HG.steel3); b.set(5, 13, HG.steel2); b.set(18, 13, HG.steel2); // its handle
+    for (const x of [5, 9, 13, 17]) b.rect(x, 11, 2, 1, HG.steel3); // knobs
+  }
+  // the shelf ('è'), one unit across a run of tiles: plates, then glasses, then spoons (a lone tile: plates)
+  function kshelfTile(b, I) {
+    iwallTile(b, I);
+    const n = I.n, L = n[6] !== 'è', R = n[2] !== 'è', kind = L ? 0 : R ? 2 : 1, x0 = L ? 1 : 0, x1 = R ? 22 : 23;
+    b.rect(x0, 2, x1 - x0 + 1, 22, P.T1);
+    if (L) { b.vl(1, 2, 23, P.T4); b.vl(2, 3, 22, P.T3); }
+    if (R) { b.vl(22, 2, 23, P.T0); b.vl(21, 3, 22, P.T2); }
+    b.hl(x0, x1, 2, P.T5); b.hl(x0, x1, 3, P.T4);
+    for (const y of [11, 21]) { b.hl(x0, x1, y, P.T5); b.hl(x0, x1, y + 1, P.T3); b.hl(x0, x1, y + 2, P.T0); }
+    if (kind === 0) { // plates in two stacks, one standing on the lower board
+      for (const sx of [4, 13]) for (let i = 0; i < 3; i++) { const y = 9 - i * 2; b.rect(sx, y, 7, 2, HG.cream); b.hl(sx, sx + 6, y, HG.blue); b.hl(sx, sx + 6, y + 1, HG.cream2); }
+      for (const [cx, col] of [[8, HG.blue], [16, HG.red]]) { for (let y = 12; y <= 20; y++) for (let x = cx - 4; x <= cx + 4; x++) { const d = Math.hypot(x - cx, (y - 16) * 1.0); if (d < 4.6) b.set(x, y, d > 3.4 ? col : d > 2.2 ? HG.cream : HG.cream2); } }
+    } else if (kind === 1) { // glasses and a jug
+      for (const gx of [4, 10, 16]) { b.rect(gx, 4, 4, 7, HG.glass); b.vl(gx, 4, 10, HG.glass2); b.hl(gx, gx + 3, 4, HG.glass2); b.hl(gx, gx + 3, 10, HG.steel2); b.rect(gx + 1, 7, 2, 3, HG.sky); }
+      b.rect(5, 14, 6, 7, HG.blue); b.vl(5, 14, 20, HG.sky); b.hl(5, 10, 14, HG.blue2); b.rect(11, 15, 2, 3, HG.blue2); b.rect(15, 16, 4, 5, HG.glass); b.vl(15, 16, 20, HG.glass2);
+    } else { // wooden spoons hanging from a rail, a jar of ladles below
+      b.hl(x0, x1, 5, HG.steel2);
+      for (const sx of [4, 9, 14, 19]) { b.vl(sx, 6, 10, P.T4); b.rect(sx - 1, 11, 3, 1, P.T3); b.vl(sx, 6, 6, P.T5); }
+      b.rect(7, 15, 8, 6, HG.steel); b.vl(7, 15, 20, HG.steel3); b.vl(14, 15, 20, HG.steel2); b.hl(7, 14, 15, HG.steel3);
+      for (const sx of [8, 10, 12]) { b.vl(sx, 12 + (sx & 1) * 2, 14, P.T4); }
+    }
+  }
+  // the fridge ('ì'): cream, a small freezer door over a big one, handles, a note and a magnet or two
+  function fridgeTile(b, I) {
+    iwallTile(b, I);
+    b.rect(3, 2, 18, 21, HG.cream); b.vl(3, 2, 21, P.F1); b.vl(20, 2, 21, HG.cream2); b.vl(19, 2, 21, HG.cream2);
+    b.hl(3, 20, 2, P.F1); b.hl(3, 20, 22, HG.steel2); b.hl(3, 20, 9, HG.steel2); b.hl(3, 20, 10, P.F1);
+    b.rect(16, 4, 2, 4, HG.steel); b.vl(16, 4, 7, HG.steel3); b.rect(16, 12, 2, 7, HG.steel); b.vl(16, 12, 18, HG.steel3);
+    b.rect(6, 13, 4, 5, P.F1); b.hl(7, 9, 15, HG.steel2); b.hl(7, 9, 17, HG.steel2); b.rect(7, 12, 2, 2, HG.red); b.rect(11, 14, 2, 2, HG.blue);
+  }
+  // the sink ('î'): a wooden cupboard with a steel basin of water and a tap (it drips)
+  function sinkTile(b, I) {
+    iwallTile(b, I);
+    const f = I.af & 1;
+    b.rect(1, 13, 22, 10, P.T3); b.hl(1, 22, 13, P.T4); b.vl(1, 13, 22, P.T4); b.vl(22, 13, 22, P.T1); b.hl(1, 22, 22, P.T0);
+    for (const x0 of [3, 13]) { b.rect(x0, 15, 8, 6, P.T2); b.hl(x0, x0 + 7, 15, P.T1); b.vl(x0, 15, 20, P.T1); b.hl(x0, x0 + 7, 20, P.T4); b.set(x0 + (x0 < 10 ? 6 : 1), 17, P.Y2); }
+    b.rect(0, 10, 24, 3, HG.steel3); b.hl(0, 23, 10, P.F1); b.hl(0, 23, 12, HG.steel2);
+    b.rect(5, 9, 14, 3, HG.steel2); b.rect(6, 10, 12, 2, P.W3); b.hl(6, 17, 10, P.W4); b.set(f ? 9 : 13, 10, P.W5);
+    b.vl(15, 3, 9, HG.steel); b.vl(14, 4, 9, HG.steel3); b.hl(11, 15, 3, HG.steel); b.hl(11, 15, 4, HG.steel2); b.vl(11, 4, 6, HG.steel); // the tap and its curved spout
+    b.set(11, f ? 8 : 7, P.W5);
+  }
+  // the kitchen window ('ä'): a sunny sky and a green hill, red curtains, a sill with a pot of flowers
+  function kwindowTile(b, I) {
+    iwallTile(b, I);
+    b.rect(3, 3, 18, 17, P.T2); b.hl(3, 20, 3, P.T4); b.vl(3, 3, 19, P.T3);
+    for (let y = 5; y < 18; y++) for (let x = 5; x < 19; x++) b.set(x, y, y < 11 ? HG.sky : HG.sky2);
+    b.hl(8, 12, 8, P.F1); b.hl(9, 14, 7, P.F1); b.hl(6, 18, 16, P.G4); b.hl(5, 18, 17, P.G3); b.hl(10, 18, 15, P.G4); b.set(15, 14, P.G5);
+    b.vl(11, 5, 17, P.T3); b.vl(12, 5, 17, P.T2); b.hl(5, 18, 11, P.T3); b.hl(5, 18, 12, P.T2);
+    b.rect(5, 5, 3, 13, HG.red); b.vl(5, 5, 17, HG.red3); b.vl(7, 5, 17, HG.red2); b.rect(16, 5, 3, 13, HG.red); b.vl(16, 5, 17, HG.red3); b.vl(18, 5, 17, HG.red2);
+    b.rect(5, 12, 3, 1, P.Y2); b.rect(16, 12, 3, 1, P.Y2);
+    b.rect(2, 20, 20, 2, P.T4); b.hl(2, 21, 20, P.T5); b.hl(2, 21, 21, P.T2);
+    b.rect(14, 17, 5, 3, P.D2); b.hl(14, 18, 17, P.D4); b.set(15, 15, P.F3); b.set(17, 14, P.F2); b.set(16, 16, P.G3); b.set(17, 16, P.G3); b.set(15, 16, P.F4);
+  }
+  // a kitchen chair ('ë'): a slatted back, a red cushion, four legs
+  function chairTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 12, 21, 8, 2, 0.62);
+    b.rect(6, 2, 2, 12, P.T2); b.rect(16, 2, 2, 12, P.T1); b.rect(6, 2, 12, 3, P.T3); b.hl(6, 17, 2, P.T5); b.hl(6, 17, 4, P.T1);
+    for (const x of [9, 12, 15]) b.rect(x, 5, 1, 7, P.T3);
+    b.rect(5, 13, 14, 3, P.C3); b.hl(5, 18, 13, P.C4); b.hl(5, 18, 15, P.C1);
+    b.rect(5, 16, 14, 2, P.T3); b.hl(5, 18, 17, P.T1);
+    b.rect(6, 18, 2, 4, P.T2); b.rect(16, 18, 2, 4, P.T1); b.set(6, 21, P.T0); b.set(17, 21, P.T0);
+  }
+  // the fruit trees: a crown ('ô' lemon, 'õ' avocado) over a trunk ('ê', which looks at the crown above it)
+  const LEMON = [U('#1a5018'), P.G2, P.G3, P.G4, P.G5, U('#c0e878')];
+  const AVOC = [U('#0c2a1a'), U('#16402a'), U('#215a34'), U('#2e7440'), U('#4a9450'), U('#7cc070')];
+  function fruitCanopy(b, dy, sd, ramp, blossom) {
+    const blobs = [[12, 14, 11.5], [4.5, 19, 7], [19.5, 19, 7], [12, 5.5, 8], [5.5, 9.5, 6], [18.5, 9.5, 6], [12, 21, 7]];
+    for (const [cx, cy0, r] of blobs) {
+      const cy = cy0 + dy;
+      for (let y = Math.max(0, Math.floor(cy - r - 1)); y <= Math.min(TS - 1, cy + r); y++) for (let x = Math.floor(cx - r - 1); x <= cx + r; x++) {
+        const gx = x + 0.5 - cx, gy = y + 0.5 - cy, d = Math.hypot(gx, gy);
+        const wob = (hsh(x >> 1, (y - dy) >> 1, sd) - 0.5) * 1.6;
+        if (d > r + wob * 0.6) continue;
+        const l = -(gx * 0.55 + gy * 0.8) / r + (hsh((x + 1) >> 1, (y - dy) >> 1, sd + 3) - 0.5) * 0.5;
+        let i = l > 0.55 ? 5 : l > 0.2 ? 4 : l > -0.15 ? 3 : l > -0.5 ? 2 : 1;
+        if (d > r - 1.1 && gx + gy > 0) i = 0;
+        b.set(x, y, ramp[i]);
+      }
+    }
+    if (blossom) for (const [x, y] of [[7, 8], [16, 5], [10, 15], [18, 14], [13, 9]]) b.set(x, y + dy, P.F1); // lemon blossom
+  }
+  function fruitCrownTile(b, I, ramp, blossom) { drawGround(b, I.base, I); fruitCanopy(b, 0, I.tx * 13 + 5, ramp, blossom); }
+  function fruitTrunkTile(b, I) {
+    const avo = I.n[0] === 'õ';
+    drawGround(b, I.base, I);
+    dropShadow(b, 14, 21, 9, 2.6, 0.58);
+    for (let y = 2; y < 22; y++) { const sp = y > 18 ? (y - 18) : 0; for (let x = 12 - 3 - sp; x <= 11 + 3 + sp; x++) { const dx = x - 12; b.set(x, y, dx < -2 ? P.T4 : dx < 0 ? P.T3 : dx < 2 ? P.T2 : P.T1); } }
+    for (let y = 4; y < 20; y += 3) b.set(12 + ((y * 7) % 3) - 1, y, P.T1);
+    b.set(8, 21, P.T1); b.set(16, 21, P.T1);
+    fruitCanopy(b, -24, I.tx * 13 + 5, avo ? AVOC : LEMON, !avo);
+  }
+  // the clothes line ('ã'): a post at each end of a run, a sagging rope, washing hanging from it (it sways)
+  function lineTile(b, I) {
+    drawGround(b, I.base, I);
+    const n = I.n, L = n[6] !== 'ã', R = n[2] !== 'ã', sw = I.af & 1, x0 = L ? 4 : 0, x1 = R ? 19 : 23;
+    dropShadow(b, 12, 21, 10, 1.6, 0.8);
+    if (L) { b.rect(2, 3, 2, 19, P.T2); b.vl(2, 3, 21, P.T4); b.hl(1, 4, 3, P.T1); }
+    if (R) { b.rect(20, 3, 2, 19, P.T1); b.vl(21, 3, 21, P.T0); b.hl(19, 22, 3, P.T1); }
+    const ry = x => 4 + Math.round(2 * (1 - ((x - 12) / 12) ** 2));
+    for (let x = x0; x <= x1; x++) b.set(x, ry(x), P.K4);
+    const v = I.v % 4, top = ry(12) + 1, cols = [HG.red, HG.blue, P.Y3, P.F4][v];
+    const cloth = (x, w, h, c, c2) => { for (let y = 0; y < h; y++) { const o = y > h - 3 ? sw : 0; b.hl(x + o, x + o + w - 1, top + y, y === h - 1 ? c2 : c); } };
+    if (v === 0) { cloth(7, 10, 8, cols, HG.red2); b.rect(5 + sw, top, 2, 3, cols); b.rect(17 + sw, top, 2, 3, cols); } // a shirt
+    else if (v === 1) { cloth(8, 8, 10, cols, HG.blue2); b.hl(8, 15, top + 3, P.F1); b.hl(8, 15, top + 6, P.F1); } // a striped towel
+    else if (v === 2) { cloth(6, 4, 6, cols, P.Y1); cloth(13, 4, 6, P.F1, P.K4); cloth(18, 3, 5, P.F5, P.F5); } // socks
+    else { for (let y = 0; y < 10; y++) b.hl(12 - 2 - (y >> 1) + sw * (y > 6 ? 1 : 0), 12 + 2 + (y >> 1) + sw * (y > 6 ? 1 : 0), top + y, y === 9 ? U('#c85898') : cols); } // a pink dress
+    for (const x of [8, 15]) b.rect(x, ry(x) - 1, 1, 2, P.Y2); // pegs
+  }
+
   reg('W', { need: 'n', fn: (b, I) => timberTile(b, I, 'W') });
   reg('N', { need: 'n', fn: (b, I) => timberTile(b, I, 'N') });
   reg('D', { need: 'n', fn: (b, I) => timberTile(b, I, 'D') });
@@ -2329,6 +2468,16 @@
   reg('ò', { need: 'g', base: true, fn: stationTile });
   reg('ù', { need: 'g', base: true, fn: viewerTile });
   reg('â', { need: 'n', fn: snowRoofTile });
+  reg('à', { need: 'n', anim: 2, spd: 20, fn: stoveTile });
+  reg('è', { need: 'n', fn: kshelfTile });
+  reg('ì', { need: 'n', fn: fridgeTile });
+  reg('î', { need: 'n', anim: 2, spd: 26, fn: sinkTile });
+  reg('ä', { need: 'n', fn: kwindowTile });
+  reg('ë', { need: 'g', base: true, fn: chairTile });
+  reg('ô', { need: 'g', base: true, uniq: true, fn: (b, I) => fruitCrownTile(b, I, LEMON, true) });
+  reg('õ', { need: 'g', base: true, uniq: true, fn: (b, I) => fruitCrownTile(b, I, AVOC, false) });
+  reg('ê', { need: 'g', base: true, uniq: true, fn: fruitTrunkTile });
+  reg('ã', { need: 'g', base: true, anim: 2, spd: 30, fn: lineTile });
   reg(' ', { need: '', fn: (b) => b.fill(P.X0) });
 
   const tileCache = new Map();
@@ -2389,6 +2538,7 @@
     '9': '#e8f4ff', 'd': '#9c5e2a', '-': '#5cc8dc', '&': '#c8c070', '1': '#2e9a3a', '2': '#e83a30', '3': '#d8bc7c', '4': '#e83a30', '5': '#e83a30', '6': '#e83a30', '7': '#fafaf4', '8': '#3a7ae0', '0': '#5a5a6a',
     '(': '#2b6a26', ')': '#2b6a26', '%': '#e03a30', '*': '#4a2a70', '_': '#8a5a30', '#': '#6c6252', '|': '#e8f6ff', '@': '#0c0a10', ':': '#8e8e9a', '[': '#9a6634', ']': '#764a22', '{': '#3a3240', '}': '#1e1822',
     'ñ': '#5a3618', 'á': '#c04030', 'í': '#6a4a2a', 'é': '#3a7ad0', 'ó': '#8a5428', 'ú': '#8a5428',
+    'à': '#34343f', 'è': '#9c5e2a', 'ì': '#f6eedc', 'î': '#a8b0bc', 'ä': '#7cc0f0', 'ë': '#c8343c', 'ô': '#4f9c30', 'õ': '#2e7440', 'ê': '#74421e', 'ã': '#f0f0f0',
     'ü': '#eef4fa', 'ö': '#a8dcf0', 'ç': '#1f5634', 'ï': '#d8e6f2', 'ò': '#f8f8f4', 'ù': '#5878a8', 'â': '#f4f8fc',
     '!': '#e04040', '<': '#3870d8', '>': '#f8c830', '/': '#38a858', '?': '#e04040', '^': '#c8b8a0', ';': '#fafaf4', '$': '#3870d8',
     'z': '#b08a50', 'V': '#5c3418', 'C': '#5c3418', 'H': '#e2be46', 'E': '#9c5e2a', 'U': '#3a72d2', 'm': '#b4b2b4', 'A': '#c8343c',

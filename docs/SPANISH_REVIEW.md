@@ -309,3 +309,24 @@ the rest is what the microphone also accepts.
 2. "Come" as the card for "eat!": clear to the writer. A Mexican parent might say "¡A comer!" to call the family (accepted by the microphone) and "¡Come!" to the dog or a child; both stay.
 3. "¡Qué rico!": certain for food. Said by a child about something delicious; "¡qué rica!" is the feminine and is accepted.
 4. Least sure: "el papá" and "la mamá" as written with an article for a child's own parents. Many Mexican families say just "Mamá" or "mi mamá"; the card uses the article so the rule for "el / la" is learned, and the microphone accepts "mamá", "mami" and "mi mamá".
+
+## Batch 7 (2026-11-25): En casa, the rooms and the people (docs/UNIT_EN_CASA.md)
+The new rooms and the two new people. The words of the unit and the story lines come in later batches.
+
+### Names
+- "La cocina" (the kitchen) and "El patio" (the back yard): the names of the two new maps, as in any Mexican home. "Patio" is the usual word in Mexico for the yard at the back of a house.
+- "Papá" and "Leo" (the child's father and little brother): their names as shown in the dialogue box and on the Amigos page.
+
+### Lines
+- Papá: "¡[hola], {name}!" (English "Hi, {name}!"). A plain greeting with the card "hola".
+- Leo: "¡[hola]!" (English "Hi!").
+- Mamá at the new doorway before the puppy is found: "¡{name}! ¡Espera!" (English "Wait a moment! (stay with Mamá)"). The same line she already says at the front door.
+
+### The four chapter titles (shown in Misiones once their story is written)
+- "¡Tengo hambre!" ("I am hungry": "tener hambre" is the way to say it in all of Spanish).
+- "Pon la mesa" ("Set the table": "poner la mesa", and "pon" is the "tú" command of "poner").
+- "Los tacos de Papá" (Papá's tacos).
+- "Agua de limón" (lemon water: "agua de limón" is what it is called in Mexico, made with the small green "limón").
+
+### Questions for the reviewer
+None new. Least sure: nothing; every line above is a plain greeting or a set phrase from a dictionary of Mexican Spanish.

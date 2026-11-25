@@ -215,7 +215,7 @@
   // =====================================================================
   //  Presents and the shops
   // =====================================================================
-  const likes = (who, it) => !!G.hearts && G.hearts.LIKES[who] === it.id && !it.q && (who !== 'lucia' || it.col === 'rosa');
+  const likes = (who, it) => !!G.hearts && G.hearts.likes(who, it.id) && !it.q && (who !== 'lucia' || it.col === 'rosa');
   const giftFor = who => (G.hearts && G.hearts.canAddToday(who, 'gift') ? bagS().find(it => likes(who, it)) : null) || (who === 'rosa' && !E.jobDone('huevo') ? bagS().find(it => it.id === 'huevo' && !it.q) : null);
   function* gift(who) {
     const it = giftFor(who); if (!it) return false;

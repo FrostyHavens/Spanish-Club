@@ -137,7 +137,8 @@
     friendRect(k) {
       const who = this.friends()[k];
       if (who === 'lola' && this.ftab !== 'villa') return { x: 12, y: 160, w: G.W - 24, h: 52 }; // (Lola, who travels: a wide card at the bottom)
-      return { x: 12 + (k % 2) * 150, y: 32 + Math.floor(k / 2) * 30, w: 146, h: 28 };
+      const tight = this.friends().length > 12, pitch = tight ? 26 : 30; // (more than twelve friends in a tab: the rows get a little shorter so seven fit)
+      return { x: 12 + (k % 2) * 150, y: 32 + Math.floor(k / 2) * pitch, w: 146, h: pitch - 2 };
     }
     closeXY() { return [G.W - 28, 6]; }
     backXY() { return [8, 6]; }
@@ -278,7 +279,7 @@
         ctx.fillStyle = best ? '#f8d050' : lola ? '#e8f8e0' : sel ? '#f8e0a0' : '#fffaf0'; ctx.fillRect(r.x, r.y, r.w, r.h);
         ctx.strokeStyle = best ? '#b07000' : lola ? '#3a9a58' : sel ? '#c06000' : '#d0b898'; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
         if (lola && sel) { ctx.strokeStyle = '#c06000'; ctx.strokeRect(r.x + 1.5, r.y + 1.5, r.w - 3, r.h - 3); }
-        const fw = lola ? 46 : 23;
+        const fw = lola ? 46 : r.h - 5;
         ctx.fillStyle = '#5a3810'; ctx.fillRect(r.x + 2, r.y + 2, fw + 2, fw + 2);
         if (been || lola) H.face(ctx, who, r.x + 3, r.y + 3, fw, this.t); else { ctx.fillStyle = '#3a3048'; ctx.fillRect(r.x + 3, r.y + 3, fw, fw); G.textC(ctx, '?', r.x + 3 + fw / 2, r.y + 10, '#f8e060'); }
         const nm = !been && !lola ? '? ? ?' : who === 'canelo' ? G.dogName() : (G.nameOf(who) || who).replace(' el cartero', '').replace(' la panadera', '').replace('Señor ', 'Sr. ').replace('Abuela ', '');

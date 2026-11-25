@@ -92,6 +92,7 @@ const TRIPLE = () => {
   const CH = G.chapters, SK = G.seek, ids = CH.ids(), spots = SK.SPOTS.slice(), noop = function* () { };
   for (const x of [2, 3]) for (const id of ids) {
     const d = CH.def(id), sc = CH.scriptOf(id), nid = id + '_x' + x;
+    if (!sc) continue; // (a chapter whose script is not written yet: nothing to copy)
     CH.add({ id: nid, line: CH.lineOf(id) + '_x' + x, title: d.title, en: d.en, giver: d.giver, words: d.words.slice(), icon: d.icon, col: d.col, goal: d.goal, when: d.when });
     CH.script(nid, sc.beats.map(b => (b.spot || b.spots ? { spots: (b.spots || [b.spot]).map(s => ({ map: s.map, at: s.at.slice(), quiet: true })), run: noop }
       : b.tap ? { tap: b.tap, run: noop } : b.door ? { door: b.door, run: noop } : b.evening ? { evening: b.evening, run: noop } : { who: b.who || d.giver, run: noop })));
@@ -253,7 +254,7 @@ async function measure(browser, C, out) {
   try {
     const cdp = await ctx.newCDPSession(g.page);
     await g.ev(PROBE);
-    if (C.triple) { const t = await g.ev(TRIPLE); check(C.id + ': three times the content is in the page (108 chapters, 18 lines, 129 hiding places)', t.chapters === 108 && t.lines === 18 && t.spots === 129, JSON.stringify(t)); }
+    if (C.triple) { const t = await g.ev(TRIPLE); check(C.id + ': three times the content is in the page (112 chapters (the 4 of El hogar have no script to copy), 19 lines, 129 hiding places)', t.chapters === 112 && t.lines === 19 && t.spots === 129, JSON.stringify(t)); }
     const seed = await g.ev(SEED, { words: C.words || 0, triple: !!C.triple });
     await g.fieldIdle('villa');
     console.log('  the save: ' + seed.words + ' words (' + seed.backlog + ' due, ' + seed.today + ' new today), ' + seed.chapters + ' chapters in ' + seed.lines + ' lines, ' + seed.spots + ' hiding places');

@@ -154,7 +154,7 @@ async function friends(browser) {
   try {
     await fresh(g, { visit: ['playa', 'bosque'], words: ['mar', 'ola', 'helado', 'concha', 'elsol', 'caliente'], done: ['playa1'], map: 'playa', x: 12, y: 8 });
     await g.fieldIdle('playa');
-    check('friends: every zone person and Lola have hearts, a gift they like and words to greet with', await g.ev(() => ['paco', 'marina', 'nieves', 'tere', 'elena', 'lupe', 'ana', 'pablo', 'chuy', 'abuela', 'abuelo', 'bebe', 'lucho', 'mateo', 'lola'].every(n => G.hearts.WHO.includes(n) && G.data.words[G.hearts.LIKES[n]] && (G.hearts.POOLS[n] || []).every(w => G.data.words[w])) && G.hearts.TOWN.length === 12));
+    check('friends: every zone person and Lola have hearts, a gift they like and words to greet with', await g.ev(() => ['paco', 'marina', 'nieves', 'tere', 'elena', 'lupe', 'ana', 'pablo', 'chuy', 'abuela', 'abuelo', 'bebe', 'lucho', 'mateo', 'lola'].every(n => G.hearts.WHO.includes(n) && G.data.words[G.hearts.LIKES[n]] && (G.hearts.POOLS[n] || []).every(w => G.data.words[w])) && G.hearts.TOWN.length === 14));
     check('friends: the beach\'s people greet after its first chapter; the forest\'s not yet', await g.ev(() => G.hearts.greetsWith('marina') && !G.hearts.greetsWith('elena') && G.hearts.greetsWith('lola')));
     // the greeting: Marina waves, you answer (a heart); then a due word from her pool
     await talkTo(g, 'marina');
@@ -200,7 +200,7 @@ async function friends(browser) {
     check('friends: the beach\'s tab: Don Paco, Marina, Doña Nieves, Tere and Lola', await g.ev(() => G.top().ftab === 'playa' && G.top().friends().join() === 'paco,marina,nieves,tere,lola'));
     await g.frames(10); await g.shot('amigos_playa');
     await g.tapRect(await g.ev(() => G.top().ftabRect(0)));
-    check('friends: Villa Sol\'s tab: the twelve in town', await g.ev(() => G.top().ftab === 'villa' && G.top().friends().length === 12));
+    check('friends: Villa Sol\'s tab: the fourteen in town', await g.ev(() => G.top().ftab === 'villa' && G.top().friends().length === 14));
     await g.frames(6); await g.shot('amigos_villa');
     await g.tapRect(await g.ev(() => G.top().ftabRect(5)));
     await g.frames(6); await g.shot('amigos_montana_unvisited');

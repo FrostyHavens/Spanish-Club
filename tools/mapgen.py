@@ -156,6 +156,9 @@ c = room(9, 7)                      # mi casa
 c.put(1, 1, 'n'); c.put(2, 1, 'n'); c.put(5, 1, 'v'); c.put(7, 2, 'j'); c.put(7, 3, 'j'); c.rect(2, 3, 2, 1, 't'); c.put(1, 5, 'P')
 c.rect(4, 4, 1, 2, 'q')
 c.mark('mama', 3, 2)
+# the doorway to the kitchen (docs/UNIT_EN_CASA.md): one gap in the east wall, beside the bed's foot. Nothing else in
+# the room moves. You come back from the kitchen onto (7, 4), the tile in front of it.
+c.put(8, 4, 'i'); c.mark('cocinaDoor', 8, 4)
 out['casa'] = c
 
 e = M(13, 10, 'c'); e.border('I', 1)   # la escuela / el club
@@ -620,6 +623,46 @@ c = room(12, 8)
 c.put(2, 1, 'v'); c.put(4, 1, 'n'); c.put(5, 1, 'n'); c.rect(4, 4, 4, 1, 't'); c.put(10, 2, 'j'); c.put(10, 3, 'j'); c.put(1, 6, 'k'); c.rect(8, 6, 2, 1, 'q')
 c.mark('hearth', 2, 1); c.mark('pot', 3, 2); c.mark('table', 4, 4); c.mark('lucho', 3, 3)
 out['montana_refugio'] = c
+
+# El hogar (docs/UNIT_EN_CASA.md): the two new rooms of the house. Codes (src/tiles.js): à stove (with a pot), è the
+# shelf of plates, glasses and spoons, ì fridge, î sink, ä window, ë chair, ô lemon tree's crown, õ avocado tree's crown,
+# ê a fruit tree's trunk (under its crown), ã the clothes line, ñ a vegetable bed, x flagstones.
+# La cocina (indoors, 12x9): a doorway to the house in the west wall, the back door to the patio in the east wall. Papá
+# cooks at the stove; the shelf has three clear floor tiles in front of it; the table (3 tiles) has a chair at each
+# corner and a free tile at each end and in the middle of each long side, so things can be carried to it.
+k = M(12, 9, 'c'); k.border('I', 1)
+k.put(1, 1, 'ì'); k.put(2, 1, 'î'); k.put(3, 1, 'e'); k.put(4, 1, 'à'); k.put(5, 1, 'e'); k.put(6, 1, 'ä'); k.put(7, 1, 'e'); k.hline(8, 10, 1, 'è')
+k.hline(5, 7, 5, 't')
+for x, y in [(5, 4), (7, 4), (5, 6), (7, 6)]: k.put(x, y, 'ë')
+k.put(1, 7, 'P'); k.put(10, 7, 'k')
+k.put(0, 5, 'i'); k.put(11, 5, 'i')           # the doorway to the house and the back door (floor tiles in the walls)
+k.mark('door', 0, 5); k.mark('patioDoor', 11, 5)
+k.mark('papa', 4, 2); k.mark('stove', 4, 1); k.pos['shelf'] = [8, 1, 3, 1]; k.pos['shelfFront'] = [8, 2, 3, 1]
+k.pos['table'] = [5, 5, 3, 1]
+for i, (x, y) in enumerate([(5, 4), (7, 4), (5, 6), (7, 6)]): k.mark('chair%d' % (i + 1), x, y)
+k.pos['mesaLibre'] = [6, 4, 1, 1]; k.pos['mesaLibre2'] = [6, 6, 1, 1]; k.mark('mesaOeste', 4, 5); k.mark('mesaEste', 8, 5)
+k.mark('dog', 3, 6)
+out['cocina'] = k
+
+# El patio (outdoors, 14x10): the back of the house with the kitchen's back door (3, 2); a lemon tree (crown (8, 2), trunk
+# (8, 3)) and an avocado tree (crown and trunk at x 12), the fruit is picked from the tile beside a trunk; a small
+# vegetable bed, the clothes line, a sandpit where Leo plays, flowers, a fence all round, a spot for the dog to dig.
+a = M(14, 10, '.')
+a.rect(0, 0, 7, 2, 'R'); a.hline(0, 6, 2, 'W'); a.put(1, 2, 'N'); a.put(5, 2, 'N'); a.put(3, 2, 'D')
+a.hline(7, 13, 0, 'T'); a.hline(7, 13, 1, 'F'); a.vline(13, 1, 9, 'F'); a.hline(0, 13, 9, 'F'); a.vline(0, 3, 9, 'F')
+a.rect(2, 3, 3, 2, 'x')
+a.put(8, 2, 'ô'); a.put(8, 3, 'ê'); a.put(12, 2, 'õ'); a.put(12, 3, 'ê')
+a.rect(2, 6, 4, 2, 'ñ')
+a.hline(8, 10, 6, 'ã')
+a.rect(6, 7, 3, 2, 's')
+for x, y in [(1, 3), (5, 3), (10, 2), (11, 5), (1, 5), (9, 4), (1, 8), (12, 8), (10, 8), (6, 5), (3, 5)]: a.put(x, y, 'o')
+a.put(1, 4, 'P'); a.put(12, 6, 'P'); a.put(4, 8, 'P')
+a.mark('door', 3, 2); a.mark('in', 3, 3)
+a.mark('leo', 7, 7); a.mark('dog', 11, 7); a.mark('canelo', 4, 5)
+a.mark('limonCopa', 8, 2); a.mark('limonTronco', 8, 3); a.mark('limon1', 7, 3); a.mark('limon2', 9, 3)
+a.mark('aguacateCopa', 12, 2); a.mark('aguacateTronco', 12, 3); a.mark('aguacate1', 11, 3)
+a.pos['huerto'] = [2, 6, 4, 2]; a.pos['linea'] = [8, 6, 3, 1]; a.pos['arenero'] = [6, 7, 3, 2]
+out['patio'] = a
 
 import os
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

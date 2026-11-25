@@ -49,7 +49,7 @@
   // ---------- where things are ----------
   // every: play seconds before it's back after being picked up, or 'day' (a new one every morning); unique: there is
   // only one (it's back only when it's nowhere: not in your hands, not lying about); hidden: the tile itself shows it
-  // (the barn's basket of apples); tree: the tile of the tree it fell from (drawn with apples on it)
+  // (the barn's basket of apples); tree: the tile of the tree it fell from (drawn with apples on it; fruit: their colour, red by default)
   C.SOURCES = [
     { id: 'manzana1', map: 'villa', at: [12, 19], item: 'manzana', every: 150, tree: [12, 18] }, // under the park's apple tree
     { id: 'manzana2', map: 'villa', at: [34, 4], item: 'manzana', every: 150, tree: [34, 3] },   // under the apple tree by the farm
@@ -225,7 +225,7 @@
   };
   // who would love it today (a gift heart they haven't had), nearest first; not `not`
   const reach = who => { for (const m in G.maps) if ((G.maps[m].npcs || []).some(n => n.id === who && (!n.cond || n.cond()))) return m; return null; };
-  const likes = (who, it) => !!G.hearts && G.hearts.LIKES[who] === it.id && (who !== 'lucia' || it.col === 'rosa');
+  const likes = (who, it) => !!G.hearts && G.hearts.likes(who, it.id) && (who !== 'lucia' || it.col === 'rosa');
   const wants = (who, it) => likes(who, it) && G.hearts.canAddToday(who, 'gift') && !!reach(who);
   C.likerFor = function (it, not) {
     if (!G.hearts) return null;
@@ -367,7 +367,7 @@
     };
     for (const s of C.SOURCES) {
       if (s.map !== f.mapId) continue;
-      if (s.tree) { const X = s.tree[0] * T - cx, Y = s.tree[1] * T - cy; for (const [dx, dy] of [[6, 6], [14, 4], [10, 11], [16, 10]]) { ctx.fillStyle = '#401010'; ctx.fillRect(X + dx - 1, Y + dy - 1, 4, 4); ctx.fillStyle = '#e03028'; ctx.fillRect(X + dx, Y + dy, 2, 2); } }
+      if (s.tree) { const X = s.tree[0] * T - cx, Y = s.tree[1] * T - cy; for (const [dx, dy] of [[6, 6], [14, 4], [10, 11], [16, 10]]) { ctx.fillStyle = '#401010'; ctx.fillRect(X + dx - 1, Y + dy - 1, 4, 4); ctx.fillStyle = s.fruit || '#e03028'; ctx.fillRect(X + dx, Y + dy, 2, 2); } }
       if (!s.hidden && avail(s)) one({ id: s.item, col: s.col }, s.at[0], s.at[1], 0);
     }
     const seen = {};

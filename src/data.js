@@ -156,6 +156,15 @@
     mateo: { name: 'Mateo',
       portrait: { body: 'halfling', skin: '#c89070', hair: '#2a1810', hairStyle: 'short', eyes: '#2a1808', head: 'hood', headColor: '#f8d030', outfit: '#f8d030', trim: '#3870c8', scarf: '#38a858', age: 'young', face: 'round', bg: '#4a8ac8' },
       map: { body: 'halfling', skin: '#c89070', hair: '#2a1810', hairStyle: 'short', head: 'hood', headColor: '#f8d030', outfit: '#f8d030', trim: '#3870c8', boots: '#d83030', gloves: '#38a858', eyes: '#2a1808' } },
+    // El hogar (content/es/hogar.js): the child's own family. Papá cooks in the kitchen (dark hair, a brick-red shirt:
+    // the same look as the picture of the word el papá) and Leo, her little brother (about 4: the smallest body the sprites have, curly
+    // hair, a yellow shirt: as in the picture of el hermano), plays in the back yard
+    papa: { name: 'Papá',
+      portrait: { body: 'human', skin: '#e0b490', hair: '#2a1c14', hairStyle: 'short', eyes: '#2a1c14', outfit: '#c85a30', trim: '#f4f4f0', age: 'adult', face: 'round', bg: '#8a4a30' },
+      map: { body: 'human', skin: '#e0b490', hair: '#2a1c14', hairStyle: 'short', outfit: '#c85a30', trim: '#f4f4f0', pants: '#5a4a38', eyes: '#2a1c14' } },
+    leo: { name: 'Leo',
+      portrait: { body: 'halfling', skin: '#f0c8a0', hair: '#7a4a22', hairStyle: 'curly', eyes: '#3a2a20', outfit: '#e8b830', trim: '#fff4d8', age: 'young', face: 'round', bg: '#c8843a' },
+      map: { body: 'halfling', skin: '#f0c8a0', hair: '#7a4a22', hairStyle: 'curly', outfit: '#e8b830', trim: '#fff4d8', pants: '#4a68b0', boots: '#6a3a20', eyes: '#3a2a20' } },
     canelo: { name: 'Canelo',
       map: { body: 'wolf', outfit: '#b87038', trim: '#f0d8b0', eyes: '#201008' } },
   };

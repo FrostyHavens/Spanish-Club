@@ -15,8 +15,8 @@
 // above the portrait whenever they talk (G.say with opts.who). The album's Amigos page lists everyone's hearts.
 //
 // API (for errands, the album and tests):
-//   G.hearts.WHO               every friend: the 12 in town (H.TOWN: mama luna rosa pepe sofia tomas marta ines gomez lucia
-//                              nico canelo), then the zones' people and Lola (H.ZONE: npc -> zone, '*' for Lola; H.inZone(z))
+//   G.hearts.WHO               every friend: the 14 in town (H.TOWN: mama luna rosa pepe sofia tomas marta ines gomez lucia
+//                              nico canelo papa leo), then the zones' people and Lola (H.ZONE: npc -> zone, '*' for Lola; H.inZone(z))
 //   G.hearts.greetsWith(npc)   their greeting has begun (town: after chapter 3; a zone's people: after its chapter 1; Lola: met)
 //   G.hearts.get(npc)          0..5
 //   G.hearts.add(npc, n, why)  -> hearts actually added (0 when capped / full / a once-a-day reason already used today).
@@ -36,7 +36,7 @@
 (function () {
   const H = G.hearts = {}, T = G.TILE;
   H.MAX = 5; H.DAY_CAP = 2;
-  H.TOWN = ['mama', 'luna', 'rosa', 'pepe', 'sofia', 'tomas', 'marta', 'ines', 'gomez', 'lucia', 'nico', 'canelo'];
+  H.TOWN = ['mama', 'luna', 'rosa', 'pepe', 'sofia', 'tomas', 'marta', 'ines', 'gomez', 'lucia', 'nico', 'canelo', 'papa', 'leo']; // (papa, leo: the kitchen and the back yard at home, content/es/hogar.js)
   // the open world's people (docs/WORLD_PLAN.md): each zone's own, and Lola, the friend who travels (in every zone: '*')
   H.ZONE = { paco: 'playa', marina: 'playa', nieves: 'playa', tere: 'playa', elena: 'bosque', lupe: 'bosque', ana: 'juegos', pablo: 'juegos', chuy: 'juegos',
     abuela: 'abuelos', abuelo: 'abuelos', bebe: 'abuelos', lucho: 'montana', mateo: 'montana', lola: '*' };
@@ -46,7 +46,7 @@
   H.inZone = z => (z === 'villa' ? H.TOWN.slice() : Object.keys(H.ZONE).filter(n => H.ZONE[n] === z));
   // what each friend likes as a gift (word ids; Lucía: a pink flower). The zones' people like things to carry from
   // their own zone or from town (a shell, a leaf, an acorn, the ball, an apple, a cookie, bread, an ice cream, a flower)
-  H.LIKES = { mama: 'flor', luna: 'manzana', rosa: 'flor', pepe: 'queso', sofia: 'galleta', tomas: 'agua', marta: 'leche', ines: 'pan', gomez: 'manzana', lucia: 'flor', nico: 'pelota', canelo: 'hueso',
+  H.LIKES = { mama: 'flor', luna: 'manzana', rosa: 'flor', pepe: 'queso', sofia: 'galleta', tomas: 'agua', marta: 'leche', ines: 'pan', gomez: 'manzana', lucia: 'flor', nico: 'pelota', canelo: 'hueso', papa: ['limon', 'aguacate'], leo: ['pelota', 'galleta'], // (a word id, or a list of them: ask H.likes, never compare)
     paco: 'pan', marina: 'helado', nieves: 'flor', tere: 'concha', elena: 'hoja', lupe: 'bellota', ana: 'galleta', pablo: 'pelota', chuy: 'pan',
     abuela: 'flor', abuelo: 'manzana', bebe: 'pelota', lucho: 'galleta', mateo: 'hoja', lola: 'manzana' };
   const ONCE = ['greet', 'gift'], FREE = ['errand', 'trick'];
@@ -87,7 +87,8 @@
     G.st.autosave();
     return k;
   };
-  H.gift = (npc, word) => (H.LIKES[npc] === word ? H.add(npc, 1, 'gift') : 0);
+  H.likes = (npc, word) => { const l = H.LIKES[npc]; return Array.isArray(l) ? l.indexOf(word) >= 0 : l === word; };
+  H.gift = (npc, word) => (H.likes(npc, word) ? H.add(npc, 1, 'gift') : 0);
   H.best = npc => H.get(npc) >= H.MAX;
   H.greeting = npc => H.best(npc) ? '¡Mi amig{o/a} {name}!' : H.get(npc) >= 1 ? '¡Hola, {name}!' : '¡Hola!';
 
@@ -181,6 +182,7 @@
   // else the right greeting among known words that aren't greetings (hola is never a card beside buenos días before
   // buenas noches exists: it would be right too). Then one word that is due, wherever it was met, else one from their
   // pool (POOLS: what their trade shows), asked for its stage (G.review.ask). Once a day each; a heart.
+  const HOGAR_WORDS = ['lamama', 'elpapa', 'hermano', 'cocina', 'mesa', 'silla', 'plato', 'vaso', 'cuchara', 'sopa', 'tortilla', 'frijoles', 'arroz', 'taco', 'aguacate', 'limon', 'hambre', 'sed', 'rico', 'come'];
   H.POOLS = {
     mama: ['buenosdias', 'buenasnoches', 'perro', 'ven', 'sientate', 'hueso', 'agua', 'cama', 'pelota', 'galleta', 'casa', 'comoestas', 'bien', 'feliz', 'cansado'],
     pepe: ['hola', 'buenosdias', 'manzana', 'platano', 'naranja', 'queso', 'porfavor', 'gracias', 'si', 'no', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'rojo', 'amarillo', 'verde'],
@@ -208,6 +210,8 @@
     bebe: ['ojos', 'boca', 'cabeza', 'nariz', 'mano', 'pie', 'zapatos', 'bebe'],
     lucho: ['lamontana', 'llama', 'chocolate', 'gorro', 'bufanda', 'guantes', 'frio', 'nieve', 'puma', 'aguila'],
     mateo: ['nieve', 'nube', 'viento', 'lluvia', 'arcoiris', 'trineo', 'hielo', 'muneco', 'marmota', 'lobo'],
+    // the family at home (content/es/hogar.js): the unit's 20 words, the ones they use in the kitchen and the yard
+    papa: HOGAR_WORDS, leo: HOGAR_WORDS,
     lola: ['cangrejo', 'gaviota', 'tortuga', 'oso', 'ardilla', 'venado', 'paloma', 'catarina', 'vaca', 'oveja', 'llama', 'marmota', 'monarca', 'mar', 'elbosque', 'lamontana'],
   };
   const GREET = ['hola', 'buenosdias', 'buenasnoches', 'adios', 'comoestas'];

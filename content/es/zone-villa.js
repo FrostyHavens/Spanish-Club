@@ -22,11 +22,12 @@
     { at: P('postAbuelos'), zone: 'abuelos', dir: 'down' },
   ];
   // the town's buildings are inside: the bus doesn't drive in there (a ride from the menu just fades)
-  for (const m of ['casa', 'escuela', 'rosa', 'panaderia', 'biblioteca', 'granja']) G.maps[m].indoor = true;
+  // (the back yard is outdoors: it gets the night wash like the other outdoor maps)
+  for (const m of ['casa', 'cocina', 'escuela', 'rosa', 'panaderia', 'biblioteca', 'granja']) G.maps[m].indoor = true;
   const bus = P('busVilla');
   Z.add({
     id: 'villa', name: 'Villa Sol', en: 'the town of Villa Sol', icon: 'sol', music: 'town', pos: [160, 114],
-    maps: ['villa', 'casa', 'escuela', 'rosa', 'panaderia', 'biblioteca', 'granja'],
+    maps: ['villa', 'casa', 'cocina', 'patio', 'escuela', 'rosa', 'panaderia', 'biblioteca', 'granja'],
     bus: { map: 'villa', at: bus }, entry: { map: 'villa', x: bus[0], y: bus[1] + 1, dir: 'down' },
     // the album's first page (the Pokédex numbers start here): the town's animals, where each one lives as its hint
     animals: ['perro', 'gato', 'pajaro', 'mariposa', 'pez', 'conejo', 'pato', 'rana', 'gallina', 'caballo', 'cabra'],
