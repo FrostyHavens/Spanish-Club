@@ -82,6 +82,14 @@ const SENTENCES = [
   [{ verb: 'give', thing: 'elote', num: 'dos', col: 'amarillo' }, 'Dame dos elotes amarillos.'],
   [{ verb: 'howmany', thing: 'jitomate', col: 'verde' }, '¿Cuántos jitomates verdes hay?'],
   [{ verb: 'howmany', thing: 'zanahoria' }, '¿Cuántas zanahorias hay?'],
+  // Papá's table (content/es/hogar-play.js)
+  [{ verb: 'give', thing: 'plato', num: 'dos' }, 'Dame dos platos.'],
+  [{ verb: 'give', thing: 'vaso', col: 'azul' }, 'Dame el vaso azul.'],
+  [{ verb: 'give', thing: 'limon', num: 'tres' }, 'Dame tres limones.'],
+  [{ verb: 'give', thing: 'cuchara', num: 'uno' }, 'Dame una cuchara.'],
+  [{ verb: 'give', thing: 'plato', col: 'rojo' }, 'Dame el plato rojo.'],
+  [{ verb: 'give', thing: 'tortilla', num: 'cuatro' }, 'Dame cuatro tortillas.'],
+  [{ verb: 'howmany', thing: 'vaso', col: 'azul' }, '¿Cuántos vasos azules hay?'],
 ];
 const ADJ = [['rojo', 'f', true, 'rojas'], ['rojo', 'm', false, 'rojo'], ['azul', 'f', true, 'azules'], ['azul', 'f', false, 'azul'], ['verde', 'm', true, 'verdes'], ['amarillo', 'f', false, 'amarilla'],
   ['blanco', 'm', true, 'blancos'], ['rosa', 'f', true, 'rosas'], ['rosa', 'm', false, 'rosa'], ['rosa', 'm', true, 'rosas'], ['pequeno', 'f', true, 'pequeñas'], ['pequeno', 'm', false, 'pequeño'], ['grande', 'f', true, 'grandes'], ['grande', 'm', false, 'grande']];

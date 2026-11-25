@@ -364,3 +364,28 @@ Chapter 3, "Los tacos de Papá", and chapter 4, "Agua de limón". Words in `[bra
 - "¡Soy tu mamá!" and "¡Soy tu hermano!": natural, but a child would more often say "mi mamá" about her own mother. Here the person speaks to the child, so "tu" is right.
 - "Los tacos de Papá" and "Agua de limón" are the chapter titles from batch 7, unchanged.
 Least sure: "¡Y para la comida!" (the Mexican "comida" means the midday meal; fine for lunch).
+
+## Batch 10 (2026-11-25): En casa, the daily meal and favours (content/es/hogar-play.js)
+What stays to do at home once the four chapters are played. Only words she has met are used; every article comes from the code.
+
+### The daily meal, "¿Qué hay de comer?"
+- Papá: "¡{name}! ¿Qué quieres?" (English "What would you like?"). Then the phrase "Quiero ___" over two or three foods she knows (the card is the food; "Quiero sopa", "Quiero un taco", "Quiero frijoles", "Quiero arroz", "Quiero una tortilla", "Quiero un aguacate"). Sopa and arroz are mass words (no article); los frijoles is plural only. When phrases are off: the picture question "¿Qué quieres?".
+- Papá after her choice: "¡Perfecto! ¡Ya casi!" (English "Perfect! Almost ready!"). "Ya casi" is "almost ready", common in Mexico.
+- Papá at the table, once the word "come" is met: "¡[come], {name}!" ("Eat up"); before that: "¡Buen provecho, {name}!" ("Enjoy your meal", the usual thing said at a Mexican table).
+- Papá before the table requests: "¡{name}! ¡La mesa! ¡Escucha!" (English "The table! Listen to what I ask, then do it.").
+
+### Papá's board (listen and do), built by the code from the words she knows
+- "Dame dos platos." / "Dame el plato rojo." / "Dame el vaso azul." / "Dame tres vasos verdes." / "Dame una cuchara." / "Dame tres limones." / "Dame cuatro tortillas." / "¿Cuántos vasos azules hay?" The plurals "platos", "vasos", "cucharas", "limones", "tortillas" come from the words' own plural; "limón" to "limones" (the accent goes away) was checked by hand. Colours agree (rojo with el plato, roja with la tortilla if one is ever coloured).
+
+### Leo's and Papá's favours (the existing favour lines, with new words)
+- Leo counts a heap of lemons (or tacos before the lemons are met): the existing line "¿Cuántos?" with the picture. Leo names a thing: "¡{name}! ¿Y esto?" / "¿Qué es?" over taco, tortilla, frijoles, sopa, plato, vaso, cuchara, mesa, silla. Papá names a thing: the same lines over the kitchen and food words.
+- Both end with the existing "¡[gracias], {name}!".
+
+### Tonight's question on the Learning page (for the parent)
+- "¿Tienes hambre?" with "Sí, tengo hambre. / No." and "¿Tienes sed?" with "Sí, tengo sed. / No."
+- "¿Qué quieres comer?" with "Quiero sopa." / "Quiero arroz." / "Quiero frijoles." / "Quiero un taco." / "Quiero una tortilla." / "Quiero un aguacate."
+
+### Questions for the reviewer
+1. "Ya casi" and "Buen provecho": both certain for Mexico. Sure.
+2. "¿Qué quieres?" said by a father to a child is plain and natural. "Quiero sopa" with no article is correct.
+3. Least sure: "Dame el vaso azul." is clear, but a Mexican family might say "el vaso azul, por favor" for a child; the code can add "por favor" later and the microphone already hears it.

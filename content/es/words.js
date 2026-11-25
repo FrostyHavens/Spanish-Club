@@ -358,6 +358,7 @@
     playa: { '21,7': 'playa', '12,10': 'mar' }, // (La playa: by the lifeguard's tower, and in the middle of the beach)
     bosque: { '16,15': 'bosque', '22,6': 'fauna' }, // (El bosque: in the clearing, and in the meadow by the cave path)
     juegos: { '20,8': 'acciones', '27,4': 'juegosparque', '35,17': 'bichos' }, // (El parque de juegos: the playground, under the kite tree, the garden)
+    cocina: { '1,2': 'cocina', '9,7': 'acomer' }, // (La cocina: by the fridge, and by the crates in the bottom-right corner)
     abuelos: { '14,14': 'cuerpo', '29,13': 'rancho', '11,18': 'huerta' }, // (La casa de los abuelos: by the pump, by the paddock, by the garden beds)
     abuelos_casa: { '5,5': 'familia', '15,5': 'ropa' }, // (inside: under the family photos, in the bedroom)
     montana: { '10,19': 'tiempo', '13,10': 'montana', '29,19': 'faunamontana' }, // (La montaña: by the weather station, on the snowfield, by the llamas' corral)

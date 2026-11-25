@@ -146,7 +146,7 @@
     if (!ids.length) { ids = Wd().list(1).sort((a, b) => (Wd().rec(b).met || 0) - (Wd().rec(a).met || 0)).slice(0, 12); ids.forEach(id => note(id, 9, 'one of her words')); }
     const out = [], day = G.today();
     for (const id of ids) {
-      for (const [tpl, fn] of TPL) {
+      for (const [tpl, fn] of TPL.concat(G.tplMore || [])) { // (G.tplMore: a content file's own templates, content/es/hogar-play.js)
         let q = null; try { q = fn(id); } catch (e) { q = null; }
         if (!q || !q.words.every(met)) continue;
         const r = recent[id], sc = (r.a === 0 ? 6 : r.a <= 1 ? 3 : 1) + (r.how.indexOf('met') === 0 ? 2 : 0) + (SPECIFIC.includes(tpl) ? 3 : 0) + (q.words.length > 1 ? 1 : 0) + hash(day + id + tpl);
