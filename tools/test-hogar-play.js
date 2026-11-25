@@ -145,7 +145,9 @@ async function storyFirst(browser) {
     await game(g, upto(1));
     await g.fieldIdle('cocina');
     await g.ev(() => { G.state.quests.c9 = 'active'; G.state.ch.step.c9 = 0; });
-    check('story first: a chapter going on (any line): the pot has no bubble and the meal is off', await g.ev(() => { const a = G.chapters.lines().some(l => G.chapters.current(l)); return a && !G.hogar.mealOn() && !G.carry.PLAYS.comida(); }));
+    check('story first: a town chapter left half-done does not hide the pot', await g.ev(() => !!G.chapters.current('villa') && G.hogar.mealOn()));
+    await g.ev(() => { G.state.quests.c9 = 'done'; G.state.quests.hogar2 = 'active'; G.state.ch.step.hogar2 = 0; });
+    check('story first: a home chapter going on: the pot has no bubble and the meal is off', await g.ev(() => !!G.chapters.current('hogar') && !G.hogar.mealOn() && !G.carry.PLAYS.comida()));
     check('story first: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
 }
