@@ -193,7 +193,7 @@
       yield* walkPlayer(f, CHAIRS.me[0], CHAIRS.me[1]); pl.dir = 'up';
       yield 16;
       if (papa) { yield* say('papa', T('¡[come], {name}!', 'Eat, {name}!')); hearts(papa, 2); }
-      yield* say('mama', T('¡' + AGUA() + ' de [limon:limón]! ¡[rico:Qué rico]!', 'Lemon water! Yummy!')); hearts(ma, 2);
+      yield* say('mama', T('¡Mmm! ¡[rico:Qué rico]!', 'Mmm! Yummy!')); hearts(ma, 2);
       yield* say('leo', T('¡[arroz]! ¡[rico:Qué rico]!', 'Rice! Yummy!')); hearts(leo, 2);
       CK.confetti(); G.audio.jingle('item'); give('papa', 1); give('mama', 1); give('leo', 1);
       yield 50;

@@ -58,6 +58,17 @@
   const whenOk = L => { try { return !L.b.when || !!L.b.when(ctxOf(L)); } catch (e) { return false; } };
 
   // ---------- the goal, tier by tier: each returns {why, map?, pts?, choice?, soft?, badge?} or null ----------
+  // The chapter whose beat leads in this map. A map is in one line (def.line: the kitchen and the yard are the home line's,
+  // chapters.js lineHere) and may also be the door of another (def.alsoLine: her room is Villa Sol's, and the home line's
+  // kitchen is through its doorway, content/es/hogar.js). There the town's story comes first, whatever it offers; with no
+  // chapter of the town going on, the other line's chapter going on leads; one that could start is only offered later (the
+  // chapterLater tier: the arrow to the doorway). At sunset the bed is the goal, so the town's rule stays as it was.
+  function liveFor(f) {
+    const CH = G.chapters, L = CH.live(), al = f.def && f.def.alsoLine;
+    if (!al || (L && L.started) || (G.day && G.day.over())) return L;
+    const H = CH.live({}, al);
+    return H && H.started ? H : L || H;
+  }
   function chapterGoal(f) {
     const CH = G.chapters; if (!CH || !G.state) return null;
     // a find-it puzzle going on (the puppy hiding, which way the park is): its picture bubbles are the choices
@@ -70,14 +81,15 @@
       return { why: 'find ' + id, map: s.map, pts: [tileP(x, y, 14)] };
     }
     if (CH.needsReview() && (!G.zones || G.zones.area(f.mapId) === 'villa')) { const who = CH.reviewer(), n = here(f, who); return n ? { why: 'review ' + who, pts: [person(n)] } : { why: 'review ' + who, map: mapOfNpc(who), badge: { who } }; } // (a review day is Villa Sol's: out in a zone, its story's beat still leads)
-    const L = CH.live(); if (!L || !L.b) return null;
+    const L = liveFor(f); if (!L || !L.b) return null;
     if (!L.started && !GD.laterChapter) return null; // (a chapter not started yet is a suggestion among the others: chapterLater)
     const b = L.b, why = L.id + ':' + L.k;
+    if (G.day && G.day.over() && f.def && f.def.line && L.line === f.def.line && !b.evening) return null; // (the home rooms at sunset: the way home to bed leads, a chapter going on waits for tomorrow)
     if (b.evening) return G.day && G.day.over() ? { why: why + ' evening', map: 'casa', home: true, badge: { icon: 'noche' } } : null;
     if (!whenOk(L)) return null;
     const au = CH.autoOf(L);
     if (au) return au === true || au === f.mapId ? null : { why, map: au, badge: { icon: CH.def(L.id).icon } }; // (it starts by itself there)
-    const ts = CH.targets(f);
+    const ts = CH.targets(f, L);
     if (ts.length) {
       const spots = b.spots || (b.spot ? [b.spot] : []);
       const bubble = t => { const m = /^ch:[^:]+:(\d+)$/.exec(t.spot || ''), sp = m && spots[+m[1]]; return !!(sp && !sp.quiet && sp.icon); }; // (a place with a picture bubble: the arrow goes over it)
@@ -147,7 +159,7 @@
     const E = G.errands;
     if (E && E.spots) { const sp = E.spots(f).filter(s => !s.quiet && !(s.nohint && s.nohint()))[0]; if (sp) return { why: 'job ' + sp.id, pts: [tileP(sp.at[0], sp.at[1], 42)] }; }
     // anyone else on this map with a bubble (a present they'd like...), the nearest
-    const Lc = G.chapters && G.chapters.live(), later = Lc && !Lc.started && Lc.b && Lc.b.who; // (the next chapter's giver: a suggestion for later, chapterLater)
+    const Lc = G.chapters && liveFor(f), later = Lc && !Lc.started && Lc.b && Lc.b.who; // (the next chapter's giver: a suggestion for later, chapterLater)
     const p = f.player, ns = f.npcs.filter(n => n.spec && !n.hidden && alerting(n) && !alerting(n).later && n.id !== later).sort((a, b) => Math.abs(a.x - p.x) + Math.abs(a.y - p.y) - Math.abs(b.x - p.x) - Math.abs(b.y - p.y));
     if (ns.length) return { why: 'bubble ' + ns[0].id, pts: [person(ns[0])] };
     // something inside another map: only what its own arrow would show there (a chapter not started yet is chapterLater's

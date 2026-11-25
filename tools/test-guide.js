@@ -110,7 +110,7 @@ async function noDeadEnd(browser) {
   try {
     const W1 = ['hola', 'perro', 'guau', 'ven'], W12 = W1.concat(['gato', 'miau']);
     // chapter 3 opens tomorrow (a morning chapter): Mamá asleep, the arrow on something to play with
-    await setup(g, { done: ['c1', 'c2'], words: W12, map: 'casa', x: 4, y: 4 });
+    await setup(g, { done: ['c1', 'c2', 'hogar1', 'hogar2'], words: W12, map: 'casa', x: 4, y: 4 }); // (the home story is done: with it going, the arrow leads to the kitchen first, tools/test-hogar1.js)
     await g.ev(() => { G.state.ch.lastDoneSess = G.words.sess(); });
     await g.frames(10);
     // (the open world: before the day's play, the guide suggests the places not visited yet; docs/WORLD_PLAN.md)

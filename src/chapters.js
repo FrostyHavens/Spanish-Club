@@ -27,6 +27,8 @@
 //
 // Opening (gate(id) -> null when it may start, else why not):
 //   'prev'      the chapter before isn't done          'unwritten'  no script yet
+//   'after'     the def says after: 'c1' and that chapter (of another line) isn't done: no bubble at all, like 'prev'
+//               (the home line's first chapter waits for the puppy, content/es/hogar.js)
 //   (there is no word budget for the story (2026-10-17, the open world: docs/WORLD_PLAN.md): 'budget', 'soon' and
 //    'busy' are gone; a review day is only an offer now: with 10+ words only met, Luna or Mamá has a notebook bubble and
 //    asks 5 of them (.needsReview(), .review(who)), but nothing waits for it. Review-first pacing (2026-10, words.js
@@ -179,6 +181,7 @@
     if (CH.done(id)) return 'done';
     if (CH.active(id)) return null;
     if (!scripts[id]) return 'unwritten';
+    if (c.after && !CH.done(c.after)) return 'after';
     const X = index(), same = X.of[X.line[id]], k = X.at[id]; // (its line, and its place in it)
     if (k > 0 && !CH.done(same[k - 1])) return 'prev';
     if (c.when === 'evening' && !o.evening) return 'evening';
@@ -187,7 +190,7 @@
     // activities, docs/WORLD_PLAN.md. But a chapter brings several new words at once, so a NEW one waits for room:)
     // (a zone's first chapter opens on the day she first gets there, whatever the backlog: arriving somewhere new
     // always has a story to find)
-    if (CH.paced() && !CH.EXEMPT.includes(id) && !(c.n === 1 && (CH.firstDay() || (G.zones && G.zones.newToday && G.zones.newToday(CH.lineOf(id))))) && !CH.room()) return 'room';
+    if (CH.paced() && !CH.EXEMPT.includes(id) && !(c.n === 1 && (CH.firstDay() || (G.zones && G.zones.newToday && G.zones.newToday(CH.lineOf(id))) || (CH.ARRIVAL[CH.lineOf(id)] && CH.ARRIVAL[CH.lineOf(id)]()))) && !CH.room()) return 'room';
     return null;
   };
   // Story pacing (S2, the open-world learning audit: 70 of 77 new items came from chapters, the backlog grew every day):
@@ -205,6 +208,9 @@
   CH.PACED = true;
   CH.PACE = { backlog: 8, today: 4, daily: 15 }; // daily: once the dog's cards have come today, one chapter may still start up to this backlog
   CH.EXEMPT = ['c1', 'c2', 'c3'];
+  // a line that is not a zone has its own "first day there" (a zone's is G.zones.newToday): CH.ARRIVAL[line] = () => true on
+  // the day she first got to its place (the home line: the day she first walked into the kitchen, content/es/hogar.js)
+  CH.ARRIVAL = {};
   CH.paced = () => CH.PACED && !(G.budget && G.budget.open && G.budget.open());
   CH.firstDay = () => { const m = G.words.wm(); return m.d0 != null && m.d0 >= G.words.dayNum(); }; // (the save's first play day)
   // One chapter a day stays in reach (the learning audit: at 8 the story stopped on most later days, and free play alone
@@ -366,6 +372,7 @@
   };
   // a chapter's beat waits for this person now (their talk is the story: hearts.js says hello without a question first)
   CH.beatFor = who => !!G.state && !!find(L => L.b.who === who && when(L));
+  const QUIET = ['prev', 'soon', 'room', 'after']; // (gates that show nothing on the giver)
   CH.alert = function (who) {
     if (!G.state) return null;
     const L = find(L => L.b.who === who && when(L));
@@ -375,7 +382,7 @@
     for (const line of CH.lines()) {
       if (CH.current(line)) continue;
       const nx = CH.next(line), c = nx && CH.def(nx), g = c && c.giver === who && scripts[nx] && CH.gate(nx); // (only their own chapter's gate is asked)
-      if (c && g && c.giver === who && scripts[nx] && g !== 'prev' && g !== 'soon' && g !== 'room') return g === 'evening' ? { icon: 'noche', wait: true, night: true } : { icon: 'dormir', wait: true, sleep: true }; // (waiting for room: no bubble at all, their own things show)
+      if (c && g && c.giver === who && scripts[nx] && !QUIET.includes(g)) return g === 'evening' ? { icon: 'noche', wait: true, night: true } : { icon: 'dormir', wait: true, sleep: true }; // (waiting for room: no bubble at all, their own things show)
     }
     return null;
   };
@@ -394,7 +401,7 @@
     for (const line of CH.lines()) {
       if (CH.current(line)) continue;
       const nx = CH.next(line), c = nx && CH.def(nx), g = c && c.giver === who && scripts[nx] && CH.gate(nx);
-      if (c && g && c.giver === who && scripts[nx] && g !== 'prev' && g !== 'soon' && g !== 'room') { yield* tomorrow(who, g); return true; }
+      if (c && g && c.giver === who && scripts[nx] && !QUIET.includes(g)) { yield* tomorrow(who, g); return true; }
     }
     return false;
   };
@@ -514,9 +521,9 @@
   };
 
   // ---------- where the hint hand points (and the test bot goes) ----------
-  CH.targets = function (f) {
+  CH.targets = function (f, L0) { // (L0: the chapter the guide chose, when it isn't the line here's: guide.js liveFor)
     if (!G.state || !f) return [];
-    const L = live(); if (!L || !when(L)) return [];
+    const L = L0 || live(); if (!L || !when(L)) return [];
     const out = [], b = L.b;
     if (b.hint) { try { for (const t of b.hint(f, CH.ctx(L.id)) || []) out.push(Object.assign({ ch: L.id }, t)); } catch (e) { console.error(e); } return out; }
     spotsOf(b).forEach((sp, i) => { if (sp.map === f.mapId && !(sp.off && sp.off(CH.ctx(L.id)))) out.push({ x: sp.at[0] * T + 12, y: sp.at[1] * T + 12, spot: 'ch:' + L.id + ':' + i, ch: L.id }); });

@@ -76,7 +76,8 @@ async function scenes(g, what) {
 
 // play a line's chapters to the end, following the arrow; -> the chapters done
 async function playLine(g, line, o = {}) {
-  const ids = await g.ev(([line, from, until]) => { const L = G.chapters.ids().filter(id => G.chapters.lineOf(id) === line); const a = from ? Math.max(0, L.indexOf(from)) : 0, b = until ? L.indexOf(until) : L.length - 1; return L.slice(a, b < 0 ? L.length : b + 1); }, [line, o.from || null, o.until || null]);
+  const ids = await g.ev(([line, from, until]) => { const L = G.chapters.ids().filter(id => G.chapters.lineOf(id) === line && G.chapters.written(id)); const a = from ? Math.max(0, L.indexOf(from)) : 0, b = until ? L.indexOf(until) : L.length - 1; return L.slice(a, b < 0 ? L.length : b + 1); }, [line, o.from || null, o.until || null]);
+  if (process.env.DBG) console.log('    ids', ids.join());
   const t0 = Date.now(); let idle = 0, last = '', same = 0, lastDone = -1;
   for (let step = 0; step < 3000; step++) {
     await scenes(g, line + ' step ' + step);
@@ -211,7 +212,28 @@ async function zone(browser, z) {
   } finally { await ctx.close(); }
 }
 
-const LINES = ['villa', 'playa', 'bosque', 'juegos', 'abuelos', 'montana'];
+// ---------- the home line (content/es/hogar*.js): a game that has done the town's chapter 1, in her room; the arrow leads to the kitchen ----------
+async function home(browser) {
+  const { ctx, g } = await open(browser, 'chains-hogar', true, { phrases: true, listen: true, openPacing: true });
+  g.__tried = {};
+  try {
+    await g.ev(() => {
+      G.st.newGame(); G.state.name = 'Luz';
+      Object.assign(G.state.flags, { opener: true, dogSkip: true, petStart: true, canelo: true, intro: true });
+      G.state.quests.c1 = 'done'; G.state.quests.c2 = 'done'; G.chapters.state().lastDoneSess = G.words.sess(); // (the town's chapter 3 waits for the morning: the arrow is the home line's)
+      G.words.meet('hola', 't'); G.demo.skip(); G.zones.visit('villa');
+      G.goto('casa', 4, 4, 'down');
+    });
+    await g.until(() => G.field && G.field.mapId === 'casa' && G.fade.a === 0 && G.top() === G.field, null, 'her room');
+    await g.ev(INSTRUMENT); await g.ev(s => { G.speedMul = s; }, SPEED);
+    const done = await playLine(g, 'hogar', { minutes: 15 });
+    const ids = await g.ev(() => G.chapters.ids().filter(id => G.chapters.lineOf(id) === 'hogar' && G.chapters.written(id)));
+    check('hogar: its written chapters done (' + ids.join(' ') + ')', ids.every(id => done.includes(id)), done.join(' '));
+    await judge(g, 'hogar', ids);
+  } finally { await ctx.close(); }
+}
+
+const LINES = ['villa', 'playa', 'bosque', 'juegos', 'abuelos', 'montana', 'hogar'];
 const ONLY = (process.env.ONLY || '').split(',').filter(Boolean);
 run('Quiz chains: at most ' + MAX + ' questions before something happens on the map', LINES.filter(l => !ONLY.length || ONLY.includes(l))
-  .map(l => [l === 'villa' ? 'Villa Sol, chapters 1-21' : 'the zone: ' + l, b => (l === 'villa' ? villa(b) : zone(b, l))]));
+  .map(l => [l === 'villa' ? 'Villa Sol, chapters 1-21' : l === 'hogar' ? 'the home line: the kitchen' : 'the zone: ' + l, b => (l === 'villa' ? villa(b) : l === 'hogar' ? home(b) : zone(b, l))]));

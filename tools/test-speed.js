@@ -90,6 +90,7 @@ const WINDOW = ([n, max]) => new Promise(res => { const S = window.__sp; S.ms = 
 // nothing and never start by themselves.
 const TRIPLE = () => {
   const CH = G.chapters, SK = G.seek, ids = CH.ids(), spots = SK.SPOTS.slice(), noop = function* () { };
+  const n0 = ids.length, w0 = ids.filter(CH.written).length, l0 = CH.lines().length, lw = new Set(ids.filter(CH.written).map(CH.lineOf)).size; // (what three times as much comes to: written chapters and the lines that have one are copied twice)
   for (const x of [2, 3]) for (const id of ids) {
     const d = CH.def(id), sc = CH.scriptOf(id), nid = id + '_x' + x;
     if (!sc) continue; // (a chapter whose script is not written yet: nothing to copy)
@@ -98,7 +99,7 @@ const TRIPLE = () => {
       : b.tap ? { tap: b.tap, run: noop } : b.door ? { door: b.door, run: noop } : b.evening ? { evening: b.evening, run: noop } : { who: b.who || d.giver, run: noop })));
   }
   for (const x of [2, 3]) for (const s of spots) SK.SPOTS.push(Object.assign({}, s, { id: s.id + '_x' + x, kinds: s.kinds.slice() }));
-  return { chapters: CH.ids().length, lines: CH.lines().length, spots: SK.SPOTS.length };
+  return { chapters: CH.ids().length, lines: CH.lines().length, spots: SK.SPOTS.length, want: { chapters: n0 + 2 * w0, lines: l0 + 2 * lw } };
 };
 
 // a mid-game save, in slot 1 (so it autosaves as hers does): half of Villa Sol's story done and a chapter going on,
@@ -254,7 +255,7 @@ async function measure(browser, C, out) {
   try {
     const cdp = await ctx.newCDPSession(g.page);
     await g.ev(PROBE);
-    if (C.triple) { const t = await g.ev(TRIPLE); check(C.id + ': three times the content is in the page (112 chapters (the 4 of El hogar have no script to copy), 19 lines, 129 hiding places)', t.chapters === 112 && t.lines === 19 && t.spots === 129, JSON.stringify(t)); }
+    if (C.triple) { const t = await g.ev(TRIPLE); check(C.id + ': three times the content is in the page (every written chapter and its line copied twice: a chapter with no script yet is not copied; 129 hiding places)', t.chapters === t.want.chapters && t.lines === t.want.lines && t.spots === 129, JSON.stringify(t)); }
     const seed = await g.ev(SEED, { words: C.words || 0, triple: !!C.triple });
     await g.fieldIdle('villa');
     console.log('  the save: ' + seed.words + ' words (' + seed.backlog + ' due, ' + seed.today + ' new today), ' + seed.chapters + ' chapters in ' + seed.lines + ' lines, ' + seed.spots + ' hiding places');

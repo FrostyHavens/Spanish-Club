@@ -4,9 +4,10 @@
 // el patio (the back yard, outdoors, so it gets the night wash like the other outdoor maps): a lemon tree, an avocado
 // tree, a small vegetable bed, the clothes line, a sandpit where Leo (her little brother) plays, flowers, a fence all
 // round and a spot where Canelo digs. Both maps are part of Villa Sol's zone (content/es/zone-villa.js).
-// This file is the rooms and the people only: the story (chapters hogar1..hogar4) is written in other files, so for now
-// the four chapters are in the table with no script (CH.gate says 'unwritten': nobody waits on them, no bubble, no row
-// in Misiones or the Learning page) and Papá and Leo only say hello. The coordinates the story needs are in
+// This file is the rooms and the people, the doorway bubble and the table of the four chapters (hogar1 opens only once the
+// puppy is found, after: 'c1'; on the day she first walks into the kitchen it opens whatever the backlog). The story is in
+// other files (hogar-story1.js: chapters 1 and 2; hogar-story2.js: 3 and 4); a chapter with no script yet is 'unwritten'
+// (nobody waits on it, no bubble, no row in Misiones or the Learning page). The coordinates the story needs are in
 // G.MAPDATA.cocina.pos and G.MAPDATA.patio.pos (tools/mapgen.py).
 // Loaded after src/zones.js and before content/es/zone-villa.js (which lists the maps and marks the kitchen indoor).
 'use strict';
@@ -21,6 +22,8 @@
   // ---------- la cocina ----------
   G.maps.cocina = {
     name: 'La cocina', icon: 'cocina', rows: MD.cocina.rows, music: 'headquarters', indoor: true, line: 'hogar', // (the home song goes on from her room without starting again)
+    // the day she first walks in is written down: that day the first chapter opens whatever the review backlog (CH.ARRIVAL, below)
+    onEnter: function* () { const d = CH.data('hogar1'); if (!d.first) { d.first = G.today(); G.st.autosave(); } },
     exits: [
       { x: P('cocina', 'door')[0], y: P('cocina', 'door')[1], to: 'casa', tx: 7, ty: 4, dir: 'left' }, // back in her room, beside the doorway
       { x: P('cocina', 'patioDoor')[0], y: P('cocina', 'patioDoor')[1], to: 'patio', tx: P('patio', 'in')[0], ty: P('patio', 'in')[1], dir: 'down' },
@@ -68,6 +71,25 @@
     },
   });
 
+  // Her room is Villa Sol's, and the kitchen's story is through its doorway (guide.js liveFor reads alsoLine: with no chapter of
+  // the town going on, the arrow follows the home chapter, or leads to the doorway when one could start).
+  G.maps.casa.alsoLine = 'hogar';
+  // The first chapter opens on the day she first walks into the kitchen, whatever the review backlog (as a zone's does on
+  // the day she first gets there: chapters.js gate); the second waits for room like every other chapter.
+  CH.ARRIVAL.hogar = () => { const c = G.state && G.state.ch, d = c && c.data && c.data.hogar1; return !!d && d.first === G.today(); };
+
+  // A small picture bubble floats at the kitchen doorway in her room while a chapter of the home line could start (or is going
+  // on): the chapter's own picture, like a person's story bubble. It needs no arrow; the guide's arrow comes by its own
+  // rules (guide.js). Not at sunset, when the way to bed leads. (the chapter's live beat is memoised per frame: chapters.js live1)
+  const draw0 = CH.draw;
+  CH.draw = function (f, ctx, layer) {
+    draw0.apply(this, arguments);
+    if (layer !== 'top' || !f || f.mapId !== 'casa' || !G.state || G.top() !== f || (G.day && G.day.over())) return;
+    const L = CH.live({}, 'hogar'); if (!L || !L.b) return;
+    const door = P('casa', 'cocinaDoor');
+    G.drawAlert(ctx, CH.emblem(L.id), door[0] * G.TILE - Math.round(f.cam.x) - 2, door[1] * G.TILE - Math.round(f.cam.y) - 2, f.t);
+  };
+
   // The two maps' own line of story ('hogar') is the one to ask about while she is in them (chapters.js lineHere reads the
   // zone, and these maps are Villa Sol's). Everywhere else it is as it was.
   const lineHere = CH.lineHere;
@@ -85,7 +107,7 @@
   );
 
   // ---------- the unit's four chapters (docs/UNIT_EN_CASA.md): in the table, with no script yet ----------
-  CH.add({ id: 'hogar1', line: 'hogar', title: '¡Tengo hambre!', en: 'I\'m hungry! Papá is cooking soup: you say you are hungry, taste it and say how good it is', giver: 'papa', words: ['elpapa', 'cocina', 'hambre', 'sopa', 'rico'], icon: 'sopa', col: '#e0782a' });
+  CH.add({ id: 'hogar1', line: 'hogar', after: 'c1', title: '¡Tengo hambre!', en: 'I\'m hungry! Papá is cooking soup: you say you are hungry, taste it and say how good it is', giver: 'papa', words: ['elpapa', 'cocina', 'hambre', 'sopa', 'rico'], icon: 'sopa', col: '#e0782a' });
   CH.add({ id: 'hogar2', line: 'hogar', title: 'Pon la mesa', en: 'Set the table: carry the plates, glasses and spoons from the shelf to the table', giver: 'papa', words: ['mesa', 'silla', 'plato', 'vaso', 'cuchara'], icon: 'plato', col: '#4a86c8' });
   CH.add({ id: 'hogar3', line: 'hogar', title: 'Los tacos de Papá', en: 'Papá\'s tacos: build a taco step by step and tell Leo (and the dog) to eat', giver: 'leo', words: ['hermano', 'tortilla', 'frijoles', 'taco', 'come'], icon: 'taco', col: '#e8b030' });
   CH.add({ id: 'hogar4', line: 'hogar', title: 'Agua de limón', en: 'Lemon water: Mamá is thirsty; pick lemons and an avocado in the yard and the family sits down together', giver: 'mama', words: ['lamama', 'sed', 'limon', 'aguacate', 'arroz'], icon: 'limon', col: '#7cb830' });

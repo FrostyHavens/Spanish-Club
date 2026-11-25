@@ -331,6 +331,35 @@ The new rooms and the two new people. The words of the unit and the story lines 
 ### Questions for the reviewer
 None new. Least sure: nothing; every line above is a plain greeting or a set phrase from a dictionary of Mexican Spanish.
 
+## Batch 8 (2026-11-25): En casa, chapters 1 and 2 (content/es/hogar-story1.js)
+Everything Papá says in "¡Tengo hambre!" and "Pon la mesa". Lines built from a word take the article from the word (so "la sopa", "el plato", "tu silla" are written by the game, never typed).
+
+### Chapter 1: ¡Tengo hambre!
+- "¡Hola, {name}!" (Hi!). The card "hola".
+- "¡Soy tu papá!" (I'm your dad!). Plain and certain. The card "el papá" is shown as "papá" here.
+- "¡Bienvenida a la cocina!" / "¡Bienvenido a la cocina!" (Welcome to the kitchen!), the ending follows the player's gender. Certain.
+- "¿Tienes hambre?" (Are you hungry?). Certain: "tener hambre" is how it is said everywhere. Papá says it as plain text; the card is "tengo hambre".
+- "Tú: ¡...!" (the child's own line: she says or picks "tengo hambre"). The card "tengo hambre" is the word.
+- "¡Ya está!" (It's ready!). Certain; "ya está" is the usual way to say a dish is done.
+- "¡Mira! ¡La sopa!" (Look! The soup!). Certain.
+- "¡Prueba!" (Taste it!). "Probar" is "to taste" in Mexico. Certain.
+- "¡Mmm! ¡Qué rico!" (Mmm! So yummy!). Certain: "¡qué rico!" is the everyday Mexican way to praise food.
+- "¡Y un poquito para {dog}!" (And a little for {dog}!). Certain; "poquito" is the friendly diminutive, very Mexican.
+
+### Chapter 2: Pon la mesa
+- "¡A comer!" (Time to eat!). Certain; what a parent calls to the family.
+- "¿Me ayudas?" (Will you help me?). Certain. Shown with the card "sí" / "no" only if she has met them.
+- "¡Mira! ¡La mesa!", "¡Mira! ¡El plato!", "¡Mira! ¡El vaso!", "¡Mira! ¡La cuchara!" (Look! ...). Certain.
+- "¡Para la mesa!" (For the table!). Certain.
+- "¡Muy bien, {name}!" (Very good!). Certain.
+- "¡Tu silla!" (Your chair!), with Papá pulling the chair out. Certain.
+- "¿Qué es?" (What is it?), asked with a glass held up.
+
+### Questions for the reviewer
+1. "Vaso" for a drinking glass and "plato" for a plate: both are the normal Mexican words. "Plato" can also mean a dish of food; here it is only the thing on the table.
+2. "Pon la mesa" (the chapter's title): Mexicans also say "poner la mesa" for setting the table. Certain.
+Least sure: nothing; every line is a set phrase of everyday family talk. No native speaker has read them yet.
+
 ## Batch 9: En casa, chapters 3 and 4 (content/es/hogar-story2.js)
 Chapter 3, "Los tacos de Papá", and chapter 4, "Agua de limón". Words in `[brackets]` are the ones taught; the article before a word comes from the word list, not from the line.
 
@@ -356,7 +385,7 @@ Chapter 3, "Los tacos de Papá", and chapter 4, "Agua de limón". Words in `[bra
 - Papá: "¡Un vaso! ¿Para quién?" (A glass! Who is it for?).
 - Mamá: "¡Qué rico!" and "¡Y para la comida!" (And for lunch!).
 - Papá: "¡Muy bien, {name}!" and "¡A la mesa!".
-- At the table. Papá: "¡Come, {name}!". Mamá: "¡Agua de limón! ¡Qué rico!". Leo: "¡Arroz! ¡Qué rico!".
+- At the table. Papá: "¡Come, {name}!". Mamá: "¡Mmm! ¡Qué rico!" (changed from "¡Agua de limón! ¡Qué rico!": "agua" is feminine, so "rico" right after it would jar). Leo: "¡Arroz! ¡Qué rico!".
 
 ### Questions for the reviewer
 - "Agua de limón": in Mexico "limón" is the small green lime, so this is the usual name for limeade. A yellow lemon would be "limón amarillo". I am fairly sure, but there is no native check.
