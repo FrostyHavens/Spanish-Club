@@ -88,5 +88,5 @@
   CH.add({ id: 'hogar1', line: 'hogar', title: '¡Tengo hambre!', en: 'I\'m hungry! Papá is cooking soup: you say you are hungry, taste it and say how good it is', giver: 'papa', words: ['elpapa', 'cocina', 'hambre', 'sopa', 'rico'], icon: 'sopa', col: '#e0782a' });
   CH.add({ id: 'hogar2', line: 'hogar', title: 'Pon la mesa', en: 'Set the table: carry the plates, glasses and spoons from the shelf to the table', giver: 'papa', words: ['mesa', 'silla', 'plato', 'vaso', 'cuchara'], icon: 'plato', col: '#4a86c8' });
   CH.add({ id: 'hogar3', line: 'hogar', title: 'Los tacos de Papá', en: 'Papá\'s tacos: build a taco step by step and tell Leo (and the dog) to eat', giver: 'leo', words: ['hermano', 'tortilla', 'frijoles', 'taco', 'come'], icon: 'taco', col: '#e8b030' });
-  CH.add({ id: 'hogar4', line: 'hogar', title: 'Agua de limón', en: 'Lemon water: Mamá is thirsty; pick lemons and an avocado in the yard and the family sits down together', giver: 'papa', words: ['lamama', 'sed', 'limon', 'aguacate', 'arroz'], icon: 'limon', col: '#7cb830' });
+  CH.add({ id: 'hogar4', line: 'hogar', title: 'Agua de limón', en: 'Lemon water: Mamá is thirsty; pick lemons and an avocado in the yard and the family sits down together', giver: 'mama', words: ['lamama', 'sed', 'limon', 'aguacate', 'arroz'], icon: 'limon', col: '#7cb830' });
 })();

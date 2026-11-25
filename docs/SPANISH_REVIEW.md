@@ -330,3 +330,37 @@ The new rooms and the two new people. The words of the unit and the story lines 
 
 ### Questions for the reviewer
 None new. Least sure: nothing; every line above is a plain greeting or a set phrase from a dictionary of Mexican Spanish.
+
+## Batch 9: En casa, chapters 3 and 4 (content/es/hogar-story2.js)
+Chapter 3, "Los tacos de Papá", and chapter 4, "Agua de limón". Words in `[brackets]` are the ones taught; the article before a word comes from the word list, not from the line.
+
+### Chapter 3: Los tacos de Papá
+- Leo: "¡Tengo hambre!" (I am hungry). Set phrase.
+- Leo: "¡Soy tu hermano!" (I am your brother).
+- Leo: "¡A la cocina!" (To the kitchen!).
+- Papá: "¡Hola, {name}! ¡Mira!" (Hi! Look!), then "¡Mira! ¡Una tortilla!".
+- Papá: "¡A la mesa!" (To the table!), and "¡Muy bien!" (Well done!).
+- Papá: "¡Y los frijoles!" (And the beans!). Mexican word is "frijoles".
+- Papá: "¡Un taco!".
+- Papá: "¡Para Leo!" (For Leo!).
+- Papá: "¡Come, Leo!" (Eat, Leo!). The "tú" command of "comer".
+- Leo: "¡Qué rico!" (Yummy!). Set phrase in Mexico.
+- Papá: "¡Y {dog}!" (And {dog}!), and the child's turn "{dog}... ¡Come!".
+- Leo: "¡Come, {dog}!" (Eat, {dog}!).
+
+### Chapter 4: Agua de limón
+- Mamá: "¡Soy tu mamá!" (I am your mom).
+- Mamá: "¡Uf! ¡Tengo sed!" (Phew! I am thirsty). "Tener sed" is the standard way to say it.
+- Papá: "¡Mira! ¡Un limón!" (the lemon at the tree), "¡Mira! ¡Un aguacate!" (at the avocado tree), "¡Arroz!" (rice, no article: a mass word).
+- Papá: "¡Mmm!", then "¡Agua de limón!" (the word "agua" is a card only when it is already met).
+- Papá: "¡Un vaso! ¿Para quién?" (A glass! Who is it for?).
+- Mamá: "¡Qué rico!" and "¡Y para la comida!" (And for lunch!).
+- Papá: "¡Muy bien, {name}!" and "¡A la mesa!".
+- At the table. Papá: "¡Come, {name}!". Mamá: "¡Agua de limón! ¡Qué rico!". Leo: "¡Arroz! ¡Qué rico!".
+
+### Questions for the reviewer
+- "Agua de limón": in Mexico "limón" is the small green lime, so this is the usual name for limeade. A yellow lemon would be "limón amarillo". I am fairly sure, but there is no native check.
+- "Come" as the command to a person and to the dog ("¡Come, Leo!", "¡Come, {dog}!"): the "tú" form of "comer". Some families would say "¡A comer!" to call everyone; that form is in the word's alternatives for the microphone.
+- "¡Soy tu mamá!" and "¡Soy tu hermano!": natural, but a child would more often say "mi mamá" about her own mother. Here the person speaks to the child, so "tu" is right.
+- "Los tacos de Papá" and "Agua de limón" are the chapter titles from batch 7, unchanged.
+Least sure: "¡Y para la comida!" (the Mexican "comida" means the midday meal; fine for lunch).
