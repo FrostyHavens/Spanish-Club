@@ -2,6 +2,41 @@
 
 A running record of what changed in Club de Español and why. Newest first.
 
+## 2026-11-25 — New content: En casa (Papá's kitchen, the patio, Leo, 20 everyday words)
+
+The first new unit since the open world. The design, in plain words, is `docs/UNIT_EN_CASA.md`.
+
+**What she finds.** Her house has two new rooms. A doorway on the right-hand wall of her room leads to **la cocina**,
+where **Papá** cooks. The kitchen's back door leads to **el patio**: a lemon tree, an avocado tree, a vegetable bed,
+a clothes line, a place where the dog digs, and her little brother **Leo**. Nothing in the room she knows has moved.
+
+**20 new words**, the everyday kind the game was missing: la mamá, el papá, el hermano; la cocina, la mesa, la silla,
+el plato, el vaso, la cuchara; la sopa, la tortilla, los frijoles, el arroz, el taco, el aguacate, el limón; tengo
+hambre, tengo sed, ¡qué rico!, come. Each has its picture and its place in the notebook (two new pages: La cocina and
+¡A comer!). No new animals.
+
+**Four short chapters**, five words each: ¡Tengo hambre! (Papá's soup), Pon la mesa (she carries a plate, a glass and
+a spoon to the table), Los tacos de Papá (a taco built step by step; she tells Leo and the dog "¡come!"), Agua de
+limón (Mamá is thirsty; lemons and an avocado from the patio; the family eats together).
+- The doorway opens once the puppy has been found. Before that Mamá says "¡Espera!".
+- The first chapter opens on the day she first walks into the kitchen, even with reviews waiting, like a new place
+  does. The other three wait until her reviews have room, so they spread over several play days.
+- While a home chapter is waiting, a small picture floats at the kitchen doorway, and the arrow leads there whenever
+  the town's story has nothing for her. The town's story always goes first.
+
+**Every day afterwards.** Once a day Papá's pot has a bubble: he asks what she wants ("Quiero..."), she sets what is
+missing on the table by listening ("Dame dos platos", "el vaso azul"), the dish is served and stays on the table for
+the day. Leo and Papá ask small favours about the home words. Lemons and avocados can be picked and given to Papá.
+Papá and Leo have hearts and a greeting a day. The Learning page has three new "tonight's questions" (¿Tienes
+hambre? ¿Tienes sed? ¿Qué quieres comer?).
+
+**Her save.** No id that existed before has changed; the unit only adds. A save from the last release opens in her
+room exactly where she stood.
+
+**Spanish.** No native speaker has read it. Every new line is in `docs/SPANISH_REVIEW.md`, batches 6 to 10, with the
+points we are least sure of: "el limón" for the small green lime, "agua de limón", and "¡Qué rico!" said about any
+dish.
+
 ## 2026-11-22 — A safe return: her save, a gentle welcome back, speed for the old iPad, readable cards
 She has about 52 stars (her second sitting) and has been away a few weeks; her iPad stops at iPadOS 15; and there is
 no native-speaker reviewer. So this release is about coming back: her save must survive, the first day back must not
