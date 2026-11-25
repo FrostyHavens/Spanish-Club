@@ -28,7 +28,7 @@ const art = id => (/^(el|la|los|las) /.exec(C.words[id].es.split(' / ')[0]) || [
 const STRESSED_A = ['agua', 'aguila'];
 const fem = id => art(id) === 'la' || art(id) === 'las' || STRESSED_A.includes(id);
 const ANIMALS = ['animales', 'granja', 'mar', 'fauna', 'bichos', 'rancho', 'faunamontana'];
-const OWN = { ven: '¿Qué le dices?', sientate: '¿Qué le dices?', pata: '¿Qué le dices?', nadar: '¿Qué le gusta hacer?', rapido: '¿Cómo va?', despacio: '¿Cómo va?', grande: '¿Cómo es?', pequeno: '¿Cómo es?', caliente: '¿Cómo está?', calor: '¿Qué tiempo hace?', frio: '¿Qué tiempo hace?', familia: '¿Quiénes son?' }; // (caliente: about a hot thing held up, el chocolate, never a person: S2 review #8)
+const OWN = { ven: '¿Qué le dices?', sientate: '¿Qué le dices?', pata: '¿Qué le dices?', nadar: '¿Qué le gusta hacer?', rapido: '¿Cómo va?', despacio: '¿Cómo va?', grande: '¿Cómo es?', pequeno: '¿Cómo es?', caliente: '¿Cómo está?', calor: '¿Qué tiempo hace?', frio: '¿Qué tiempo hace?', familia: '¿Quiénes son?', rico: '¿Qué dice?', hambre: '¿Qué dice?', sed: '¿Qué dice?' }; // (caliente: about a hot thing held up, el chocolate, never a person: S2 review #8)
 // the question a native speaker would ask about this word's picture
 function expected(id) {
   const w = C.words[id], t = w.topic, a = art(id);

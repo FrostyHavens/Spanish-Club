@@ -1,4 +1,4 @@
-// ===== Spanish content: the words (180: 73 for the 21 chapters, the rest for the zones), their notebook pages, the phrases, and the 21 chapters (docs/CURRICULUM.md) =====
+// ===== Spanish content: the words (200: 73 for the 21 chapters, the rest for the zones), their notebook pages, the phrases, and the 21 chapters (docs/CURRICULUM.md) =====
 // Loaded by index.html BEFORE src/data.js, which copies everything here into G.data (G.data.words, .topics, .pages,
 // .chapters...), so the code reads G.data as before. Pictures live in src/icons.js (`icon`), the chapters' scripts in
 // content/es/story-*.js (G.chapters.script), the chapter engine in src/chapters.js.
@@ -42,9 +42,12 @@
     tiempo: { name: '¿Qué tiempo hace?', en: 'The weather' },
     montana: { name: 'La montaña', en: 'The mountain (snow and cold)' },
     faunamontana: { name: 'Animales de la montaña', en: 'Mountain animals' },
+    // the unit En casa (docs/UNIT_EN_CASA.md): the kitchen and what is eaten there
+    cocina: { name: 'La cocina', en: 'The kitchen' },
+    acomer: { name: '¡A comer!', en: 'Time to eat!' },
   };
   // the notebook's page order: roughly the order the pages appear in the story
-  C.topicOrder = ['saludos', 'mascota', 'animales', 'sonidos', 'comida', 'colores', 'granja', 'pueblo', 'cosas', 'sentir', 'numeros', 'playa', 'mar', 'bosque', 'fauna', 'acciones', 'juegosparque', 'bichos', 'familia', 'cuerpo', 'ropa', 'rancho', 'huerta', 'tiempo', 'montana', 'faunamontana'];
+  C.topicOrder = ['saludos', 'mascota', 'animales', 'sonidos', 'comida', 'colores', 'granja', 'pueblo', 'cosas', 'sentir', 'numeros', 'cocina', 'acomer', 'playa', 'mar', 'bosque', 'fauna', 'acciones', 'juegosparque', 'bichos', 'familia', 'cuerpo', 'ropa', 'rancho', 'huerta', 'tiempo', 'montana', 'faunamontana'];
 
   C.words = {
     // ---- Saludos ----
@@ -257,6 +260,30 @@
     puma: { es: 'el puma', en: 'the puma', topic: 'faunamontana', icon: 'puma', pl: 'pumas', alt: 'pumita / león de montaña' },
     aguila: { es: 'el águila', en: 'the eagle', topic: 'faunamontana', icon: 'aguila', pl: 'águilas', alt: 'águila / aguilita / las águilas' },
     lobo: { es: 'el lobo', en: 'the wolf', topic: 'faunamontana', icon: 'lobo', pl: 'lobos', alt: 'lobito / lobos' },
+    // ---- En casa (docs/UNIT_EN_CASA.md): Papá's kitchen and what is on the table; Mexican Spanish.
+    //      lamama, elpapa and hermano join La familia; hambre and sed join Así me siento. sopa, arroz and frijoles are
+    //      mass words (Quiero sopa); los frijoles is plural-only. ids are picture names too: plato is the plate the
+    //      picnic's count heap already drew (the same picture), the rest had none ----
+    lamama: { es: 'la mamá', en: 'the mom', topic: 'familia', icon: 'lamama', pl: 'mamás', alt: 'mamá / mami / mamita / mi mamá' },
+    elpapa: { es: 'el papá', en: 'the dad', topic: 'familia', icon: 'elpapa', pl: 'papás', alt: 'papá / papi / papito / mi papá' },
+    hermano: { es: 'el hermano', en: 'the brother', topic: 'familia', icon: 'hermano', pl: 'hermanos', alt: 'hermanito / mi hermano / hermano' },
+    cocina: { es: 'la cocina', en: 'the kitchen', topic: 'cocina', icon: 'cocina', pl: 'cocinas', alt: 'cocinita / mi cocina' },
+    mesa: { es: 'la mesa', en: 'the table', topic: 'cocina', icon: 'mesa', pl: 'mesas', alt: 'mesita / la mesita' },
+    silla: { es: 'la silla', en: 'the chair', topic: 'cocina', icon: 'silla', pl: 'sillas', alt: 'sillita / sillas' },
+    plato: { es: 'el plato', en: 'the plate', topic: 'cocina', icon: 'plato', pl: 'platos', alt: 'platito / platos' },
+    vaso: { es: 'el vaso', en: 'the glass', topic: 'cocina', icon: 'vaso', pl: 'vasos', alt: 'vasito / vasos' },
+    cuchara: { es: 'la cuchara', en: 'the spoon', topic: 'cocina', icon: 'cuchara', pl: 'cucharas', alt: 'cucharita / cucharas' },
+    sopa: { es: 'la sopa', en: 'the soup', topic: 'acomer', icon: 'sopa', alt: 'sopita' },
+    tortilla: { es: 'la tortilla', en: 'the tortilla', topic: 'acomer', icon: 'tortilla', pl: 'tortillas', alt: 'tortillas / tortillita' },
+    frijoles: { es: 'los frijoles', en: 'the beans', topic: 'acomer', icon: 'frijoles', alt: 'frijol / el frijol / frijolitos / los frijolitos' },
+    arroz: { es: 'el arroz', en: 'the rice', topic: 'acomer', icon: 'arroz', alt: 'arrocito / el arroz' },
+    taco: { es: 'el taco', en: 'the taco', topic: 'acomer', icon: 'taco', pl: 'tacos', alt: 'tacos / taquito' },
+    aguacate: { es: 'el aguacate', en: 'the avocado', topic: 'acomer', icon: 'aguacate', pl: 'aguacates', alt: 'aguacates / aguacatito' },
+    limon: { es: 'el limón', en: 'the lime', topic: 'acomer', icon: 'limon', pl: 'limones', alt: 'limones / limoncito / limón verde' }, // (Mexican: el limón is the small green lime; the yellow lemon is el limón amarillo)
+    hambre: { es: 'tengo hambre', en: 'I\'m hungry', topic: 'sentir', icon: 'hambre', alt: 'tengo mucha hambre / hambre / tiene hambre / tengo hambrita' },
+    sed: { es: 'tengo sed', en: 'I\'m thirsty', topic: 'sentir', icon: 'sed', alt: 'tengo mucha sed / sed / tiene sed' },
+    rico: { es: '¡qué rico!', en: 'yummy!', topic: 'acomer', icon: 'rico', alt: 'qué rico / rico / qué rica / está rico / riquísimo' },
+    come: { es: 'come', en: 'eat!', topic: 'acomer', icon: 'come', alt: 'a comer / come come / cómetelo / comer / come todo' },
   };
   // ---------- Phrases (docs/LEARNING_PLAN_2.md, Phase 2: "say it to get it"; src/phrases.js) ----------
   // A phrase is a FRAME with a SLOT for a word she knows: "Quiero ___" + el helado -> "Quiero un helado". Phrases are
@@ -282,7 +309,7 @@
     f_tengo: { es: 'Tengo ___', en: 'I have ___', say: 'tengo / yo tengo / aquí tengo / te traigo', art: 'un', prompt: '¿Qué tienes?', reply: '¡Gracias!', icon: 'mano' },
   };
   C.phraseOrder = ['f_llamo', 'f_quiero', 'f_porfavor', 'f_donde', 'f_gusta', 'f_tengo']; // (the notebook's, the deck's and the grown-ups' order)
-  C.mass = ['pan', 'agua', 'leche', 'queso', 'chocolate', 'arena', 'nieve', 'hielo']; // (said bare after quiero / tengo: Quiero pan)
+  C.mass = ['pan', 'agua', 'leche', 'queso', 'chocolate', 'arena', 'nieve', 'hielo', 'sopa', 'arroz']; // (said bare after quiero / tengo: Quiero pan; los frijoles is plural-only, so phrases.js already says it bare: Quiero frijoles)
 
   C.numberWords = ['uno', 'dos', 'tres', 'cuatro', 'cinco'];
   C.numberWords10 = ['uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'];
@@ -298,7 +325,7 @@
     granja: { topic: 'granja', words: ['pato', 'cabra', 'caballo', 'gallina'] },
     pueblo: { topic: 'pueblo', words: ['parque', 'granja', 'escuela', 'carta', 'casa', 'panaderia', 'biblioteca'] },
     cosas: { topic: 'cosas', words: ['banco', 'fuente', 'flor', 'arbol'] },
-    sentir: { topic: 'sentir', words: ['bien', 'cansado', 'feliz', 'triste'] },
+    sentir: { topic: 'sentir', words: ['bien', 'cansado', 'feliz', 'triste', 'hambre', 'sed'] },
     numeros: { topic: 'numeros', words: ['uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'] },
     playa: { topic: 'playa', words: ['mar', 'concha', 'elsol', 'caliente', 'helado', 'arena', 'cubetaarena', 'castillo', 'ola'] },
     mar: { topic: 'mar', words: ['cangrejo', 'estrellamar', 'tortuga', 'gaviota', 'nadar', 'medusa', 'delfin', 'pulpo'] },
@@ -307,7 +334,7 @@
     acciones: { topic: 'acciones', words: ['corre', 'baila', 'sube', 'baja', 'rapido', 'despacio', 'empuja', 'lanza', 'atrapa'] },
     juegosparque: { topic: 'juegosparque', words: ['columpio', 'papalote', 'resbaladilla', 'subibaja', 'burbujas', 'cuerda'] },
     bichos: { topic: 'bichos', words: ['paloma', 'catarina', 'hormiga', 'abeja', 'lagartija', 'lombriz', 'grillo', 'colibri'] },
-    familia: { topic: 'familia', words: ['abuela', 'familia', 'abuelo', 'bebe'] },
+    familia: { topic: 'familia', words: ['abuela', 'familia', 'abuelo', 'bebe', 'elpapa', 'hermano', 'lamama'] },
     cuerpo: { topic: 'cuerpo', words: ['mano', 'pie', 'nariz', 'ojos', 'boca', 'cabeza'] },
     ropa: { topic: 'ropa', words: ['camisa', 'pantalon', 'calcetines', 'vestido', 'zapatos', 'sombrero', 'chamarra'] },
     rancho: { topic: 'rancho', words: ['vaca', 'cerdo', 'oveja', 'burro', 'pavo', 'raton', 'gallo', 'tlacuache'] },
@@ -315,6 +342,9 @@
     tiempo: { topic: 'tiempo', words: ['nieve', 'frio', 'calor', 'nube', 'viento', 'lluvia', 'arcoiris'] },
     montana: { topic: 'montana', words: ['lamontana', 'gorro', 'bufanda', 'guantes', 'muneco', 'chocolate', 'trineo', 'hielo'] },
     faunamontana: { topic: 'faunamontana', words: ['llama', 'marmota', 'zorrillo', 'carpintero', 'monarca', 'puma', 'aguila', 'lobo'] },
+    // En casa: in the order the four chapters meet them
+    cocina: { topic: 'cocina', words: ['cocina', 'mesa', 'silla', 'plato', 'vaso', 'cuchara'] },
+    acomer: { topic: 'acomer', words: ['sopa', 'rico', 'tortilla', 'frijoles', 'taco', 'come', 'limon', 'aguacate', 'arroz'] },
   };
   C.pageOrder = C.topicOrder.slice();
   // where each page's puzzle sparkle sits (maps.js reads this): map -> 'x,y' -> page

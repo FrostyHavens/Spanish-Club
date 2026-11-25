@@ -331,9 +331,6 @@
     huella(p) { // a paw print on the ground
       p.ell(8, 11, 3.6, 3, '#6a4020'); [[3.6, 6.8], [6.6, 4.6], [9.6, 4.6], [12.4, 6.8]].forEach(([x, y]) => p.ell(x, y, 1.5, 1.8, '#6a4020'));
     },
-    plato(p) { // a plate (the picnic: Rosa counts them)
-      p.ell(8, 9, 7.5, 5, '#d8d8e4'); p.ell(8, 8.6, 6.4, 4, '#ffffff'); p.ell(8, 9, 4.2, 2.6, '#eef0f8'); p.rect(4, 6, 3, 1, '#ffffff');
-    },
     nido(p, w) { // a nest of straw with w.n eggs in it (Rosa's hens: uno, dos)
       const n = (w && w.n) || 1;
       p.ell(8, 11, 7.5, 4, '#a07030'); p.ell(8, 10.2, 6, 2.6, '#6a4818');
@@ -1222,6 +1219,135 @@
       p.ell(8, 8, 6, 4.6, '#8a8a98'); p.tri(2, 8, 14, 8, 8, 15, '#8a8a98'); p.tri(4, 9, 12, 9, 8, 15, '#f0ece8');
       p.put(5, 7, '#e8a020'); p.put(11, 7, '#e8a020'); p.put(5, 6, '#202028'); p.put(11, 6, '#202028'); p.disc(8, 13.5, 1.2, '#101010');
       p.rect(7, 4, 2, 3, '#6a6a78');
+    },
+    // ---- En casa (docs/UNIT_EN_CASA.md): the family at home, the kitchen, what is eaten, what is said at the table ----
+    lamama(p) { // Mamá (the same look as her sprite: brown hair in a ponytail, a green top, warm skin), a smile
+      p.ell(8, 15.5, 7, 3.2, '#50a070'); p.rect(6, 13, 4, 1, '#f0e8c0');
+      p.ell(13.4, 9.5, 1.7, 3.4, '#5a3418'); p.ell(8, 6.6, 5.6, 4.2, '#5a3418');
+      p.ell(8, 9.6, 4.5, 4.6, SKIN); p.shade(8, 9.6, 4.5, SKIN2); p.rect(4, 5, 8, 2, '#5a3418'); p.rect(3, 6, 1, 4, '#5a3418'); p.rect(12, 6, 1, 4, '#5a3418');
+      p.rect(5, 9, 1, 2, '#302018'); p.rect(10, 9, 1, 2, '#302018'); p.put(4, 8, '#302018'); p.put(11, 8, '#302018');
+      p.rect(4, 11, 1, 1, '#f09090'); p.rect(11, 11, 1, 1, '#f09090'); p.rect(7, 12, 2, 1, '#b04848'); p.put(6, 11, '#b04848'); p.put(9, 11, '#b04848');
+    },
+    elpapa(p) { // Papá: short dark hair, a moustache, a brick-red shirt with a white apron (he cooks)
+      const SK = '#e0b490', SK2 = '#c89870', HR = '#2a1c14';
+      p.ell(8, 15.5, 7, 3.2, '#c85a30'); p.rect(5, 13, 6, 3, '#f4f4f0'); p.rect(4, 12, 1, 2, '#f4f4f0'); p.rect(11, 12, 1, 2, '#f4f4f0');
+      p.ell(8, 9.4, 4.6, 4.9, SK); p.shade(8, 9.4, 4.6, SK2); p.put(3, 9, SK); p.put(12, 9, SK);
+      p.ell(8, 5.4, 5, 2.4, HR); p.rect(3, 5, 2, 3, HR); p.rect(11, 5, 2, 3, HR);
+      p.rect(4, 7, 3, 1, HR); p.rect(9, 7, 3, 1, HR); p.rect(5, 8, 1, 2, '#302018'); p.rect(10, 8, 1, 2, '#302018');
+      p.ell(8, 10.8, 3, 0.9, HR); p.rect(7, 12, 2, 1, '#a04040'); p.put(8, 9, SK2);
+    },
+    hermano(p) { // Leo, the little brother: a big round head, messy brown hair with a tuft, a wide grin, a yellow shirt
+      const HR = '#7a4a22';
+      p.ell(8, 15.5, 6, 3, '#e8b830'); p.rect(7, 13, 2, 1, '#c89018');
+      p.disc(8, 8.6, 5.8, SKIN); p.shade(8, 8.6, 5.8, SKIN2);
+      p.ell(8, 4, 5.4, 2.6, HR); p.rect(3, 4, 2, 3, HR); p.rect(11, 4, 2, 3, HR); p.put(7, 1, HR); p.put(8, 1, HR); p.put(9, 2, HR); p.put(6, 2, HR); p.put(10, 1, HR);
+      p.rect(5, 7, 2, 2, '#302018'); p.rect(10, 7, 2, 2, '#302018'); p.put(5, 7, '#ffffff'); p.put(10, 7, '#ffffff');
+      p.rect(3, 10, 1, 1, '#f09090'); p.rect(12, 10, 1, 1, '#f09090');
+      p.rect(5, 11, 6, 1, '#302018'); p.rect(6, 12, 4, 1, '#b04040'); p.put(4, 10, '#302018'); p.put(11, 10, '#302018');
+    },
+    cocina(p) { // a stove with a pot on it, steam and a flame under the pot, an oven door
+      p.rect(1, 7, 14, 8, '#e4e6ee'); p.rect(1, 7, 14, 1, '#ffffff'); p.rect(1, 14, 14, 1, '#b0b4c4');
+      p.rect(1, 8, 14, 1, '#50505c'); p.rect(3, 9, 1, 1, '#f04838'); p.rect(7, 9, 1, 1, '#f8c030'); p.rect(11, 9, 1, 1, '#f04838');
+      p.rect(3, 11, 10, 3, '#38384a'); p.rect(4, 12, 8, 1, '#8fb4d0'); p.rect(5, 12, 2, 1, '#c8e0f0');
+      p.rect(4, 3, 8, 5, '#8890a8'); p.rect(4, 3, 8, 1, '#b8c0d4'); p.rect(3, 4, 1, 2, '#606478'); p.rect(12, 4, 1, 2, '#606478'); p.rect(11, 4, 1, 3, '#6a6e84');
+      p.put(8, 2, '#303040');
+      p.put(6, 1, '#e8eefc'); p.put(7, 0, '#e8eefc'); p.put(9, 1, '#e8eefc'); p.put(10, 0, '#e8eefc');
+    },
+    mesa(p) { // a wooden table: the top with its edge, four legs
+      p.rect(1, 5, 14, 2, '#d8a058'); p.rect(1, 7, 14, 2, '#a86a30'); p.rect(1, 7, 14, 1, '#c28444');
+      p.rect(2, 9, 2, 6, '#a86a30'); p.rect(12, 9, 2, 6, '#a86a30'); p.rect(5, 9, 1, 4, '#8a5424'); p.rect(10, 9, 1, 4, '#8a5424');
+      p.rect(3, 5, 4, 1, '#ecc080');
+    },
+    silla(p) { // a chair from the side: a tall back, a red cushion, four legs
+      p.rect(3, 1, 3, 8, '#a86a30'); p.rect(4, 2, 1, 5, '#d8a058'); p.rect(3, 1, 3, 1, '#c28444');
+      p.rect(3, 8, 11, 2, '#d04838'); p.rect(3, 8, 11, 1, '#f07060'); p.rect(3, 10, 11, 1, '#8a5424');
+      p.rect(3, 11, 2, 4, '#a86a30'); p.rect(12, 11, 2, 4, '#a86a30'); p.rect(6, 11, 1, 3, '#8a5424');
+    },
+    plato(p, w) { // a plate seen from above and a little in front (its colour from w.col; white with a blue ring by default: the picnic's)
+      const c = (w && w.col) || '#f4f4fa', d = G.shade(c, 0.8), ring = (w && w.col) ? G.shade(c, 0.68) : '#8aa8e0';
+      p.ell(8, 9.2, 7.5, 5.6, d); p.ell(8, 8.6, 7, 5, c); p.ell(8, 8.8, 5.4, 3.7, ring); p.ell(8, 8.9, 4.5, 2.9, G.shade(c, 1.06));
+      p.rect(3, 6, 3, 1, '#ffffff'); p.put(2, 7, '#ffffff');
+    },
+    vaso(p, w) { // a glass, empty and clear (its colour from w.col: a blue one, a red one), wider at the top
+      const c = (w && w.col) || '#dff2fc', d = G.shade(c, 0.78), l = G.shade(c, 1.2);
+      for (let y = 2; y <= 13; y++) { const k = Math.floor((y - 2) / 4); p.rect(3 + k, y, 10 - 2 * k, 1, c); p.put(12 - k, y, d); }
+      p.rect(3, 2, 10, 1, l); p.rect(5, 14, 6, 1, d); p.rect(4, 13, 8, 1, d);
+      for (let y = 4; y <= 10; y++) p.put(4 + Math.floor((y - 2) / 4), y, '#ffffff');
+    },
+    cuchara(p) { // a spoon lying slanted: a round bowl at the top left, a long handle to the bottom right
+      for (let t = 0; t <= 8; t++) p.disc(6.6 + t, 6.6 + t, 1.1, '#c4c8d8');
+      p.ell(5.2, 5.2, 4, 3.6, '#d4d8e6'); p.ell(5.2, 5.2, 2.8, 2.4, '#aeb4c8'); p.put(4, 4, '#ffffff'); p.put(3, 5, '#ffffff'); p.put(7, 11, '#eef0f8'); p.put(9, 13, '#eef0f8');
+      p.shade(5.2, 5.2, 4, '#9ea4b8');
+    },
+    sopa(p) { // a bowl of orange-red soup, steam over it (no spoon: that is the cuchara)
+      p.ell(8, 9, 7.2, 6.2, '#eef0f8'); p.rect(0, 0, 16, 7, null); p.shade(8, 9, 7.2, '#c8cce0');
+      p.ell(8, 7.6, 7, 2.2, '#ffffff'); p.ell(8, 7.8, 5.8, 1.6, '#e8602a'); p.rect(6, 7, 3, 1, '#f08848');
+      p.put(5, 8, '#58a838'); p.put(11, 8, '#58a838'); p.put(9, 7, '#f8c838'); p.put(7, 8, '#f8c838');
+      p.rect(4, 12, 8, 1, '#5080d0');
+      for (const [x, y] of [[5, 4], [6, 3], [5, 2], [6, 1], [10, 4], [9, 3], [10, 2], [9, 1]]) p.put(x, y, '#e8ecf8');
+    },
+    frijoles(p) { // a clay bowl heaped with dark beans, each with a shine
+      p.ell(8, 9, 7.2, 6.2, '#c07840'); p.rect(0, 0, 16, 8, null); p.shade(8, 9, 7.2, '#8a4e24');
+      p.ell(8, 8, 7, 1.8, '#e0a060'); p.ell(8, 6.2, 5.6, 3, '#4a2418');
+      for (const [x, y] of [[4, 6], [6, 5], [9, 4], [11, 6], [7, 7], [10, 7], [5, 8]]) { p.rect(x, y, 2, 1, '#7c4630'); p.put(x, y - 1, '#a8644a'); }
+      p.rect(4, 12, 8, 1, '#f0d8a0'); p.put(5, 11, '#f0d8a0'); p.put(8, 11, '#f0d8a0'); p.put(11, 11, '#f0d8a0');
+    },
+    arroz(p) { // a blue bowl with a mound of white rice, grains showing
+      p.ell(8, 9, 7.2, 6.2, '#4a8ad0'); p.rect(0, 0, 16, 8, null); p.shade(8, 9, 7.2, '#2f62a8');
+      p.ell(8, 8, 7, 1.8, '#86b6ec'); p.ell(8, 5.8, 5.6, 3.6, '#fffff2'); p.shade(8, 5.8, 5.6, '#e2e2cc');
+      for (const [x, y, v] of [[5, 4, 1], [8, 3, 0], [10, 5, 1], [6, 6, 0], [8, 6, 1], [11, 7, 0], [4, 7, 1]]) { p.rect(x, y, 2, 1, '#d4d4b8'); if (v) p.put(x + 1, y + 1, '#d4d4b8'); }
+      p.rect(4, 12, 8, 1, '#ffffff'); p.put(5, 11, '#ffffff'); p.put(8, 11, '#ffffff'); p.put(11, 11, '#ffffff');
+    },
+    tortilla(p) { // a stack of three round flat tortillas seen a little from above: edges, then a toasted top
+      p.ell(8, 12.2, 7, 3.4, '#8a5a24'); p.ell(8, 10.8, 7, 3.4, '#d8a458'); p.ell(8, 9.7, 7, 3.4, '#8a5a24'); p.ell(8, 8.4, 7, 3.4, '#d8a458');
+      p.ell(8, 6.8, 7, 4.5, '#b88038'); p.ell(8, 6.6, 6.3, 3.9, '#f2d490');
+      p.rect(5, 5, 2, 1, '#c08838'); p.rect(9, 6, 3, 1, '#c08838'); p.put(7, 8, '#c08838'); p.put(11, 4, '#c08838'); p.rect(3, 4, 3, 1, '#fff0c4'); p.put(4, 6, '#c08838');
+    },
+    taco(p) { // a folded tortilla open at the top: lettuce, tomato, cheese and meat inside
+      p.ell(8, 7.6, 7.6, 7.2, '#f0c060'); p.rect(0, 0, 16, 8, null); p.shade(8, 7.6, 7.6, '#c89040');
+      p.ell(4.5, 6.6, 3, 2.4, '#58b840'); p.ell(11.5, 6.4, 3, 2.4, '#48a838'); p.ell(8, 5.8, 3.2, 2.2, '#6ac850'); p.ell(8, 7.6, 5, 1, '#58b840');
+      p.disc(6.5, 4.6, 1.3, '#e03a28'); p.disc(10, 4.8, 1.2, '#e03a28'); p.rect(7, 3, 2, 1, '#f8d040'); p.rect(11, 4, 2, 1, '#f8d040'); p.put(4, 4, '#8a4a28'); p.put(8, 5, '#8a4a28'); p.put(3, 5, '#f8d040');
+      p.rect(1, 8, 14, 1, '#f8dc90'); p.rect(4, 11, 3, 1, '#d8a048'); p.rect(9, 12, 3, 1, '#d8a048');
+    },
+    aguacate(p) { // an avocado cut in half: dark green skin, pale green flesh, a brown pit
+      p.ell(8, 10.6, 5.8, 5.4, '#3a6a28'); p.ell(8, 5, 3.6, 4, '#3a6a28');
+      p.ell(8, 10.8, 4.6, 4.3, '#c8e070'); p.ell(8, 5.4, 2.4, 3, '#c8e070'); p.ell(8, 10.8, 3.4, 3.2, '#a8d058');
+      p.disc(8, 11, 2.5, '#8a5028'); p.shade(8, 11, 2.5, '#6a3a1c'); p.put(7, 10, '#c88848'); p.put(7, 9, '#c88848');
+    },
+    limon(p) { // the small green Mexican lime: a whole one, and half of one, cut, in front
+      p.ell(6.4, 6.6, 4.8, 4.4, '#58b830'); p.shade(6.4, 6.6, 4.8, '#3a8a20'); p.put(4, 4, '#a8e070'); p.put(5, 3, '#a8e070'); p.put(8, 6, '#3a8a20'); p.put(4, 8, '#3a8a20');
+      p.rect(6, 1, 1, 2, '#3a7a20'); p.rect(7, 1, 3, 1, '#58b830'); p.put(10, 2, '#58b830');
+      p.disc(10.4, 10.6, 4.6, '#3a8a20'); p.disc(10.4, 10.6, 3.6, '#e6f6a8');
+      for (let a = 0; a < 6; a++) { const t = a * Math.PI / 3; for (let r = 0.8; r <= 3; r += 0.5) p.put(10.4 + Math.cos(t) * r, 10.6 + Math.sin(t) * r, '#b8d868'); }
+      p.put(10, 10, '#ffffff'); p.put(10, 11, '#d0ec88');
+    },
+    hambre(p) { // "I'm hungry": a worried face, and an empty plate in a thought bubble
+      p.disc(6, 10.5, 5.4, '#f8d030'); p.shade(6, 10.5, 5.4, '#e0b018');
+      p.rect(3, 9, 1, 2, '#302018'); p.rect(7, 9, 1, 2, '#302018'); p.rect(2, 7, 2, 1, '#8a5a18'); p.rect(8, 7, 2, 1, '#8a5a18');
+      p.ell(5.5, 13.3, 1.8, 1, '#803030');
+      p.put(10, 8, '#ffffff'); p.put(11, 7, '#ffffff');
+      p.ell(11, 4, 4.8, 3.8, '#ffffff'); p.ell(11, 4.1, 3.5, 2.7, '#7a98d8'); p.ell(11, 4.1, 2.4, 1.7, '#ffffff');
+    },
+    sed(p) { // "I'm thirsty": a panting face with its tongue out, and a big drop of water
+      p.disc(6.8, 9.8, 5.8, '#f8d030'); p.shade(6.8, 9.8, 5.8, '#e0b018');
+      p.rect(3, 8, 2, 2, '#302018'); p.rect(8, 8, 2, 2, '#302018'); p.rect(2, 6, 3, 1, '#8a5a18'); p.rect(8, 6, 3, 1, '#8a5a18');
+      p.rect(4, 12, 5, 1, '#302018'); p.rect(5, 13, 3, 3, '#f0607a'); p.rect(6, 13, 1, 2, '#c04058');
+      p.tri(13, 0, 11, 4, 15, 4, '#58a8f0'); p.disc(13, 5.2, 2.1, '#58a8f0'); p.put(12, 5, '#d8f0ff'); p.put(12, 4, '#d8f0ff');
+    },
+    rico(p) { // "yummy!": a happy face with its tongue out at the corner of a smile, licking its lips; two sparkles
+      smiley(p, '#f8d030', '#e0b018');
+      p.put(4, 7, '#302018'); p.put(5, 6, '#302018'); p.put(6, 7, '#302018'); p.put(9, 7, '#302018'); p.put(10, 6, '#302018'); p.put(11, 7, '#302018');
+      p.rect(2, 9, 2, 1, '#f09080'); p.rect(11, 8, 2, 1, '#f09080');
+      p.rect(5, 11, 5, 1, '#302018'); p.put(4, 10, '#302018'); p.put(10, 10, '#302018');
+      p.rect(9, 12, 4, 2, '#f0607a'); p.put(13, 12, '#f0607a'); p.rect(10, 12, 1, 1, '#c04058');
+      p.rect(14, 0, 1, 3, '#ffffff'); p.rect(13, 1, 3, 1, '#ffffff'); p.put(1, 2, '#ffffff'); p.put(1, 3, '#ffffff'); p.put(0, 2, '#ffffff');
+    },
+    come(p) { // "eat!": a face with a full spoon of soup at its mouth
+      p.disc(6, 8, 5.8, '#f8d030'); p.shade(6, 8, 5.8, '#e0b018');
+      p.put(2, 6, '#302018'); p.put(3, 5, '#302018'); p.put(4, 6, '#302018'); p.put(7, 6, '#302018'); p.put(8, 5, '#302018'); p.put(9, 6, '#302018');
+      p.rect(1, 8, 2, 1, '#f09080'); p.ell(5.5, 11.6, 1.8, 1.2, '#803030');
+      for (let t = 0; t <= 5; t++) p.disc(10.4 + t, 12.4 + t * 0.6, 0.9, '#c4c8d8');
+      p.ell(9, 11.6, 2.6, 1.9, '#d4d8e6'); p.ell(9, 11.4, 1.9, 1.2, '#e8602a');
     },
     // things on the mountain with no word of their own (a picture only)
     bolanieve(p) { // a snowball: white, soft blue shading, a sparkle

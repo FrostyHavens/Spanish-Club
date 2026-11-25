@@ -89,7 +89,7 @@ join the page of `sentir`.
 `hermanito`), `la cocina`, `la mesa`, `la silla`, `el plato`, `el vaso`, `la cuchara`, `la sopa`, `la tortilla`,
 `los frijoles` (plural only), `el arroz` (mass), `el taco`, `el aguacate`, `el limón` (pl `limones`), `tengo hambre`,
 `tengo sed`, `¡qué rico!` (alt `qué rico / rico / qué rica`), `come`. Mass words (no article in "Quiero ..."):
-sopa, arroz, frijoles.
+sopa and arroz. `los frijoles` is plural only, which the phrases already say bare ("Quiero frijoles").
 
 **Rules that matter here**
 - Order-independent: the unit may rely only on `hola` and its own words. Any other word (`agua`, `si`, `no`,

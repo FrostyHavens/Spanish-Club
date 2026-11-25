@@ -259,7 +259,7 @@
     color: ['¿De qué color es?', 'What colour is it?'], feel: ['¿Cómo está?', 'How do they feel?'], say: ['¿Qué dice?', 'What do they say?'],
     number: [null, 'How many are there?'], hot: ['¿Cómo está?', 'How is it? (hot or cold?)'],
   };
-  Q.OWN = { ven: 'command', sientate: 'command', pata: 'command', nadar: 'like', rapido: 'how', despacio: 'how', grande: 'quality', pequeno: 'quality', caliente: 'hot', calor: 'weather', frio: 'weather', familia: 'people' };
+  Q.OWN = { ven: 'command', sientate: 'command', pata: 'command', nadar: 'like', rapido: 'how', despacio: 'how', grande: 'quality', pequeno: 'quality', caliente: 'hot', calor: 'weather', frio: 'weather', familia: 'people', rico: 'say', hambre: 'say', sed: 'say' }; // ("tengo hambre", "¡qué rico!": what the face says)
   // a word whose own picture would ask the wrong thing: the thing a review question shows for it instead (held up, and on
   // its card), and that thing's word is never one of its cards (G.review.ask, the dog's warm-up: Q.clash)
   Q.PIC = { caliente: 'chocolate' };

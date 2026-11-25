@@ -268,3 +268,44 @@ Every line of the story and the world was read again. These are the ones that ch
 
 ### Questions for the reviewer
 There are none new. Every line above was settled from dictionaries of Mexican Spanish. Least sure: "¡Achú!" (the other spelling is "¡Achís!", also said), and "la banca" for a bench in a park (certain in Mexico City and the north; "el banco" is also heard).
+
+---
+
+## Batch 6 (2026-11-25): the unit "En casa", the 20 new words
+Twenty new cards for the kitchen and the table (`docs/UNIT_EN_CASA.md`). Only the words are listed here; the lines
+the people say in the four chapters are added by the helpers who write them. The card shows the part before the "/";
+the rest is what the microphone also accepts.
+
+### Words
+| Card (English) | Card shows | Also accepted by the microphone | Dictionary basis |
+| --- | --- | --- | --- |
+| the mom | la mamá | mamá, mami, mamita, mi mamá | "mamá" is the standard word; "mami" is the everyday Mexican form for a young child. |
+| the dad | el papá | papá, papi, papito, mi papá | The same: "papá", and "papi" for a child. Written "el papá" with the accent (singular); the plural is "los papás" (also "los papás" = the parents). |
+| the brother | el hermano | hermanito, mi hermano, hermano | Standard. "Hermanito" is what a big sister says to a little brother. |
+| the kitchen | la cocina | cocinita, mi cocina | Standard. |
+| the table | la mesa | mesita, la mesita | Standard. |
+| the chair | la silla | sillita, sillas | Standard. |
+| the plate | el plato | platito, platos | Standard. "Plato" is both the plate and the dish of food. |
+| the glass | el vaso | vasito, vasos | Standard. In Mexico a drinking glass is "un vaso" (a wine glass is "una copa"). |
+| the spoon | la cuchara | cucharita, cucharas | Standard. |
+| the soup | la sopa | sopita | Standard. In Mexico "sopa" can also mean the rice or pasta course; the picture is a broth with vegetables. Said without an article after "Quiero" (a mass word: "Quiero sopa"). |
+| the tortilla | la tortilla | tortillas, tortillita | In Mexico "la tortilla" is the corn (or flour) flat bread. It is not the Spanish potato omelette. |
+| the beans | los frijoles | frijol, el frijol, frijolitos | "Frijol" is the Mexican word (other countries say "judías", "habichuelas", "porotos"). Plural only on the card; bare after "Quiero" ("Quiero frijoles": a plural-only word is said bare by the phrase code). |
+| the rice | el arroz | arrocito | Standard. A mass word: "Quiero arroz". |
+| the taco | el taco | tacos, taquito | Standard in Mexico. |
+| the avocado | el aguacate | aguacates, aguacatito | "Aguacate" is the Mexican (and general) word; "palta" is South American. |
+| the lime | el limón | limones, limoncito, limón verde | In Mexico "el limón" is the small green lime (what a tree in a Mexican patio grows). The yellow lemon is "el limón amarillo", and is not taught. The plural "limones" is written in the word so the card is certain. |
+| I'm hungry | tengo hambre | tengo mucha hambre, hambre, tiene hambre, tengo hambrita | The set phrase is "tener hambre". "Hambre" is feminine but takes "el" in the singular; here it is never given an article. |
+| I'm thirsty | tengo sed | tengo mucha sed, sed, tiene sed | "Tener sed". |
+| yummy! | ¡qué rico! | qué rico, rico, qué rica, está rico, riquísimo | "¡Qué rico!" is the usual Mexican cry for tasty food (also "¡qué rica!" for a feminine dish, such as the soup). The card uses the masculine; the microphone accepts "qué rica" too. |
+| eat! | come | a comer, come come, cómetelo, comer, come todo | The command to one person (tú): "come". "A comer" is also said to call people to the table. |
+
+### Things to know
+- Where each word is first said, a story line may use it with an article from the code (`la [sopa]`); the words were not typed with an article in any template.
+- The plurals of the picture-and-request words ("dos platos", "dos limones", "los frijoles") come from the word's `pl` or from the code's rules; "limones" and "platos" were checked by hand.
+
+### Questions for the reviewer
+1. "El limón" for the green lime: certain for Mexico. If a child's Spanish-speaking family says "lima", the card could read "el limón / la lima"; kept as "el limón".
+2. "Come" as the card for "eat!": clear to the writer. A Mexican parent might say "¡A comer!" to call the family (accepted by the microphone) and "¡Come!" to the dog or a child; both stay.
+3. "¡Qué rico!": certain for food. Said by a child about something delicious; "¡qué rica!" is the feminine and is accepted.
+4. Least sure: "el papá" and "la mamá" as written with an article for a child's own parents. Many Mexican families say just "Mamá" or "mi mamá"; the card uses the article so the rule for "el / la" is learned, and the microphone accepts "mamá", "mami" and "mi mamá".
