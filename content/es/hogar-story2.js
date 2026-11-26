@@ -1,7 +1,7 @@
 // ===== En casa, chapters 3 and 4 (docs/UNIT_EN_CASA.md): Los tacos de Papá, Agua de limón =====
 // 3  Leo is hungry too (patio). Papá builds a taco on the table in three steps she sees on the map: a tortilla, the
 //    beans, the fold. She tells Leo ¡come! and then the dog.            hermano, tortilla, frijoles, taco, come
-// 4  Mamá is thirsty (her room). Lemons in the patio, Papá makes agua de limón, a glass for Mamá, an avocado from its
+// 4  Mamá is thirsty (her room). Limes in the patio, Papá makes agua de limón, a glass for Mamá, an avocado from its
 //    tree, rice on the table, and the whole family sits down together.   lamama, sed, limon, aguacate, arroz
 // Every new word is a one-unknown puzzle (G.intro.*) and comes back in a line or a review question within a minute or
 // two. Only `hola` and the unit's own words are taken for granted: any other word (agua) is used only when it is met.
@@ -22,12 +22,17 @@
   L['hogar.soy'] = id => '¡Soy ' + the(id, { my: 'tu' }) + '!';   // ¡Soy tu [hermano]!
   L['hogar.y'] = id => '¡Y ' + the(id) + '!';                       // ¡Y los [frijoles]!
   L['hogar.a'] = id => '¡' + the(id, { pre: 'a', cap: 1 }) + '!';   // ¡A la [mesa]!
+  L['hogar.mmm'] = id => '¡Mmm! ' + the(id, { cap: 1, bang: 1 });  // ¡Mmm! ¡El [aguacate]!
 
   // ---------- small helpers ----------
   const npcAt = (f, id) => f.npcs.find(n => n.id === id && !n.hidden) || null;
   // someone who is not on this map, standing in for a scene (Leo in the kitchen, Mamá at the table), then gone again
   function guest(f, id, x, y, dir) { let n = f.npc(id + '_g'); if (!n) n = f.addNpc({ id: id + '_g', npc: id, x, y, dir: dir || 'down', fixed: true, guest: true }); return n; }
   const unguest = (f, id) => f.removeNpc(id + '_g');
+  // the real Leo while his guest is in the kitchen: not seen, not wandering, and not standing on a tile of the yard (the
+  // field counts the hidden when it asks "is this tile free?"); put back where he plays when the guest is done
+  function parkLeo(n) { if (!n) return; if (!n.parked) n.parked = [n.x, n.y, n.wander]; n.hidden = true; n.wander = 0; n.x = PARK[0]; n.y = PARK[1]; n.ox = 0; n.oy = 0; }
+  function unparkLeo(n) { if (!n || !n.parked) return; const q = n.parked; n.parked = null; n.hidden = false; n.wander = q[2]; n.x = q[0]; n.y = q[1]; n.home = [q[0], q[1]]; }
   // two known words to stand beside a new one in its puzzle: the ones named first, if met, then any others
   const others = (id, prefer) => prefer.filter(k => k !== id && met(k)).concat(G.intro.known(id, 3)).filter((k, i, a) => a.indexOf(k) === i && k !== id).slice(0, 2);
   // a new word, held up and named (a one-unknown puzzle); a word already met (a beat played again after a reload) is not asked again
@@ -45,12 +50,16 @@
 
   const TABLE = P('cocina', 'table'), TABLE_AT = [TABLE[0] + 1, TABLE[1]];     // the middle of the table: (6,5)
   const STOVE = P('cocina', 'stove'), PAPA = P('cocina', 'papa'), CDOOR = P('cocina', 'door');
-  const AT_TABLE = P('cocina', 'mesaLibre');                                    // the free tile north of the table (6,4)
   const BELOW = P('cocina', 'mesaLibre2');                                      // the free tile south of it (6,6)
-  const LEO_SIT = P('cocina', 'chair3');                                        // Leo eats on the chair at the south-west corner (5,6)
-  const LEO_WAIT = [CDOOR[0] + 3, CDOOR[1]];                                    // where Leo waits for the taco (4,5)
+  const LEO_SIT = P('cocina', 'chair1');                                        // Leo eats on the chair at the north-west corner (5,4): the dialogue box covers the south side of the table
+  const LEO_FACE = 'down';                                                      // (facing the table)
+  const LEO_WAIT = [CDOOR[0] + 3, CDOOR[1]];                                    // where Leo waits for the taco (3,5)
+  // Papá stands beside the table (east end) while the taco is made, so both free tiles of the spot at the middle of the
+  // table (north and south of it) are left to her; with him on one of them the dog on the other would shut the spot
+  const PAPA_SIDE = P('cocina', 'mesaEste');                                    // (8,5)
+  const PARK = [0, 3];                                                          // a fence tile of the yard: nobody walks or blocks there
   const PDOOR = P('patio', 'door');
-  const LEMON = P('patio', 'limonTronco'), AVO = P('patio', 'aguacateTronco');
+  const LIME = P('patio', 'limonTronco'), AVO = P('patio', 'aguacateTronco');
 
   // =====================================================================
   //  3 · Los tacos de Papá  (Leo in the patio, Papá at the stove)  hermano, tortilla, frijoles, taco, come
@@ -61,7 +70,7 @@
       yield* say('leo', T('¡[hambre:Tengo hambre]!', 'I\'m hungry!'));
       yield* meet('hermano', { who: 'leo', prompt: L['hogar.soy']('hermano'), en: 'I\'m your brother!', prefer: ['elpapa', 'cocina'] });
       yield* say('leo', T('¡' + the('cocina', { pre: 'a', cap: 1 }) + '!', 'To the kitchen!'));
-      if (leo && !leo.hidden) { yield* CK.walk(f, leo, PDOOR[0], PDOOR[1], 4); leo.hidden = true; }
+      if (leo && !leo.hidden) { yield* CK.walk(f, leo, PDOOR[0], PDOOR[1], 4); parkLeo(leo); }
       c.data.leoIn = 1; c.data.leoPos = LEO_WAIT;
     } },
     { who: 'papa', bubble: true, run: function* (f, c) { // the first step: a tortilla, flipped on the stove
@@ -77,24 +86,30 @@
       if (!d.tort) { bag().take('tortilla', { q: 'hogar3' }); d.tort = 1; G.audio.sfx('pop'); CK.sparkle(f, TABLE_AT[0], TABLE_AT[1], 4); yield 12; }
       yield* say('papa', T('¡Muy bien!', 'Well done!'));
       d.pot = 1; d.papaAt = 1; // Papá comes over with the pot of beans
-      if (papa) { yield* CK.walk(f, papa, AT_TABLE[0], AT_TABLE[1], 3); papa.dir = 'down'; }
+      if (papa) { yield* CK.walk(f, papa, PAPA_SIDE[0], PAPA_SIDE[1], 3); papa.dir = 'left'; }
       d.pot = 0;
       yield* meet('frijoles', { who: 'papa', prompt: L['hogar.y']('frijoles'), en: 'And the beans!', prefer: ['tortilla', 'sopa'] });
       if (!d.beans) { d.beans = 1; G.audio.sfx('pop'); CK.sparkle(f, TABLE_AT[0], TABLE_AT[1], 4); yield 20; }
       if (!d.fold) { d.fold = 1; G.audio.sfx('item'); CK.sparkle(f, TABLE_AT[0], TABLE_AT[1], 5); yield 20; }
       yield* meet('taco', { who: 'papa', prompt: G.requests.LINES.un('taco'), en: 'A taco!', prefer: ['tortilla', 'frijoles'] });
     } },
-    { spot: { map: 'cocina', at: TABLE_AT, icon: 'taco' }, when: c => !!c.data.fold, run: function* (f, c) { // she tells Leo to eat
-      const d = c.data, papa = npcAt(f, 'papa'), leo = f.npc('leo_g') || guest(f, 'leo', LEO_WAIT[0], LEO_WAIT[1], 'right');
-      yield* say('papa', T('¡Para Leo!', 'For Leo!'));
-      d.leoPos = LEO_SIT; yield* CK.walk(f, leo, LEO_SIT[0], LEO_SIT[1], 3); leo.dir = 'up';
-      const bite = function* () { for (let k = 0; k < 2; k++) { leo.dir = 'up'; G.audio.sfx('pop'); puffAt('heart', leo, { life: 50, vy: -0.35 }); yield 14; } };
-      yield* G.intro.watch('come', { who: 'papa', prompt: '¡[come], Leo!', en: 'Eat, Leo! (Papá tells Leo to eat)', act: bite,
-        ask: 'Leo... ¡...!', askEn: 'Now you tell Leo to eat! (say it, or tap it)', known: others('come', ['sopa', 'rico']) });
-      d.fold = 0; d.beans = 0; d.tort = 0; d.ate = 1; // the taco is eaten
-      hearts(leo, 3); give('leo', 1);
+    // (a save at any point of this beat opens on it again: `ate` keeps the beat open once the taco is eaten, and nothing the beat
+    // needs to find its way back is changed before its last line)
+    { spot: { map: 'cocina', at: TABLE_AT, icon: 'taco' }, when: c => !!(c.data.fold || c.data.ate), run: function* (f, c) { // she tells Leo to eat
+      const d = c.data, leo = f.npc('leo_g') || guest(f, 'leo', LEO_WAIT[0], LEO_WAIT[1], 'right');
+      if (!d.ate) {
+        yield* say('papa', T('¡Para Leo!', 'For Leo!'));
+        d.leoPos = LEO_SIT; yield* CK.walk(f, leo, LEO_SIT[0], LEO_SIT[1], 3); leo.dir = LEO_FACE;
+        const bite = function* () { for (let k = 0; k < 2; k++) { leo.dir = LEO_FACE; G.audio.sfx('pop'); puffAt('heart', leo, { life: 50, vy: -0.35 }); yield 14; } };
+        yield* G.intro.watch('come', { who: 'papa', prompt: '¡[come], Leo!', en: 'Eat, Leo! (Papá tells Leo to eat)', act: bite,
+          ask: 'Leo... ¡...!', askEn: 'Now you tell Leo to eat! (say it, or tap it)', known: others('come', ['sopa', 'rico']) });
+        d.ate = 1; // the taco is eaten (the table is drawn empty from now on)
+        hearts(leo, 3); give('leo', 1);
+      }
+      leo.dir = LEO_FACE;
       yield* say('leo', T('¡[rico:Qué rico]!', 'Yummy!'));
       yield* G.review.ask('hermano', { who: 'papa' }); // (Leo, again, within a minute)
+      yield* G.review.ask('taco', { who: 'papa' });    // (and the taco: none of the three foods was asked again)
     } },
     { who: 'canelo', bubble: 'come', run: function* (f, c) { // and {dog} gets a piece
       const d = c.data, dog = CK.dog(f), leo = f.npc('leo_g'), papa = npcAt(f, 'papa');
@@ -105,19 +120,20 @@
       d.leoPos = null; d.leoOut = 1; // Leo goes back out to the yard (the real Leo is there again when the yard opens)
       if (leo) { yield* CK.walk(f, leo, CDOOR[0] + 1, CDOOR[1], 3); unguest(f, 'leo'); }
       if (papa) { d.papaAt = 0; yield* CK.walk(f, papa, PAPA[0], PAPA[1], 3); papa.dir = 'up'; }
+      unparkLeo(f.npc('leo')); // (she tapped the dog in the yard: the real Leo plays there again)
     } },
   ], {
     stage(f, c) {
-      if (!CH.active('hogar3')) return;
-      const d = c.data;
-      if (f.mapId === 'patio' && d.leoIn && !d.leoOut) { const n = f.npc('leo'); if (n) n.hidden = true; } // Leo is in the kitchen
-      if (f.mapId !== 'cocina') return;
-      if (d.leoIn && !d.leoOut) { const n = guest(f, 'leo', ...(d.leoPos || LEO_WAIT), 'right'); if (!n.busy) CK.place(f, 'leo_g', ...(d.leoPos || LEO_WAIT), d.leoPos && d.leoPos[1] > TABLE[1] ? 'up' : 'right'); }
-      const pa = npcAt(f, 'papa'); if (pa && !pa.busy) { if (d.papaAt) CK.place(f, 'papa', AT_TABLE[0], AT_TABLE[1], 'down'); else CK.place(f, 'papa', PAPA[0], PAPA[1], 'up'); }
+      const d = c.data, on = CH.active('hogar3');
+      if (f.mapId === 'patio') { const n = f.npc('leo'); if (on && d.leoIn && !d.leoOut) parkLeo(n); else unparkLeo(n); } // Leo is in the kitchen
+      if (!on || f.mapId !== 'cocina') return;
+      if (d.leoIn && !d.leoOut) { const n = guest(f, 'leo', ...(d.leoPos || LEO_WAIT), 'right'); if (!n.busy) CK.place(f, 'leo_g', ...(d.leoPos || LEO_WAIT), d.leoPos ? LEO_FACE : 'right'); }
+      const pa = npcAt(f, 'papa'); if (pa && !pa.busy) { if (d.papaAt) CK.place(f, 'papa', PAPA_SIDE[0], PAPA_SIDE[1], 'left'); else CK.place(f, 'papa', PAPA[0], PAPA[1], 'up'); }
     },
     draw(f, ctx, c) { // the taco on the table, step by step
       if (f.mapId !== 'cocina' || !CH.active('hogar3')) return;
       const d = c.data;
+      if (d.ate) return;
       if (d.fold) pic(ctx, f, 'taco', TABLE_AT[0], TABLE_AT[1], 4, 0);
       else if (d.tort) { pic(ctx, f, 'tortilla', TABLE_AT[0], TABLE_AT[1], 4, 0); if (d.beans) pic(ctx, f, 'frijoles', TABLE_AT[0], TABLE_AT[1], 8, 4, 0.5); }
     },
@@ -135,7 +151,8 @@
   // =====================================================================
   const AGUA = () => (met('agua') ? '[agua]' : 'Agua'); // (agua is a town word: marked only once it is met)
   function* walkPlayer(f, x, y) { const p = f.player; yield* f.walkNpc(p, CK.path(f, p, x, y), 3); }
-  const CHAIRS = { mama: P('cocina', 'chair1'), leo: P('cocina', 'chair2'), papa: P('cocina', 'chair4'), me: P('cocina', 'chair3') };
+  // (Mamá and Papá, who speak at the table, sit on the north side: the dialogue box covers the south side of the room)
+  const CHAIRS = { mama: P('cocina', 'chair1'), papa: P('cocina', 'chair2'), leo: P('cocina', 'chair4'), me: P('cocina', 'chair3') };
   CH.script('hogar4', [
     { who: 'mama', bubble: true, run: function* (f, c) { // Mamá is hot and thirsty
       const ma = f.npc('mama');
@@ -143,10 +160,10 @@
       if (ma) for (let k = 0; k < 3; k++) { puffAt('drop', ma, { life: 36, vy: 0.5 }); G.audio.sfx('select'); yield 12; } // she fans herself
       yield* meet('sed', { who: 'mama', prompt: '¡Uf! ¡[sed:Tengo sed]!', en: 'Phew! I\'m thirsty!', prefer: ['sopa', 'cocina'] });
     } },
-    { spot: { map: 'patio', at: LEMON, icon: 'limon' }, run: function* (f, c) { // a lemon at the tree
+    { spot: { map: 'patio', at: LIME, icon: 'limon' }, run: function* (f, c) { // a lime at the tree
       const d = c.data;
-      CK.sparkle(f, LEMON[0], LEMON[1] - 1, 4); G.audio.sfx('pop'); yield 14;
-      yield* meet('limon', { who: null, en: 'Look! A lemon!', prefer: ['sopa', 'cocina'] });
+      CK.sparkle(f, LIME[0], LIME[1] - 1, 4); G.audio.sfx('pop'); yield 14;
+      yield* meet('limon', { who: null, en: 'Look! A lime!', prefer: ['sopa', 'cocina'] });
       if (!d.juice && !bag().has('limon', { q: 'hogar4' })) bag().add('limon', { q: 'hogar4' });
     } },
     { who: 'papa', bubble: 'limon', run: function* (f, c) { // Papá squeezes it: agua de limón; a glass for Mamá
@@ -155,7 +172,7 @@
       yield* say('papa', T('¡Mmm!', 'Mmm!'));
       FX.squeeze = G.frame;
       for (let k = 0; k < 3; k++) { G.audio.sfx('pop'); if (papa) puffAt('drop', papa, { life: 30, vy: 0.6 }); yield 14; }
-      yield* say('papa', T('¡' + AGUA() + ' de [limon:limón]!', 'Lemon water!'));
+      yield* say('papa', T('¡' + AGUA() + ' de [limon:limón]!', 'Lime water!'));
       yield* G.review.ask('limon', { who: 'papa' });
       yield* ask('papa', G.requests.LINES.un('vaso') + ' ¿Para quién?', 'A glass! Who is it for?', 'lamama', others('lamama', ['elpapa', 'hermano']), { show: 'vaso' });
       if (!bag().has('vaso', { q: 'hogar4' })) bag().add('vaso', { q: 'hogar4' });
@@ -167,7 +184,7 @@
       give('mama', 1);
       yield* say('mama', T('¡[rico:Qué rico]!', 'Yummy!'));
       yield* G.review.ask('sed', { who: 'mama' });
-      yield* CK.sayShow('mama', { icon: 'aguacate' }, T('¡Y para la comida!', 'And for lunch! (pick an avocado in the yard)'));
+      yield* CK.sayShow('mama', { icon: 'aguacate' }, T(L['hogar.mmm']('aguacate'), 'Mmm! An avocado! (pick one in the yard)'));
     } },
     { spot: { map: 'patio', at: AVO, icon: 'aguacate' }, run: function* (f, c) { // an avocado at its tree
       CK.sparkle(f, AVO[0], AVO[1] - 1, 4); G.audio.sfx('pop'); yield 14;
@@ -188,8 +205,8 @@
       const ma = guest(f, 'mama', CDOOR[0] + 1, CDOOR[1] - 1, 'right'), leo = guest(f, 'leo', CDOOR[0] + 1, CDOOR[1] + 1, 'right');
       G.audio.sfx('door');
       yield* CK.walk(f, ma, CHAIRS.mama[0], CHAIRS.mama[1], 3); ma.dir = 'down';
-      yield* CK.walk(f, leo, CHAIRS.leo[0], CHAIRS.leo[1], 3); leo.dir = 'down';
-      if (papa) { yield* CK.walk(f, papa, CHAIRS.papa[0], CHAIRS.papa[1], 3); papa.dir = 'up'; }
+      yield* CK.walk(f, leo, CHAIRS.leo[0], CHAIRS.leo[1], 3); leo.dir = 'up';
+      if (papa) { yield* CK.walk(f, papa, CHAIRS.papa[0], CHAIRS.papa[1], 3); papa.dir = 'down'; }
       yield* walkPlayer(f, CHAIRS.me[0], CHAIRS.me[1]); pl.dir = 'up';
       yield 16;
       if (papa) { yield* say('papa', T('¡[come], {name}!', 'Eat, {name}!')); hearts(papa, 2); }
@@ -211,7 +228,7 @@
     draw(f, ctx, c) { // the bowl of rice on the table
       if (f.mapId === 'cocina' && CH.active('hogar4') && c.data.rice) pic(ctx, f, 'arroz', TABLE_AT[0], TABLE_AT[1], 4, 0);
     },
-    drawTop(f, ctx, c) { // the lemon over Papá's hands while he squeezes it
+    drawTop(f, ctx, c) { // the lime over Papá's hands while he squeezes it
       if (f.mapId !== 'cocina' || !CH.active('hogar4')) return;
       const k = G.frame - FX.squeeze, pa = npcAt(f, 'papa');
       if (pa && k >= 0 && k < 44) pic(ctx, f, 'limon', pa.x, pa.y, 4, -14 + Math.round(Math.sin(k / 3) * 2), 0.75);

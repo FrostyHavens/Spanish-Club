@@ -1,7 +1,7 @@
 // ===== En casa, what stays to do every day once the story is played (docs/UNIT_EN_CASA.md) =====
 // ¿Qué hay de comer? Once a day Papá's pot has a bubble: he asks what she wants (a phrase, or a picture question), she
 // sets the table by listening, the dish is served on the table for the rest of the day, and the family eats. Papá's
-// board for listen-and-do ("Dame dos platos."), Leo's and Papá's favours, the day's play (a lemon, an avocado, the dog's
+// board for listen-and-do ("Dame dos platos."), Leo's and Papá's favours, the day's play (a lime, an avocado, the dog's
 // digging spot, the meal) and the two notebook page puzzles in the kitchen.
 // Only words she has met are used. This file loads before src/phrases.js, src/listen.js and src/guide.js: what they
 // make is only looked up inside the scenes, never when the file loads.
@@ -13,6 +13,7 @@
   const W = id => G.data.words[id];
   const P = (m, tag) => MD[m].pos[tag];
   const say = (who, show, ...pages) => G.say(pages, Object.assign({ portrait: G.portraitOf(who), name: G.nameOf(who), who }, show ? { show } : {}));
+  RQ.LINES['hogar.escucha'] = id => '¡{name}! ' + RQ.the(id, { cap: 1, bang: 1 }) + ' ¡Escucha!'; // ¡{name}! ¡La [mesa]! ¡Escucha!
   const FOODS = ['sopa', 'tortilla', 'frijoles', 'taco', 'arroz', 'aguacate'];
   const day = () => G.words.day();
 
@@ -27,7 +28,7 @@
 
   // ---------- Leo's and Papá's favours ----------
   const FV = G.favores;
-  // Leo's heap in the patio: lemons once she has met them, else the tacos
+  // Leo's heap in the patio: limes once she has met them, else the tacos
   Object.defineProperty(FV.COUNT_OF, 'leo', { enumerable: true, get: () => (G.words.met('limon') ? 'limon' : 'taco') });
   FV.THINGS.leo = ['taco', 'tortilla', 'frijoles', 'sopa', 'plato', 'vaso', 'cuchara', 'mesa', 'silla'];
   FV.THINGS.papa = ['plato', 'vaso', 'cuchara', 'mesa', 'silla', 'sopa', 'tortilla', 'frijoles', 'arroz', 'taco', 'aguacate', 'limon'];
@@ -42,11 +43,22 @@
   const busy = () => !!CH.current('hogar'); // (a home chapter going on: the story first. A town chapter left half-done must not hide the pot for days)
   const holdsGift = () => { const h = G.carry && G.carry.held(); return !!h && !!G.hearts && G.hearts.likes('papa', h.id) && G.hearts.canAddToday('papa', 'gift'); };
   const served = () => !!G.state && !!G.state.hogar && G.state.hogar.day === day();
-  const mealOn = () => !!G.state && CH.done('hogar1') && !served() && !busy() && !CH.beatFor('papa') && !holdsGift();
+  // The guide plans the day's play (and the bubble over the pot asks) many times a frame, so the answers are worked out once for
+  // each moment of a frame and each game day (G.pulse, core.js; between frames, in a test or a tool, always afresh)
+  let memo = null;
+  const once = (key, fn) => {
+    const p = G.pulse, s = G.state;
+    if (!p || !s) return fn();
+    const d = day();
+    if (!memo || memo.p !== p || memo.s !== s || memo.d !== d) memo = { p, s, d, v: Object.create(null) };
+    return key in memo.v ? memo.v[key] : (memo.v[key] = fn());
+  };
+  const mealOn = () => once('meal', () => !!G.state && CH.done('hogar1') && !served() && !busy() && !CH.beatFor('papa') && !holdsGift());
   G.hogar = { mealOn, dish: () => (served() ? G.state.hogar.dish : null) };
 
   // the foods to ask about: two or three she has met, the due ones first, then the others turning by the day
-  function foods() {
+  const foods = () => once('foods', foodsNow);
+  function foodsNow() {
     const met = FOODS.filter(id => G.words.met(id) && G.iconDrawn(id));
     const due = G.review.due(1e9, { filter: id => met.includes(id) });
     const rest = met.filter(id => !due.includes(id)), k = rest.length ? day() % rest.length : 0;
@@ -70,7 +82,7 @@
   function* table() {
     const L = G.listen, spec = RQ.spec('papa');
     if (L && L.on() && RQ.make(spec, {})) {
-      yield say('papa', { icon: 'escucha' }, T('¡{name}! ¡La mesa! ¡Escucha!', 'The table! Listen to what I ask, then do it.'));
+      yield say('papa', { icon: 'escucha' }, T(RQ.LINES['hogar.escucha']('mesa'), 'The table! Listen to what I ask, then do it.'));
       yield* L.round(spec, { who: 'papa', focus: L.focus(spec), n: 2 });
       return;
     }
@@ -103,12 +115,12 @@
   const du = G.carry.drawUnder;
   G.carry.drawUnder = function (f, ctx) {
     du.apply(this, arguments);
-    if (f.mapId !== 'cocina' || !served() || !W(G.state.hogar.dish)) return;
-    const [tx, ty] = P('cocina', 'table'), X = (tx + 1) * G.TILE - Math.round(f.cam.x) + 4, Y = ty * G.TILE - Math.round(f.cam.y) - 6;
+    if (f.mapId !== 'cocina' || !served() || busy() || !W(G.state.hogar.dish)) return; // (not while a home chapter has its own things on the table)
+    const [tx, ty] = P('cocina', 'table'), X = (tx + 1) * G.TILE - Math.round(f.cam.x) + 4, Y = ty * G.TILE - Math.round(f.cam.y) - 1;
     G.drawIcon16(ctx, W(G.state.hogar.dish), X, Y);
   };
 
-  // ---------- the day's play (carry.js): a lemon and an avocado for Papá, the dog's digging, the meal ----------
+  // ---------- the day's play (carry.js): a lime and an avocado for Papá, the dog's digging, the meal ----------
   const C = G.carry, started = () => CH.done('hogar1');
   const fruit = (item, ids, who) => f => {
     if (!started()) return null;
@@ -116,7 +128,7 @@
     const s = C.SOURCES.find(o => ids.includes(o.id) && C.avail(o.id)); if (!s) return null;
     return { why: who, map: s.map, at: s.at, icon: W(item), pick: true };
   };
-  C.PLAYS.limon = fruit('limon', ['limon_patio1', 'limon_patio2'], 'a lemon for Papá');
+  C.PLAYS.limon = fruit('limon', ['limon_patio1', 'limon_patio2'], 'a lime for Papá');
   C.PLAYS.aguacate = fruit('aguacate', ['aguacate_patio1'], 'an avocado for Papá');
   C.PLAYS.excavar = () => {
     const sp = (G.maps.patio.dogSpots || [])[0];
@@ -134,7 +146,7 @@
       if (!FOODS.includes(id)) return null;
       const n = RQ.noun(id), mass = (G.data.mass || []).includes(id);
       const what = mass || n.plOnly ? bare(id) : (n.g === 'f' ? 'una ' : 'un ') + bare(id);
-      return { es: '¿Qué quieres comer?', en: 'What do you want to eat?', ans: { es: 'Quiero ' + what + '.', en: 'I want ' + W(id).en.replace(/^the /, (mass || n.plOnly) ? '' : 'a ') + '.' }, words: [id] };
+      return { es: '¿Qué quieres comer?', en: 'What do you want to eat?', ans: { es: 'Quiero ' + what + '.', en: 'I want ' + W(id).en.replace(/^the /, (mass || n.plOnly) ? '' : /^the [aeiou]/.test(W(id).en) ? 'an ' : 'a ') + '.' }, words: [id] };
     }],
   ];
 })();

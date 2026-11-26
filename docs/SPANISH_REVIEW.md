@@ -326,7 +326,7 @@ The new rooms and the two new people. The words of the unit and the story lines 
 - "¡Tengo hambre!" ("I am hungry": "tener hambre" is the way to say it in all of Spanish).
 - "Pon la mesa" ("Set the table": "poner la mesa", and "pon" is the "tú" command of "poner").
 - "Los tacos de Papá" (Papá's tacos).
-- "Agua de limón" (lemon water: "agua de limón" is what it is called in Mexico, made with the small green "limón").
+- "Agua de limón" (lime water: "agua de limón" is what it is called in Mexico, made with the small green "limón").
 
 ### Questions for the reviewer
 None new. Least sure: nothing; every line above is a plain greeting or a set phrase from a dictionary of Mexican Spanish.
@@ -340,7 +340,7 @@ Everything Papá says in "¡Tengo hambre!" and "Pon la mesa". Lines built from a
 - "¡Bienvenida a la cocina!" / "¡Bienvenido a la cocina!" (Welcome to the kitchen!), the ending follows the player's gender. Certain.
 - "¿Tienes hambre?" (Are you hungry?). Certain: "tener hambre" is how it is said everywhere. Papá says it as plain text; the card is "tengo hambre".
 - "Tú: ¡...!" (the child's own line: she says or picks "tengo hambre"). The card "tengo hambre" is the word.
-- "¡Ya está!" (It's ready!). Certain; "ya está" is the usual way to say a dish is done.
+- "¡Listo!" (Ready!), Papá when the soup is done (changed from "¡Ya está!"). Certain: "¡Listo!" is what a Mexican cook says when the food is ready.
 - "¡Mira! ¡La sopa!" (Look! The soup!). Certain.
 - "¡Prueba!" (Taste it!). "Probar" is "to taste" in Mexico. Certain.
 - "¡Mmm! ¡Qué rico!" (Mmm! So yummy!). Certain: "¡qué rico!" is the everyday Mexican way to praise food.
@@ -350,7 +350,7 @@ Everything Papá says in "¡Tengo hambre!" and "Pon la mesa". Lines built from a
 - "¡A comer!" (Time to eat!). Certain; what a parent calls to the family.
 - "¿Me ayudas?" (Will you help me?). Certain. Shown with the card "sí" / "no" only if she has met them.
 - "¡Mira! ¡La mesa!", "¡Mira! ¡El plato!", "¡Mira! ¡El vaso!", "¡Mira! ¡La cuchara!" (Look! ...). Certain.
-- "¡Para la mesa!" (For the table!). Certain.
+- "¡A la mesa!" (To the table!), when she carries a thing there (changed from "¡Para la mesa!"). Certain: "¡A la mesa!" is what is called at a Mexican home when it is time to sit down; it is the same line chapter 3 and 4 already use. The article "la" comes from the word list.
 - "¡Muy bien, {name}!" (Very good!). Certain.
 - "¡Tu silla!" (Your chair!), with Papá pulling the chair out. Certain.
 - "¿Qué es?" (What is it?), asked with a glass held up.
@@ -380,10 +380,10 @@ Chapter 3, "Los tacos de Papá", and chapter 4, "Agua de limón". Words in `[bra
 ### Chapter 4: Agua de limón
 - Mamá: "¡Soy tu mamá!" (I am your mom).
 - Mamá: "¡Uf! ¡Tengo sed!" (Phew! I am thirsty). "Tener sed" is the standard way to say it.
-- Papá: "¡Mira! ¡Un limón!" (the lemon at the tree), "¡Mira! ¡Un aguacate!" (at the avocado tree), "¡Arroz!" (rice, no article: a mass word).
+- Papá: "¡Mira! ¡Un limón!" (the lime at the tree), "¡Mira! ¡Un aguacate!" (at the avocado tree), "¡Arroz!" (rice, no article: a mass word).
 - Papá: "¡Mmm!", then "¡Agua de limón!" (the word "agua" is a card only when it is already met).
 - Papá: "¡Un vaso! ¿Para quién?" (A glass! Who is it for?).
-- Mamá: "¡Qué rico!" and "¡Y para la comida!" (And for lunch!).
+- Mamá: "¡Qué rico!" and then, looking at the avocado, "¡Mmm! ¡El aguacate!" (Mmm! The avocado!, changed from "¡Y para la comida!": "comida" is not a word of the unit). The article comes from the word list.
 - Papá: "¡Muy bien, {name}!" and "¡A la mesa!".
 - At the table. Papá: "¡Come, {name}!". Mamá: "¡Mmm! ¡Qué rico!" (changed from "¡Agua de limón! ¡Qué rico!": "agua" is feminine, so "rico" right after it would jar). Leo: "¡Arroz! ¡Qué rico!".
 
@@ -392,7 +392,7 @@ Chapter 3, "Los tacos de Papá", and chapter 4, "Agua de limón". Words in `[bra
 - "Come" as the command to a person and to the dog ("¡Come, Leo!", "¡Come, {dog}!"): the "tú" form of "comer". Some families would say "¡A comer!" to call everyone; that form is in the word's alternatives for the microphone.
 - "¡Soy tu mamá!" and "¡Soy tu hermano!": natural, but a child would more often say "mi mamá" about her own mother. Here the person speaks to the child, so "tu" is right.
 - "Los tacos de Papá" and "Agua de limón" are the chapter titles from batch 7, unchanged.
-Least sure: "¡Y para la comida!" (the Mexican "comida" means the midday meal; fine for lunch).
+Least sure: "¡Mmm! ¡El aguacate!" with "el" (Mamá points at the one thing in the yard she wants; "¡Un aguacate!" would also do).
 
 ## Batch 10 (2026-11-25): En casa, the daily meal and favours (content/es/hogar-play.js)
 What stays to do at home once the four chapters are played. Only words she has met are used; every article comes from the code.
@@ -401,13 +401,13 @@ What stays to do at home once the four chapters are played. Only words she has m
 - Papá: "¡{name}! ¿Qué quieres?" (English "What would you like?"). Then the phrase "Quiero ___" over two or three foods she knows (the card is the food; "Quiero sopa", "Quiero un taco", "Quiero frijoles", "Quiero arroz", "Quiero una tortilla", "Quiero un aguacate"). Sopa and arroz are mass words (no article); los frijoles is plural only. When phrases are off: the picture question "¿Qué quieres?".
 - Papá after her choice: "¡Perfecto! ¡Ya casi!" (English "Perfect! Almost ready!"). "Ya casi" is "almost ready", common in Mexico.
 - Papá at the table, once the word "come" is met: "¡[come], {name}!" ("Eat up"); before that: "¡Buen provecho, {name}!" ("Enjoy your meal", the usual thing said at a Mexican table).
-- Papá before the table requests: "¡{name}! ¡La mesa! ¡Escucha!" (English "The table! Listen to what I ask, then do it.").
+- Papá before the table requests: "¡{name}! ¡La mesa! ¡Escucha!" (English "The table! Listen to what I ask, then do it."). The Spanish is the same as before; now the article "la" is written by the game from the word list.
 
 ### Papá's board (listen and do), built by the code from the words she knows
 - "Dame dos platos." / "Dame el plato rojo." / "Dame el vaso azul." / "Dame tres vasos verdes." / "Dame una cuchara." / "Dame tres limones." / "Dame cuatro tortillas." / "¿Cuántos vasos azules hay?" The plurals "platos", "vasos", "cucharas", "limones", "tortillas" come from the words' own plural; "limón" to "limones" (the accent goes away) was checked by hand. Colours agree (rojo with el plato, roja with la tortilla if one is ever coloured).
 
 ### Leo's and Papá's favours (the existing favour lines, with new words)
-- Leo counts a heap of lemons (or tacos before the lemons are met): the existing line "¿Cuántos?" with the picture. Leo names a thing: "¡{name}! ¿Y esto?" / "¿Qué es?" over taco, tortilla, frijoles, sopa, plato, vaso, cuchara, mesa, silla. Papá names a thing: the same lines over the kitchen and food words.
+- Leo counts a heap of limes (or tacos before the limes are met): the existing line "¿Cuántos?" with the picture. Leo names a thing: "¡{name}! ¿Y esto?" / "¿Qué es?" over taco, tortilla, frijoles, sopa, plato, vaso, cuchara, mesa, silla. Papá names a thing: the same lines over the kitchen and food words.
 - Both end with the existing "¡[gracias], {name}!".
 
 ### Tonight's question on the Learning page (for the parent)

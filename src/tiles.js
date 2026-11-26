@@ -182,10 +182,10 @@
     'ï': tt('Peaks', 30, INF, INF, 1, INF, 'hills', { block: true }), 'ò': OBSTACLE('Weather Station', 'grass'), 'ù': OBSTACLE('Lookout', 'grass'),
     'â': WALL('Roof', 'town'),
     // El hogar (content/es/hogar.js): the kitchen (stove, shelf, fridge, sink, window, a chair) and the back yard (a
-    // lemon tree and an avocado tree, each a crown over a trunk, and the clothes line)
+    // lime tree and an avocado tree, each a crown over a trunk, and the clothes line)
     'à': WALL('Stove', 'indoor'), 'è': WALL('Kitchen Shelf', 'indoor'), 'ì': WALL('Fridge', 'indoor'), 'î': WALL('Sink', 'indoor'),
     'ä': WALL('Kitchen Window', 'indoor'), 'ë': OBSTACLE('Chair', 'indoor'),
-    'ô': OBSTACLE('Lemon Tree', 'forest'), 'õ': OBSTACLE('Avocado Tree', 'forest'), 'ê': OBSTACLE('Fruit Tree', 'forest'), 'ã': OBSTACLE('Clothes Line', 'grass'),
+    'ô': OBSTACLE('Lime Tree', 'forest'), 'õ': OBSTACLE('Avocado Tree', 'forest'), 'ê': OBSTACLE('Fruit Tree', 'forest'), 'ã': OBSTACLE('Clothes Line', 'grass'),
     ' ': WALL('Void', 'grass'),
   };
 
@@ -2258,7 +2258,7 @@
   reg('Q', { need: 'n', fn: (b, I) => roofTile(b, I, true) });
   reg('+', { need: 'n', fn: spireTile });
   // ---------- El hogar (content/es/hogar.js): the kitchen (a stove with a pot, a shelf of plates, glasses and spoons, a
-  // fridge, a sink, a window, a chair) and the back yard (a lemon tree and an avocado tree, each a crown over a trunk,
+  // fridge, a sink, a window, a chair) and the back yard (a lime tree and an avocado tree, each a crown over a trunk,
   // and the clothes line). The wall pieces sit on the kitchen's back wall like the bookshelf; the rest stand on the floor
   // or the grass. ----------
   const HG = { steel: U('#a8b0bc'), steel2: U('#7c8494'), steel3: U('#e0e6f0'), iron: U('#34343f'), iron2: U('#4c4c60'), iron3: U('#6e6e86'),
@@ -2344,7 +2344,7 @@
     b.rect(5, 16, 14, 2, P.T3); b.hl(5, 18, 17, P.T1);
     b.rect(6, 18, 2, 4, P.T2); b.rect(16, 18, 2, 4, P.T1); b.set(6, 21, P.T0); b.set(17, 21, P.T0);
   }
-  // the fruit trees: a crown ('ô' lemon, 'õ' avocado) over a trunk ('ê', which looks at the crown above it)
+  // the fruit trees: a crown ('ô' lime, 'õ' avocado) over a trunk ('ê', which looks at the crown above it)
   const LEMON = [U('#1a5018'), P.G2, P.G3, P.G4, P.G5, U('#c0e878')];
   const AVOC = [U('#0c2a1a'), U('#16402a'), U('#215a34'), U('#2e7440'), U('#4a9450'), U('#7cc070')];
   function fruitCanopy(b, dy, sd, ramp, blossom) {
@@ -2361,7 +2361,7 @@
         b.set(x, y, ramp[i]);
       }
     }
-    if (blossom) for (const [x, y] of [[7, 8], [16, 5], [10, 15], [18, 14], [13, 9]]) b.set(x, y + dy, P.F1); // lemon blossom
+    if (blossom) for (const [x, y] of [[7, 8], [16, 5], [10, 15], [18, 14], [13, 9]]) b.set(x, y + dy, P.F1); // lime blossom
   }
   function fruitCrownTile(b, I, ramp, blossom) { drawGround(b, I.base, I); fruitCanopy(b, 0, I.tx * 13 + 5, ramp, blossom); }
   function fruitTrunkTile(b, I) {

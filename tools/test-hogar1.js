@@ -4,11 +4,14 @@
 // opens by itself that day whatever the review backlog (¡Tengo hambre!: el papá, la cocina, tengo hambre, la sopa,
 // ¡qué rico!); hogar2 waits for room, then Pon la mesa (la mesa, el plato, el vaso, la cuchara, la silla): three trips
 // with a thing in her hands; each new word met alone, unmet before its puzzle; a save reloaded in the middle of every beat
-// goes on; the arrow follows the home chapter between her room, the kitchen and the yard; at sunset it leads to bed.
+// goes on; the arrow follows the home chapter between her room, the kitchen and the yard (and a chapter going on leads her home
+// from town when the town has nothing live, never one that has not started); at sunset it leads to bed. After each beat the
+// game is opened again from every copy of the save taken inside it (tools/hogar-util.js) and played on by the arrow.
 // NODE_PATH=$(npm root -g) node tools/test-hogar1.js [screenshot dir]
 'use strict';
 const { run, open, check } = require('./harness');
 const { settle } = require('./playflow');
+const { install, branches } = require('./hogar-util');
 
 
 // a game that has only done chapter 1 (the puppy), standing in her room; saved in slot 1 (so it can be reloaded)
@@ -116,6 +119,11 @@ async function doorway(browser) {
     const gl = await goal(g);
     check('the arrow leads to the kitchen doorway (' + (gl && gl.why) + ')', !!gl && gl.map === 'cocina' && gl.via === 'door' && gl.pts.length === 1 && gl.pts[0][0] === 8 && gl.pts[0][1] === 4, JSON.stringify(gl));
     await g.shot('doorway_bubble');
+    // out in town: a home chapter that has NOT started never pulls her home (the bubble at the doorway is the only offer)
+    await g.ev(() => G.goto('villa', G.MAPDATA.villa.pos.casaDoor[0], G.MAPDATA.villa.pos.casaDoor[1] + 2, 'down')); await g.fieldIdle('villa'); await g.frames(10);
+    const town0 = await g.ev(() => ({ why: (G.guide.goal(G.field) || {}).why || '', live: (G.chapters.live({}, 'hogar') || {}).started || false }));
+    check('in town, a home chapter not started: the arrow is not about the kitchen (' + town0.why + ')', !town0.live && !/hogar/.test(town0.why), JSON.stringify(town0));
+    await g.ev(() => G.goto('casa', 4, 4, 'down')); await g.fieldIdle('casa'); await g.frames(10);
     // the arrow is on the screen over the doorway; the hint hand comes to the same place
     const at = await g.ev(() => Object.assign({ want: 8 * 24 + 12 - Math.round(G.field.cam.x) }, G.guide.at));
     check('...drawn over the doorway (on screen, a door)', !!at && !at.edge && !!at.door && Math.abs(at.tx - at.want) <= 2, JSON.stringify(at));
@@ -126,6 +134,16 @@ async function doorway(browser) {
     await g.frames(10);
     const act = await goal(g);
     check('a home chapter going on: from her room the arrow leads through the kitchen doorway (' + (act && act.why) + ')', !!act && /^hogar1:1/.test(act.why) && act.map === 'cocina' && act.via === 'door' && act.pts[0].join() === '8,4', JSON.stringify(act));
+    // ...and out in town, with the town having nothing live: it leads home (the front door of her house), the town's story first
+    await g.ev(() => G.goto('villa', G.MAPDATA.villa.pos.casaDoor[0], G.MAPDATA.villa.pos.casaDoor[1] + 2, 'down')); await g.fieldIdle('villa'); await g.frames(10);
+    const town1 = await goal(g), casaDoor = await g.ev(() => G.MAPDATA.villa.pos.casaDoor);
+    check('a home chapter going on, from town (nothing live there): the arrow leads home to her front door (' + (town1 && town1.why) + ')', !!town1 && /^hogar1:1/.test(town1.why) && town1.map === 'cocina' && town1.via === 'door' && town1.pts[0].join() === casaDoor.join(), JSON.stringify([town1, casaDoor]));
+    await g.shot('town_arrow_home');
+    await g.ev(() => { G.chapters.start('c3'); G.chapters.state().step.c3 = 0; G.chapters.flush(); }); await g.frames(10);
+    const town2 = await goal(g);
+    check('...but a town chapter going on leads first (' + (town2 && town2.why) + ')', !!town2 && /^c3:/.test(town2.why), JSON.stringify(town2));
+    await g.ev(() => { delete G.state.quests.c3; delete G.chapters.state().step.c3; G.chapters.flush(); }); await g.frames(10);
+    check('...and with it gone, home again', await g.ev(() => /^hogar1:1/.test((G.guide.goal(G.field) || {}).why || '')));
     await g.ev(() => G.goto('patio', 3, 4, 'down')); await g.fieldIdle('patio'); await g.frames(10);
     const yard = await goal(g);
     check('...from the yard it leads back to the kitchen door (' + (yard && yard.why) + ')', !!yard && /^hogar1:1/.test(yard.why) && yard.via === 'door' && yard.pts[0].join() === '3,2', JSON.stringify(yard));
@@ -139,6 +157,8 @@ async function doorway(browser) {
     const dusk = await g.ev(() => { window.__al.length = 0; return (G.guide.goal(G.field) || {}).why; });
     await g.frames(6);
     check('at sunset in her room: the arrow leads to the bed, no home bubble (' + dusk + ')', /bed/.test(dusk || '') && await g.ev(() => !window.__al.some(([ic]) => ic === 'sopa')), dusk);
+    await g.ev(() => G.goto('villa', G.MAPDATA.villa.pos.casaDoor[0], G.MAPDATA.villa.pos.casaDoor[1] + 2, 'down')); await g.fieldIdle('villa'); await g.frames(10);
+    check('at sunset in town: the way home leads, not the home chapter', await g.ev(() => /home \(sunset\)/.test((G.guide.goal(G.field) || {}).why || '')), await g.ev(() => (G.guide.goal(G.field) || {}).why));
     check('doorway: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
 }
@@ -147,7 +167,7 @@ async function doorway(browser) {
 async function story(browser) {
   const { ctx, g } = await open(browser, 'hogar', true); // (the review pacing is ON: hogar1 opens on the day she first walks in, whatever the backlog)
   try {
-    await fresh(g);
+    await fresh(g); await install(g);
     // a full review backlog: nothing new may open (CH.room is false) -- but the first day in the kitchen is the exception
     await g.ev(() => { G.chapters.__room = G.chapters.room; G.chapters.room = () => false; G.chapters.flush(); });
     await g.fieldIdle('casa'); await g.frames(20);
@@ -168,6 +188,7 @@ async function story(browser) {
     await g.frames(40); await g.shot('papa_greets');
     await settle(g, 'hogar1 beat 0');
     check('beat 0: el papá and la cocina met, one after the other, nothing else', JSON.stringify(await metNow(g)) === JSON.stringify(['elpapa', 'cocina']), JSON.stringify(await metNow(g)));
+    await branches(g, 'hogar1', 0);
     check('beat 0: Papá is back at the stove; his bubble is the hungry face; the arrow leads to him', await g.ev(() => { const n = G.field.npc('papa'), a = n.alert(); return n.x === 4 && n.y === 2 && !!a && (a === 'hambre' || a.icon === 'hambre') && /hogar1:1/.test((G.guide.goal(G.field) || {}).why || ''); }), JSON.stringify(await g.ev(() => [G.field.npc('papa').alert(), (G.guide.goal(G.field) || {}).why])));
     await g.shot('papa_at_stove');
     // beat 1, reloaded in the middle of it, then played
@@ -176,6 +197,7 @@ async function story(browser) {
     check('reload in beat 1: nothing met out of turn', JSON.stringify(await g.ev(() => ['hambre', 'sopa', 'rico'].filter(G.words.met))).length <= 12);
     await follow(g, () => (G.chapters.state().step.hogar1 | 0) >= 2, 'tengo hambre');
     check('beat 1: tengo hambre met (her own line), the soup is on the table, the arrow is on it', await g.ev(() => G.words.met('hambre') && !G.words.met('sopa') && G.chapters.ctx('hogar1').data.bowl === 1 && /hogar1:2/.test((G.guide.goal(G.field) || {}).why || '')));
+    await branches(g, 'hogar1', 1);
     await g.shot('soup_on_table');
     await startBeat(g, 'the soup');
     await reloadMidBeat(g, 'hogar1', 2, 'the soup');
@@ -183,10 +205,11 @@ async function story(browser) {
     await follow(g, () => G.chapters.done('hogar1'), 'the soup');
     const m1 = await metNow(g);
     check('chapter 1 done: the words met in the chapter\'s order, each once (' + m1.join(' ') + ')', m1.join() === 'elpapa,cocina,hambre,sopa,rico' || /^(.*,)?elpapa,cocina,hambre,sopa,rico$/.test(m1.join()) || (['elpapa', 'cocina', 'hambre', 'sopa', 'rico'].every((w, i) => m1.indexOf(w) >= 0 && (i === 0 || m1.indexOf(w) > m1.indexOf(['elpapa', 'cocina', 'hambre', 'sopa', 'rico'][i - 1])))));
+    await branches(g, 'hogar1', 2);
     await g.shot('hogar1_done');
     await g.ev(() => { G.chapters.room = G.chapters.__room; G.chapters.flush(); });
-    const g2 = await g.ev(() => ({ gate: G.chapters.gate('hogar2'), papa: !!G.field.npc('papa').alert() }));
-    check('hogar2 waits for room the same day (5 new words today): no bubble over Papá', g2.gate === 'room' && !g2.papa, JSON.stringify(g2));
+    const g2 = await g.ev(() => ({ gate: G.chapters.gate('hogar2'), papa: (G.field.npc('papa').alert() || {}).icon || null }));
+    check('hogar2 waits for room the same day (5 new words today): no chapter bubble over Papá (the pot of the day\'s meal may be there: its own picture, the kitchen)', g2.gate === 'room' && (!g2.papa || g2.papa === 'cocina'), JSON.stringify(g2));
     check('hogar1: no console errors', !g.errors.length, g.errors.join('\n'));
 
     // ----- the next day: Pon la mesa -----
@@ -201,25 +224,30 @@ async function story(browser) {
     await reloadMidBeat(g, 'hogar2', 0, 'Papá asks for help').catch(e => { throw e; });
     await follow(g, () => (G.chapters.state().step.hogar2 | 0) >= 1, 'mesa');
     check('beat 0: la mesa met, alone', (await metNow(g)).join() === 'mesa', JSON.stringify(await metNow(g)));
+    await branches(g, 'hogar2', 0);
     const trips = [['plato', 1, 2], ['vaso', 3, 4], ['cuchara', 5, 6]];
     for (const [id, a, b] of trips) {
       await g.ev(() => G.hint && 0);
       check(id + ': the arrow is at the shelf (unmet: ' + !(await g.ev(id => G.words.met(id), id)) + ')', await g.ev(([id, a]) => !G.words.met(id) && new RegExp('hogar2:' + a).test((G.guide.goal(G.field) || {}).why || ''), [id, a]));
       await follow(g, a => (G.chapters.state().step.hogar2 | 0) >= a + 1, id + ' at the shelf', a);
       check(id + ': met, in her hands as the chapter\'s thing (q: hogar2); nothing else new', await g.ev(id => G.words.met(id) && G.errands.bag.has(id, { q: 'hogar2' }), id) && (await metNow(g)).slice(-1)[0] === id);
+      await branches(g, 'hogar2', a);
       await g.shot('carry_' + id);
       if (id === 'plato') { await startBeat(g, 'the plate on the table'); await reloadMidBeat(g, 'hogar2', 2, 'putting the plate down'); check('reload mid-trip: the plate is in her hands or already on the table, never lost', await g.ev(() => G.errands.bag.has('plato', { q: 'hogar2' }) || (G.chapters.ctx('hogar2').data.set || {}).plato === 1)); }
       await follow(g, b => (G.chapters.state().step.hogar2 | 0) >= b + 1, id + ' on the table', b);
       check(id + ': on the table (drawn from c.data), out of her hands', await g.ev(id => !G.errands.bag.has(id) && G.chapters.ctx('hogar2').data.set[id] === 1, id));
+      await branches(g, 'hogar2', b);
       await g.shot('table_' + id);
     }
     await follow(g, () => (G.chapters.state().step.hogar2 | 0) >= 8, 'her chair');
     check('la silla met (Papá pulls out her chair)', await g.ev(() => G.words.met('silla')));
+    await branches(g, 'hogar2', 7);
     await g.shot('chair');
     await follow(g, () => G.chapters.done('hogar2'), 'Papá: ¡A comer!, the family sits');
     const m2 = await metNow(g);
     check('chapter 2 done: mesa, plato, vaso, cuchara, silla in that order, each once (' + m2.join(' ') + ')', m2.join() === 'mesa,plato,vaso,cuchara,silla', m2.join());
     check('the chapter\'s things are gone from the bag', await g.ev(() => !G.errands.bag.list().some(i => i.q)));
+    await branches(g, 'hogar2', 8);
     await g.shot('hogar2_done');
     // the arrow follows a home beat between the rooms: a beat in the yard is none today; the line leads from the patio too
     check('hogar2: no console errors', !g.errors.length, g.errors.join('\n'));

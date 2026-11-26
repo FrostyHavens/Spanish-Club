@@ -21,7 +21,7 @@
   const L = G.requests.LINES;
   // lines built from a word (G.requests.LINES: tools/test-spanish.js runs every word through them)
   L['hogar.mira'] = id => '¡Mira! ' + the(id, { cap: 1, bang: 1 });            // ¡Mira! ¡La [sopa]!
-  L['hogar.para'] = id => '¡Para ' + the(id) + '!';                            // ¡Para la [mesa]!
+  L['hogar.ala'] = id => the(id, { pre: 'a', cap: 1, bang: 1 });                // ¡A la [mesa]!
   L['hogar.tu'] = id => '¡' + the(id, { my: 'tu', cap: 1 }) + '!';             // ¡Tu [silla]!
   L['hogar.bienvenida'] = id => '¡Bienvenid{o/a} ' + the(id, { pre: 'a' }) + '!'; // ¡Bienvenida a la [cocina]!
 
@@ -75,7 +75,7 @@
       n.dir = dirTo(n, p);
       yield* sayShow('papa', 'hambre', T('¿Tienes hambre?', 'Are you hungry? (your tummy rumbles)'));
       yield* youSay('hambre', 'papa', 'Tú: ¡...!', 'Your turn! Tell Papá you are hungry (say it, or tap it)');
-      yield* say('papa', T('¡Ya está!', 'It\'s ready! (he carries the pot to the table)'));
+      yield* say('papa', T('¡Listo!', 'Ready! (he carries the pot to the table)'));
       yield* K.walk(f, n, 6, 3, 3); n.dir = 'down';
       c.data.bowl = 1; G.audio.sfx('item');
     } },
@@ -122,7 +122,7 @@
   const shelfBeat = (id, en) => ({ spot: { map: 'cocina', at: SHELF[id], icon: id }, run: function* (f) {
     yield* meet(id, 'papa', L['hogar.mira'](id), en);
     if (!bag().has(id, { q: 'hogar2' })) bag().add(id, { q: 'hogar2' });
-    yield* sayShow('papa', id, T(L['hogar.para']('mesa'), 'For the table! (carry it there: tap the table)'));
+    yield* sayShow('papa', id, T(L['hogar.ala']('mesa'), 'To the table! (carry it there: tap the table)'));
   } });
   // ...and the second: it goes on the table and stays there (c.data.set, drawn below)
   const tableBeat = id => ({ spot: { map: 'cocina', at: SET[id], icon: id }, run: function* (f, c) {
@@ -142,7 +142,7 @@
       pointAt(...P('table'));
       try { yield* G.intro.show('mesa', { who: 'papa', prompt: L['hogar.mira']('mesa'), en: 'Look! The table!' }); } finally { CH.point(null); }
       pointAt(SHELF.vaso[0], 1);
-      try { yield* say('papa', T(L['hogar.para']('mesa'), 'For the table! (fetch things from the shelf)')); } finally { CH.point(null); }
+      try { yield* say('papa', T(L['hogar.ala']('mesa'), 'To the table! (fetch things from the shelf)')); } finally { CH.point(null); }
     } },
     shelfBeat('plato', 'Look! A plate! (it goes in your hands)'),
     tableBeat('plato'),

@@ -17,7 +17,7 @@ later unit is built. It is written for the parent first; the last part is the bu
 Her house gets two new rooms.
 
 - **La cocina (the kitchen)**, through a doorway from the room she wakes up in. **Papá** cooks here. He is new.
-- **El patio (the back yard)**, through the kitchen's back door: a lemon tree, an avocado tree, a small vegetable
+- **El patio (the back yard)**, through the kitchen's back door: a lime tree, an avocado tree, a small vegetable
   bed, a clothes line, and a spot where the dog digs. Her little brother **Leo** plays here. He is new too.
 
 Nothing in the room she knows moves: her bed, Mamá, the table and the front door stay where they are.
@@ -45,7 +45,7 @@ A chapter opens only when her reviews have room for it, so the four spread over 
    *(la mesa, la silla, el plato, el vaso, la cuchara)*
 3. **Los tacos de Papá.** Leo is hungry too. She builds a taco step by step and tells Leo, and the dog, to eat.
    *(el hermano, la tortilla, los frijoles, el taco, come)*
-4. **Agua de limón.** Mamá comes in thirsty. She picks lemons and an avocado in the patio, and the family sits down
+4. **Agua de limón.** Mamá comes in thirsty. She picks limes and an avocado in the patio, and the family sits down
    together. *(la mamá, tengo sed, el limón, el aguacate, el arroz)*
 
 The first chapter opens once the puppy has been found (chapter 1 of the town's story), so the very first minutes of
@@ -56,8 +56,8 @@ the game stay as they are. It never waits for anything else in town.
 - **¿Qué hay de comer?** Once a day Papá's pot has a bubble. He asks what she wants ("Quiero..."), she sets what is
   missing on the table by listening ("Dame dos platos", "el vaso azul"), and the family eats. It only uses words she
   has met, and it prefers the ones that are due for review.
-- **Leo** asks a small favour some days: find something in the patio, count the lemons, tell him "¡Come!".
-- **The patio** has lemons and avocados to pick and give, and the dog's digging spot.
+- **Leo** asks a small favour some days: find something in the patio, count the limes, tell him "¡Come!".
+- **The patio** has limes and avocados to pick and give, and the dog's digging spot.
 - Papá and Leo have hearts, a greeting a day and a present they like, like everyone in town.
 
 ## What it does not do

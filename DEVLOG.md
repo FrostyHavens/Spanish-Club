@@ -7,7 +7,7 @@ A running record of what changed in Club de Español and why. Newest first.
 The first new unit since the open world. The design, in plain words, is `docs/UNIT_EN_CASA.md`.
 
 **What she finds.** Her house has two new rooms. A doorway on the right-hand wall of her room leads to **la cocina**,
-where **Papá** cooks. The kitchen's back door leads to **el patio**: a lemon tree, an avocado tree, a vegetable bed,
+where **Papá** cooks. The kitchen's back door leads to **el patio**: a lime tree, an avocado tree, a vegetable bed,
 a clothes line, a place where the dog digs, and her little brother **Leo**. Nothing in the room she knows has moved.
 
 **20 new words**, the everyday kind the game was missing: la mamá, el papá, el hermano; la cocina, la mesa, la silla,
@@ -17,7 +17,7 @@ hambre, tengo sed, ¡qué rico!, come. Each has its picture and its place in the
 
 **Four short chapters**, five words each: ¡Tengo hambre! (Papá's soup), Pon la mesa (she carries a plate, a glass and
 a spoon to the table), Los tacos de Papá (a taco built step by step; she tells Leo and the dog "¡come!"), Agua de
-limón (Mamá is thirsty; lemons and an avocado from the patio; the family eats together).
+limón (Mamá is thirsty; limes and an avocado from the patio; the family eats together).
 - The doorway opens once the puppy has been found. Before that Mamá says "¡Espera!".
 - The first chapter opens on the day she first walks into the kitchen, even with reviews waiting, like a new place
   does. The other three wait until her reviews have room, so they spread over several play days.
@@ -26,9 +26,16 @@ limón (Mamá is thirsty; lemons and an avocado from the patio; the family eats 
 
 **Every day afterwards.** Once a day Papá's pot has a bubble: he asks what she wants ("Quiero..."), she sets what is
 missing on the table by listening ("Dame dos platos", "el vaso azul"), the dish is served and stays on the table for
-the day. Leo and Papá ask small favours about the home words. Lemons and avocados can be picked and given to Papá.
+the day. Leo and Papá ask small favours about the home words. Limes and avocados can be picked and given to Papá.
 Papá and Leo have hearts and a greeting a day. The Learning page has three new "tonight's questions" (¿Tienes
 hambre? ¿Tienes sed? ¿Qué quieres comer?).
+
+**After the review.** Closing the game in the middle of the taco chapter could shut it for good (Leo's "eat" scene
+changed the table before its last line); every home beat now opens again from any point, and a test opens the game from
+every copy of the save taken inside each beat and plays on. The real Leo no longer wanders or blocks a tile while his
+guest is in the kitchen. A home chapter that has begun leads her home from town when the town has nothing for her. The
+lime tree and the avocado tree have green fruit, English hints say lime, and "¡Listo!" and "¡A la mesa!" replace two
+lines. Papá stands beside the table (not in front of it) while he makes the taco.
 
 **Her save.** No id that existed before has changed; the unit only adds. A save from the last release opens in her
 room exactly where she stood.

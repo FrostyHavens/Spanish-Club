@@ -1,7 +1,7 @@
 // ===== El hogar: the two new rooms of her house, and the people in them (docs/UNIT_EN_CASA.md) =====
 // La cocina (the kitchen, indoors) is through a doorway in the east wall of her room: Papá cooks at the stove, there is a
 // shelf of plates, glasses and spoons, a table with four chairs, a fridge, a sink and a window. Its back door leads to
-// el patio (the back yard, outdoors, so it gets the night wash like the other outdoor maps): a lemon tree, an avocado
+// el patio (the back yard, outdoors, so it gets the night wash like the other outdoor maps): a lime tree, an avocado
 // tree, a small vegetable bed, the clothes line, a sandpit where Leo (her little brother) plays, flowers, a fence all
 // round and a spot where Canelo digs. Both maps are part of Villa Sol's zone (content/es/zone-villa.js).
 // This file is the rooms and the people, the doorway bubble and the table of the four chapters (hogar1 opens only once the
@@ -23,7 +23,7 @@
   G.maps.cocina = {
     name: 'La cocina', icon: 'cocina', rows: MD.cocina.rows, music: 'headquarters', indoor: true, line: 'hogar', // (the home song goes on from her room without starting again)
     // the day she first walks in is written down: that day the first chapter opens whatever the review backlog (CH.ARRIVAL, below)
-    onEnter: function* () { const d = CH.data('hogar1'); if (!d.first) { d.first = G.today(); G.st.autosave(); } },
+    onEnter: function* () { const d = CH.data('hogar1'); if (!d.first && CH.done('c1')) { d.first = G.today(); G.st.autosave(); } }, // (not before the puppy is found: that day's opening is the town's)
     exits: [
       { x: P('cocina', 'door')[0], y: P('cocina', 'door')[1], to: 'casa', tx: 7, ty: 4, dir: 'left' }, // back in her room, beside the doorway
       { x: P('cocina', 'patioDoor')[0], y: P('cocina', 'patioDoor')[1], to: 'patio', tx: P('patio', 'in')[0], ty: P('patio', 'in')[1], dir: 'down' },
@@ -59,12 +59,14 @@
   };
 
   // ---------- the doorway from her room ----------
-  // One more exit on the east wall of casa (the front door stays exits[0]: chapters' door beats read it). Until the puppy
-  // has been found (chapter 1) the doorway is Mamá's "wait", like the front door: the puppy's game is in this room.
+  // One more exit on the east wall of casa (the front door stays exits[0]: chapters' door beats read it). While the puppy's game
+  // is going on (chapter 1) the doorway is Mamá's "wait", like the front door: the puppy's game is in this room. The same rule as
+  // the front door's (maps.js): a player who chose to explore first (dogSkip) may go through before chapter 1 is begun.
   G.maps.casa.exits.push({
     x: P('casa', 'cocinaDoor')[0], y: P('casa', 'cocinaDoor')[1], to: 'cocina', tx: P('cocina', 'door')[0] + 1, ty: P('cocina', 'door')[1], dir: 'right',
     run: function* (f) {
-      if (!CH || CH.done('c1')) return true;
+      const F = G.state && G.state.flags;
+      if (!CH || CH.done('c1') || !F || (F.intro && !(F.dogSkip && CH.active('c1')))) return true;
       K.stepBack(f, 'left');
       yield* K.say('mama', T('¡{name}! ¡Espera!', '{name}! Wait a moment! (stay with Mamá)'));
       return false;
@@ -98,17 +100,17 @@
     return l && CH.lines().indexOf(l) >= 0 ? l : lineHere();
   };
 
-  // ---------- things to pick up: lemons and an avocado, picked from the tile beside the tree ----------
+  // ---------- things to pick up: limes and an avocado, picked from the tile beside the tree ----------
   // (an unmet word's thing is a picture and a "?": carry.js, fine to pick up before the chapter)
   G.carry.SOURCES.push(
-    { id: 'limon_patio1', map: 'patio', at: P('patio', 'limon1'), item: 'limon', every: 150, tree: P('patio', 'limonCopa'), fruit: '#f8e040' },
-    { id: 'limon_patio2', map: 'patio', at: P('patio', 'limon2'), item: 'limon', every: 150, tree: P('patio', 'limonCopa'), fruit: '#f8e040' },
-    { id: 'aguacate_patio1', map: 'patio', at: P('patio', 'aguacate1'), item: 'aguacate', every: 200, tree: P('patio', 'aguacateCopa'), fruit: '#7aa032' },
+    { id: 'limon_patio1', map: 'patio', at: P('patio', 'limon1'), item: 'limon', every: 150, tree: P('patio', 'limonCopa'), fruit: '#a8e848', rim: '#1c4a10' },
+    { id: 'limon_patio2', map: 'patio', at: P('patio', 'limon2'), item: 'limon', every: 150, tree: P('patio', 'limonCopa'), fruit: '#a8e848', rim: '#1c4a10' },
+    { id: 'aguacate_patio1', map: 'patio', at: P('patio', 'aguacate1'), item: 'aguacate', every: 200, tree: P('patio', 'aguacateCopa'), fruit: '#5c8c34', rim: '#0a2410' },
   );
 
   // ---------- the unit's four chapters (docs/UNIT_EN_CASA.md): in the table, with no script yet ----------
   CH.add({ id: 'hogar1', line: 'hogar', after: 'c1', title: '¡Tengo hambre!', en: 'I\'m hungry! Papá is cooking soup: you say you are hungry, taste it and say how good it is', giver: 'papa', words: ['elpapa', 'cocina', 'hambre', 'sopa', 'rico'], icon: 'sopa', col: '#e0782a' });
   CH.add({ id: 'hogar2', line: 'hogar', title: 'Pon la mesa', en: 'Set the table: carry the plates, glasses and spoons from the shelf to the table', giver: 'papa', words: ['mesa', 'silla', 'plato', 'vaso', 'cuchara'], icon: 'plato', col: '#4a86c8' });
   CH.add({ id: 'hogar3', line: 'hogar', title: 'Los tacos de Papá', en: 'Papá\'s tacos: build a taco step by step and tell Leo (and the dog) to eat', giver: 'leo', words: ['hermano', 'tortilla', 'frijoles', 'taco', 'come'], icon: 'taco', col: '#e8b030' });
-  CH.add({ id: 'hogar4', line: 'hogar', title: 'Agua de limón', en: 'Lemon water: Mamá is thirsty; pick lemons and an avocado in the yard and the family sits down together', giver: 'mama', words: ['lamama', 'sed', 'limon', 'aguacate', 'arroz'], icon: 'limon', col: '#7cb830' });
+  CH.add({ id: 'hogar4', line: 'hogar', title: 'Agua de limón', en: 'Lime water: Mamá is thirsty; pick limes and an avocado in the yard and the family sits down together', giver: 'mama', words: ['lamama', 'sed', 'limon', 'aguacate', 'arroz'], icon: 'limon', col: '#7cb830' });
 })();

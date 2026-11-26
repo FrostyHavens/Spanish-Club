@@ -65,9 +65,15 @@
   // chapterLater tier: the arrow to the doorway). At sunset the bed is the goal, so the town's rule stays as it was.
   function liveFor(f) {
     const CH = G.chapters, L = CH.live(), al = f.def && f.def.alsoLine;
-    if (!al || (L && L.started) || (G.day && G.day.over())) return L;
-    const H = CH.live({}, al);
-    return H && H.started ? H : L || H;
+    if ((L && L.started) || (G.day && G.day.over())) return L;
+    if (al) { const H = CH.live({}, al); return H && H.started ? H : L || H; }
+    // Out in Villa Sol's own maps: a home chapter that has STARTED leads her home when the town has nothing live for now (no
+    // chapter going on, none that could open). One not started stays a suggestion of the doorway (chapterLater), never a pull.
+    // (both lines' live chapters are memoised per moment of a frame, chapters.js live1: nothing is scanned here)
+    const home = !L && G.maps.casa && G.maps.casa.alsoLine;
+    if (!home || !f.def || f.def.line || curArea() !== 'villa') return L;
+    const H = CH.live({}, home);
+    return H && H.started ? H : L;
   }
   function chapterGoal(f) {
     const CH = G.chapters; if (!CH || !G.state) return null;
@@ -216,7 +222,7 @@
   function viaDoor(f, g) {
     const e = G.zones ? G.zones.route(f.mapId, g.map) : null;
     if (!e) return null;
-    return Object.assign({}, g, { via: 'door', to: e.to, pts: [tileP(e.x, e.y, e.edge ? 16 : f.mapId === 'villa' ? 28 : 16, { door: true })] });
+    return Object.assign({}, g, { via: 'door', to: e.to, pts: [tileP(e.x, e.y, e.edge ? 16 : f.mapId === 'villa' ? 28 : f.mapId === 'casa' && e.to === 'cocina' ? 46 : 16, { door: true })] }); // (46: over the picture bubble that floats at the kitchen doorway, hogar.js)
   }
   GD.goal = function (f) {
     if (!G.state || !f) return null;

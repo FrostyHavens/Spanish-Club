@@ -1,6 +1,6 @@
 // En casa, what stays to do every day (content/es/hogar-play.js, docs/UNIT_EN_CASA.md): ¿Qué hay de comer? once a day
 // (what she wants, the table by listening, the dish served on the table, hearts), Papá's board and favours, Leo's
-// favours, a lemon for Papá, the day's play, the two notebook pages in the kitchen. The chapters themselves are
+// favours, a lime for Papá, the day's play, the two notebook pages in the kitchen. The chapters themselves are
 // written elsewhere: here they are set as done, with their words met, the way other tests set up a save.
 // NODE_PATH=$(npm root -g) node tools/test-hogar-play.js [screenshot dir]
 'use strict';
@@ -158,7 +158,7 @@ async function favours(browser) {
   try {
     await game(g, Object.assign(upto(4), { due: ['plato', 'vaso', 'cuchara', 'limon', 'tortilla', 'taco', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'mesa', 'silla', 'sopa'] }));
     await g.fieldIdle('cocina');
-    check('favours: Papá has a board (plates, glasses, spoons, lemons, tortillas) and a listen offer', await g.ev(() => !!G.requests.SPECS.papa && Object.keys(G.requests.SPECS.papa.things).length === 5 && G.favores.OFFERS.some(o => o[0] === 'papa' && o[1] === 'listen')));
+    check('favours: Papá has a board (plates, glasses, spoons, limes, tortillas) and a listen offer', await g.ev(() => !!G.requests.SPECS.papa && Object.keys(G.requests.SPECS.papa.things).length === 5 && G.favores.OFFERS.some(o => o[0] === 'papa' && o[1] === 'listen')));
     const seen = await g.ev(() => { const s = new Set(), fv = G.favores; for (let i = 0; i < 80; i++) { G.state.fav = { day: -1, list: [], pal: -1 }; for (const v of fv.today()) s.add(v.who + ':' + v.kind); } return [...s]; });
     check('favours: over many days Papá asks to listen and names things; Leo counts and names things', ['papa:listen', 'papa:thing', 'leo:count', 'leo:thing'].every(k => seen.includes(k)), JSON.stringify(seen));
     // Papá's listen favour, played through
@@ -172,14 +172,14 @@ async function favours(browser) {
     await g.ev(() => { G.state.fav = { day: G.words.day(), list: [{ who: 'papa', kind: 'thing', word: 'cuchara', done: false, on: false }], pal: -1 }; });
     await papa(g); await settle(g, 'Papá\'s thing');
     check('favours: Papá\'s "¿Qué es?" about the spoon: done', await g.ev(() => G.favores.today()[0].done));
-    // Leo: count the lemons, name a thing
+    // Leo: count the limes, name a thing
     await g.ev(() => { G.goto('patio', 7, 5, 'down'); });
     await g.fieldIdle('patio');
     await g.ev(() => { G.state.fav = { day: G.words.day(), list: [{ who: 'leo', kind: 'count', word: 'tres', done: false, on: false }], pal: -1 }; });
     check('favours: Leo\'s bubble asks (a "?")', await g.ev(() => !!G.field.npc('leo').alert()));
     await g.shot('leo_asks');
     await tapNpc(g, 'leo', 0, -1); await settle(g, 'Leo counting');
-    check('favours: Leo\'s count (the lemons): done', await g.ev(() => G.favores.today()[0].done));
+    check('favours: Leo\'s count (the limes): done', await g.ev(() => G.favores.today()[0].done));
     await g.ev(() => { G.state.fav = { day: G.words.day(), list: [{ who: 'leo', kind: 'thing', word: 'taco', done: false, on: false }], pal: -1 }; });
     await tapNpc(g, 'leo', 0, -1); await settle(g, 'Leo naming');
     check('favours: Leo\'s "¿Qué es?" about the taco: done', await g.ev(() => G.favores.today()[0].done));
@@ -187,7 +187,7 @@ async function favours(browser) {
   } finally { await ctx.close(); }
 }
 
-// ---------- the day's play: a lemon for Papá ----------
+// ---------- the day's play: a lime for Papá ----------
 async function plays(browser) {
   const { ctx, g } = await open(browser, 'hogar-play', true);
   try {
@@ -195,19 +195,20 @@ async function plays(browser) {
     await g.fieldIdle('villa');
     await g.ev(() => { G.state.hogar = { day: G.words.day(), dish: 'sopa' }; G.state.bag.play = { day: G.words.day(), n: { pelota: 9, palo: 9, hueso: 9, carta: 9, huevo: 9, manzana: 9 } }; });
     const where = await g.ev(() => { const o = G.carry.ORDER.slice(), r = {}; for (const id of ['limon', 'aguacate', 'excavar', 'comida']) { G.carry.ORDER.splice(0, G.carry.ORDER.length, id); const p = G.carry.plan(G.field); r[id] = p && (p.map || p.who); } G.carry.ORDER.splice(0, G.carry.ORDER.length, ...o); return r; });
-    check('plays: from town the plan reaches the home line: a lemon and an avocado in the patio, the dig, (the meal is done today)', where.limon === 'patio' && where.aguacate === 'patio' && where.excavar === 'patio', JSON.stringify(where));
+    check('plays: from town the plan reaches the home line: a lime and an avocado in the patio, the dig, (the meal is done today)', where.limon === 'patio' && where.aguacate === 'patio' && where.excavar === 'patio', JSON.stringify(where));
     await g.ev(() => { G.debug.dayShift = 0; });
-    // the lemon: picked up in the patio, given to Papá for a heart
+    // the lime: picked up in the patio, given to Papá for a heart
     await g.ev(() => { G.goto('patio', 7, 4, 'down'); });
     await g.fieldIdle('patio');
-    await g.tapTile(7, 3); await g.until(() => !!G.carry.held(), null, 'the lemon in hand'); await settle(g, 'the lemon\'s name');
-    check('plays: a lemon is picked up in the patio (its word: a "?" before it is met)', await g.ev(() => G.carry.held().id === 'limon' && !G.words.met('limon')));
-    check('plays: the plan with the lemon in hand: give it to Papá', await g.ev(() => { const p = G.carry.plan(G.field); return !!p && p.who === 'papa'; }));
+    await g.tapTile(7, 3); await g.until(() => !!G.carry.held(), null, 'the lime in hand'); await settle(g, 'the lime\'s name');
+    check('plays: a lime is picked up in the patio (its word: a "?" before it is met)', await g.ev(() => G.carry.held().id === 'limon' && !G.words.met('limon')));
+    check('plays: the plan with the lime in hand: give it to Papá', await g.ev(() => { const p = G.carry.plan(G.field); return !!p && p.who === 'papa'; }));
     await g.ev(() => { G.goto('cocina', 6, 3, 'down'); });
     await g.fieldIdle('cocina');
     const h0 = await hearts(g, 'papa');
     await papa(g); await settle(g, 'the gift');
-    check('plays: the lemon given to Papá: a heart, and the hands are empty', await hearts(g, 'papa') > h0 && await g.ev(() => !G.carry.held()));
+    check('plays: the lime given to Papá: a heart, and the hands are empty', await hearts(g, 'papa') > h0 && await g.ev(() => !G.carry.held()));
+    check('the Learning page says "an avocado" (not "a avocado"), and tonight\'s lines name the article by code', await g.ev(() => G.tplMore.find(t => t[0] === 'comer')[1]('aguacate').ans.en === 'I want an avocado.' && G.tplMore.find(t => t[0] === 'comer')[1]('tortilla').ans.en === 'I want a tortilla.' && G.requests.LINES['hogar.escucha']('mesa') === '¡{name}! ¡La [mesa]! ¡Escucha!'));
     check('plays: no console errors', !g.errors.length, g.errors.join('\n'));
   } finally { await ctx.close(); }
 }
@@ -273,6 +274,6 @@ run('En casa: the daily meal and favours', [
   ['nothing before hogar1', before], ['meal after hogar1', mealOne],
   ['meal after hogar1-2, phrases and listen on', b => mealTwo(b, true)], ['meal after hogar1-2, phrases and listen off', b => mealTwo(b, false)],
   ['meal after all four, phrases and listen on', b => mealAll(b, true)], ['meal after all four, phrases and listen off', b => mealAll(b, false)],
-  ['the story first', storyFirst], ['Papá\'s board, favours', favours], ['a lemon for Papá', plays], ['the dog\'s digging', dig],
+  ['the story first', storyFirst], ['Papá\'s board, favours', favours], ['a lime for Papá', plays], ['the dog\'s digging', dig],
   ['the notebook pages', pages], ['tonight\'s question', tonight],
 ]);
