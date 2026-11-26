@@ -244,6 +244,50 @@
    "who:\"lucia\""
   ]
  },
+ "hogar1": {
+  "rev": 1,
+  "beats": [
+   "auto:\"cocina\"",
+   "who:\"papa\"",
+   "spot:{\"map\":\"cocina\",\"at\":[6,5],\"icon\":\"sopa\"}"
+  ]
+ },
+ "hogar2": {
+  "rev": 1,
+  "beats": [
+   "who:\"papa\"",
+   "spot:{\"map\":\"cocina\",\"at\":[8,2],\"icon\":\"plato\"}",
+   "spot:{\"map\":\"cocina\",\"at\":[5,5],\"icon\":\"plato\"}",
+   "spot:{\"map\":\"cocina\",\"at\":[9,2],\"icon\":\"vaso\"}",
+   "spot:{\"map\":\"cocina\",\"at\":[7,5],\"icon\":\"vaso\"}",
+   "spot:{\"map\":\"cocina\",\"at\":[10,2],\"icon\":\"cuchara\"}",
+   "spot:{\"map\":\"cocina\",\"at\":[6,5],\"icon\":\"cuchara\"}",
+   "spot:{\"map\":\"cocina\",\"at\":[5,4],\"icon\":\"silla\"}",
+   "who:\"papa\""
+  ]
+ },
+ "hogar3": {
+  "rev": 1,
+  "beats": [
+   "who:\"leo\"",
+   "who:\"papa\"",
+   "spot:{\"map\":\"cocina\",\"at\":[6,5],\"icon\":\"tortilla\"}",
+   "spot:{\"map\":\"cocina\",\"at\":[6,5],\"icon\":\"taco\"} when",
+   "who:\"canelo\""
+  ]
+ },
+ "hogar4": {
+  "rev": 1,
+  "beats": [
+   "who:\"mama\"",
+   "spot:{\"map\":\"patio\",\"at\":[8,3],\"icon\":\"limon\"}",
+   "who:\"papa\"",
+   "who:\"mama\"",
+   "spot:{\"map\":\"patio\",\"at\":[12,3],\"icon\":\"aguacate\"}",
+   "who:\"papa\"",
+   "auto:\"cocina\" when"
+  ]
+ },
  "playa1": {
   "rev": 2,
   "beats": [
