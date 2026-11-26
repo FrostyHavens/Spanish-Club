@@ -2683,6 +2683,11 @@ G.store = {
     'ü': tt('Snow', 15, 1, 1, 1, 1, 'grass'), 'ö': tt('Ice', 0, 1, 1, 1, 1, 'river'), 'ç': OBSTACLE('Snowy Pine', 'forest'),
     'ï': tt('Peaks', 30, INF, INF, 1, INF, 'hills', { block: true }), 'ò': OBSTACLE('Weather Station', 'grass'), 'ù': OBSTACLE('Lookout', 'grass'),
     'â': WALL('Roof', 'town'),
+    // El hogar (content/es/hogar.js): the kitchen (stove, shelf, fridge, sink, window, a chair) and the back yard (a
+    // lime tree and an avocado tree, each a crown over a trunk, and the clothes line)
+    'à': WALL('Stove', 'indoor'), 'è': WALL('Kitchen Shelf', 'indoor'), 'ì': WALL('Fridge', 'indoor'), 'î': WALL('Sink', 'indoor'),
+    'ä': WALL('Kitchen Window', 'indoor'), 'ë': OBSTACLE('Chair', 'indoor'),
+    'ô': OBSTACLE('Lime Tree', 'forest'), 'õ': OBSTACLE('Avocado Tree', 'forest'), 'ê': OBSTACLE('Fruit Tree', 'forest'), 'ã': OBSTACLE('Clothes Line', 'grass'),
     ' ': WALL('Void', 'grass'),
   };
 
@@ -2692,14 +2697,14 @@ G.store = {
   // n[] order: N NE E SE S SW W NW
   const DX = [0, 1, 1, 1, 0, -1, -1, -1], DY = [-1, -1, 0, 1, 1, 1, 0, -1];
   const BASEMAP = { '.': '.', 'o': '.', 'y': '.', 'f': '.', 'h': '.', ',': ',', '=': '=', 'p': 'p', 's': 's', 'x': 'x', 'i': 'i', 'c': 'c', 'z': 'z', '&': 's', '{': '{', 'ü': 'ü' };
-  const OBJ = new Set('rFlkgPLYZteaujJOHEUmA1236780()%*_!<>/?^;$áéúçòù'.split('')); // (çòù: the mountain's snowy pines, weather station, binoculars) // (áéú: the grandparents' henhouse, pump, trunk) // (!<>/?^;$: the playground's swings, slide, frame, seesaw, merry-go-round, goals, cart) // (()%*_: the forest's trees, mushrooms, bushes, log) // (1236780: the beach's palms, umbrellas, castle, tower, cart, rocks)
-  const INDOOR_OBJ = new Set('teaujHEUmAú'.split(''));
+  const OBJ = new Set('rFlkgPLYZteaujJOHEUmA1236780()%*_!<>/?^;$áéúçòùëôõêã'.split('')); // (çòù: the mountain's snowy pines, weather station, binoculars) // (áéú: the grandparents' henhouse, pump, trunk) // (!<>/?^;$: the playground's swings, slide, frame, seesaw, merry-go-round, goals, cart) // (()%*_: the forest's trees, mushrooms, bushes, log) // (1236780: the beach's palms, umbrellas, castle, tower, cart, rocks)
+  const INDOOR_OBJ = new Set('teaujHEUmAúë'.split(''));
   const BASE_PREF = ['=', 'p', 'x', 'c', 'z', 'i', '{', ',', 's', 'ü', '.'];
   const WATERISH = c => c === 'w' || c === '~' || c === 'b' || c === 'B' || c === '9' || c === 'd' || c === '4' || c === '5' || c === '-' || c === ':' || c === '|'; // (the beach's surf, pier, boat and clear shallows; the forest's stepping stones, waterfall)
   const ROOF = c => c === 'R' || c === 'Q' || c === '+' || c === 'â';
   const BWALL = c => c === 'W' || c === 'N' || c === 'D' || c === 'S' || c === 'G' || c === 'K';
-  const IWALL = c => c === 'I' || c === 'n' || c === 'v' || c === 'V' || c === 'C' || c === 'ó';
-  const TALL = new Set('WNDSGKRQ+XIvnTVC#[]}óâ'.split(''));
+  const IWALL = c => c === 'I' || c === 'n' || c === 'v' || c === 'V' || c === 'C' || c === 'ó' || c === 'à' || c === 'è' || c === 'ì' || c === 'î' || c === 'ä';
+  const TALL = new Set('WNDSGKRQ+XIvnTVC#[]}óâàèìîä'.split(''));
   const GRASSY = c => c === '.' || c === 'T' || c === 'M';
 
   function inferBase(map, x, y, code) {
@@ -4754,6 +4759,140 @@ G.store = {
   reg('R', { need: 'n', fn: (b, I) => roofTile(b, I, false) });
   reg('Q', { need: 'n', fn: (b, I) => roofTile(b, I, true) });
   reg('+', { need: 'n', fn: spireTile });
+  // ---------- El hogar (content/es/hogar.js): the kitchen (a stove with a pot, a shelf of plates, glasses and spoons, a
+  // fridge, a sink, a window, a chair) and the back yard (a lime tree and an avocado tree, each a crown over a trunk,
+  // and the clothes line). The wall pieces sit on the kitchen's back wall like the bookshelf; the rest stand on the floor
+  // or the grass. ----------
+  const HG = { steel: U('#a8b0bc'), steel2: U('#7c8494'), steel3: U('#e0e6f0'), iron: U('#34343f'), iron2: U('#4c4c60'), iron3: U('#6e6e86'),
+    cream: U('#f6eedc'), cream2: U('#d8ccaa'), blue: U('#3a6ac0'), blue2: U('#2a4a90'), glass: U('#9ccce4'), glass2: U('#e4f6ff'),
+    red: U('#d03a30'), red2: U('#8c2018'), red3: U('#f07868'), sky: U('#7cc0f0'), sky2: U('#b8e0f8'), lemon: U('#f8e040'), lemon2: U('#c8a420'),
+    steam: U('#f4f8ff'), steam2: U('#c8d4e4') };
+  // the stove ('à'): a black iron range, a pot of soup bubbling on its left ring (steam drifts up), an oven door below
+  function stoveTile(b, I) {
+    iwallTile(b, I);
+    const f = I.af & 1;
+    b.rect(2, 10, 20, 13, HG.iron); b.hl(2, 21, 10, HG.iron3); b.vl(2, 10, 22, HG.iron2); b.vl(21, 10, 22, P.K0); b.hl(2, 21, 22, P.K0);
+    b.rect(1, 8, 22, 3, HG.iron2); b.hl(1, 22, 8, HG.iron3); b.hl(1, 22, 10, P.K0);
+    b.hl(14, 20, 8, P.K0); b.hl(15, 19, 9, P.K0); // the right ring
+    b.rect(3, 4, 10, 5, HG.steel); b.vl(3, 4, 8, HG.steel3); b.vl(4, 4, 8, HG.steel3); b.vl(12, 4, 8, HG.steel2); b.hl(3, 12, 8, HG.steel2); // the pot
+    b.hl(2, 13, 3, HG.steel3); b.hl(2, 13, 4, HG.steel2); b.hl(4, 11, 3, HG.red); b.set(f ? 6 : 8, 3, HG.red3); // its rim, the soup
+    b.rect(0, 5, 2, 2, HG.iron); b.rect(14, 5, 2, 2, HG.iron); // its handles
+    const s = f ? [[6, 1], [7, 0], [9, 1], [10, 0]] : [[7, 1], [6, 0], [10, 1], [9, 0]]; // steam
+    s.forEach(([x, y], i) => { b.set(x, y, i & 1 ? HG.steam2 : HG.steam); });
+    b.rect(4, 13, 16, 8, HG.iron2); b.hl(4, 19, 13, HG.iron3); b.rect(6, 15, 12, 4, P.K0); b.set(7, 16, P.K2); b.set(8, 16, P.K2); b.hl(6, 17, 18, P.K1); // the oven door and its window
+    b.hl(5, 18, 12, HG.steel3); b.set(5, 13, HG.steel2); b.set(18, 13, HG.steel2); // its handle
+    for (const x of [5, 9, 13, 17]) b.rect(x, 11, 2, 1, HG.steel3); // knobs
+  }
+  // the shelf ('è'), one unit across a run of tiles: plates, then glasses, then spoons (a lone tile: plates)
+  function kshelfTile(b, I) {
+    iwallTile(b, I);
+    const n = I.n, L = n[6] !== 'è', R = n[2] !== 'è', kind = L ? 0 : R ? 2 : 1, x0 = L ? 1 : 0, x1 = R ? 22 : 23;
+    b.rect(x0, 2, x1 - x0 + 1, 22, P.T1);
+    if (L) { b.vl(1, 2, 23, P.T4); b.vl(2, 3, 22, P.T3); }
+    if (R) { b.vl(22, 2, 23, P.T0); b.vl(21, 3, 22, P.T2); }
+    b.hl(x0, x1, 2, P.T5); b.hl(x0, x1, 3, P.T4);
+    for (const y of [11, 21]) { b.hl(x0, x1, y, P.T5); b.hl(x0, x1, y + 1, P.T3); b.hl(x0, x1, y + 2, P.T0); }
+    if (kind === 0) { // plates in two stacks, one standing on the lower board
+      for (const sx of [4, 13]) for (let i = 0; i < 3; i++) { const y = 9 - i * 2; b.rect(sx, y, 7, 2, HG.cream); b.hl(sx, sx + 6, y, HG.blue); b.hl(sx, sx + 6, y + 1, HG.cream2); }
+      for (const [cx, col] of [[8, HG.blue], [16, HG.red]]) { for (let y = 12; y <= 20; y++) for (let x = cx - 4; x <= cx + 4; x++) { const d = Math.hypot(x - cx, (y - 16) * 1.0); if (d < 4.6) b.set(x, y, d > 3.4 ? col : d > 2.2 ? HG.cream : HG.cream2); } }
+    } else if (kind === 1) { // glasses and a jug
+      for (const gx of [4, 10, 16]) { b.rect(gx, 4, 4, 7, HG.glass); b.vl(gx, 4, 10, HG.glass2); b.hl(gx, gx + 3, 4, HG.glass2); b.hl(gx, gx + 3, 10, HG.steel2); b.rect(gx + 1, 7, 2, 3, HG.sky); }
+      b.rect(5, 14, 6, 7, HG.blue); b.vl(5, 14, 20, HG.sky); b.hl(5, 10, 14, HG.blue2); b.rect(11, 15, 2, 3, HG.blue2); b.rect(15, 16, 4, 5, HG.glass); b.vl(15, 16, 20, HG.glass2);
+    } else { // wooden spoons hanging from a rail, a jar of ladles below
+      b.hl(x0, x1, 5, HG.steel2);
+      for (const sx of [4, 9, 14, 19]) { b.vl(sx, 6, 10, P.T4); b.rect(sx - 1, 11, 3, 1, P.T3); b.vl(sx, 6, 6, P.T5); }
+      b.rect(7, 15, 8, 6, HG.steel); b.vl(7, 15, 20, HG.steel3); b.vl(14, 15, 20, HG.steel2); b.hl(7, 14, 15, HG.steel3);
+      for (const sx of [8, 10, 12]) { b.vl(sx, 12 + (sx & 1) * 2, 14, P.T4); }
+    }
+  }
+  // the fridge ('ì'): cream, a small freezer door over a big one, handles, a note and a magnet or two
+  function fridgeTile(b, I) {
+    iwallTile(b, I);
+    b.rect(3, 2, 18, 21, HG.cream); b.vl(3, 2, 21, P.F1); b.vl(20, 2, 21, HG.cream2); b.vl(19, 2, 21, HG.cream2);
+    b.hl(3, 20, 2, P.F1); b.hl(3, 20, 22, HG.steel2); b.hl(3, 20, 9, HG.steel2); b.hl(3, 20, 10, P.F1);
+    b.rect(16, 4, 2, 4, HG.steel); b.vl(16, 4, 7, HG.steel3); b.rect(16, 12, 2, 7, HG.steel); b.vl(16, 12, 18, HG.steel3);
+    b.rect(6, 13, 4, 5, P.F1); b.hl(7, 9, 15, HG.steel2); b.hl(7, 9, 17, HG.steel2); b.rect(7, 12, 2, 2, HG.red); b.rect(11, 14, 2, 2, HG.blue);
+  }
+  // the sink ('î'): a wooden cupboard with a steel basin of water and a tap (it drips)
+  function sinkTile(b, I) {
+    iwallTile(b, I);
+    const f = I.af & 1;
+    b.rect(1, 13, 22, 10, P.T3); b.hl(1, 22, 13, P.T4); b.vl(1, 13, 22, P.T4); b.vl(22, 13, 22, P.T1); b.hl(1, 22, 22, P.T0);
+    for (const x0 of [3, 13]) { b.rect(x0, 15, 8, 6, P.T2); b.hl(x0, x0 + 7, 15, P.T1); b.vl(x0, 15, 20, P.T1); b.hl(x0, x0 + 7, 20, P.T4); b.set(x0 + (x0 < 10 ? 6 : 1), 17, P.Y2); }
+    b.rect(0, 10, 24, 3, HG.steel3); b.hl(0, 23, 10, P.F1); b.hl(0, 23, 12, HG.steel2);
+    b.rect(5, 9, 14, 3, HG.steel2); b.rect(6, 10, 12, 2, P.W3); b.hl(6, 17, 10, P.W4); b.set(f ? 9 : 13, 10, P.W5);
+    b.vl(15, 3, 9, HG.steel); b.vl(14, 4, 9, HG.steel3); b.hl(11, 15, 3, HG.steel); b.hl(11, 15, 4, HG.steel2); b.vl(11, 4, 6, HG.steel); // the tap and its curved spout
+    b.set(11, f ? 8 : 7, P.W5);
+  }
+  // the kitchen window ('ä'): a sunny sky and a green hill, red curtains, a sill with a pot of flowers
+  function kwindowTile(b, I) {
+    iwallTile(b, I);
+    b.rect(3, 3, 18, 17, P.T2); b.hl(3, 20, 3, P.T4); b.vl(3, 3, 19, P.T3);
+    for (let y = 5; y < 18; y++) for (let x = 5; x < 19; x++) b.set(x, y, y < 11 ? HG.sky : HG.sky2);
+    b.hl(8, 12, 8, P.F1); b.hl(9, 14, 7, P.F1); b.hl(6, 18, 16, P.G4); b.hl(5, 18, 17, P.G3); b.hl(10, 18, 15, P.G4); b.set(15, 14, P.G5);
+    b.vl(11, 5, 17, P.T3); b.vl(12, 5, 17, P.T2); b.hl(5, 18, 11, P.T3); b.hl(5, 18, 12, P.T2);
+    b.rect(5, 5, 3, 13, HG.red); b.vl(5, 5, 17, HG.red3); b.vl(7, 5, 17, HG.red2); b.rect(16, 5, 3, 13, HG.red); b.vl(16, 5, 17, HG.red3); b.vl(18, 5, 17, HG.red2);
+    b.rect(5, 12, 3, 1, P.Y2); b.rect(16, 12, 3, 1, P.Y2);
+    b.rect(2, 20, 20, 2, P.T4); b.hl(2, 21, 20, P.T5); b.hl(2, 21, 21, P.T2);
+    b.rect(14, 17, 5, 3, P.D2); b.hl(14, 18, 17, P.D4); b.set(15, 15, P.F3); b.set(17, 14, P.F2); b.set(16, 16, P.G3); b.set(17, 16, P.G3); b.set(15, 16, P.F4);
+  }
+  // a kitchen chair ('ë'): a slatted back, a red cushion, four legs
+  function chairTile(b, I) {
+    drawGround(b, I.base, I);
+    dropShadow(b, 12, 21, 8, 2, 0.62);
+    b.rect(6, 2, 2, 12, P.T2); b.rect(16, 2, 2, 12, P.T1); b.rect(6, 2, 12, 3, P.T3); b.hl(6, 17, 2, P.T5); b.hl(6, 17, 4, P.T1);
+    for (const x of [9, 12, 15]) b.rect(x, 5, 1, 7, P.T3);
+    b.rect(5, 13, 14, 3, P.C3); b.hl(5, 18, 13, P.C4); b.hl(5, 18, 15, P.C1);
+    b.rect(5, 16, 14, 2, P.T3); b.hl(5, 18, 17, P.T1);
+    b.rect(6, 18, 2, 4, P.T2); b.rect(16, 18, 2, 4, P.T1); b.set(6, 21, P.T0); b.set(17, 21, P.T0);
+  }
+  // the fruit trees: a crown ('ô' lime, 'õ' avocado) over a trunk ('ê', which looks at the crown above it)
+  const LEMON = [U('#1a5018'), P.G2, P.G3, P.G4, P.G5, U('#c0e878')];
+  const AVOC = [U('#0c2a1a'), U('#16402a'), U('#215a34'), U('#2e7440'), U('#4a9450'), U('#7cc070')];
+  function fruitCanopy(b, dy, sd, ramp, blossom) {
+    const blobs = [[12, 14, 11.5], [4.5, 19, 7], [19.5, 19, 7], [12, 5.5, 8], [5.5, 9.5, 6], [18.5, 9.5, 6], [12, 21, 7]];
+    for (const [cx, cy0, r] of blobs) {
+      const cy = cy0 + dy;
+      for (let y = Math.max(0, Math.floor(cy - r - 1)); y <= Math.min(TS - 1, cy + r); y++) for (let x = Math.floor(cx - r - 1); x <= cx + r; x++) {
+        const gx = x + 0.5 - cx, gy = y + 0.5 - cy, d = Math.hypot(gx, gy);
+        const wob = (hsh(x >> 1, (y - dy) >> 1, sd) - 0.5) * 1.6;
+        if (d > r + wob * 0.6) continue;
+        const l = -(gx * 0.55 + gy * 0.8) / r + (hsh((x + 1) >> 1, (y - dy) >> 1, sd + 3) - 0.5) * 0.5;
+        let i = l > 0.55 ? 5 : l > 0.2 ? 4 : l > -0.15 ? 3 : l > -0.5 ? 2 : 1;
+        if (d > r - 1.1 && gx + gy > 0) i = 0;
+        b.set(x, y, ramp[i]);
+      }
+    }
+    if (blossom) for (const [x, y] of [[7, 8], [16, 5], [10, 15], [18, 14], [13, 9]]) b.set(x, y + dy, P.F1); // lime blossom
+  }
+  function fruitCrownTile(b, I, ramp, blossom) { drawGround(b, I.base, I); fruitCanopy(b, 0, I.tx * 13 + 5, ramp, blossom); }
+  function fruitTrunkTile(b, I) {
+    const avo = I.n[0] === 'õ';
+    drawGround(b, I.base, I);
+    dropShadow(b, 14, 21, 9, 2.6, 0.58);
+    for (let y = 2; y < 22; y++) { const sp = y > 18 ? (y - 18) : 0; for (let x = 12 - 3 - sp; x <= 11 + 3 + sp; x++) { const dx = x - 12; b.set(x, y, dx < -2 ? P.T4 : dx < 0 ? P.T3 : dx < 2 ? P.T2 : P.T1); } }
+    for (let y = 4; y < 20; y += 3) b.set(12 + ((y * 7) % 3) - 1, y, P.T1);
+    b.set(8, 21, P.T1); b.set(16, 21, P.T1);
+    fruitCanopy(b, -24, I.tx * 13 + 5, avo ? AVOC : LEMON, !avo);
+  }
+  // the clothes line ('ã'): a post at each end of a run, a sagging rope, washing hanging from it (it sways)
+  function lineTile(b, I) {
+    drawGround(b, I.base, I);
+    const n = I.n, L = n[6] !== 'ã', R = n[2] !== 'ã', sw = I.af & 1, x0 = L ? 4 : 0, x1 = R ? 19 : 23;
+    dropShadow(b, 12, 21, 10, 1.6, 0.8);
+    if (L) { b.rect(2, 3, 2, 19, P.T2); b.vl(2, 3, 21, P.T4); b.hl(1, 4, 3, P.T1); }
+    if (R) { b.rect(20, 3, 2, 19, P.T1); b.vl(21, 3, 21, P.T0); b.hl(19, 22, 3, P.T1); }
+    const ry = x => 4 + Math.round(2 * (1 - ((x - 12) / 12) ** 2));
+    for (let x = x0; x <= x1; x++) b.set(x, ry(x), P.K4);
+    const v = I.v % 4, top = ry(12) + 1, cols = [HG.red, HG.blue, P.Y3, P.F4][v];
+    const cloth = (x, w, h, c, c2) => { for (let y = 0; y < h; y++) { const o = y > h - 3 ? sw : 0; b.hl(x + o, x + o + w - 1, top + y, y === h - 1 ? c2 : c); } };
+    if (v === 0) { cloth(7, 10, 8, cols, HG.red2); b.rect(5 + sw, top, 2, 3, cols); b.rect(17 + sw, top, 2, 3, cols); } // a shirt
+    else if (v === 1) { cloth(8, 8, 10, cols, HG.blue2); b.hl(8, 15, top + 3, P.F1); b.hl(8, 15, top + 6, P.F1); } // a striped towel
+    else if (v === 2) { cloth(6, 4, 6, cols, P.Y1); cloth(13, 4, 6, P.F1, P.K4); cloth(18, 3, 5, P.F5, P.F5); } // socks
+    else { for (let y = 0; y < 10; y++) b.hl(12 - 2 - (y >> 1) + sw * (y > 6 ? 1 : 0), 12 + 2 + (y >> 1) + sw * (y > 6 ? 1 : 0), top + y, y === 9 ? U('#c85898') : cols); } // a pink dress
+    for (const x of [8, 15]) b.rect(x, ry(x) - 1, 1, 2, P.Y2); // pegs
+  }
+
   reg('W', { need: 'n', fn: (b, I) => timberTile(b, I, 'W') });
   reg('N', { need: 'n', fn: (b, I) => timberTile(b, I, 'N') });
   reg('D', { need: 'n', fn: (b, I) => timberTile(b, I, 'D') });
@@ -4831,6 +4970,16 @@ G.store = {
   reg('ò', { need: 'g', base: true, fn: stationTile });
   reg('ù', { need: 'g', base: true, fn: viewerTile });
   reg('â', { need: 'n', fn: snowRoofTile });
+  reg('à', { need: 'n', anim: 2, spd: 20, fn: stoveTile });
+  reg('è', { need: 'n', fn: kshelfTile });
+  reg('ì', { need: 'n', fn: fridgeTile });
+  reg('î', { need: 'n', anim: 2, spd: 26, fn: sinkTile });
+  reg('ä', { need: 'n', fn: kwindowTile });
+  reg('ë', { need: 'g', base: true, fn: chairTile });
+  reg('ô', { need: 'g', base: true, uniq: true, fn: (b, I) => fruitCrownTile(b, I, LEMON, true) });
+  reg('õ', { need: 'g', base: true, uniq: true, fn: (b, I) => fruitCrownTile(b, I, AVOC, false) });
+  reg('ê', { need: 'g', base: true, uniq: true, fn: fruitTrunkTile });
+  reg('ã', { need: 'g', base: true, anim: 2, spd: 30, fn: lineTile });
   reg(' ', { need: '', fn: (b) => b.fill(P.X0) });
 
   const tileCache = new Map();
@@ -4891,6 +5040,7 @@ G.store = {
     '9': '#e8f4ff', 'd': '#9c5e2a', '-': '#5cc8dc', '&': '#c8c070', '1': '#2e9a3a', '2': '#e83a30', '3': '#d8bc7c', '4': '#e83a30', '5': '#e83a30', '6': '#e83a30', '7': '#fafaf4', '8': '#3a7ae0', '0': '#5a5a6a',
     '(': '#2b6a26', ')': '#2b6a26', '%': '#e03a30', '*': '#4a2a70', '_': '#8a5a30', '#': '#6c6252', '|': '#e8f6ff', '@': '#0c0a10', ':': '#8e8e9a', '[': '#9a6634', ']': '#764a22', '{': '#3a3240', '}': '#1e1822',
     'ñ': '#5a3618', 'á': '#c04030', 'í': '#6a4a2a', 'é': '#3a7ad0', 'ó': '#8a5428', 'ú': '#8a5428',
+    'à': '#34343f', 'è': '#9c5e2a', 'ì': '#f6eedc', 'î': '#a8b0bc', 'ä': '#7cc0f0', 'ë': '#c8343c', 'ô': '#4f9c30', 'õ': '#2e7440', 'ê': '#74421e', 'ã': '#f0f0f0',
     'ü': '#eef4fa', 'ö': '#a8dcf0', 'ç': '#1f5634', 'ï': '#d8e6f2', 'ò': '#f8f8f4', 'ù': '#5878a8', 'â': '#f4f8fc',
     '!': '#e04040', '<': '#3870d8', '>': '#f8c830', '/': '#38a858', '?': '#e04040', '^': '#c8b8a0', ';': '#fafaf4', '$': '#3870d8',
     'z': '#b08a50', 'V': '#5c3418', 'C': '#5c3418', 'H': '#e2be46', 'E': '#9c5e2a', 'U': '#3a72d2', 'm': '#b4b2b4', 'A': '#c8343c',
@@ -7642,9 +7792,6 @@ G.store = {
     huella(p) { // a paw print on the ground
       p.ell(8, 11, 3.6, 3, '#6a4020'); [[3.6, 6.8], [6.6, 4.6], [9.6, 4.6], [12.4, 6.8]].forEach(([x, y]) => p.ell(x, y, 1.5, 1.8, '#6a4020'));
     },
-    plato(p) { // a plate (the picnic: Rosa counts them)
-      p.ell(8, 9, 7.5, 5, '#d8d8e4'); p.ell(8, 8.6, 6.4, 4, '#ffffff'); p.ell(8, 9, 4.2, 2.6, '#eef0f8'); p.rect(4, 6, 3, 1, '#ffffff');
-    },
     nido(p, w) { // a nest of straw with w.n eggs in it (Rosa's hens: uno, dos)
       const n = (w && w.n) || 1;
       p.ell(8, 11, 7.5, 4, '#a07030'); p.ell(8, 10.2, 6, 2.6, '#6a4818');
@@ -8534,6 +8681,135 @@ G.store = {
       p.put(5, 7, '#e8a020'); p.put(11, 7, '#e8a020'); p.put(5, 6, '#202028'); p.put(11, 6, '#202028'); p.disc(8, 13.5, 1.2, '#101010');
       p.rect(7, 4, 2, 3, '#6a6a78');
     },
+    // ---- En casa (docs/UNIT_EN_CASA.md): the family at home, the kitchen, what is eaten, what is said at the table ----
+    lamama(p) { // Mamá (the same look as her sprite: brown hair in a ponytail, a green top, warm skin), a smile
+      p.ell(8, 15.5, 7, 3.2, '#50a070'); p.rect(6, 13, 4, 1, '#f0e8c0');
+      p.ell(13.4, 9.5, 1.7, 3.4, '#5a3418'); p.ell(8, 6.6, 5.6, 4.2, '#5a3418');
+      p.ell(8, 9.6, 4.5, 4.6, SKIN); p.shade(8, 9.6, 4.5, SKIN2); p.rect(4, 5, 8, 2, '#5a3418'); p.rect(3, 6, 1, 4, '#5a3418'); p.rect(12, 6, 1, 4, '#5a3418');
+      p.rect(5, 9, 1, 2, '#302018'); p.rect(10, 9, 1, 2, '#302018'); p.put(4, 8, '#302018'); p.put(11, 8, '#302018');
+      p.rect(4, 11, 1, 1, '#f09090'); p.rect(11, 11, 1, 1, '#f09090'); p.rect(7, 12, 2, 1, '#b04848'); p.put(6, 11, '#b04848'); p.put(9, 11, '#b04848');
+    },
+    elpapa(p) { // Papá: short dark hair, a moustache, a brick-red shirt with a white apron (he cooks)
+      const SK = '#e0b490', SK2 = '#c89870', HR = '#2a1c14';
+      p.ell(8, 15.5, 7, 3.2, '#c85a30'); p.rect(5, 13, 6, 3, '#f4f4f0'); p.rect(4, 12, 1, 2, '#f4f4f0'); p.rect(11, 12, 1, 2, '#f4f4f0');
+      p.ell(8, 9.4, 4.6, 4.9, SK); p.shade(8, 9.4, 4.6, SK2); p.put(3, 9, SK); p.put(12, 9, SK);
+      p.ell(8, 5.4, 5, 2.4, HR); p.rect(3, 5, 2, 3, HR); p.rect(11, 5, 2, 3, HR);
+      p.rect(4, 7, 3, 1, HR); p.rect(9, 7, 3, 1, HR); p.rect(5, 8, 1, 2, '#302018'); p.rect(10, 8, 1, 2, '#302018');
+      p.ell(8, 10.8, 3, 0.9, HR); p.rect(7, 12, 2, 1, '#a04040'); p.put(8, 9, SK2);
+    },
+    hermano(p) { // Leo, the little brother: a big round head, messy brown hair with a tuft, a wide grin, a yellow shirt
+      const HR = '#7a4a22';
+      p.ell(8, 15.5, 6, 3, '#e8b830'); p.rect(7, 13, 2, 1, '#c89018');
+      p.disc(8, 8.6, 5.8, SKIN); p.shade(8, 8.6, 5.8, SKIN2);
+      p.ell(8, 4, 5.4, 2.6, HR); p.rect(3, 4, 2, 3, HR); p.rect(11, 4, 2, 3, HR); p.put(7, 1, HR); p.put(8, 1, HR); p.put(9, 2, HR); p.put(6, 2, HR); p.put(10, 1, HR);
+      p.rect(5, 7, 2, 2, '#302018'); p.rect(10, 7, 2, 2, '#302018'); p.put(5, 7, '#ffffff'); p.put(10, 7, '#ffffff');
+      p.rect(3, 10, 1, 1, '#f09090'); p.rect(12, 10, 1, 1, '#f09090');
+      p.rect(5, 11, 6, 1, '#302018'); p.rect(6, 12, 4, 1, '#b04040'); p.put(4, 10, '#302018'); p.put(11, 10, '#302018');
+    },
+    cocina(p) { // a stove with a pot on it, steam and a flame under the pot, an oven door
+      p.rect(1, 7, 14, 8, '#e4e6ee'); p.rect(1, 7, 14, 1, '#ffffff'); p.rect(1, 14, 14, 1, '#b0b4c4');
+      p.rect(1, 8, 14, 1, '#50505c'); p.rect(3, 9, 1, 1, '#f04838'); p.rect(7, 9, 1, 1, '#f8c030'); p.rect(11, 9, 1, 1, '#f04838');
+      p.rect(3, 11, 10, 3, '#38384a'); p.rect(4, 12, 8, 1, '#8fb4d0'); p.rect(5, 12, 2, 1, '#c8e0f0');
+      p.rect(4, 3, 8, 5, '#8890a8'); p.rect(4, 3, 8, 1, '#b8c0d4'); p.rect(3, 4, 1, 2, '#606478'); p.rect(12, 4, 1, 2, '#606478'); p.rect(11, 4, 1, 3, '#6a6e84');
+      p.put(8, 2, '#303040');
+      p.put(6, 1, '#e8eefc'); p.put(7, 0, '#e8eefc'); p.put(9, 1, '#e8eefc'); p.put(10, 0, '#e8eefc');
+    },
+    mesa(p) { // a wooden table: the top with its edge, four legs
+      p.rect(1, 5, 14, 2, '#d8a058'); p.rect(1, 7, 14, 2, '#a86a30'); p.rect(1, 7, 14, 1, '#c28444');
+      p.rect(2, 9, 2, 6, '#a86a30'); p.rect(12, 9, 2, 6, '#a86a30'); p.rect(5, 9, 1, 4, '#8a5424'); p.rect(10, 9, 1, 4, '#8a5424');
+      p.rect(3, 5, 4, 1, '#ecc080');
+    },
+    silla(p) { // a chair from the side: a tall back, a red cushion, four legs
+      p.rect(3, 1, 3, 8, '#a86a30'); p.rect(4, 2, 1, 5, '#d8a058'); p.rect(3, 1, 3, 1, '#c28444');
+      p.rect(3, 8, 11, 2, '#d04838'); p.rect(3, 8, 11, 1, '#f07060'); p.rect(3, 10, 11, 1, '#8a5424');
+      p.rect(3, 11, 2, 4, '#a86a30'); p.rect(12, 11, 2, 4, '#a86a30'); p.rect(6, 11, 1, 3, '#8a5424');
+    },
+    plato(p, w) { // a plate seen from above and a little in front (its colour from w.col; white with a blue ring by default: the picnic's)
+      const c = (w && w.col) || '#f4f4fa', d = G.shade(c, 0.8), ring = (w && w.col) ? G.shade(c, 0.68) : '#8aa8e0';
+      p.ell(8, 9.2, 7.5, 5.6, d); p.ell(8, 8.6, 7, 5, c); p.ell(8, 8.8, 5.4, 3.7, ring); p.ell(8, 8.9, 4.5, 2.9, G.shade(c, 1.06));
+      p.rect(3, 6, 3, 1, '#ffffff'); p.put(2, 7, '#ffffff');
+    },
+    vaso(p, w) { // a glass, empty and clear (its colour from w.col: a blue one, a red one), wider at the top
+      const c = (w && w.col) || '#dff2fc', d = G.shade(c, 0.78), l = G.shade(c, 1.2);
+      for (let y = 2; y <= 13; y++) { const k = Math.floor((y - 2) / 4); p.rect(3 + k, y, 10 - 2 * k, 1, c); p.put(12 - k, y, d); }
+      p.rect(3, 2, 10, 1, l); p.rect(5, 14, 6, 1, d); p.rect(4, 13, 8, 1, d);
+      for (let y = 4; y <= 10; y++) p.put(4 + Math.floor((y - 2) / 4), y, '#ffffff');
+    },
+    cuchara(p) { // a spoon lying slanted: a round bowl at the top left, a long handle to the bottom right
+      for (let t = 0; t <= 8; t++) p.disc(6.6 + t, 6.6 + t, 1.1, '#c4c8d8');
+      p.ell(5.2, 5.2, 4, 3.6, '#d4d8e6'); p.ell(5.2, 5.2, 2.8, 2.4, '#aeb4c8'); p.put(4, 4, '#ffffff'); p.put(3, 5, '#ffffff'); p.put(7, 11, '#eef0f8'); p.put(9, 13, '#eef0f8');
+      p.shade(5.2, 5.2, 4, '#9ea4b8');
+    },
+    sopa(p) { // a bowl of orange-red soup, steam over it (no spoon: that is the cuchara)
+      p.ell(8, 9, 7.2, 6.2, '#eef0f8'); p.rect(0, 0, 16, 7, null); p.shade(8, 9, 7.2, '#c8cce0');
+      p.ell(8, 7.6, 7, 2.2, '#ffffff'); p.ell(8, 7.8, 5.8, 1.6, '#e8602a'); p.rect(6, 7, 3, 1, '#f08848');
+      p.put(5, 8, '#58a838'); p.put(11, 8, '#58a838'); p.put(9, 7, '#f8c838'); p.put(7, 8, '#f8c838');
+      p.rect(4, 12, 8, 1, '#5080d0');
+      for (const [x, y] of [[5, 4], [6, 3], [5, 2], [6, 1], [10, 4], [9, 3], [10, 2], [9, 1]]) p.put(x, y, '#e8ecf8');
+    },
+    frijoles(p) { // a clay bowl heaped with dark beans, each with a shine
+      p.ell(8, 9, 7.2, 6.2, '#c07840'); p.rect(0, 0, 16, 8, null); p.shade(8, 9, 7.2, '#8a4e24');
+      p.ell(8, 8, 7, 1.8, '#e0a060'); p.ell(8, 6.2, 5.6, 3, '#4a2418');
+      for (const [x, y] of [[4, 6], [6, 5], [9, 4], [11, 6], [7, 7], [10, 7], [5, 8]]) { p.rect(x, y, 2, 1, '#7c4630'); p.put(x, y - 1, '#a8644a'); }
+      p.rect(4, 12, 8, 1, '#f0d8a0'); p.put(5, 11, '#f0d8a0'); p.put(8, 11, '#f0d8a0'); p.put(11, 11, '#f0d8a0');
+    },
+    arroz(p) { // a blue bowl with a mound of white rice, grains showing
+      p.ell(8, 9, 7.2, 6.2, '#4a8ad0'); p.rect(0, 0, 16, 8, null); p.shade(8, 9, 7.2, '#2f62a8');
+      p.ell(8, 8, 7, 1.8, '#86b6ec'); p.ell(8, 5.8, 5.6, 3.6, '#fffff2'); p.shade(8, 5.8, 5.6, '#e2e2cc');
+      for (const [x, y, v] of [[5, 4, 1], [8, 3, 0], [10, 5, 1], [6, 6, 0], [8, 6, 1], [11, 7, 0], [4, 7, 1]]) { p.rect(x, y, 2, 1, '#d4d4b8'); if (v) p.put(x + 1, y + 1, '#d4d4b8'); }
+      p.rect(4, 12, 8, 1, '#ffffff'); p.put(5, 11, '#ffffff'); p.put(8, 11, '#ffffff'); p.put(11, 11, '#ffffff');
+    },
+    tortilla(p) { // a stack of three round flat tortillas seen a little from above: edges, then a toasted top
+      p.ell(8, 12.2, 7, 3.4, '#8a5a24'); p.ell(8, 10.8, 7, 3.4, '#d8a458'); p.ell(8, 9.7, 7, 3.4, '#8a5a24'); p.ell(8, 8.4, 7, 3.4, '#d8a458');
+      p.ell(8, 6.8, 7, 4.5, '#b88038'); p.ell(8, 6.6, 6.3, 3.9, '#f2d490');
+      p.rect(5, 5, 2, 1, '#c08838'); p.rect(9, 6, 3, 1, '#c08838'); p.put(7, 8, '#c08838'); p.put(11, 4, '#c08838'); p.rect(3, 4, 3, 1, '#fff0c4'); p.put(4, 6, '#c08838');
+    },
+    taco(p) { // a folded tortilla open at the top: lettuce, tomato, cheese and meat inside
+      p.ell(8, 7.6, 7.6, 7.2, '#f0c060'); p.rect(0, 0, 16, 8, null); p.shade(8, 7.6, 7.6, '#c89040');
+      p.ell(4.5, 6.6, 3, 2.4, '#58b840'); p.ell(11.5, 6.4, 3, 2.4, '#48a838'); p.ell(8, 5.8, 3.2, 2.2, '#6ac850'); p.ell(8, 7.6, 5, 1, '#58b840');
+      p.disc(6.5, 4.6, 1.3, '#e03a28'); p.disc(10, 4.8, 1.2, '#e03a28'); p.rect(7, 3, 2, 1, '#f8d040'); p.rect(11, 4, 2, 1, '#f8d040'); p.put(4, 4, '#8a4a28'); p.put(8, 5, '#8a4a28'); p.put(3, 5, '#f8d040');
+      p.rect(1, 8, 14, 1, '#f8dc90'); p.rect(4, 11, 3, 1, '#d8a048'); p.rect(9, 12, 3, 1, '#d8a048');
+    },
+    aguacate(p) { // an avocado cut in half: dark green skin, pale green flesh, a brown pit
+      p.ell(8, 10.6, 5.8, 5.4, '#3a6a28'); p.ell(8, 5, 3.6, 4, '#3a6a28');
+      p.ell(8, 10.8, 4.6, 4.3, '#c8e070'); p.ell(8, 5.4, 2.4, 3, '#c8e070'); p.ell(8, 10.8, 3.4, 3.2, '#a8d058');
+      p.disc(8, 11, 2.5, '#8a5028'); p.shade(8, 11, 2.5, '#6a3a1c'); p.put(7, 10, '#c88848'); p.put(7, 9, '#c88848');
+    },
+    limon(p) { // the small green Mexican lime: a whole one, and half of one, cut, in front
+      p.ell(6.4, 6.6, 4.8, 4.4, '#58b830'); p.shade(6.4, 6.6, 4.8, '#3a8a20'); p.put(4, 4, '#a8e070'); p.put(5, 3, '#a8e070'); p.put(8, 6, '#3a8a20'); p.put(4, 8, '#3a8a20');
+      p.rect(6, 1, 1, 2, '#3a7a20'); p.rect(7, 1, 3, 1, '#58b830'); p.put(10, 2, '#58b830');
+      p.disc(10.4, 10.6, 4.6, '#3a8a20'); p.disc(10.4, 10.6, 3.6, '#e6f6a8');
+      for (let a = 0; a < 6; a++) { const t = a * Math.PI / 3; for (let r = 0.8; r <= 3; r += 0.5) p.put(10.4 + Math.cos(t) * r, 10.6 + Math.sin(t) * r, '#b8d868'); }
+      p.put(10, 10, '#ffffff'); p.put(10, 11, '#d0ec88');
+    },
+    hambre(p) { // "I'm hungry": a worried face, and an empty plate in a thought bubble
+      p.disc(6, 10.5, 5.4, '#f8d030'); p.shade(6, 10.5, 5.4, '#e0b018');
+      p.rect(3, 9, 1, 2, '#302018'); p.rect(7, 9, 1, 2, '#302018'); p.rect(2, 7, 2, 1, '#8a5a18'); p.rect(8, 7, 2, 1, '#8a5a18');
+      p.ell(5.5, 13.3, 1.8, 1, '#803030');
+      p.put(10, 8, '#ffffff'); p.put(11, 7, '#ffffff');
+      p.ell(11, 4, 4.8, 3.8, '#ffffff'); p.ell(11, 4.1, 3.5, 2.7, '#7a98d8'); p.ell(11, 4.1, 2.4, 1.7, '#ffffff');
+    },
+    sed(p) { // "I'm thirsty": a panting face with its tongue out, and a big drop of water
+      p.disc(6.8, 9.8, 5.8, '#f8d030'); p.shade(6.8, 9.8, 5.8, '#e0b018');
+      p.rect(3, 8, 2, 2, '#302018'); p.rect(8, 8, 2, 2, '#302018'); p.rect(2, 6, 3, 1, '#8a5a18'); p.rect(8, 6, 3, 1, '#8a5a18');
+      p.rect(4, 12, 5, 1, '#302018'); p.rect(5, 13, 3, 3, '#f0607a'); p.rect(6, 13, 1, 2, '#c04058');
+      p.tri(13, 0, 11, 4, 15, 4, '#58a8f0'); p.disc(13, 5.2, 2.1, '#58a8f0'); p.put(12, 5, '#d8f0ff'); p.put(12, 4, '#d8f0ff');
+    },
+    rico(p) { // "yummy!": a happy face with its tongue out at the corner of a smile, licking its lips; two sparkles
+      smiley(p, '#f8d030', '#e0b018');
+      p.put(4, 7, '#302018'); p.put(5, 6, '#302018'); p.put(6, 7, '#302018'); p.put(9, 7, '#302018'); p.put(10, 6, '#302018'); p.put(11, 7, '#302018');
+      p.rect(2, 9, 2, 1, '#f09080'); p.rect(11, 8, 2, 1, '#f09080');
+      p.rect(5, 11, 5, 1, '#302018'); p.put(4, 10, '#302018'); p.put(10, 10, '#302018');
+      p.rect(9, 12, 4, 2, '#f0607a'); p.put(13, 12, '#f0607a'); p.rect(10, 12, 1, 1, '#c04058');
+      p.rect(14, 0, 1, 3, '#ffffff'); p.rect(13, 1, 3, 1, '#ffffff'); p.put(1, 2, '#ffffff'); p.put(1, 3, '#ffffff'); p.put(0, 2, '#ffffff');
+    },
+    come(p) { // "eat!": a face with a full spoon of soup at its mouth
+      p.disc(6, 8, 5.8, '#f8d030'); p.shade(6, 8, 5.8, '#e0b018');
+      p.put(2, 6, '#302018'); p.put(3, 5, '#302018'); p.put(4, 6, '#302018'); p.put(7, 6, '#302018'); p.put(8, 5, '#302018'); p.put(9, 6, '#302018');
+      p.rect(1, 8, 2, 1, '#f09080'); p.ell(5.5, 11.6, 1.8, 1.2, '#803030');
+      for (let t = 0; t <= 5; t++) p.disc(10.4 + t, 12.4 + t * 0.6, 0.9, '#c4c8d8');
+      p.ell(9, 11.6, 2.6, 1.9, '#d4d8e6'); p.ell(9, 11.4, 1.9, 1.2, '#e8602a');
+    },
     // things on the mountain with no word of their own (a picture only)
     bolanieve(p) { // a snowball: white, soft blue shading, a sparkle
       p.disc(8, 8.5, 6, '#fafcff'); p.shade(8, 8.5, 6, '#c8dcf0'); p.put(5, 5, '#ffffff'); p.put(6, 4, '#ffffff'); for (const [x, y] of [[10, 7], [7, 10], [11, 11]]) p.put(x, y, '#e0ecf8');
@@ -8600,7 +8876,7 @@ G.store = {
 
 </script>
 <script>/* content/es/words.js */
-// ===== Spanish content: the words (180: 73 for the 21 chapters, the rest for the zones), their notebook pages, the phrases, and the 21 chapters (docs/CURRICULUM.md) =====
+// ===== Spanish content: the words (200: 73 for the 21 chapters, the rest for the zones), their notebook pages, the phrases, and the 21 chapters (docs/CURRICULUM.md) =====
 // Loaded by index.html BEFORE src/data.js, which copies everything here into G.data (G.data.words, .topics, .pages,
 // .chapters...), so the code reads G.data as before. Pictures live in src/icons.js (`icon`), the chapters' scripts in
 // content/es/story-*.js (G.chapters.script), the chapter engine in src/chapters.js.
@@ -8644,9 +8920,12 @@ G.store = {
     tiempo: { name: '¿Qué tiempo hace?', en: 'The weather' },
     montana: { name: 'La montaña', en: 'The mountain (snow and cold)' },
     faunamontana: { name: 'Animales de la montaña', en: 'Mountain animals' },
+    // the unit En casa (docs/UNIT_EN_CASA.md): the kitchen and what is eaten there
+    cocina: { name: 'La cocina', en: 'The kitchen' },
+    acomer: { name: '¡A comer!', en: 'Time to eat!' },
   };
   // the notebook's page order: roughly the order the pages appear in the story
-  C.topicOrder = ['saludos', 'mascota', 'animales', 'sonidos', 'comida', 'colores', 'granja', 'pueblo', 'cosas', 'sentir', 'numeros', 'playa', 'mar', 'bosque', 'fauna', 'acciones', 'juegosparque', 'bichos', 'familia', 'cuerpo', 'ropa', 'rancho', 'huerta', 'tiempo', 'montana', 'faunamontana'];
+  C.topicOrder = ['saludos', 'mascota', 'animales', 'sonidos', 'comida', 'colores', 'granja', 'pueblo', 'cosas', 'sentir', 'numeros', 'cocina', 'acomer', 'playa', 'mar', 'bosque', 'fauna', 'acciones', 'juegosparque', 'bichos', 'familia', 'cuerpo', 'ropa', 'rancho', 'huerta', 'tiempo', 'montana', 'faunamontana'];
 
   C.words = {
     // ---- Saludos ----
@@ -8859,6 +9138,30 @@ G.store = {
     puma: { es: 'el puma', en: 'the puma', topic: 'faunamontana', icon: 'puma', pl: 'pumas', alt: 'pumita / león de montaña' },
     aguila: { es: 'el águila', en: 'the eagle', topic: 'faunamontana', icon: 'aguila', pl: 'águilas', alt: 'águila / aguilita / las águilas' },
     lobo: { es: 'el lobo', en: 'the wolf', topic: 'faunamontana', icon: 'lobo', pl: 'lobos', alt: 'lobito / lobos' },
+    // ---- En casa (docs/UNIT_EN_CASA.md): Papá's kitchen and what is on the table; Mexican Spanish.
+    //      lamama, elpapa and hermano join La familia; hambre and sed join Así me siento. sopa, arroz and frijoles are
+    //      mass words (Quiero sopa); los frijoles is plural-only. ids are picture names too: plato is the plate the
+    //      picnic's count heap already drew (the same picture), the rest had none ----
+    lamama: { es: 'la mamá', en: 'the mom', topic: 'familia', icon: 'lamama', pl: 'mamás', alt: 'mamá / mami / mamita / mi mamá' },
+    elpapa: { es: 'el papá', en: 'the dad', topic: 'familia', icon: 'elpapa', pl: 'papás', alt: 'papá / papi / papito / mi papá' },
+    hermano: { es: 'el hermano', en: 'the brother', topic: 'familia', icon: 'hermano', pl: 'hermanos', alt: 'hermanito / mi hermano / hermano' },
+    cocina: { es: 'la cocina', en: 'the kitchen', topic: 'cocina', icon: 'cocina', pl: 'cocinas', alt: 'cocinita / mi cocina' },
+    mesa: { es: 'la mesa', en: 'the table', topic: 'cocina', icon: 'mesa', pl: 'mesas', alt: 'mesita / la mesita' },
+    silla: { es: 'la silla', en: 'the chair', topic: 'cocina', icon: 'silla', pl: 'sillas', alt: 'sillita / sillas' },
+    plato: { es: 'el plato', en: 'the plate', topic: 'cocina', icon: 'plato', pl: 'platos', alt: 'platito / platos' },
+    vaso: { es: 'el vaso', en: 'the glass', topic: 'cocina', icon: 'vaso', pl: 'vasos', alt: 'vasito / vasos' },
+    cuchara: { es: 'la cuchara', en: 'the spoon', topic: 'cocina', icon: 'cuchara', pl: 'cucharas', alt: 'cucharita / cucharas' },
+    sopa: { es: 'la sopa', en: 'the soup', topic: 'acomer', icon: 'sopa', alt: 'sopita' },
+    tortilla: { es: 'la tortilla', en: 'the tortilla', topic: 'acomer', icon: 'tortilla', pl: 'tortillas', alt: 'tortillas / tortillita' },
+    frijoles: { es: 'los frijoles', en: 'the beans', topic: 'acomer', icon: 'frijoles', alt: 'frijol / el frijol / frijolitos / los frijolitos' },
+    arroz: { es: 'el arroz', en: 'the rice', topic: 'acomer', icon: 'arroz', alt: 'arrocito / el arroz' },
+    taco: { es: 'el taco', en: 'the taco', topic: 'acomer', icon: 'taco', pl: 'tacos', alt: 'tacos / taquito' },
+    aguacate: { es: 'el aguacate', en: 'the avocado', topic: 'acomer', icon: 'aguacate', pl: 'aguacates', alt: 'aguacates / aguacatito' },
+    limon: { es: 'el limón', en: 'the lime', topic: 'acomer', icon: 'limon', pl: 'limones', alt: 'limones / limoncito / limón verde' }, // (Mexican: el limón is the small green lime; the yellow lemon is el limón amarillo)
+    hambre: { es: 'tengo hambre', en: 'I\'m hungry', topic: 'sentir', icon: 'hambre', alt: 'tengo mucha hambre / hambre / tiene hambre / tengo hambrita' },
+    sed: { es: 'tengo sed', en: 'I\'m thirsty', topic: 'sentir', icon: 'sed', alt: 'tengo mucha sed / sed / tiene sed' },
+    rico: { es: '¡qué rico!', en: 'yummy!', topic: 'acomer', icon: 'rico', alt: 'qué rico / rico / qué rica / está rico / riquísimo' },
+    come: { es: 'come', en: 'eat!', topic: 'acomer', icon: 'come', alt: 'a comer / come come / cómetelo / comer / come todo' },
   };
   // ---------- Phrases (docs/LEARNING_PLAN_2.md, Phase 2: "say it to get it"; src/phrases.js) ----------
   // A phrase is a FRAME with a SLOT for a word she knows: "Quiero ___" + el helado -> "Quiero un helado". Phrases are
@@ -8884,7 +9187,7 @@ G.store = {
     f_tengo: { es: 'Tengo ___', en: 'I have ___', say: 'tengo / yo tengo / aquí tengo / te traigo', art: 'un', prompt: '¿Qué tienes?', reply: '¡Gracias!', icon: 'mano' },
   };
   C.phraseOrder = ['f_llamo', 'f_quiero', 'f_porfavor', 'f_donde', 'f_gusta', 'f_tengo']; // (the notebook's, the deck's and the grown-ups' order)
-  C.mass = ['pan', 'agua', 'leche', 'queso', 'chocolate', 'arena', 'nieve', 'hielo']; // (said bare after quiero / tengo: Quiero pan)
+  C.mass = ['pan', 'agua', 'leche', 'queso', 'chocolate', 'arena', 'nieve', 'hielo', 'sopa', 'arroz']; // (said bare after quiero / tengo: Quiero pan; los frijoles is plural-only, so phrases.js already says it bare: Quiero frijoles)
 
   C.numberWords = ['uno', 'dos', 'tres', 'cuatro', 'cinco'];
   C.numberWords10 = ['uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'];
@@ -8900,7 +9203,7 @@ G.store = {
     granja: { topic: 'granja', words: ['pato', 'cabra', 'caballo', 'gallina'] },
     pueblo: { topic: 'pueblo', words: ['parque', 'granja', 'escuela', 'carta', 'casa', 'panaderia', 'biblioteca'] },
     cosas: { topic: 'cosas', words: ['banco', 'fuente', 'flor', 'arbol'] },
-    sentir: { topic: 'sentir', words: ['bien', 'cansado', 'feliz', 'triste'] },
+    sentir: { topic: 'sentir', words: ['bien', 'cansado', 'feliz', 'triste', 'hambre', 'sed'] },
     numeros: { topic: 'numeros', words: ['uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez'] },
     playa: { topic: 'playa', words: ['mar', 'concha', 'elsol', 'caliente', 'helado', 'arena', 'cubetaarena', 'castillo', 'ola'] },
     mar: { topic: 'mar', words: ['cangrejo', 'estrellamar', 'tortuga', 'gaviota', 'nadar', 'medusa', 'delfin', 'pulpo'] },
@@ -8909,7 +9212,7 @@ G.store = {
     acciones: { topic: 'acciones', words: ['corre', 'baila', 'sube', 'baja', 'rapido', 'despacio', 'empuja', 'lanza', 'atrapa'] },
     juegosparque: { topic: 'juegosparque', words: ['columpio', 'papalote', 'resbaladilla', 'subibaja', 'burbujas', 'cuerda'] },
     bichos: { topic: 'bichos', words: ['paloma', 'catarina', 'hormiga', 'abeja', 'lagartija', 'lombriz', 'grillo', 'colibri'] },
-    familia: { topic: 'familia', words: ['abuela', 'familia', 'abuelo', 'bebe'] },
+    familia: { topic: 'familia', words: ['abuela', 'familia', 'abuelo', 'bebe', 'elpapa', 'hermano', 'lamama'] },
     cuerpo: { topic: 'cuerpo', words: ['mano', 'pie', 'nariz', 'ojos', 'boca', 'cabeza'] },
     ropa: { topic: 'ropa', words: ['camisa', 'pantalon', 'calcetines', 'vestido', 'zapatos', 'sombrero', 'chamarra'] },
     rancho: { topic: 'rancho', words: ['vaca', 'cerdo', 'oveja', 'burro', 'pavo', 'raton', 'gallo', 'tlacuache'] },
@@ -8917,6 +9220,9 @@ G.store = {
     tiempo: { topic: 'tiempo', words: ['nieve', 'frio', 'calor', 'nube', 'viento', 'lluvia', 'arcoiris'] },
     montana: { topic: 'montana', words: ['lamontana', 'gorro', 'bufanda', 'guantes', 'muneco', 'chocolate', 'trineo', 'hielo'] },
     faunamontana: { topic: 'faunamontana', words: ['llama', 'marmota', 'zorrillo', 'carpintero', 'monarca', 'puma', 'aguila', 'lobo'] },
+    // En casa: in the order the four chapters meet them
+    cocina: { topic: 'cocina', words: ['cocina', 'mesa', 'silla', 'plato', 'vaso', 'cuchara'] },
+    acomer: { topic: 'acomer', words: ['sopa', 'rico', 'tortilla', 'frijoles', 'taco', 'come', 'limon', 'aguacate', 'arroz'] },
   };
   C.pageOrder = C.topicOrder.slice();
   // where each page's puzzle sparkle sits (maps.js reads this): map -> 'x,y' -> page
@@ -8930,6 +9236,7 @@ G.store = {
     playa: { '21,7': 'playa', '12,10': 'mar' }, // (La playa: by the lifeguard's tower, and in the middle of the beach)
     bosque: { '16,15': 'bosque', '22,6': 'fauna' }, // (El bosque: in the clearing, and in the meadow by the cave path)
     juegos: { '20,8': 'acciones', '27,4': 'juegosparque', '35,17': 'bichos' }, // (El parque de juegos: the playground, under the kite tree, the garden)
+    cocina: { '1,2': 'cocina', '9,7': 'acomer' }, // (La cocina: by the fridge, and by the crates in the bottom-right corner)
     abuelos: { '14,14': 'cuerpo', '29,13': 'rancho', '11,18': 'huerta' }, // (La casa de los abuelos: by the pump, by the paddock, by the garden beds)
     abuelos_casa: { '5,5': 'familia', '15,5': 'ropa' }, // (inside: under the family photos, in the bedroom)
     montana: { '10,19': 'tiempo', '13,10': 'montana', '29,19': 'faunamontana' }, // (La montaña: by the weather station, on the snowfield, by the llamas' corral)
@@ -9122,6 +9429,15 @@ G.store = {
     mateo: { name: 'Mateo',
       portrait: { body: 'halfling', skin: '#c89070', hair: '#2a1810', hairStyle: 'short', eyes: '#2a1808', head: 'hood', headColor: '#f8d030', outfit: '#f8d030', trim: '#3870c8', scarf: '#38a858', age: 'young', face: 'round', bg: '#4a8ac8' },
       map: { body: 'halfling', skin: '#c89070', hair: '#2a1810', hairStyle: 'short', head: 'hood', headColor: '#f8d030', outfit: '#f8d030', trim: '#3870c8', boots: '#d83030', gloves: '#38a858', eyes: '#2a1808' } },
+    // El hogar (content/es/hogar.js): the child's own family. Papá cooks in the kitchen (dark hair, a brick-red shirt:
+    // the same look as the picture of the word el papá) and Leo, her little brother (about 4: the smallest body the sprites have, curly
+    // hair, a yellow shirt: as in the picture of el hermano), plays in the back yard
+    papa: { name: 'Papá',
+      portrait: { body: 'human', skin: '#e0b490', hair: '#2a1c14', hairStyle: 'short', eyes: '#2a1c14', outfit: '#c85a30', trim: '#f4f4f0', age: 'adult', face: 'round', bg: '#8a4a30' },
+      map: { body: 'human', skin: '#e0b490', hair: '#2a1c14', hairStyle: 'short', outfit: '#c85a30', trim: '#f4f4f0', pants: '#5a4a38', eyes: '#2a1c14' } },
+    leo: { name: 'Leo',
+      portrait: { body: 'halfling', skin: '#f0c8a0', hair: '#7a4a22', hairStyle: 'curly', eyes: '#3a2a20', outfit: '#e8b830', trim: '#fff4d8', age: 'young', face: 'round', bg: '#c8843a' },
+      map: { body: 'halfling', skin: '#f0c8a0', hair: '#7a4a22', hairStyle: 'curly', outfit: '#e8b830', trim: '#fff4d8', pants: '#4a68b0', boots: '#6a3a20', eyes: '#3a2a20' } },
     canelo: { name: 'Canelo',
       map: { body: 'wolf', outfit: '#b87038', trim: '#f0d8b0', eyes: '#201008' } },
   };
@@ -12460,7 +12776,7 @@ G.store = {
     color: ['¿De qué color es?', 'What colour is it?'], feel: ['¿Cómo está?', 'How do they feel?'], say: ['¿Qué dice?', 'What do they say?'],
     number: [null, 'How many are there?'], hot: ['¿Cómo está?', 'How is it? (hot or cold?)'],
   };
-  Q.OWN = { ven: 'command', sientate: 'command', pata: 'command', nadar: 'like', rapido: 'how', despacio: 'how', grande: 'quality', pequeno: 'quality', caliente: 'hot', calor: 'weather', frio: 'weather', familia: 'people' };
+  Q.OWN = { ven: 'command', sientate: 'command', pata: 'command', nadar: 'like', rapido: 'how', despacio: 'how', grande: 'quality', pequeno: 'quality', caliente: 'hot', calor: 'weather', frio: 'weather', familia: 'people', rico: 'say', hambre: 'say', sed: 'say' }; // ("tengo hambre", "¡qué rico!": what the face says)
   // a word whose own picture would ask the wrong thing: the thing a review question shows for it instead (held up, and on
   // its card), and that thing's word is never one of its cards (G.review.ask, the dog's warm-up: Q.clash)
   Q.PIC = { caliente: 'chocolate' };
@@ -16317,8 +16633,8 @@ G.store = {
 // above the portrait whenever they talk (G.say with opts.who). The album's Amigos page lists everyone's hearts.
 //
 // API (for errands, the album and tests):
-//   G.hearts.WHO               every friend: the 12 in town (H.TOWN: mama luna rosa pepe sofia tomas marta ines gomez lucia
-//                              nico canelo), then the zones' people and Lola (H.ZONE: npc -> zone, '*' for Lola; H.inZone(z))
+//   G.hearts.WHO               every friend: the 14 in town (H.TOWN: mama luna rosa pepe sofia tomas marta ines gomez lucia
+//                              nico canelo papa leo), then the zones' people and Lola (H.ZONE: npc -> zone, '*' for Lola; H.inZone(z))
 //   G.hearts.greetsWith(npc)   their greeting has begun (town: after chapter 3; a zone's people: after its chapter 1; Lola: met)
 //   G.hearts.get(npc)          0..5
 //   G.hearts.add(npc, n, why)  -> hearts actually added (0 when capped / full / a once-a-day reason already used today).
@@ -16338,7 +16654,7 @@ G.store = {
 (function () {
   const H = G.hearts = {}, T = G.TILE;
   H.MAX = 5; H.DAY_CAP = 2;
-  H.TOWN = ['mama', 'luna', 'rosa', 'pepe', 'sofia', 'tomas', 'marta', 'ines', 'gomez', 'lucia', 'nico', 'canelo'];
+  H.TOWN = ['mama', 'luna', 'rosa', 'pepe', 'sofia', 'tomas', 'marta', 'ines', 'gomez', 'lucia', 'nico', 'canelo', 'papa', 'leo']; // (papa, leo: the kitchen and the back yard at home, content/es/hogar.js)
   // the open world's people (docs/WORLD_PLAN.md): each zone's own, and Lola, the friend who travels (in every zone: '*')
   H.ZONE = { paco: 'playa', marina: 'playa', nieves: 'playa', tere: 'playa', elena: 'bosque', lupe: 'bosque', ana: 'juegos', pablo: 'juegos', chuy: 'juegos',
     abuela: 'abuelos', abuelo: 'abuelos', bebe: 'abuelos', lucho: 'montana', mateo: 'montana', lola: '*' };
@@ -16348,7 +16664,7 @@ G.store = {
   H.inZone = z => (z === 'villa' ? H.TOWN.slice() : Object.keys(H.ZONE).filter(n => H.ZONE[n] === z));
   // what each friend likes as a gift (word ids; Lucía: a pink flower). The zones' people like things to carry from
   // their own zone or from town (a shell, a leaf, an acorn, the ball, an apple, a cookie, bread, an ice cream, a flower)
-  H.LIKES = { mama: 'flor', luna: 'manzana', rosa: 'flor', pepe: 'queso', sofia: 'galleta', tomas: 'agua', marta: 'leche', ines: 'pan', gomez: 'manzana', lucia: 'flor', nico: 'pelota', canelo: 'hueso',
+  H.LIKES = { mama: 'flor', luna: 'manzana', rosa: 'flor', pepe: 'queso', sofia: 'galleta', tomas: 'agua', marta: 'leche', ines: 'pan', gomez: 'manzana', lucia: 'flor', nico: 'pelota', canelo: 'hueso', papa: ['limon', 'aguacate'], leo: ['pelota', 'galleta'], // (a word id, or a list of them: ask H.likes, never compare)
     paco: 'pan', marina: 'helado', nieves: 'flor', tere: 'concha', elena: 'hoja', lupe: 'bellota', ana: 'galleta', pablo: 'pelota', chuy: 'pan',
     abuela: 'flor', abuelo: 'manzana', bebe: 'pelota', lucho: 'galleta', mateo: 'hoja', lola: 'manzana' };
   const ONCE = ['greet', 'gift'], FREE = ['errand', 'trick'];
@@ -16389,7 +16705,8 @@ G.store = {
     G.st.autosave();
     return k;
   };
-  H.gift = (npc, word) => (H.LIKES[npc] === word ? H.add(npc, 1, 'gift') : 0);
+  H.likes = (npc, word) => { const l = H.LIKES[npc]; return Array.isArray(l) ? l.indexOf(word) >= 0 : l === word; };
+  H.gift = (npc, word) => (H.likes(npc, word) ? H.add(npc, 1, 'gift') : 0);
   H.best = npc => H.get(npc) >= H.MAX;
   H.greeting = npc => H.best(npc) ? '¡Mi amig{o/a} {name}!' : H.get(npc) >= 1 ? '¡Hola, {name}!' : '¡Hola!';
 
@@ -16483,6 +16800,7 @@ G.store = {
   // else the right greeting among known words that aren't greetings (hola is never a card beside buenos días before
   // buenas noches exists: it would be right too). Then one word that is due, wherever it was met, else one from their
   // pool (POOLS: what their trade shows), asked for its stage (G.review.ask). Once a day each; a heart.
+  const HOGAR_WORDS = ['lamama', 'elpapa', 'hermano', 'cocina', 'mesa', 'silla', 'plato', 'vaso', 'cuchara', 'sopa', 'tortilla', 'frijoles', 'arroz', 'taco', 'aguacate', 'limon', 'hambre', 'sed', 'rico', 'come'];
   H.POOLS = {
     mama: ['buenosdias', 'buenasnoches', 'perro', 'ven', 'sientate', 'hueso', 'agua', 'cama', 'pelota', 'galleta', 'casa', 'comoestas', 'bien', 'feliz', 'cansado'],
     pepe: ['hola', 'buenosdias', 'manzana', 'platano', 'naranja', 'queso', 'porfavor', 'gracias', 'si', 'no', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'rojo', 'amarillo', 'verde'],
@@ -16510,6 +16828,8 @@ G.store = {
     bebe: ['ojos', 'boca', 'cabeza', 'nariz', 'mano', 'pie', 'zapatos', 'bebe'],
     lucho: ['lamontana', 'llama', 'chocolate', 'gorro', 'bufanda', 'guantes', 'frio', 'nieve', 'puma', 'aguila'],
     mateo: ['nieve', 'nube', 'viento', 'lluvia', 'arcoiris', 'trineo', 'hielo', 'muneco', 'marmota', 'lobo'],
+    // the family at home (content/es/hogar.js): the unit's 20 words, the ones they use in the kitchen and the yard
+    papa: HOGAR_WORDS, leo: HOGAR_WORDS,
     lola: ['cangrejo', 'gaviota', 'tortuga', 'oso', 'ardilla', 'venado', 'paloma', 'catarina', 'vaca', 'oveja', 'llama', 'marmota', 'monarca', 'mar', 'elbosque', 'lamontana'],
   };
   const GREET = ['hola', 'buenosdias', 'buenasnoches', 'adios', 'comoestas'];
@@ -17437,7 +17757,8 @@ G.store = {
     friendRect(k) {
       const who = this.friends()[k];
       if (who === 'lola' && this.ftab !== 'villa') return { x: 12, y: 160, w: G.W - 24, h: 52 }; // (Lola, who travels: a wide card at the bottom)
-      return { x: 12 + (k % 2) * 150, y: 32 + Math.floor(k / 2) * 30, w: 146, h: 28 };
+      const tight = this.friends().length > 12, pitch = tight ? 26 : 30; // (more than twelve friends in a tab: the rows get a little shorter so seven fit)
+      return { x: 12 + (k % 2) * 150, y: 32 + Math.floor(k / 2) * pitch, w: 146, h: pitch - 2 };
     }
     closeXY() { return [G.W - 28, 6]; }
     backXY() { return [8, 6]; }
@@ -17578,7 +17899,7 @@ G.store = {
         ctx.fillStyle = best ? '#f8d050' : lola ? '#e8f8e0' : sel ? '#f8e0a0' : '#fffaf0'; ctx.fillRect(r.x, r.y, r.w, r.h);
         ctx.strokeStyle = best ? '#b07000' : lola ? '#3a9a58' : sel ? '#c06000' : '#d0b898'; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
         if (lola && sel) { ctx.strokeStyle = '#c06000'; ctx.strokeRect(r.x + 1.5, r.y + 1.5, r.w - 3, r.h - 3); }
-        const fw = lola ? 46 : 23;
+        const fw = lola ? 46 : r.h - 5;
         ctx.fillStyle = '#5a3810'; ctx.fillRect(r.x + 2, r.y + 2, fw + 2, fw + 2);
         if (been || lola) H.face(ctx, who, r.x + 3, r.y + 3, fw, this.t); else { ctx.fillStyle = '#3a3048'; ctx.fillRect(r.x + 3, r.y + 3, fw, fw); G.textC(ctx, '?', r.x + 3 + fw / 2, r.y + 10, '#f8e060'); }
         const nm = !been && !lola ? '? ? ?' : who === 'canelo' ? G.dogName() : (G.nameOf(who) || who).replace(' el cartero', '').replace(' la panadera', '').replace('Señor ', 'Sr. ').replace('Abuela ', '');
@@ -17650,7 +17971,7 @@ G.store = {
 'use strict';
 G.MAPDATA = {
   villa: { rows: ["TTTTTTTTTT,TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT", "TTTTTTTTTT,TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT", "Tff.......,...QQQ+QQQ............ffF..RRRRRR.ffT", "Tf......o.,...QQQQQQQ.............fF..RRRRRR..fT", "T..RRRRR..,..PSGSKSGSP.....QQQQQQ..F.OWNWDNWOO.T", "T..RRRRR..,......,.........QQQQQQ..F.....,.....T", "T.PWNDNWk.,......,........kWNDNNWk.Fo....,...o.T", "TO...,....,......,...........,.....F...o.,.P...T", "T..o.,...o,L=====,======L.o..,....oF.....,..o..T", "To...,....,==Jppppppppp==....,.o...F.o...,.....T", "T....,,,,,,,=pYppppppYp=,,,,,,,,,,,,,,,,,,,,,,,,", "T..o.,.....==ppppplpppp==....,.....F.....,.....T", "T.P..,..o..==pppppppppJ==....,.o.P.F.FFFF,FFFFFT", "T....,.....L============L....,.....FPF.......OFT", ",,,,,,,,,,,......,,......,,,,,.....F.F........FT", "T..RRRRR..,.o....,,....o.,QQQQQQQ..FoF........FT", "T..RRRRR..,......,,......,QQQQQQQ..F.F........FT", "T.kWNDNWP.,FFFFFF,,FFFFFF,WNWDWNWP.F.F........FT", "T....,....,Ff.......J..fF,...,.....F.FFFFFFFFFFT", "T....,....,F.o..P..o..P.F,...,.....Fo..www.o...T", "T....,....,F.........o..F,...,.....F..wwwww.yyyT", "T....,,,,,,F..o....wwww.F,,,,,,,,,,,,wwwwww.yyyT", "T....,.....F.P.....www..F....,..o..F.wwwwww.yyyT", "T..o.,.....F...o........F....,.....F.wwwwww.yyyT", "T....,.o...Ff....P..o..fF...o,.....Fo.wwwww.yyyT", "Tf...,.P...FFFFFFFFFFFFFF....,....fF...wwwo.yyfT", "Tff..,...o....o.......o...o..,o..ffF...o.....ffT", "TTTTT,TTTTTTTTTTTTTTTTTTTTTTT,TTTTTTTTTTTTTTTTTT"], pos: {"escuelaDoor": [17, 4], "rosaDoor": [5, 6], "panaderiaDoor": [29, 6], "fuente": [18, 11], "pepe": [14, 9], "puesto": [14, 10], "casaDoor": [5, 17], "bibliotecaDoor": [29, 17], "parqueGate": [17, 17], "arbusto1": [13, 22], "arbusto2": [16, 19], "arbusto3": [22, 19], "arbusto4": [17, 24], "sofia": [18, 20], "casaFront": [5, 18], "start": [5, 18], "banco1": [13, 9], "banco2": [22, 12], "banco3": [20, 18], "gallinero": [1, 7, 4, 4], "rana": [19, 21, 4, 2], "conejo": [12, 18, 12, 7], "fuentePez": [18, 11], "gateFarm": [35, 10], "gatePond": [35, 21], "granjaDoor": [41, 4], "granja": [38, 2, 6, 3], "paddockGate": [41, 12], "corral": [38, 13, 8, 5], "estanque": [37, 19, 6, 7], "escuelaArea": [14, 2, 7, 3], "rosaArea": [3, 4, 5, 3], "panaderiaArea": [27, 4, 6, 3], "casaArea": [3, 15, 5, 3], "bibliotecaArea": [26, 15, 7, 3], "edgeJuegos": [0, 14], "edgeBosque": [10, 0], "edgeMontana": [47, 10], "edgePlaya": [29, 27], "edgeAbuelos": [5, 27], "postJuegos": [2, 13], "postBosque": [11, 3], "postMontana": [45, 9], "postPlaya": [30, 25], "postAbuelos": [6, 25], "busVilla": [26, 11]} },
-  casa: { rows: ["IIIIIIIII", "InniiviiI", "IiiiiiijI", "IittiiijI", "IiiiqiiiI", "IPiiqiiiI", "IIIIiIIII"], pos: {"door": [4, 6], "mama": [3, 2]} },
+  casa: { rows: ["IIIIIIIII", "InniiviiI", "IiiiiiijI", "IittiiijI", "Iiiiqiiii", "IPiiqiiiI", "IIIIiIIII"], pos: {"door": [4, 6], "mama": [3, 2], "cocinaDoor": [8, 4]} },
   escuela: { rows: ["IIIIIIIIIIIII", "IcnnccqccnncI", "IcccccqcccckI", "IcccccqcccccI", "IctttcqctttcI", "IcccccqcccccI", "IctttcqctttcI", "IcccccqcccccI", "IPccccqccccPI", "IIIIIIqIIIIII"], pos: {"door": [6, 9], "luna": [6, 2]} },
   rosa: { rows: ["IIIIIIIII", "IniiiiviI", "IiiiiiiiI", "IiitttijI", "IiiiiiijI", "IPiiiiikI", "IIIIiIIII"], pos: {"door": [4, 6], "rosa": [2, 2]} },
   panaderia: { rows: ["IIIIIIIIII", "InniiivviI", "IiiiiiiiiI", "IieeeeeeiI", "IiiiiiiiiI", "IkiiiiiikI", "IiiiiiiiiI", "IIIIIiIIII"], pos: {"door": [5, 7], "marta": [5, 2]} },
@@ -17670,6 +17991,8 @@ G.MAPDATA = {
   abuelos_casa: { rows: ["IIIIIIIIIIIIIIIIIIII", "IniiiviIeevenI\u00f3ijjiI", "IiiiiiiIiiiiiIiijjiI", "IiiiiiiIiiiiiIiiiiiI", "IiuuuiiIitttiIiiiiiI", "IiiiiiiIiiiiiIiiiiiI", "IiqqqqiiiiiiiiiiiiiI", "Iiqqqqiiiiiiiiiii\u00faiI", "IiqqqqiIiiiiiIiiiiiI", "IPiiiiiIiiiiiIiiiiPI", "IIIIiIIIIIIIIIIIIIII"], pos: {"door": [4, 10], "photos": [2, 0], "mirror": [15, 0], "trunk": [17, 7], "wardrobe": [14, 1], "table": [9, 4], "abuela": [10, 3], "bebe": [3, 7], "hole": [12, 9], "cocina": [8, 6, 5, 4], "sala": [1, 5, 6, 4]} },
   montana: { rows: ["\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef", "\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef\u00ef", "\u00ef\u00ef\u00ef\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00ef\u00ef\u00ef\u00ef\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00ef\u00ef\u00ef\u00ef\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00ef\u00ef\u00ef", "\u00ef\u00fc\u00fcrr\u00fc\u00f9\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00ef", "\u00ef\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fcr\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fcr\u00fc\u00f6\u00f6\u00f6\u00f6\u00f6\u00fc\u00fc\u00e7\u00fc\u00fc\u00ef", "\u00ef\u00fcr\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00fc\u00fc\u00fc\u00ef", "\u00ef\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6r\u00fc\u00fc\u00ef", "\u00ef\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00f6\u00f6\u00f6\u00f6\u00f6\u00f6\u00fc\u00fc\u00fc\u00fc\u00ef", "\u00ef\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00f6\u00f6\u00f6\u00f6\u00fc\u00fc\u00fc\u00e7\u00fc\u00ef", "\u00ef\u00e7\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fcr\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fcr\u00fc\u00fc\u00fc\u00fc\u00ef", "\u00ef\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fcr\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fcr\u00fc\u00ef", "\u00ef\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00e7\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fcr\u00fc\u00fc\u00fc\u00fc\u00fc\u00e7\u00fc\u00fc\u00fcr\u00fc\u00fc\u00fc\u00ef", "\u00ef\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc......\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc......\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc...\u00ef", "T\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc........\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc........\u00fc\u00fc\u00fc\u00fc\u00fc\u00fc....T", "T...............\u00fc\u00fc\u00fc\u00fc\u00fc..................T", "To.(..(...........,...\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2.FFFFFFFFFT", "T..)..)..(.....o..,...\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2.F.....OO.T", "T........)..\u00f2.....,.o.[[[][[[.F........T", "T.(..(............,...k..,.J..F........T", "T.)..)..(...,.....,......,....F........T", "T.......)...,.....,.o....,....F........T", "T..(........,.o...,......,....FFF,FFFFFT", "T..).....o..,.....,......,.......,.....T", "T...........,.....,......,.......,..o..T", ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.....T", "T......................................T", "T..............................o.......T", "T.....o.....f....r...........r.....o...T", "T..f..................o................T", "T.........o....o............o........f.T", "T.......................f..............T", "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"], pos: {"viewer": [6, 3], "sled": [18, 3], "slopeTop": [18, 4], "slopeEnd": [18, 14], "hielo": [28, 4, 8, 5], "marmotas": [23, 8, 6, 4], "marmotas2": [2, 6, 6, 3], "puma": [35, 10, 2, 1], "snowman": [10, 7], "pile1": [7, 7], "pile2": [13, 8], "pile3": [9, 10], "station": [12, 17], "mateo": [13, 18], "door": [25, 17], "lucho": [29, 22], "llamas": [31, 16, 7, 5], "llamas2": [26, 26, 8, 4], "monarcas": [2, 15, 9, 7], "carpintero": [2, 16, 9, 6], "in": [1, 24], "west": [0, 24], "post": [2, 23], "bus": [4, 22], "busIn": [4, 23], "lola": [7, 25], "nico": [16, 26], "dog": [10, 11], "tunnel": [30, 10], "tunnelOut": [26, 7], "marmotasDog": [24, 12], "zorrillos": [13, 25, 12, 5], "conejos": [4, 25, 8, 4], "lobo": [3, 4, 4, 1], "cielo": [2, 2, 14, 8], "hide1": [13, 4], "hide2": [24, 9], "hide3": [22, 18], "hide4": [12, 17], "hide5": [36, 16], "hide6": [36, 6]} },
   montana_refugio: { rows: ["IIIIIIIIIIII", "IivinniiiiiI", "IiiiiiiiiijI", "IiiiiiiiiijI", "IiiittttiiiI", "IiiiiiiiiiiI", "IkiiiiiiqqiI", "IIIIIIiIIIII"], pos: {"door": [6, 7], "hearth": [2, 1], "pot": [3, 2], "table": [4, 4], "lucho": [3, 3]} },
+  cocina: { rows: ["IIIIIIIIIIII", "I\u00ec\u00eee\u00e0e\u00e4e\u00e8\u00e8\u00e8I", "IccccccccccI", "IccccccccccI", "Icccc\u00ebc\u00ebcccI", "icccctttccci", "Icccc\u00ebc\u00ebcccI", "IPcccccccckI", "IIIIIIIIIIII"], pos: {"door": [0, 5], "patioDoor": [11, 5], "papa": [4, 2], "stove": [4, 1], "shelf": [8, 1, 3, 1], "shelfFront": [8, 2, 3, 1], "table": [5, 5, 3, 1], "chair1": [5, 4], "chair2": [7, 4], "chair3": [5, 6], "chair4": [7, 6], "mesaLibre": [6, 4, 1, 1], "mesaLibre2": [6, 6, 1, 1], "mesaOeste": [4, 5], "mesaEste": [8, 5], "dog": [3, 6]} },
+  patio: { rows: ["RRRRRRRTTTTTTT", "RRRRRRRFFFFFFF", "WNWDWNW.\u00f4.o.\u00f5F", "Foxxxo..\u00ea...\u00eaF", "FPxxx....o...F", "Fo.o..o....o.F", "F.\u00f1\u00f1\u00f1\u00f1..\u00e3\u00e3\u00e3.PF", "F.\u00f1\u00f1\u00f1\u00f1sss....F", "Fo..P.sss.o.oF", "FFFFFFFFFFFFFF"], pos: {"door": [3, 2], "in": [3, 3], "leo": [7, 7], "dog": [11, 7], "canelo": [4, 5], "limonCopa": [8, 2], "limonTronco": [8, 3], "limon1": [7, 3], "limon2": [9, 3], "aguacateCopa": [12, 2], "aguacateTronco": [12, 3], "aguacate1": [11, 3], "huerto": [2, 6, 4, 2], "linea": [8, 6, 3, 1], "arenero": [6, 7, 3, 2]} },
 };
 
 </script>
@@ -18236,7 +18559,7 @@ G.MAPDATA = {
   // =====================================================================
   //  Presents and the shops
   // =====================================================================
-  const likes = (who, it) => !!G.hearts && G.hearts.LIKES[who] === it.id && !it.q && (who !== 'lucia' || it.col === 'rosa');
+  const likes = (who, it) => !!G.hearts && G.hearts.likes(who, it.id) && !it.q && (who !== 'lucia' || it.col === 'rosa');
   const giftFor = who => (G.hearts && G.hearts.canAddToday(who, 'gift') ? bagS().find(it => likes(who, it)) : null) || (who === 'rosa' && !E.jobDone('huevo') ? bagS().find(it => it.id === 'huevo' && !it.q) : null);
   function* gift(who) {
     const it = giftFor(who); if (!it) return false;
@@ -18447,6 +18770,8 @@ G.MAPDATA = {
 //
 // Opening (gate(id) -> null when it may start, else why not):
 //   'prev'      the chapter before isn't done          'unwritten'  no script yet
+//   'after'     the def says after: 'c1' and that chapter (of another line) isn't done: no bubble at all, like 'prev'
+//               (the home line's first chapter waits for the puppy, content/es/hogar.js)
 //   (there is no word budget for the story (2026-10-17, the open world: docs/WORLD_PLAN.md): 'budget', 'soon' and
 //    'busy' are gone; a review day is only an offer now: with 10+ words only met, Luna or Mamá has a notebook bubble and
 //    asks 5 of them (.needsReview(), .review(who)), but nothing waits for it. Review-first pacing (2026-10, words.js
@@ -18599,6 +18924,7 @@ G.MAPDATA = {
     if (CH.done(id)) return 'done';
     if (CH.active(id)) return null;
     if (!scripts[id]) return 'unwritten';
+    if (c.after && !CH.done(c.after)) return 'after';
     const X = index(), same = X.of[X.line[id]], k = X.at[id]; // (its line, and its place in it)
     if (k > 0 && !CH.done(same[k - 1])) return 'prev';
     if (c.when === 'evening' && !o.evening) return 'evening';
@@ -18607,7 +18933,7 @@ G.MAPDATA = {
     // activities, docs/WORLD_PLAN.md. But a chapter brings several new words at once, so a NEW one waits for room:)
     // (a zone's first chapter opens on the day she first gets there, whatever the backlog: arriving somewhere new
     // always has a story to find)
-    if (CH.paced() && !CH.EXEMPT.includes(id) && !(c.n === 1 && (CH.firstDay() || (G.zones && G.zones.newToday && G.zones.newToday(CH.lineOf(id))))) && !CH.room()) return 'room';
+    if (CH.paced() && !CH.EXEMPT.includes(id) && !(c.n === 1 && (CH.firstDay() || (G.zones && G.zones.newToday && G.zones.newToday(CH.lineOf(id))) || (CH.ARRIVAL[CH.lineOf(id)] && CH.ARRIVAL[CH.lineOf(id)]()))) && !CH.room()) return 'room';
     return null;
   };
   // Story pacing (S2, the open-world learning audit: 70 of 77 new items came from chapters, the backlog grew every day):
@@ -18625,6 +18951,9 @@ G.MAPDATA = {
   CH.PACED = true;
   CH.PACE = { backlog: 8, today: 4, daily: 15 }; // daily: once the dog's cards have come today, one chapter may still start up to this backlog
   CH.EXEMPT = ['c1', 'c2', 'c3'];
+  // a line that is not a zone has its own "first day there" (a zone's is G.zones.newToday): CH.ARRIVAL[line] = () => true on
+  // the day she first got to its place (the home line: the day she first walked into the kitchen, content/es/hogar.js)
+  CH.ARRIVAL = {};
   CH.paced = () => CH.PACED && !(G.budget && G.budget.open && G.budget.open());
   CH.firstDay = () => { const m = G.words.wm(); return m.d0 != null && m.d0 >= G.words.dayNum(); }; // (the save's first play day)
   // One chapter a day stays in reach (the learning audit: at 8 the story stopped on most later days, and free play alone
@@ -18786,6 +19115,7 @@ G.MAPDATA = {
   };
   // a chapter's beat waits for this person now (their talk is the story: hearts.js says hello without a question first)
   CH.beatFor = who => !!G.state && !!find(L => L.b.who === who && when(L));
+  const QUIET = ['prev', 'soon', 'room', 'after']; // (gates that show nothing on the giver)
   CH.alert = function (who) {
     if (!G.state) return null;
     const L = find(L => L.b.who === who && when(L));
@@ -18795,7 +19125,7 @@ G.MAPDATA = {
     for (const line of CH.lines()) {
       if (CH.current(line)) continue;
       const nx = CH.next(line), c = nx && CH.def(nx), g = c && c.giver === who && scripts[nx] && CH.gate(nx); // (only their own chapter's gate is asked)
-      if (c && g && c.giver === who && scripts[nx] && g !== 'prev' && g !== 'soon' && g !== 'room') return g === 'evening' ? { icon: 'noche', wait: true, night: true } : { icon: 'dormir', wait: true, sleep: true }; // (waiting for room: no bubble at all, their own things show)
+      if (c && g && c.giver === who && scripts[nx] && !QUIET.includes(g)) return g === 'evening' ? { icon: 'noche', wait: true, night: true } : { icon: 'dormir', wait: true, sleep: true }; // (waiting for room: no bubble at all, their own things show)
     }
     return null;
   };
@@ -18814,7 +19144,7 @@ G.MAPDATA = {
     for (const line of CH.lines()) {
       if (CH.current(line)) continue;
       const nx = CH.next(line), c = nx && CH.def(nx), g = c && c.giver === who && scripts[nx] && CH.gate(nx);
-      if (c && g && c.giver === who && scripts[nx] && g !== 'prev' && g !== 'soon' && g !== 'room') { yield* tomorrow(who, g); return true; }
+      if (c && g && c.giver === who && scripts[nx] && !QUIET.includes(g)) { yield* tomorrow(who, g); return true; }
     }
     return false;
   };
@@ -18934,9 +19264,9 @@ G.MAPDATA = {
   };
 
   // ---------- where the hint hand points (and the test bot goes) ----------
-  CH.targets = function (f) {
+  CH.targets = function (f, L0) { // (L0: the chapter the guide chose, when it isn't the line here's: guide.js liveFor)
     if (!G.state || !f) return [];
-    const L = live(); if (!L || !when(L)) return [];
+    const L = L0 || live(); if (!L || !when(L)) return [];
     const out = [], b = L.b;
     if (b.hint) { try { for (const t of b.hint(f, CH.ctx(L.id)) || []) out.push(Object.assign({ ch: L.id }, t)); } catch (e) { console.error(e); } return out; }
     spotsOf(b).forEach((sp, i) => { if (sp.map === f.mapId && !(sp.off && sp.off(CH.ctx(L.id)))) out.push({ x: sp.at[0] * T + 12, y: sp.at[1] * T + 12, spot: 'ch:' + L.id + ':' + i, ch: L.id }); });
@@ -22351,7 +22681,7 @@ G.MAPDATA = {
   // ---------- where things are ----------
   // every: play seconds before it's back after being picked up, or 'day' (a new one every morning); unique: there is
   // only one (it's back only when it's nowhere: not in your hands, not lying about); hidden: the tile itself shows it
-  // (the barn's basket of apples); tree: the tile of the tree it fell from (drawn with apples on it)
+  // (the barn's basket of apples); tree: the tile of the tree it fell from (drawn with apples on it; fruit: their colour, red by default; rim: the dark edge round each, dark red by default)
   C.SOURCES = [
     { id: 'manzana1', map: 'villa', at: [12, 19], item: 'manzana', every: 150, tree: [12, 18] }, // under the park's apple tree
     { id: 'manzana2', map: 'villa', at: [34, 4], item: 'manzana', every: 150, tree: [34, 3] },   // under the apple tree by the farm
@@ -22527,7 +22857,7 @@ G.MAPDATA = {
   };
   // who would love it today (a gift heart they haven't had), nearest first; not `not`
   const reach = who => { for (const m in G.maps) if ((G.maps[m].npcs || []).some(n => n.id === who && (!n.cond || n.cond()))) return m; return null; };
-  const likes = (who, it) => !!G.hearts && G.hearts.LIKES[who] === it.id && (who !== 'lucia' || it.col === 'rosa');
+  const likes = (who, it) => !!G.hearts && G.hearts.likes(who, it.id) && (who !== 'lucia' || it.col === 'rosa');
   const wants = (who, it) => likes(who, it) && G.hearts.canAddToday(who, 'gift') && !!reach(who);
   C.likerFor = function (it, not) {
     if (!G.hearts) return null;
@@ -22669,7 +22999,7 @@ G.MAPDATA = {
     };
     for (const s of C.SOURCES) {
       if (s.map !== f.mapId) continue;
-      if (s.tree) { const X = s.tree[0] * T - cx, Y = s.tree[1] * T - cy; for (const [dx, dy] of [[6, 6], [14, 4], [10, 11], [16, 10]]) { ctx.fillStyle = '#401010'; ctx.fillRect(X + dx - 1, Y + dy - 1, 4, 4); ctx.fillStyle = '#e03028'; ctx.fillRect(X + dx, Y + dy, 2, 2); } }
+      if (s.tree) { const X = s.tree[0] * T - cx, Y = s.tree[1] * T - cy; for (const [dx, dy] of [[6, 6], [14, 4], [10, 11], [16, 10]]) { ctx.fillStyle = s.rim || '#401010'; ctx.fillRect(X + dx - 1, Y + dy - 1, 4, 4); ctx.fillStyle = s.fruit || '#e03028'; ctx.fillRect(X + dx, Y + dy, 2, 2); } }
       if (!s.hidden && avail(s)) one({ id: s.item, col: s.col }, s.at[0], s.at[1], 0);
     }
     const seen = {};
@@ -23330,6 +23660,125 @@ G.MAPDATA = {
 })();
 
 </script>
+<script>/* content/es/hogar.js */
+// ===== El hogar: the two new rooms of her house, and the people in them (docs/UNIT_EN_CASA.md) =====
+// La cocina (the kitchen, indoors) is through a doorway in the east wall of her room: Papá cooks at the stove, there is a
+// shelf of plates, glasses and spoons, a table with four chairs, a fridge, a sink and a window. Its back door leads to
+// el patio (the back yard, outdoors, so it gets the night wash like the other outdoor maps): a lime tree, an avocado
+// tree, a small vegetable bed, the clothes line, a sandpit where Leo (her little brother) plays, flowers, a fence all
+// round and a spot where Canelo digs. Both maps are part of Villa Sol's zone (content/es/zone-villa.js).
+// This file is the rooms and the people, the doorway bubble and the table of the four chapters (hogar1 opens only once the
+// puppy is found, after: 'c1'; on the day she first walks into the kitchen it opens whatever the backlog). The story is in
+// other files (hogar-story1.js: chapters 1 and 2; hogar-story2.js: 3 and 4); a chapter with no script yet is 'unwritten'
+// (nobody waits on it, no bubble, no row in Misiones or the Learning page). The coordinates the story needs are in
+// G.MAPDATA.cocina.pos and G.MAPDATA.patio.pos (tools/mapgen.py).
+// Loaded after src/zones.js and before content/es/zone-villa.js (which lists the maps and marks the kitchen indoor).
+'use strict';
+(function () {
+  const K = G.mapKit, MD = G.MAPDATA, CH = G.chapters;
+  const P = (m, tag) => MD[m].pos[tag];
+  const T = (t, en) => ({ t, en });
+
+  // who has a bubble over their head: the story's, then a present, a favour, hide-and-seek (as in src/maps.js)
+  const alertOf = who => () => (CH && CH.alert(who)) || (G.errands && G.errands.alert(who)) || (G.favores && G.favores.alert(who)) || (G.seek && G.seek.alert(who)) || null;
+
+  // ---------- la cocina ----------
+  G.maps.cocina = {
+    name: 'La cocina', icon: 'cocina', rows: MD.cocina.rows, music: 'headquarters', indoor: true, line: 'hogar', // (the home song goes on from her room without starting again)
+    // the day she first walks in is written down: that day the first chapter opens whatever the review backlog (CH.ARRIVAL, below)
+    onEnter: function* () { const d = CH.data('hogar1'); if (!d.first && CH.done('c1')) { d.first = G.today(); G.st.autosave(); } }, // (not before the puppy is found: that day's opening is the town's)
+    exits: [
+      { x: P('cocina', 'door')[0], y: P('cocina', 'door')[1], to: 'casa', tx: 7, ty: 4, dir: 'left' }, // back in her room, beside the doorway
+      { x: P('cocina', 'patioDoor')[0], y: P('cocina', 'patioDoor')[1], to: 'patio', tx: P('patio', 'in')[0], ty: P('patio', 'in')[1], dir: 'down' },
+    ],
+    // the table and its chairs name themselves (the stove, the shelf, the fridge, the sink and the window have no word)
+    things: { tiles: { t: 'mesa', 'ë': 'silla' } },
+    pages: K.pages('cocina'),
+    npcs: [
+      K.canelo(3, 6),
+      { id: 'papa', npc: 'papa', x: P('cocina', 'papa')[0], y: P('cocina', 'papa')[1], dir: 'up', fixed: true, // at the stove
+        alert: alertOf('papa'),
+        talk: K.talker('papa', function* () { yield* K.say('papa', T('¡[hola], {name}!', 'Hi, {name}!')); }) },
+    ],
+  };
+
+  // ---------- el patio ----------
+  G.maps.patio = {
+    name: 'El patio', icon: 'arbol', rows: MD.patio.rows, music: 'town', line: 'hogar',
+    exits: [{ x: P('patio', 'door')[0], y: P('patio', 'door')[1], to: 'cocina', tx: P('cocina', 'patioDoor')[0] - 1, ty: P('cocina', 'patioDoor')[1], dir: 'left' }],
+    // Canelo's digging spot (a bone, once a day, like the beach's shells)
+    dogSpots: [{ id: 'patio_hueso', at: P('patio', 'dog'), act: 'dig', gives: 'hueso', every: 'day' }],
+    pages: K.pages('patio'),
+    ambient: { birds: 3, butterflies: 3 },
+    // the trees name themselves on any of their tiles (the crown and the trunk under it)
+    things: { tiles: { 'ô': 'limon', 'õ': 'aguacate' }, at: {
+      [P('patio', 'limonTronco').join(',')]: 'limon', [P('patio', 'aguacateTronco').join(',')]: 'aguacate' } },
+    npcs: [
+      K.canelo(4, 5),
+      { id: 'leo', npc: 'leo', x: P('patio', 'leo')[0], y: P('patio', 'leo')[1], dir: 'down', wander: 2, // plays about the sandpit
+        alert: alertOf('leo'),
+        talk: K.talker('leo', function* () { yield* K.say('leo', T('¡[hola]!', 'Hi!')); }) },
+    ],
+  };
+
+  // ---------- the doorway from her room ----------
+  // One more exit on the east wall of casa (the front door stays exits[0]: chapters' door beats read it). While the puppy's game
+  // is going on (chapter 1) the doorway is Mamá's "wait", like the front door: the puppy's game is in this room. The same rule as
+  // the front door's (maps.js): a player who chose to explore first (dogSkip) may go through before chapter 1 is begun.
+  G.maps.casa.exits.push({
+    x: P('casa', 'cocinaDoor')[0], y: P('casa', 'cocinaDoor')[1], to: 'cocina', tx: P('cocina', 'door')[0] + 1, ty: P('cocina', 'door')[1], dir: 'right',
+    run: function* (f) {
+      const F = G.state && G.state.flags;
+      if (!CH || CH.done('c1') || !F || (F.intro && !(F.dogSkip && CH.active('c1')))) return true;
+      K.stepBack(f, 'left');
+      yield* K.say('mama', T('¡{name}! ¡Espera!', '{name}! Wait a moment! (stay with Mamá)'));
+      return false;
+    },
+  });
+
+  // Her room is Villa Sol's, and the kitchen's story is through its doorway (guide.js liveFor reads alsoLine: with no chapter of
+  // the town going on, the arrow follows the home chapter, or leads to the doorway when one could start).
+  G.maps.casa.alsoLine = 'hogar';
+  // The first chapter opens on the day she first walks into the kitchen, whatever the review backlog (as a zone's does on
+  // the day she first gets there: chapters.js gate); the second waits for room like every other chapter.
+  CH.ARRIVAL.hogar = () => { const c = G.state && G.state.ch, d = c && c.data && c.data.hogar1; return !!d && d.first === G.today(); };
+
+  // A small picture bubble floats at the kitchen doorway in her room while a chapter of the home line could start (or is going
+  // on): the chapter's own picture, like a person's story bubble. It needs no arrow; the guide's arrow comes by its own
+  // rules (guide.js). Not at sunset, when the way to bed leads. (the chapter's live beat is memoised per frame: chapters.js live1)
+  const draw0 = CH.draw;
+  CH.draw = function (f, ctx, layer) {
+    draw0.apply(this, arguments);
+    if (layer !== 'top' || !f || f.mapId !== 'casa' || !G.state || G.top() !== f || (G.day && G.day.over())) return;
+    const L = CH.live({}, 'hogar'); if (!L || !L.b) return;
+    const door = P('casa', 'cocinaDoor');
+    G.drawAlert(ctx, CH.emblem(L.id), door[0] * G.TILE - Math.round(f.cam.x) - 2, door[1] * G.TILE - Math.round(f.cam.y) - 2, f.t);
+  };
+
+  // The two maps' own line of story ('hogar') is the one to ask about while she is in them (chapters.js lineHere reads the
+  // zone, and these maps are Villa Sol's). Everywhere else it is as it was.
+  const lineHere = CH.lineHere;
+  CH.lineHere = function () {
+    const f = G.field, l = f && f.def && f.def.line;
+    return l && CH.lines().indexOf(l) >= 0 ? l : lineHere();
+  };
+
+  // ---------- things to pick up: limes and an avocado, picked from the tile beside the tree ----------
+  // (an unmet word's thing is a picture and a "?": carry.js, fine to pick up before the chapter)
+  G.carry.SOURCES.push(
+    { id: 'limon_patio1', map: 'patio', at: P('patio', 'limon1'), item: 'limon', every: 150, tree: P('patio', 'limonCopa'), fruit: '#a8e848', rim: '#1c4a10' },
+    { id: 'limon_patio2', map: 'patio', at: P('patio', 'limon2'), item: 'limon', every: 150, tree: P('patio', 'limonCopa'), fruit: '#a8e848', rim: '#1c4a10' },
+    { id: 'aguacate_patio1', map: 'patio', at: P('patio', 'aguacate1'), item: 'aguacate', every: 200, tree: P('patio', 'aguacateCopa'), fruit: '#5c8c34', rim: '#0a2410' },
+  );
+
+  // ---------- the unit's four chapters (docs/UNIT_EN_CASA.md): in the table, with no script yet ----------
+  CH.add({ id: 'hogar1', line: 'hogar', after: 'c1', title: '¡Tengo hambre!', en: 'I\'m hungry! Papá is cooking soup: you say you are hungry, taste it and say how good it is', giver: 'papa', words: ['elpapa', 'cocina', 'hambre', 'sopa', 'rico'], icon: 'sopa', col: '#e0782a' });
+  CH.add({ id: 'hogar2', line: 'hogar', title: 'Pon la mesa', en: 'Set the table: carry the plates, glasses and spoons from the shelf to the table', giver: 'papa', words: ['mesa', 'silla', 'plato', 'vaso', 'cuchara'], icon: 'plato', col: '#4a86c8' });
+  CH.add({ id: 'hogar3', line: 'hogar', title: 'Los tacos de Papá', en: 'Papá\'s tacos: build a taco step by step and tell Leo (and the dog) to eat', giver: 'leo', words: ['hermano', 'tortilla', 'frijoles', 'taco', 'come'], icon: 'taco', col: '#e8b030' });
+  CH.add({ id: 'hogar4', line: 'hogar', title: 'Agua de limón', en: 'Lime water: Mamá is thirsty; pick limes and an avocado in the yard and the family sits down together', giver: 'mama', words: ['lamama', 'sed', 'limon', 'aguacate', 'arroz'], icon: 'limon', col: '#7cb830' });
+})();
+
+</script>
 <script>/* content/es/zone-villa.js */
 // ===== Villa Sol, the zone in the middle of the world (docs/WORLD_PLAN.md) =====
 // Villa Sol's own maps are in src/maps.js and its story is the 21 chapters (content/es/story-*.js): its quest line, never
@@ -23355,11 +23804,12 @@ G.MAPDATA = {
     { at: P('postAbuelos'), zone: 'abuelos', dir: 'down' },
   ];
   // the town's buildings are inside: the bus doesn't drive in there (a ride from the menu just fades)
-  for (const m of ['casa', 'escuela', 'rosa', 'panaderia', 'biblioteca', 'granja']) G.maps[m].indoor = true;
+  // (the back yard is outdoors: it gets the night wash like the other outdoor maps)
+  for (const m of ['casa', 'cocina', 'escuela', 'rosa', 'panaderia', 'biblioteca', 'granja']) G.maps[m].indoor = true;
   const bus = P('busVilla');
   Z.add({
     id: 'villa', name: 'Villa Sol', en: 'the town of Villa Sol', icon: 'sol', music: 'town', pos: [160, 114],
-    maps: ['villa', 'casa', 'escuela', 'rosa', 'panaderia', 'biblioteca', 'granja'],
+    maps: ['villa', 'casa', 'cocina', 'patio', 'escuela', 'rosa', 'panaderia', 'biblioteca', 'granja'],
     bus: { map: 'villa', at: bus }, entry: { map: 'villa', x: bus[0], y: bus[1] + 1, dir: 'down' },
     // the album's first page (the Pokédex numbers start here): the town's animals, where each one lives as its hint
     animals: ['perro', 'gato', 'pajaro', 'mariposa', 'pez', 'conejo', 'pato', 'rana', 'gallina', 'caballo', 'cabra'],
@@ -27987,6 +28437,588 @@ G.MAPDATA = {
 })();
 
 </script>
+<script>/* content/es/hogar-story1.js */
+// ===== En casa, chapters 1 and 2 (docs/UNIT_EN_CASA.md): ¡Tengo hambre! and Pon la mesa =====
+// The kitchen's two first chapters, the home line 'hogar' (content/es/hogar.js has the table, the rooms and Papá).
+//   1 ¡Tengo hambre!  el papá, la cocina, tengo hambre, la sopa, ¡qué rico!
+//        She walks into the kitchen (the beat starts by itself: Papá comes to meet her), Papá names himself and the kitchen,
+//        goes back to the pot (steam, the dog sniffs), her tummy rumbles and she says she is hungry (her own line), the
+//        soup is on the table, she tastes it, the dog gets a taste.
+//   2 Pon la mesa     la mesa, la silla, el plato, el vaso, la cuchara
+//        Papá needs help: the table is met, then three trips, one thing each (a plate, a glass, a spoon): met at the shelf,
+//        held up over her head (the chapter's thing, q: 'hogar2'), carried to the table where it stays. Her chair, then the
+//        family sits and there is confetti.
+// Only hola and the unit's own words are assumed: si / no, and every other word, only when met (G.words.met). Each new
+// word arrives in a one-unknown puzzle (G.intro.show, or her own line: youSay) and is used again soon after.
+'use strict';
+(function () {
+  const CH = G.chapters, K = CH.K, T = K.T, TL = G.TILE;
+  const say = K.say, sayShow = K.sayShow, ask = K.ask, siNo = K.siNo;
+  const P = tag => G.MAPDATA.cocina.pos[tag];
+  const the = (id, o) => G.requests.the(id, o);
+  const met = id => !!(G.words && G.words.met(id));
+  const bag = () => G.errands.bag;
+  const L = G.requests.LINES;
+  // lines built from a word (G.requests.LINES: tools/test-spanish.js runs every word through them)
+  L['hogar.mira'] = id => '¡Mira! ' + the(id, { cap: 1, bang: 1 });            // ¡Mira! ¡La [sopa]!
+  L['hogar.ala'] = id => the(id, { pre: 'a', cap: 1, bang: 1 });                // ¡A la [mesa]!
+  L['hogar.tu'] = id => '¡' + the(id, { my: 'tu', cap: 1 }) + '!';             // ¡Tu [silla]!
+  L['hogar.bienvenida'] = id => '¡Bienvenid{o/a} ' + the(id, { pre: 'a' }) + '!'; // ¡Bienvenida a la [cocina]!
+
+  // ---------- where things are in the kitchen (G.MAPDATA.cocina.pos) ----------
+  const STOVE = P('papa');                       // Papá at the stove: [4, 2]
+  const BOWL = [6, 5];                           // the soup, on the middle of the table
+  const SHELF = { plato: [8, 2], vaso: [9, 2], cuchara: [10, 2] };  // the free floor in front of the shelf: plates, glasses, spoons
+  const SET = { plato: [5, 5], cuchara: [6, 5], vaso: [7, 5] };     // where each goes on the table (reached from the free tiles round it)
+  const CHAIR = [5, 4];                          // her chair
+  const SEATS = { papa: [7, 4], mama_g: [7, 6], leo_g: [5, 6] };    // the family at the table (her chair is at 5,4)
+
+  const dirTo = (a, b) => { const dx = b.x - a.x, dy = b.y - a.y; return Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up'; };
+  const papa = f => f.npc('papa');
+  const dog = f => (G.pet && G.pet.mine() ? K.dog(f) : null);
+  const papaHome = f => K.place(f, 'papa', STOVE[0], STOVE[1], 'up'); // back at the stove, facing it
+  const pointAt = (x, y) => CH.point(x * TL + 12, y * TL);
+
+  // her own line: the new word written among known pictures (a one-unknown puzzle; no card to pick when she knows nothing else)
+  function* youSay(id, who, prompt, en, show) {
+    const known = G.intro.known(id, 2);
+    if (!known.length) { G.intro.meet(id, 'overheard', { who }); yield 40; return; }
+    const look = { [id]: 'text' }; known.forEach(k => { look[k] = 'both'; });
+    yield* ask(who, prompt, en, id, known, { intro: true, how: 'overheard', look, show: show || id });
+  }
+  // a word met in a one-unknown puzzle; a word met already (the beat played again after a save in the middle of it): only said
+  function* meet(id, who, prompt, en) {
+    if (!met(id)) yield* G.intro.show(id, { who, prompt, en });
+    else yield* sayShow(who, id, T(prompt, en));
+  }
+  // met words to choose from beside the answer (never an unmet one: a word is not first seen as a wrong card)
+  const others = (answer, prefer) => prefer.filter(k => k !== answer && met(k)).concat(G.intro.known(answer, 3)).filter((k, i, a) => a.indexOf(k) === i && k !== answer).slice(0, 2);
+
+  // =====================================================================
+  //  1 · ¡Tengo hambre!   (Papá's soup)
+  // =====================================================================
+  CH.script('hogar1', [
+    { auto: 'cocina', run: function* (f) { // she walks in: Papá comes to meet her; el papá, la cocina; back to the pot, the dog sniffs
+      const n = papa(f), d = dog(f);
+      yield* K.walk(f, n, 4, 4, 3); n.dir = dirTo(n, f.player);
+      yield* say('papa', T('¡[hola], {name}!', 'Hi, {name}!'));
+      yield* G.intro.show('elpapa', { who: 'papa', prompt: '¡Soy tu [elpapa:papá]!', en: 'I\'m your dad! (he points at himself)' });
+      yield* G.intro.show('cocina', { who: 'papa', prompt: L['hogar.bienvenida']('cocina'), en: 'Welcome to the kitchen! (he waves his arms)' });
+      yield* K.walk(f, n, STOVE[0], STOVE[1], 3); n.dir = 'up'; // back to the pot: he stirs
+      for (let k = 0; k < 4; k++) { n.dir = k & 1 ? 'up' : 'left'; G.audio.sfx('select'); yield 14; }
+      n.dir = 'up';
+      if (d) { yield* K.walk(f, d, STOVE[0] + 1, STOVE[1] + 1, 3); d.dir = 'up'; yield* G.pet.play('sniff'); }
+    } },
+    { who: 'papa', bubble: 'hambre', run: function* (f, c) { // her tummy rumbles: tengo hambre (her own line); Papá carries the soup to the table
+      const n = papa(f), p = f.player;
+      G.audio.sfx('huh'); K.puff('txt', p.x * TL + 12, p.y * TL - 8, { s: '¡Grrr!', life: 80 }); yield 60;
+      n.dir = dirTo(n, p);
+      yield* sayShow('papa', 'hambre', T('¿Tienes hambre?', 'Are you hungry? (your tummy rumbles)'));
+      yield* youSay('hambre', 'papa', 'Tú: ¡...!', 'Your turn! Tell Papá you are hungry (say it, or tap it)');
+      yield* say('papa', T('¡Listo!', 'Ready! (he carries the pot to the table)'));
+      yield* K.walk(f, n, 6, 3, 3); n.dir = 'down';
+      c.data.bowl = 1; G.audio.sfx('item');
+    } },
+    { spot: { map: 'cocina', at: BOWL, icon: 'sopa' }, run: function* (f, c) { // la sopa; the dog sniffs; she tastes it: ¡qué rico!; the dog gets a taste
+      const n = papa(f), d = dog(f);
+      n.dir = 'down';
+      yield* G.intro.show('sopa', { who: 'papa', prompt: L['hogar.mira']('sopa'), en: 'Look! The soup!' });
+      if (d) { G.pet.place(f, d); yield* G.pet.play('sniff'); }
+      yield* say('papa', T('¡Prueba!', 'Taste it!'));
+      G.audio.sfx('item'); K.sparkle(f, BOWL[0], BOWL[1], 6); yield 50;
+      yield* G.intro.show('rico', { who: 'papa', prompt: '¡Mmm! ¡[rico:Qué rico]!', en: 'Mmm! So yummy! (you taste it)' });
+      for (let k = 0; k < 3; k++) K.puff('heart', n.x * TL + 8 + k * 5, n.y * TL - 6, { life: 50, vy: -0.4 }); // a heart for Papá
+      yield* G.review.ask('sopa', { who: 'papa' });
+      yield* say('papa', T('¡Y un poquito para {dog}!', 'And a little for {dog}!'));
+      if (d) { G.pet.place(f, d); yield* G.pet.play('eat', { item: 'sopa' }); }
+      c.data.bowl = 2; papaHome(f);
+      yield* G.review.ask('elpapa', { who: 'papa' }); // (el papá comes back: who is this?)
+    } },
+  ], {
+    draw(f, ctx, c) { // the soup on the table, steaming
+      if (f.mapId !== 'cocina' || !c.data.bowl || CH.done('hogar1')) return;
+      const x = BOWL[0] * TL + 4 - Math.round(f.cam.x), y = BOWL[1] * TL + 2 - Math.round(f.cam.y);
+      G.drawIcon16(ctx, 'sopa', x, y);
+    },
+    drawTop(f, ctx) { // the pot steams, the whole house smells of it
+      if (f.mapId !== 'cocina' || CH.done('hogar1')) return;
+      steam(ctx, STOVE[0] * TL + 12 - Math.round(f.cam.x), STOVE[1] * TL + 6 - Math.round(f.cam.y), f.t);
+    },
+  });
+  function steam(ctx, x, y, t) { // three little white wisps rising and fading
+    ctx.save();
+    for (let i = 0; i < 3; i++) {
+      const k = ((t >> 1) + i * 14) % 42;
+      ctx.globalAlpha = 0.8 * (1 - k / 42); ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x + (i - 1) * 4 + Math.round(Math.sin((k + i * 9) / 6) * 2), y - Math.round(k / 3), 2, 2);
+    }
+    ctx.restore();
+  }
+
+  // =====================================================================
+  //  2 · Pon la mesa   (the shelf, three trips, the table)
+  // =====================================================================
+  // a trip's first half: at the shelf the thing is met (one unknown) and goes into her hands (the chapter's thing)
+  const shelfBeat = (id, en) => ({ spot: { map: 'cocina', at: SHELF[id], icon: id }, run: function* (f) {
+    yield* meet(id, 'papa', L['hogar.mira'](id), en);
+    if (!bag().has(id, { q: 'hogar2' })) bag().add(id, { q: 'hogar2' });
+    yield* sayShow('papa', id, T(L['hogar.ala']('mesa'), 'To the table! (carry it there: tap the table)'));
+  } });
+  // ...and the second: it goes on the table and stays there (c.data.set, drawn below)
+  const tableBeat = id => ({ spot: { map: 'cocina', at: SET[id], icon: id }, run: function* (f, c) {
+    (c.data.set || (c.data.set = {}))[id] = 1; // (on the table first, then out of her hands: take saves both, so a save in the middle of this beat keeps the plate on the table)
+    bag().take(id, { q: 'hogar2' });
+    G.audio.sfx('pop'); K.sparkle(f, SET[id][0], SET[id][1], 5); yield 24;
+    yield* G.review.ask(id, { who: 'papa' });
+    yield* say('papa', T('¡Muy bien, {name}!', 'Very good, {name}!'));
+  } });
+  CH.script('hogar2', [
+    { who: 'papa', run: function* (f) { // ¡A comer! ¿Me ayudas? la mesa
+      const n = papa(f); n.dir = dirTo(n, f.player);
+      yield* say('papa', T('¡A comer!', 'Time to eat!'));
+      if (met('hambre')) yield* G.review.ask('hambre', { who: 'papa' });
+      if (met('si') && met('no')) yield* siNo('papa', '¿Me ayudas?', 'Will you help me? (say yes!)', true, { show: { icon: 'pregunta' } });
+      else yield* sayShow('papa', { icon: 'pregunta' }, T('¿Me ayudas?', 'Will you help me?'));
+      pointAt(...P('table'));
+      try { yield* G.intro.show('mesa', { who: 'papa', prompt: L['hogar.mira']('mesa'), en: 'Look! The table!' }); } finally { CH.point(null); }
+      pointAt(SHELF.vaso[0], 1);
+      try { yield* say('papa', T(L['hogar.ala']('mesa'), 'To the table! (fetch things from the shelf)')); } finally { CH.point(null); }
+    } },
+    shelfBeat('plato', 'Look! A plate! (it goes in your hands)'),
+    tableBeat('plato'),
+    shelfBeat('vaso', 'Look! A glass!'),
+    tableBeat('vaso'),
+    shelfBeat('cuchara', 'Look! A spoon!'),
+    tableBeat('cuchara'),
+    { spot: { map: 'cocina', at: CHAIR, icon: 'silla' }, run: function* (f) { // Papá pulls out her chair: la silla
+      const n = papa(f);
+      yield* K.walk(f, n, CHAIR[0] - 1, CHAIR[1] - 1, 3); n.dir = 'down';
+      G.audio.sfx('select'); K.puff('dust', CHAIR[0] * TL + 12, CHAIR[1] * TL + 18, { life: 24, vy: -0.3 });
+      yield* G.intro.show('silla', { who: 'papa', prompt: L['hogar.tu']('silla'), en: 'Your chair! (he pulls it out for you)' });
+      papaHome(f);
+    } },
+    { who: 'papa', run: function* (f, c) { // Papá holds a thing up: ¿Qué es?; the family sits down; confetti
+      const n = papa(f); n.dir = dirTo(n, f.player);
+      yield* say('papa', T('¡A comer!', 'Time to eat!'));
+      const up = 'vaso';
+      yield* ask('papa', '¿Qué es?', 'He holds something up: what is it? (tap its word)', up, others(up, ['plato', 'cuchara']), { show: up, look: { vaso: 'text', plato: 'text', cuchara: 'text' } });
+      yield* G.review.ask('silla', { who: 'papa' });
+      yield* G.review.ask('cocina', { who: 'papa' });
+      // everyone sits: Mamá and Leo come in from the yard (as guests), Papá takes his chair, she takes hers
+      const p = f.player, was = [p.x, p.y, p.dir], back = G.errands.stage(f, { papa: [4, 3, 'down'], mama_g: [10, 5, 'left'], leo_g: [10, 4, 'left'] });
+      try {
+        for (const id of ['papa', 'mama_g', 'leo_g']) { const m = f.npc(id), s = SEATS[id]; if (m) yield* K.walk(f, m, s[0], s[1], 3); }
+        Object.assign(p, { x: CHAIR[0], y: CHAIR[1], ox: 0, oy: 0, dir: 'right' }); f.snapCam();
+        f.npc('papa').dir = 'left'; f.npc('mama_g').dir = 'left'; f.npc('leo_g').dir = 'right';
+        K.confetti(); G.audio.jingle('item'); yield 90;
+        for (let k = 0; k < 3; k++) K.puff('heart', SEATS.papa[0] * TL + 8 + k * 5, SEATS.papa[1] * TL - 6, { life: 50, vy: -0.4 });
+        yield 70;
+      } finally { Object.assign(p, { x: was[0], y: was[1], ox: 0, oy: 0, dir: was[2] }); f.snapCam(); G.errands.unstage(f, back); papaHome(f); }
+    } },
+  ], {
+    draw(f, ctx, c) { // what she has put on the table
+      if (f.mapId !== 'cocina' || !c.data.set || CH.done('hogar2')) return;
+      for (const id in c.data.set) { const at = SET[id]; if (at) G.drawIcon16(ctx, id, at[0] * TL + 4 - Math.round(f.cam.x), at[1] * TL + 3 - Math.round(f.cam.y)); }
+    },
+  });
+})();
+
+</script>
+<script>/* content/es/hogar-story2.js */
+// ===== En casa, chapters 3 and 4 (docs/UNIT_EN_CASA.md): Los tacos de Papá, Agua de limón =====
+// 3  Leo is hungry too (patio). Papá builds a taco on the table in three steps she sees on the map: a tortilla, the
+//    beans, the fold. She tells Leo ¡come! and then the dog.            hermano, tortilla, frijoles, taco, come
+// 4  Mamá is thirsty (her room). Limes in the patio, Papá makes agua de limón, a glass for Mamá, an avocado from its
+//    tree, rice on the table, and the whole family sits down together.   lamama, sed, limon, aguacate, arroz
+// Every new word is a one-unknown puzzle (G.intro.*) and comes back in a line or a review question within a minute or
+// two. Only `hola` and the unit's own words are taken for granted: any other word (agua) is used only when it is met.
+// The saved state of each chapter is c.data; the pictures on the table are drawn from it, so a save in the middle of
+// a beat opens on the same table. Leo and Mamá in the kitchen are guests (as in story-c01-c10.js): the real ones stay
+// in the yard and in her room.
+'use strict';
+(function () {
+  const CH = G.chapters, CK = CH.K, T = CK.T, TL = G.TILE;
+  const MD = G.MAPDATA, P = (m, tag) => MD[m].pos[tag];
+  const say = CK.say, ask = CK.ask;
+  const met = id => !!(G.words && G.words.met(id));
+  const the = (id, o) => G.requests.the(id, o);
+  const bag = () => G.errands.bag;
+  const L = G.requests.LINES;
+
+  // lines built from a word (G.requests.LINES: tools/test-spanish.js runs every word through them)
+  L['hogar.soy'] = id => '¡Soy ' + the(id, { my: 'tu' }) + '!';   // ¡Soy tu [hermano]!
+  L['hogar.y'] = id => '¡Y ' + the(id) + '!';                       // ¡Y los [frijoles]!
+  L['hogar.a'] = id => '¡' + the(id, { pre: 'a', cap: 1 }) + '!';   // ¡A la [mesa]!
+  L['hogar.mmm'] = id => '¡Mmm! ' + the(id, { cap: 1, bang: 1 });  // ¡Mmm! ¡El [aguacate]!
+
+  // ---------- small helpers ----------
+  const npcAt = (f, id) => f.npcs.find(n => n.id === id && !n.hidden) || null;
+  // someone who is not on this map, standing in for a scene (Leo in the kitchen, Mamá at the table), then gone again
+  function guest(f, id, x, y, dir) { let n = f.npc(id + '_g'); if (!n) n = f.addNpc({ id: id + '_g', npc: id, x, y, dir: dir || 'down', fixed: true, guest: true }); return n; }
+  const unguest = (f, id) => f.removeNpc(id + '_g');
+  // the real Leo while his guest is in the kitchen: not seen, not wandering, and not standing on a tile of the yard (the
+  // field counts the hidden when it asks "is this tile free?"); put back where he plays when the guest is done
+  function parkLeo(n) { if (!n) return; if (!n.parked) n.parked = [n.x, n.y, n.wander]; n.hidden = true; n.wander = 0; n.x = PARK[0]; n.y = PARK[1]; n.ox = 0; n.oy = 0; }
+  function unparkLeo(n) { if (!n || !n.parked) return; const q = n.parked; n.parked = null; n.hidden = false; n.wander = q[2]; n.x = q[0]; n.y = q[1]; n.home = [q[0], q[1]]; }
+  // two known words to stand beside a new one in its puzzle: the ones named first, if met, then any others
+  const others = (id, prefer) => prefer.filter(k => k !== id && met(k)).concat(G.intro.known(id, 3)).filter((k, i, a) => a.indexOf(k) === i && k !== id).slice(0, 2);
+  // a new word, held up and named (a one-unknown puzzle); a word already met (a beat played again after a reload) is not asked again
+  function* meet(id, o) {
+    if (met(id)) return false;
+    yield* G.intro.show(id, Object.assign({ how: 'show', known: others(id, o.prefer || []) }, o));
+    return true;
+  }
+  const puffAt = (kind, n, o) => CK.puff(kind, n.x * TL + 12 + (n.ox || 0), n.y * TL - 2 + (n.oy || 0), o);
+  const hearts = (n, k = 3) => { for (let i = 0; i < k; i++) CK.puff('heart', n.x * TL + 6 + i * 6 + (n.ox || 0), n.y * TL - 4 + (n.oy || 0), { life: 50 + i * 8, vy: -0.4 }); };
+  const give = (who, n, why) => { if (G.hearts) G.hearts.add(who, n, why || 'care'); };
+  // a picture drawn on the map at a tile (a world position, so it moves with the camera)
+  const pic = (ctx, f, id, tx, ty, dx, dy, scale) => G.drawIcon16(ctx, id, Math.round(tx * TL + dx - f.cam.x), Math.round(ty * TL + dy - f.cam.y), scale);
+  const FX = { flip: -999, squeeze: -999 }; // (what is happening now, only for drawing: nothing here is saved)
+
+  const TABLE = P('cocina', 'table'), TABLE_AT = [TABLE[0] + 1, TABLE[1]];     // the middle of the table: (6,5)
+  const STOVE = P('cocina', 'stove'), PAPA = P('cocina', 'papa'), CDOOR = P('cocina', 'door');
+  const BELOW = P('cocina', 'mesaLibre2');                                      // the free tile south of it (6,6)
+  const LEO_SIT = P('cocina', 'chair1');                                        // Leo eats on the chair at the north-west corner (5,4): the dialogue box covers the south side of the table
+  const LEO_FACE = 'down';                                                      // (facing the table)
+  const LEO_WAIT = [CDOOR[0] + 3, CDOOR[1]];                                    // where Leo waits for the taco (3,5)
+  // Papá stands beside the table (east end) while the taco is made, so both free tiles of the spot at the middle of the
+  // table (north and south of it) are left to her; with him on one of them the dog on the other would shut the spot
+  const PAPA_SIDE = P('cocina', 'mesaEste');                                    // (8,5)
+  const PARK = [0, 3];                                                          // a fence tile of the yard: nobody walks or blocks there
+  const PDOOR = P('patio', 'door');
+  const LIME = P('patio', 'limonTronco'), AVO = P('patio', 'aguacateTronco');
+
+  // =====================================================================
+  //  3 · Los tacos de Papá  (Leo in the patio, Papá at the stove)  hermano, tortilla, frijoles, taco, come
+  // =====================================================================
+  CH.script('hogar3', [
+    { who: 'leo', run: function* (f, c) { // Leo is hungry; he is her brother; he runs ahead to the kitchen
+      const leo = f.npc('leo');
+      yield* say('leo', T('¡[hambre:Tengo hambre]!', 'I\'m hungry!'));
+      yield* meet('hermano', { who: 'leo', prompt: L['hogar.soy']('hermano'), en: 'I\'m your brother!', prefer: ['elpapa', 'cocina'] });
+      yield* say('leo', T('¡' + the('cocina', { pre: 'a', cap: 1 }) + '!', 'To the kitchen!'));
+      if (leo && !leo.hidden) { yield* CK.walk(f, leo, PDOOR[0], PDOOR[1], 4); parkLeo(leo); }
+      c.data.leoIn = 1; c.data.leoPos = LEO_WAIT;
+    } },
+    { who: 'papa', bubble: true, run: function* (f, c) { // the first step: a tortilla, flipped on the stove
+      const d = c.data;
+      yield* say('papa', T('¡[hola], {name}! ¡Mira!', 'Hi, {name}! Look!'));
+      FX.flip = G.frame; G.audio.sfx('pop'); yield 28; G.audio.sfx('pop'); yield 28;
+      yield* meet('tortilla', { who: 'papa', en: 'Look! A tortilla!', prefer: ['sopa', 'plato'] });
+      if (!d.tort && !bag().has('tortilla', { q: 'hogar3' })) bag().add('tortilla', { q: 'hogar3' });
+      yield* say('papa', T(L['hogar.a']('mesa'), 'To the table! (carry the tortilla there)'));
+    } },
+    { spot: { map: 'cocina', at: TABLE_AT, icon: 'tortilla' }, run: function* (f, c) { // the tortilla on the table; beans; the fold
+      const d = c.data, papa = npcAt(f, 'papa');
+      if (!d.tort) { bag().take('tortilla', { q: 'hogar3' }); d.tort = 1; G.audio.sfx('pop'); CK.sparkle(f, TABLE_AT[0], TABLE_AT[1], 4); yield 12; }
+      yield* say('papa', T('¡Muy bien!', 'Well done!'));
+      d.pot = 1; d.papaAt = 1; // Papá comes over with the pot of beans
+      if (papa) { yield* CK.walk(f, papa, PAPA_SIDE[0], PAPA_SIDE[1], 3); papa.dir = 'left'; }
+      d.pot = 0;
+      yield* meet('frijoles', { who: 'papa', prompt: L['hogar.y']('frijoles'), en: 'And the beans!', prefer: ['tortilla', 'sopa'] });
+      if (!d.beans) { d.beans = 1; G.audio.sfx('pop'); CK.sparkle(f, TABLE_AT[0], TABLE_AT[1], 4); yield 20; }
+      if (!d.fold) { d.fold = 1; G.audio.sfx('item'); CK.sparkle(f, TABLE_AT[0], TABLE_AT[1], 5); yield 20; }
+      yield* meet('taco', { who: 'papa', prompt: G.requests.LINES.un('taco'), en: 'A taco!', prefer: ['tortilla', 'frijoles'] });
+    } },
+    // (a save at any point of this beat opens on it again: `ate` keeps the beat open once the taco is eaten, and nothing the beat
+    // needs to find its way back is changed before its last line)
+    { spot: { map: 'cocina', at: TABLE_AT, icon: 'taco' }, when: c => !!(c.data.fold || c.data.ate), run: function* (f, c) { // she tells Leo to eat
+      const d = c.data, leo = f.npc('leo_g') || guest(f, 'leo', LEO_WAIT[0], LEO_WAIT[1], 'right');
+      if (!d.ate) {
+        yield* say('papa', T('¡Para Leo!', 'For Leo!'));
+        d.leoPos = LEO_SIT; yield* CK.walk(f, leo, LEO_SIT[0], LEO_SIT[1], 3); leo.dir = LEO_FACE;
+        const bite = function* () { for (let k = 0; k < 2; k++) { leo.dir = LEO_FACE; G.audio.sfx('pop'); puffAt('heart', leo, { life: 50, vy: -0.35 }); yield 14; } };
+        yield* G.intro.watch('come', { who: 'papa', prompt: '¡[come], Leo!', en: 'Eat, Leo! (Papá tells Leo to eat)', act: bite,
+          ask: 'Leo... ¡...!', askEn: 'Now you tell Leo to eat! (say it, or tap it)', known: others('come', ['sopa', 'rico']) });
+        d.ate = 1; // the taco is eaten (the table is drawn empty from now on)
+        hearts(leo, 3); give('leo', 1);
+      }
+      leo.dir = LEO_FACE;
+      yield* say('leo', T('¡[rico:Qué rico]!', 'Yummy!'));
+      yield* G.review.ask('hermano', { who: 'papa' }); // (Leo, again, within a minute)
+      yield* G.review.ask('taco', { who: 'papa' });    // (and the taco: none of the three foods was asked again)
+    } },
+    { who: 'canelo', bubble: 'come', run: function* (f, c) { // and {dog} gets a piece
+      const d = c.data, dog = CK.dog(f), leo = f.npc('leo_g'), papa = npcAt(f, 'papa');
+      yield* say('papa', T('¡Y {dog}!', 'And {dog}!'));
+      yield* ask(null, '{dog}... ¡...!', 'Tell {dog} to eat! (say it, or tap it)', 'come', others('come', ['sopa', 'rico']), { point: dog });
+      yield* G.pet.play('eat'); CK.heart(f, dog); give('canelo', 1);
+      if (leo) { leo.dir = 'down'; yield* say('leo', T('¡[come], {dog}!', 'Eat, {dog}!')); }
+      d.leoPos = null; d.leoOut = 1; // Leo goes back out to the yard (the real Leo is there again when the yard opens)
+      if (leo) { yield* CK.walk(f, leo, CDOOR[0] + 1, CDOOR[1], 3); unguest(f, 'leo'); }
+      if (papa) { d.papaAt = 0; yield* CK.walk(f, papa, PAPA[0], PAPA[1], 3); papa.dir = 'up'; }
+      unparkLeo(f.npc('leo')); // (she tapped the dog in the yard: the real Leo plays there again)
+    } },
+  ], {
+    stage(f, c) {
+      const d = c.data, on = CH.active('hogar3');
+      if (f.mapId === 'patio') { const n = f.npc('leo'); if (on && d.leoIn && !d.leoOut) parkLeo(n); else unparkLeo(n); } // Leo is in the kitchen
+      if (!on || f.mapId !== 'cocina') return;
+      if (d.leoIn && !d.leoOut) { const n = guest(f, 'leo', ...(d.leoPos || LEO_WAIT), 'right'); if (!n.busy) CK.place(f, 'leo_g', ...(d.leoPos || LEO_WAIT), d.leoPos ? LEO_FACE : 'right'); }
+      const pa = npcAt(f, 'papa'); if (pa && !pa.busy) { if (d.papaAt) CK.place(f, 'papa', PAPA_SIDE[0], PAPA_SIDE[1], 'left'); else CK.place(f, 'papa', PAPA[0], PAPA[1], 'up'); }
+    },
+    draw(f, ctx, c) { // the taco on the table, step by step
+      if (f.mapId !== 'cocina' || !CH.active('hogar3')) return;
+      const d = c.data;
+      if (d.ate) return;
+      if (d.fold) pic(ctx, f, 'taco', TABLE_AT[0], TABLE_AT[1], 4, 0);
+      else if (d.tort) { pic(ctx, f, 'tortilla', TABLE_AT[0], TABLE_AT[1], 4, 0); if (d.beans) pic(ctx, f, 'frijoles', TABLE_AT[0], TABLE_AT[1], 8, 4, 0.5); }
+    },
+    drawTop(f, ctx, c) {
+      if (f.mapId !== 'cocina' || !CH.active('hogar3')) return;
+      const k = G.frame - FX.flip;
+      if (k >= 0 && k < 64) pic(ctx, f, 'tortilla', STOVE[0], STOVE[1], 4, 2 - Math.round(Math.sin(k / 32 * Math.PI) * 12) - 6); // the tortilla flips over the stove
+      const pa = c.data.pot && npcAt(f, 'papa');
+      if (pa) pic(ctx, f, 'frijoles', pa.x, pa.y, 4 + (pa.ox || 0), -16 + (pa.oy || 0), 0.75); // the pot of beans, carried
+    },
+  });
+
+  // =====================================================================
+  //  4 · Agua de limón  (Mamá in her room, the yard, Papá)  lamama, sed, limon, aguacate, arroz
+  // =====================================================================
+  const AGUA = () => (met('agua') ? '[agua]' : 'Agua'); // (agua is a town word: marked only once it is met)
+  function* walkPlayer(f, x, y) { const p = f.player; yield* f.walkNpc(p, CK.path(f, p, x, y), 3); }
+  // (Mamá and Papá, who speak at the table, sit on the north side: the dialogue box covers the south side of the room)
+  const CHAIRS = { mama: P('cocina', 'chair1'), papa: P('cocina', 'chair2'), leo: P('cocina', 'chair4'), me: P('cocina', 'chair3') };
+  CH.script('hogar4', [
+    { who: 'mama', bubble: true, run: function* (f, c) { // Mamá is hot and thirsty
+      const ma = f.npc('mama');
+      yield* meet('lamama', { who: 'mama', prompt: L['hogar.soy']('lamama'), en: 'I\'m your mom!', prefer: ['elpapa', 'hermano', 'cocina'] });
+      if (ma) for (let k = 0; k < 3; k++) { puffAt('drop', ma, { life: 36, vy: 0.5 }); G.audio.sfx('select'); yield 12; } // she fans herself
+      yield* meet('sed', { who: 'mama', prompt: '¡Uf! ¡[sed:Tengo sed]!', en: 'Phew! I\'m thirsty!', prefer: ['sopa', 'cocina'] });
+    } },
+    { spot: { map: 'patio', at: LIME, icon: 'limon' }, run: function* (f, c) { // a lime at the tree
+      const d = c.data;
+      CK.sparkle(f, LIME[0], LIME[1] - 1, 4); G.audio.sfx('pop'); yield 14;
+      yield* meet('limon', { who: null, en: 'Look! A lime!', prefer: ['sopa', 'cocina'] });
+      if (!d.juice && !bag().has('limon', { q: 'hogar4' })) bag().add('limon', { q: 'hogar4' });
+    } },
+    { who: 'papa', bubble: 'limon', run: function* (f, c) { // Papá squeezes it: agua de limón; a glass for Mamá
+      const d = c.data, papa = npcAt(f, 'papa');
+      if (!d.juice) { bag().take('limon', { q: 'hogar4' }); d.juice = 1; }
+      yield* say('papa', T('¡Mmm!', 'Mmm!'));
+      FX.squeeze = G.frame;
+      for (let k = 0; k < 3; k++) { G.audio.sfx('pop'); if (papa) puffAt('drop', papa, { life: 30, vy: 0.6 }); yield 14; }
+      yield* say('papa', T('¡' + AGUA() + ' de [limon:limón]!', 'Lime water!'));
+      yield* G.review.ask('limon', { who: 'papa' });
+      yield* ask('papa', G.requests.LINES.un('vaso') + ' ¿Para quién?', 'A glass! Who is it for?', 'lamama', others('lamama', ['elpapa', 'hermano']), { show: 'vaso' });
+      if (!bag().has('vaso', { q: 'hogar4' })) bag().add('vaso', { q: 'hogar4' });
+    } },
+    { who: 'mama', bubble: 'vaso', run: function* (f, c) { // Mamá drinks
+      const ma = f.npc('mama');
+      bag().take('vaso', { q: 'hogar4' }); G.audio.sfx('pop'); yield 16;
+      if (ma) hearts(ma, 3);
+      give('mama', 1);
+      yield* say('mama', T('¡[rico:Qué rico]!', 'Yummy!'));
+      yield* G.review.ask('sed', { who: 'mama' });
+      yield* CK.sayShow('mama', { icon: 'aguacate' }, T(L['hogar.mmm']('aguacate'), 'Mmm! An avocado! (pick one in the yard)'));
+    } },
+    { spot: { map: 'patio', at: AVO, icon: 'aguacate' }, run: function* (f, c) { // an avocado at its tree
+      CK.sparkle(f, AVO[0], AVO[1] - 1, 4); G.audio.sfx('pop'); yield 14;
+      yield* meet('aguacate', { who: null, en: 'Look! An avocado!', prefer: ['limon', 'sopa'] });
+      if (!bag().has('aguacate', { q: 'hogar4' })) bag().add('aguacate', { q: 'hogar4' });
+    } },
+    { who: 'papa', bubble: 'aguacate', run: function* (f, c) { // the avocado for Papá; rice on the table
+      const d = c.data;
+      bag().take('aguacate', { q: 'hogar4' });
+      yield* say('papa', T('¡Muy bien, {name}!', 'Well done, {name}!'));
+      if (!d.rice) { d.rice = 1; G.audio.sfx('item'); CK.sparkle(f, TABLE_AT[0], TABLE_AT[1], 5); yield 20; }
+      yield* meet('arroz', { who: 'papa', prompt: G.requests.LINES.un('arroz'), en: 'Rice!', prefer: ['aguacate', 'sopa', 'frijoles'] });
+      yield* G.review.ask('aguacate', { who: 'papa' });
+      yield* say('papa', T(L['hogar.a']('mesa'), 'To the table!'));
+    } },
+    { auto: 'cocina', when: c => !!c.data.rice, run: function* (f, c) { // the whole family sits down
+      const papa = npcAt(f, 'papa'), pl = f.player;
+      const ma = guest(f, 'mama', CDOOR[0] + 1, CDOOR[1] - 1, 'right'), leo = guest(f, 'leo', CDOOR[0] + 1, CDOOR[1] + 1, 'right');
+      G.audio.sfx('door');
+      yield* CK.walk(f, ma, CHAIRS.mama[0], CHAIRS.mama[1], 3); ma.dir = 'down';
+      yield* CK.walk(f, leo, CHAIRS.leo[0], CHAIRS.leo[1], 3); leo.dir = 'up';
+      if (papa) { yield* CK.walk(f, papa, CHAIRS.papa[0], CHAIRS.papa[1], 3); papa.dir = 'down'; }
+      yield* walkPlayer(f, CHAIRS.me[0], CHAIRS.me[1]); pl.dir = 'up';
+      yield 16;
+      if (papa) { yield* say('papa', T('¡[come], {name}!', 'Eat, {name}!')); hearts(papa, 2); }
+      yield* say('mama', T('¡Mmm! ¡[rico:Qué rico]!', 'Mmm! Yummy!')); hearts(ma, 2);
+      yield* say('leo', T('¡[arroz]! ¡[rico:Qué rico]!', 'Rice! Yummy!')); hearts(leo, 2);
+      CK.confetti(); G.audio.jingle('item'); give('papa', 1); give('mama', 1); give('leo', 1);
+      yield 50;
+      // everyone gets up again: Mamá and Leo go, Papá back to the stove, her beside the table
+      yield* walkPlayer(f, BELOW[0], BELOW[1]);
+      yield* CK.walk(f, ma, CDOOR[0] + 1, CDOOR[1], 3); unguest(f, 'mama');
+      yield* CK.walk(f, leo, CDOOR[0] + 1, CDOOR[1], 3); unguest(f, 'leo');
+      if (papa) { yield* CK.walk(f, papa, PAPA[0], PAPA[1], 3); papa.dir = 'up'; }
+    } },
+  ], {
+    stage(f, c) {
+      if (!CH.active('hogar4') || f.mapId !== 'cocina') return;
+      const pa = npcAt(f, 'papa'); if (pa && !pa.busy) CK.place(f, 'papa', PAPA[0], PAPA[1], 'up');
+    },
+    draw(f, ctx, c) { // the bowl of rice on the table
+      if (f.mapId === 'cocina' && CH.active('hogar4') && c.data.rice) pic(ctx, f, 'arroz', TABLE_AT[0], TABLE_AT[1], 4, 0);
+    },
+    drawTop(f, ctx, c) { // the lime over Papá's hands while he squeezes it
+      if (f.mapId !== 'cocina' || !CH.active('hogar4')) return;
+      const k = G.frame - FX.squeeze, pa = npcAt(f, 'papa');
+      if (pa && k >= 0 && k < 44) pic(ctx, f, 'limon', pa.x, pa.y, 4, -14 + Math.round(Math.sin(k / 3) * 2), 0.75);
+    },
+  });
+})();
+
+</script>
+<script>/* content/es/hogar-play.js */
+// ===== En casa, what stays to do every day once the story is played (docs/UNIT_EN_CASA.md) =====
+// ¿Qué hay de comer? Once a day Papá's pot has a bubble: he asks what she wants (a phrase, or a picture question), she
+// sets the table by listening, the dish is served on the table for the rest of the day, and the family eats. Papá's
+// board for listen-and-do ("Dame dos platos."), Leo's and Papá's favours, the day's play (a lime, an avocado, the dog's
+// digging spot, the meal) and the two notebook page puzzles in the kitchen.
+// Only words she has met are used. This file loads before src/phrases.js, src/listen.js and src/guide.js: what they
+// make is only looked up inside the scenes, never when the file loads.
+// Saved: G.state.hogar = { day (the game day the meal was served), dish (the word on the table) }.
+'use strict';
+(function () {
+  const K = G.mapKit, CH = G.chapters, MD = G.MAPDATA, RQ = G.requests;
+  const T = (t, en) => ({ t, en });
+  const W = id => G.data.words[id];
+  const P = (m, tag) => MD[m].pos[tag];
+  const say = (who, show, ...pages) => G.say(pages, Object.assign({ portrait: G.portraitOf(who), name: G.nameOf(who), who }, show ? { show } : {}));
+  RQ.LINES['hogar.escucha'] = id => '¡{name}! ' + RQ.the(id, { cap: 1, bang: 1 }) + ' ¡Escucha!'; // ¡{name}! ¡La [mesa]! ¡Escucha!
+  const FOODS = ['sopa', 'tortilla', 'frijoles', 'taco', 'arroz', 'aguacate'];
+  const day = () => G.words.day();
+
+  // ---------- the notebook's page puzzles in the kitchen (words.js pagePlaces) ----------
+  G.maps.cocina.pages = K.pages('cocina');
+
+  // ---------- Papá's board (listen and do) ----------
+  RQ.SPECS.papa = { things: {
+    plato: { cols: ['azul', 'rojo', 'amarillo'], count: 1 }, vaso: { cols: ['azul', 'rojo', 'verde'], count: 1 }, cuchara: { count: 1 },
+    limon: { count: 1 }, tortilla: { count: 1 } } };
+  G.favores.OFFERS.push(['papa', 'listen', null, () => CH.done('hogar2')]);
+
+  // ---------- Leo's and Papá's favours ----------
+  const FV = G.favores;
+  // Leo's heap in the patio: limes once she has met them, else the tacos
+  Object.defineProperty(FV.COUNT_OF, 'leo', { enumerable: true, get: () => (G.words.met('limon') ? 'limon' : 'taco') });
+  FV.THINGS.leo = ['taco', 'tortilla', 'frijoles', 'sopa', 'plato', 'vaso', 'cuchara', 'mesa', 'silla'];
+  FV.THINGS.papa = ['plato', 'vaso', 'cuchara', 'mesa', 'silla', 'sopa', 'tortilla', 'frijoles', 'arroz', 'taco', 'aguacate', 'limon'];
+  FV.OFFERS.push(
+    ['leo', 'count', ['uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis'], () => CH.done('hogar3')],
+    ['leo', 'thing', FV.THINGS.leo, () => CH.done('hogar3')],
+    ['papa', 'thing', FV.THINGS.papa, () => CH.done('hogar1')]);
+  Object.assign(G.carry.DOG, { tortilla: 'eat', taco: 'eat' }); // (what Canelo may taste)
+
+  // ---------- ¿Qué hay de comer? ----------
+  const st = () => { const s = G.state; if (!s.hogar || typeof s.hogar !== 'object') s.hogar = { day: -1, dish: null }; return s.hogar; };
+  const busy = () => !!CH.current('hogar'); // (a home chapter going on: the story first. A town chapter left half-done must not hide the pot for days)
+  const holdsGift = () => { const h = G.carry && G.carry.held(); return !!h && !!G.hearts && G.hearts.likes('papa', h.id) && G.hearts.canAddToday('papa', 'gift'); };
+  const served = () => !!G.state && !!G.state.hogar && G.state.hogar.day === day();
+  // The guide plans the day's play (and the bubble over the pot asks) many times a frame, so the answers are worked out once for
+  // each moment of a frame and each game day (G.pulse, core.js; between frames, in a test or a tool, always afresh)
+  let memo = null;
+  const once = (key, fn) => {
+    const p = G.pulse, s = G.state;
+    if (!p || !s) return fn();
+    const d = day();
+    if (!memo || memo.p !== p || memo.s !== s || memo.d !== d) memo = { p, s, d, v: Object.create(null) };
+    return key in memo.v ? memo.v[key] : (memo.v[key] = fn());
+  };
+  const mealOn = () => once('meal', () => !!G.state && CH.done('hogar1') && !served() && !busy() && !CH.beatFor('papa') && !holdsGift());
+  G.hogar = { mealOn, dish: () => (served() ? G.state.hogar.dish : null) };
+
+  // the foods to ask about: two or three she has met, the due ones first, then the others turning by the day
+  const foods = () => once('foods', foodsNow);
+  function foodsNow() {
+    const met = FOODS.filter(id => G.words.met(id) && G.iconDrawn(id));
+    const due = G.review.due(1e9, { filter: id => met.includes(id) });
+    const rest = met.filter(id => !due.includes(id)), k = rest.length ? day() % rest.length : 0;
+    return due.concat(rest.slice(k), rest.slice(0, k)).slice(0, 3);
+  }
+  // (a) "¿Qué quieres?": Quiero ___ (the foods' cards), or the old way: the picture question
+  function* wants(list) {
+    let dish = list[0];
+    const ph = G.phrase ? yield* G.phrase.quiero('papa', list, { onGet: function* (k) {
+      dish = list[k];
+      yield say('papa', dish, T('¡Perfecto! ¡Ya casi!', 'Perfect! Almost ready!'));
+    } }) : null;
+    if (ph) return dish;
+    if (list.length > 1) {
+      const c = G.wordChoices(dish, list, list.length);
+      yield* G.ask({ prompt: '¿Qué quieres?', en: 'What would you like? (tap the one you want)', choices: c.choices, answer: c.answer, layout: 'cards', who: 'papa', review: true });
+    } else yield* G.review.ask(dish, { who: 'papa' });
+    return dish;
+  }
+  // (b) the table, by listening: two requests on Papá's board, else one review of a kitchen word
+  function* table() {
+    const L = G.listen, spec = RQ.spec('papa');
+    if (L && L.on() && RQ.make(spec, {})) {
+      yield say('papa', { icon: 'escucha' }, T(RQ.LINES['hogar.escucha']('mesa'), 'The table! Listen to what I ask, then do it.'));
+      yield* L.round(spec, { who: 'papa', focus: L.focus(spec), n: 2 });
+      return;
+    }
+    const id = G.review.next({ filter: w => W(w).topic === 'cocina' && G.iconDrawn(w) && G.review.fresh(w) });
+    if (id) yield* G.review.ask(id, { who: 'papa' });
+  }
+  function* meal(f) {
+    const list = foods(); if (!list.length) return;
+    yield say('papa', 'cocina', T('¡{name}! ¿Qué quieres?', 'What would you like?'));
+    const dish = yield* wants(list);
+    if (G.pet && G.pet.mine()) yield* G.pet.play('sniff'); // (the dog smells the pot: something happens on the map)
+    if (CH.done('hogar2')) yield* table();
+    // (c) served on the table, for the rest of the day
+    st().day = day(); st().dish = dish; G.st.autosave();
+    G.audio.sfx('pop');
+    yield 20;
+    yield say('papa', dish, G.words.met('come') ? T('¡[come], {name}!', 'Eat up, {name}!') : T('¡Buen provecho, {name}!', 'Enjoy your meal, {name}!'));
+    if (G.hearts) { G.hearts.add('papa', 1, 'care'); yield* G.hearts.milestones('papa'); }
+    if (G.pet && G.pet.mine()) { yield* G.pet.play('eat', { item: 'hueso' }); if (G.hearts) G.hearts.add('canelo', 1, 'care'); }
+  }
+  // Papá's bubble (the pot) and his talk: the story and a present she holds for him first, then the meal
+  const papa = G.maps.cocina.npcs.find(n => n.id === 'papa'), alert0 = papa.alert, talk0 = papa.talk;
+  papa.alert = function () { return mealOn() ? { icon: 'cocina' } : alert0.apply(this, arguments); };
+  papa.talk = function* (f, n) {
+    if (!mealOn()) { yield* talk0.call(this, f, n); return; }
+    yield* K.hello('papa');
+    yield* meal(f);
+  };
+  // the dish on the table (carry.js draws what lies about, under the people: this goes with it)
+  const du = G.carry.drawUnder;
+  G.carry.drawUnder = function (f, ctx) {
+    du.apply(this, arguments);
+    if (f.mapId !== 'cocina' || !served() || busy() || !W(G.state.hogar.dish)) return; // (not while a home chapter has its own things on the table)
+    const [tx, ty] = P('cocina', 'table'), X = (tx + 1) * G.TILE - Math.round(f.cam.x) + 4, Y = ty * G.TILE - Math.round(f.cam.y) - 1;
+    G.drawIcon16(ctx, W(G.state.hogar.dish), X, Y);
+  };
+
+  // ---------- the day's play (carry.js): a lime and an avocado for Papá, the dog's digging, the meal ----------
+  const C = G.carry, started = () => CH.done('hogar1');
+  const fruit = (item, ids, who) => f => {
+    if (!started()) return null;
+    const w = C.likerFor({ id: item }); if (w !== 'papa') return null;
+    const s = C.SOURCES.find(o => ids.includes(o.id) && C.avail(o.id)); if (!s) return null;
+    return { why: who, map: s.map, at: s.at, icon: W(item), pick: true };
+  };
+  C.PLAYS.limon = fruit('limon', ['limon_patio1', 'limon_patio2'], 'a lime for Papá');
+  C.PLAYS.aguacate = fruit('aguacate', ['aguacate_patio1'], 'an avocado for Papá');
+  C.PLAYS.excavar = () => {
+    const sp = (G.maps.patio.dogSpots || [])[0];
+    return started() && sp && G.pet && G.pet.mine() && G.zones.dogReady(sp) ? { why: 'dig with Canelo', map: 'patio', at: sp.at, icon: W('hueso') } : null;
+  };
+  C.PLAYS.comida = () => (mealOn() && foods().length ? { why: 'lunch with Papá', who: 'papa', icon: 'cocina' } : null);
+  C.ORDER.push('limon', 'aguacate', 'excavar', 'comida');
+
+  // ---------- Tonight's question (the Learning page, src/dashboard.js reads G.tplMore) ----------
+  const bare = id => W(id).es.replace(/^(el|la|los|las) /, '');
+  G.tplMore = [
+    ['hambre', id => id === 'hambre' ? { es: '¿Tienes hambre?', en: 'Are you hungry?', ans: { es: 'Sí, tengo hambre. / No.', en: 'Yes, I\'m hungry. / No.' }, words: [id] } : null],
+    ['sed', id => id === 'sed' ? { es: '¿Tienes sed?', en: 'Are you thirsty?', ans: { es: 'Sí, tengo sed. / No.', en: 'Yes, I\'m thirsty. / No.' }, words: [id] } : null],
+    ['comer', id => {
+      if (!FOODS.includes(id)) return null;
+      const n = RQ.noun(id), mass = (G.data.mass || []).includes(id);
+      const what = mass || n.plOnly ? bare(id) : (n.g === 'f' ? 'una ' : 'un ') + bare(id);
+      return { es: '¿Qué quieres comer?', en: 'What do you want to eat?', ans: { es: 'Quiero ' + what + '.', en: 'I want ' + W(id).en.replace(/^the /, (mass || n.plOnly) ? '' : /^the [aeiou]/.test(W(id).en) ? 'an ' : 'a ') + '.' }, words: [id] };
+    }],
+  ];
+})();
+
+</script>
 <script>/* src/connect.js */
 // ===== The world, connected (docs/WORLD_PLAN.md, "Recurring characters"): Tomás's letters across the zones, the
 // zones' people as friends (hearts, greetings, gifts, surprises), Lola who travels, and the progress of the whole world =====
@@ -28403,6 +29435,23 @@ G.MAPDATA = {
   const whenOk = L => { try { return !L.b.when || !!L.b.when(ctxOf(L)); } catch (e) { return false; } };
 
   // ---------- the goal, tier by tier: each returns {why, map?, pts?, choice?, soft?, badge?} or null ----------
+  // The chapter whose beat leads in this map. A map is in one line (def.line: the kitchen and the yard are the home line's,
+  // chapters.js lineHere) and may also be the door of another (def.alsoLine: her room is Villa Sol's, and the home line's
+  // kitchen is through its doorway, content/es/hogar.js). There the town's story comes first, whatever it offers; with no
+  // chapter of the town going on, the other line's chapter going on leads; one that could start is only offered later (the
+  // chapterLater tier: the arrow to the doorway). At sunset the bed is the goal, so the town's rule stays as it was.
+  function liveFor(f) {
+    const CH = G.chapters, L = CH.live(), al = f.def && f.def.alsoLine;
+    if ((L && L.started) || (G.day && G.day.over())) return L;
+    if (al) { const H = CH.live({}, al); return H && H.started ? H : L || H; }
+    // Out in Villa Sol's own maps: a home chapter that has STARTED leads her home when the town has nothing live for now (no
+    // chapter going on, none that could open). One not started stays a suggestion of the doorway (chapterLater), never a pull.
+    // (both lines' live chapters are memoised per moment of a frame, chapters.js live1: nothing is scanned here)
+    const home = !L && G.maps.casa && G.maps.casa.alsoLine;
+    if (!home || !f.def || f.def.line || curArea() !== 'villa') return L;
+    const H = CH.live({}, home);
+    return H && H.started ? H : L;
+  }
   function chapterGoal(f) {
     const CH = G.chapters; if (!CH || !G.state) return null;
     // a find-it puzzle going on (the puppy hiding, which way the park is): its picture bubbles are the choices
@@ -28415,14 +29464,15 @@ G.MAPDATA = {
       return { why: 'find ' + id, map: s.map, pts: [tileP(x, y, 14)] };
     }
     if (CH.needsReview() && (!G.zones || G.zones.area(f.mapId) === 'villa')) { const who = CH.reviewer(), n = here(f, who); return n ? { why: 'review ' + who, pts: [person(n)] } : { why: 'review ' + who, map: mapOfNpc(who), badge: { who } }; } // (a review day is Villa Sol's: out in a zone, its story's beat still leads)
-    const L = CH.live(); if (!L || !L.b) return null;
+    const L = liveFor(f); if (!L || !L.b) return null;
     if (!L.started && !GD.laterChapter) return null; // (a chapter not started yet is a suggestion among the others: chapterLater)
     const b = L.b, why = L.id + ':' + L.k;
+    if (G.day && G.day.over() && f.def && f.def.line && L.line === f.def.line && !b.evening) return null; // (the home rooms at sunset: the way home to bed leads, a chapter going on waits for tomorrow)
     if (b.evening) return G.day && G.day.over() ? { why: why + ' evening', map: 'casa', home: true, badge: { icon: 'noche' } } : null;
     if (!whenOk(L)) return null;
     const au = CH.autoOf(L);
     if (au) return au === true || au === f.mapId ? null : { why, map: au, badge: { icon: CH.def(L.id).icon } }; // (it starts by itself there)
-    const ts = CH.targets(f);
+    const ts = CH.targets(f, L);
     if (ts.length) {
       const spots = b.spots || (b.spot ? [b.spot] : []);
       const bubble = t => { const m = /^ch:[^:]+:(\d+)$/.exec(t.spot || ''), sp = m && spots[+m[1]]; return !!(sp && !sp.quiet && sp.icon); }; // (a place with a picture bubble: the arrow goes over it)
@@ -28492,7 +29542,7 @@ G.MAPDATA = {
     const E = G.errands;
     if (E && E.spots) { const sp = E.spots(f).filter(s => !s.quiet && !(s.nohint && s.nohint()))[0]; if (sp) return { why: 'job ' + sp.id, pts: [tileP(sp.at[0], sp.at[1], 42)] }; }
     // anyone else on this map with a bubble (a present they'd like...), the nearest
-    const Lc = G.chapters && G.chapters.live(), later = Lc && !Lc.started && Lc.b && Lc.b.who; // (the next chapter's giver: a suggestion for later, chapterLater)
+    const Lc = G.chapters && liveFor(f), later = Lc && !Lc.started && Lc.b && Lc.b.who; // (the next chapter's giver: a suggestion for later, chapterLater)
     const p = f.player, ns = f.npcs.filter(n => n.spec && !n.hidden && alerting(n) && !alerting(n).later && n.id !== later).sort((a, b) => Math.abs(a.x - p.x) + Math.abs(a.y - p.y) - Math.abs(b.x - p.x) - Math.abs(b.y - p.y));
     if (ns.length) return { why: 'bubble ' + ns[0].id, pts: [person(ns[0])] };
     // something inside another map: only what its own arrow would show there (a chapter not started yet is chapterLater's
@@ -28549,7 +29599,7 @@ G.MAPDATA = {
   function viaDoor(f, g) {
     const e = G.zones ? G.zones.route(f.mapId, g.map) : null;
     if (!e) return null;
-    return Object.assign({}, g, { via: 'door', to: e.to, pts: [tileP(e.x, e.y, e.edge ? 16 : f.mapId === 'villa' ? 28 : 16, { door: true })] });
+    return Object.assign({}, g, { via: 'door', to: e.to, pts: [tileP(e.x, e.y, e.edge ? 16 : f.mapId === 'villa' ? 28 : f.mapId === 'casa' && e.to === 'cocina' ? 46 : 16, { door: true })] }); // (46: over the picture bubble that floats at the kitchen doorway, hogar.js)
   }
   GD.goal = function (f) {
     if (!G.state || !f) return null;
@@ -30935,7 +31985,7 @@ G.MAPDATA = {
     if (!ids.length) { ids = Wd().list(1).sort((a, b) => (Wd().rec(b).met || 0) - (Wd().rec(a).met || 0)).slice(0, 12); ids.forEach(id => note(id, 9, 'one of her words')); }
     const out = [], day = G.today();
     for (const id of ids) {
-      for (const [tpl, fn] of TPL) {
+      for (const [tpl, fn] of TPL.concat(G.tplMore || [])) { // (G.tplMore: a content file's own templates, content/es/hogar-play.js)
         let q = null; try { q = fn(id); } catch (e) { q = null; }
         if (!q || !q.words.every(met)) continue;
         const r = recent[id], sc = (r.a === 0 ? 6 : r.a <= 1 ? 3 : 1) + (r.how.indexOf('met') === 0 ? 2 : 0) + (SPECIFIC.includes(tpl) ? 3 : 0) + (q.words.length > 1 ? 1 : 0) + hash(day + id + tpl);
