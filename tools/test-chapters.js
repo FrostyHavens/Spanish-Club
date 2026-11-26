@@ -168,7 +168,7 @@ async function chapters(browser) {
       },
     }).catch(e => { if (e.message !== 'DONE10') throw e; });
     g.beforeAct = null;
-    const r = await g.ev(() => ({ q: G.state.quests, met: G.words.list(1).filter(w => !['hogar1', 'hogar2'].some(c => G.chapters.def(c).words.includes(w))), starts: window.__starts, day: G.words.day() }));
+    const r = await g.ev(() => ({ q: G.state.quests, met: G.words.list(1).filter(w => !['hogar1', 'hogar2', 'hogar3', 'hogar4'].some(c => G.chapters.def(c).words.includes(w))), starts: window.__starts, day: G.words.day() }));
     check('chapters: chapters 1-10 all done', Object.keys(r.q).filter(k => /^c\d+$/.test(k) && r.q[k] === 'done').length === 10, JSON.stringify(r.q));
     check('chapters: the words met are exactly the 34 words of chapters 1-10', r.met.slice().sort().join() === ALL10.slice().sort().join(), r.met.filter(w => !ALL10.includes(w)).join() + ' / missing ' + ALL10.filter(w => !r.met.includes(w)).join());
     // (no daily word limit any more, 2026-10-17: a chapter opens as soon as the one before is done; logged only)
