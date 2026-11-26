@@ -12,6 +12,23 @@ read code and documents only: **no tests were run and nothing was measured on he
 
 ---
 
+## Status on 26 November 2026: new content, "En casa"
+
+**Built: the first unit of new content** (`docs/UNIT_EN_CASA.md`, DEVLOG entry of 25 November). Her house has two
+new rooms: Papá's kitchen and the patio with her little brother Leo. 20 everyday words (family, the table, food,
+"tengo hambre", "tengo sed", "¡qué rico!"), four short chapters, and a meal with Papá once a day afterwards. The
+first chapter opens as soon as the puppy has been found, so she sees it the next time she plays: a soup bubble at a
+doorway on the right wall of her room.
+
+**Checked before release:** the whole test set on the built commit (47 files; one failed under load and passed
+alone), a start-to-finish playthrough of the unit by taps, closing and reopening the game inside every step of all
+four chapters, and the old-saves test.
+
+**Known and left as it is:** Papá's and Leo's small favours start only after the town's chapter 7, like everyone's.
+The Spanish of the unit has had two proofreads but no native speaker (`docs/SPANISH_REVIEW.md`, batches 6 to 10).
+
+**Next:** Día de Reyes (6 January) in the same kitchen, to be built in December. Then Luna's school.
+
 ## Status on 23 November 2026
 
 **Released on 23 November 2026** (the release tag could not be pushed from the cloud machine; the release is commit `e81027d` on `main`). One open question: the tap playthrough stuck at
