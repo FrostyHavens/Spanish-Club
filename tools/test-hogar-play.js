@@ -30,6 +30,10 @@ const game = (g, o = {}) => g.ev(o => {
   for (const id of o.due || []) Object.assign(W.rec(id), { dd: W.day(), dc: W.dayNum() });
   G.cards.grow = grow;
   G.state.ch.lastDoneSess = G.words.sess();
+  // (this file is about the daily play, not the story: a home chapter not played yet stays shut, as on a day when the
+  // reviews have no room for it; one the test starts by hand still counts as going on)
+  if (!G.chapters.__held) { const gate = G.chapters.gate; G.chapters.__held = true; G.chapters.gate = function (id) { return /^hogar\d$/.test(id) && !G.chapters.done(id) && !G.chapters.active(id) ? 'room' : gate.apply(this, arguments); }; }
+  G.chapters.flush();
   G.demo.skip();
   G.goto(o.map || 'cocina', o.x == null ? 6 : o.x, o.y == null ? 3 : o.y, 'down');
 }, o);
@@ -54,7 +58,7 @@ async function before(browser) {
   try {
     await game(g, { ch: [], words: [], base: BASE });
     await g.fieldIdle('cocina');
-    check('before: Papá has no bubble and the meal is not on', await g.ev(() => !G.hogar.mealOn() && !G.field.npc('papa').alert()));
+    check('before: Papá has no pot bubble and the meal is not on', await g.ev(() => { const a = G.field.npc('papa').alert(); return !G.hogar.mealOn() && !(a && a.icon === 'cocina'); }));
     await papa(g); await settle(g, 'Papá greets');
     check('before: Papá only greets: no meal, no dish', await g.ev(() => !G.hogar.dish() && !G.state.hogar));
     check('before: nobody offers favours from Papá or Leo, no plays for the home line', await g.ev(() => { const l = G.favores.today(); return !l.some(v => v.who === 'papa' || v.who === 'leo') && !G.carry.PLAYS.comida() && !G.carry.PLAYS.limon({}) && !G.carry.PLAYS.excavar(); }));
@@ -206,7 +210,10 @@ async function plays(browser) {
     await g.ev(() => { G.goto('cocina', 6, 3, 'down'); });
     await g.fieldIdle('cocina');
     const h0 = await hearts(g, 'papa');
+    // (the bot answers "¿Para papá?" as it likes, sí or no: here the present is simply given, as before sí and no are met)
+    await g.ev(() => { const m = G.words.met; G.words.__met = m; G.words.met = id => (id === 'si' || id === 'no' ? false : m(id)); });
     await papa(g); await settle(g, 'the gift');
+    await g.ev(() => { G.words.met = G.words.__met; });
     check('plays: the lime given to Papá: a heart, and the hands are empty', await hearts(g, 'papa') > h0 && await g.ev(() => !G.carry.held()));
     check('the Learning page says "an avocado" (not "a avocado"), and tonight\'s lines name the article by code', await g.ev(() => G.tplMore.find(t => t[0] === 'comer')[1]('aguacate').ans.en === 'I want an avocado.' && G.tplMore.find(t => t[0] === 'comer')[1]('tortilla').ans.en === 'I want a tortilla.' && G.requests.LINES['hogar.escucha']('mesa') === '¡{name}! ¡La [mesa]! ¡Escucha!'));
     check('plays: no console errors', !g.errors.length, g.errors.join('\n'));
